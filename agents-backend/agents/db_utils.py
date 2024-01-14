@@ -9,12 +9,9 @@ from agents.planner_executor.tool_helpers.toolbox_manager import all_toolboxes
 from agents.planner_executor.tool_helpers.core_functions import (
     execute_code,
 )
-
-
+import psycopg2
 import yaml
-
 from gcs_utils import store_files_to_gcs
-
 from utils import add_files_to_rabbitmq_queue, error_str, log_str, warn_str
 
 with open(".env.yaml", "r") as f:
@@ -1126,3 +1123,13 @@ def get_parent_analyses(parent_analyses=[]):
         analyses = []
     finally:
         return err, analyses
+
+def get_db_conn():
+    conn = psycopg2.connect(
+        host=env["host"],
+        dbname=env["database"],
+        user=env["user"],
+        password=env["password"],
+        port=env["port"]
+    )
+    return conn
