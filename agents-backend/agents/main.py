@@ -21,10 +21,14 @@ from utils import (
     client_description,
     glossary,
 )
+import integration_routes, admin_routes, auth_routes
 
 manager = ConnectionManager()
 
 app = FastAPI()
+app.include_router(integration_routes.router)
+app.include_router(admin_routes.router)
+app.include_router(auth_routes.router)
 
 origins = ["*"]
 app.add_middleware(
@@ -47,7 +51,6 @@ report_assets_dir = env["report_assets_dir"]
 
 
 app.include_router(doc_endpoints.router)
-
 
 @app.get("/")
 async def root():
