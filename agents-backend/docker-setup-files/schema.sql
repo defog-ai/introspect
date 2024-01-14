@@ -189,6 +189,7 @@ CREATE TABLE public.defog_users (
     username text NOT NULL,
     hashed_password text,
     token text NOT NULL,
+    user_type text NOT NULL,
     csv_tables text,
     is_premium boolean,
     created_at timestamp without time zone,
