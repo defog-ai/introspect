@@ -125,7 +125,7 @@ const ExtractMetadata = () => {
                 disabled={loading}
                 onFinish={async (values) => {
                   values = {
-                    ...values,
+                    db_creds: values,
                     db_type: values["db_type"] || dbType,
                     token: context.token,
                   };
@@ -187,14 +187,11 @@ const ExtractMetadata = () => {
                   disabled={loading}
                   onFinish={async (values) => {
                     setLoading(true);
-                    console.log(dbCreds);
                     const res = await fetch(
                       `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_metadata`,
                       {
                         method: "POST",
                         body: JSON.stringify({
-                          db_creds: dbCreds,
-                          db_type: dbType,
                           tables: values["tables"],
                           token: context.token,
                         }),
