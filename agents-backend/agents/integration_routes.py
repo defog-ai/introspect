@@ -58,6 +58,9 @@ async def generate_tables(request: Request):
         db_type = params.get("db_type")
         db_creds = params.get("db_creds")
 
+        # make username into user key for defog to work
+        db_creds["user"] = db_creds["username"]
+
         # once this is done, we do not have to persist the db_creds
         # since they are already stored in the Defog connection string at ~/.defog/connection.json
         defog = Defog(api_key, db_type, db_creds)
