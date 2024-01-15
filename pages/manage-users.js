@@ -34,6 +34,7 @@ const ManageUsers = () => {
 
   useEffect(() => {
     let token = context.token;
+    let userType = context.userType;
     if (!userType) {
       // load from local storage and set context
       const user = localStorage.getItem("defogUser");

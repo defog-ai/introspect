@@ -7,8 +7,6 @@ services:
     ports:
       # use a weird port to avoid conflicts with the user's local stuff
       - "1234:1234"
-    volumes:
-      - agents-app:/agents-app/
     networks:
       - agents-network
 
@@ -20,8 +18,8 @@ services:
         GOOGLE_APPLICATION_CREDENTIALS_PATH: "${GOOGLE_APPLICATION_CREDENTIALS_PATH:?Please set the GOOGLE_APPLICATION_CREDENTIALS_PATH variable to the path of your service account credentials file.}"
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /cloud-storage-creds.json
-    volumes:
-      - agents-python-server:/agents-python-server/
+    # volumes:
+    # - agents-python-server:/agents-python-server/
     ports:
       # we have to expose these ports to allow the browser to acces them
       # python server
@@ -90,8 +88,6 @@ services:
       - agents-redis:/data
 
 volumes:
-  agents-app:
-  agents-python-server:
   agents-partykit:
   agents-postgres:
   agents-rabbitmq:

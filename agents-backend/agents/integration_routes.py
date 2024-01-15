@@ -5,7 +5,7 @@ import json
 import pandas as pd
 from io import StringIO
 from auth_utils import validate_user
-
+import yaml
 
 env = None
 with open(".env.yaml", "r") as f:

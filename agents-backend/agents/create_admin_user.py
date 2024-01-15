@@ -12,10 +12,18 @@ username = "admin"
 password = "admin"
 hashed_password = hashlib.sha256((username + SALT + password).encode()).hexdigest()
 
-cur.execute(
-    "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (%s, %s, %s, %s, %s)",
-    (username, hashed_password, DEFOG_API_KEY, "admin", True),
-)
-con.commit()
-con.close()
-print("Admin user created.")
+# check if admin user exists first
+admin_exists = False
+cur.execute("SELECT * FROM defog_users WHERE username = %s", (username,))
+if cur.fetchone():
+    admin_exists = True
+    print("Admin user already exists.")
+
+if not admin_exists:
+    cur.execute(
+        "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (%s, %s, %s, %s, %s)",
+        (username, hashed_password, DEFOG_API_KEY, "admin", True),
+    )
+    con.commit()
+    con.close()
+    print("Admin user created.")
