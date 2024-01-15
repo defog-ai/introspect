@@ -66,38 +66,6 @@ def get_table_metadata_nested_dict(api_key):
             "error_message": "Error getting table metadata. Is your api key correct?",
         }
 
-
-def get_table_metadata_csv(api_key):
-    import requests
-
-    try:
-        r = requests.post(
-            "https://api.defog.ai/get_metadata", json={"api_key": api_key}
-        )
-
-        metadata = r.json()["table_metadata"]
-        metadata_csv = []
-        for table_name in metadata:
-            for item in metadata[table_name]:
-                metadata_csv.append(
-                    {
-                        "table_name": table_name,
-                        "column_name": item["column_name"],
-                        "column_data_type": item["data_type"],
-                        "column_description": item["column_description"],
-                    }
-                )
-        metadata_csv = pd.DataFrame(metadata_csv).to_csv(index=False)
-        return {"success": True, "metadata_csv": metadata_csv}
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        return {
-            "success": False,
-            "error_message": "Error getting table metadata. Is your api key correct?",
-        }
-
-
 def get_table_metadata_as_sql_creates_from_json(metadata):
     metadata_sql = ""
     for table_name in metadata:
@@ -148,13 +116,18 @@ def missing_param_error(param_name):
 # change double quotes to single quotes inside strings
 
 
-# TODO: change this so that it is not hardcoded, and instead is fetched from the db
-table_metadata_csv = redis_client.get("integration:metadata")
-client_description = "In this assignment, assume that you are a medical data analyst who is working with lab sample data for T cells of cancer patients."
-glossary = """- If you encounter the term `variable_value` in the metadata, it refers specifically to the column `variable_value`, and not a generic value. NEVER ask a question like "which variable name are you referring to"
+def get_metadata():
+    table_metadata_csv = redis_client.get("integration:metadata")
+    client_description = "In this assignment, assume that you are a medical data analyst who is working with lab sample data for T cells of cancer patients."
+    glossary = """- If you encounter the term `variable_value` in the metadata, it refers specifically to the column `variable_value`, and not a generic value. NEVER ask a question like "which variable name are you referring to"
 - Match the terms used by users to the terms used in the database schema. For example, if a user asks for Regulatory T Cells, and the database uses the term Tregs, then modify your response accordingly.
 - Recall that the term `reportable` refers to quantitative variables
 - When asking clarifying questions, ONLY use the information in the `column_name` column"""
+    return {
+        "table_metadata_csv": table_metadata_csv,
+        "client_description": client_description,
+        "glossary": glossary,
+    }
 
 
 def success_str(msg=""):

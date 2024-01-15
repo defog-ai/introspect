@@ -21,7 +21,7 @@ from db_utils import (
     update_tool_run_data,
 )
 
-from utils import table_metadata_csv, client_description, glossary
+from utils import get_metadata
 
 router = APIRouter()
 
@@ -350,6 +350,11 @@ async def rerun_step(websocket: WebSocket):
 
             # get steps from db
             err, analysis_data = get_report_data(analysis_id)
+
+            metadata_dets = get_metadata(dfg_api_key)
+            glossary = metadata_dets["glossary"]
+            client_description = metadata_dets["client_description"]
+            table_metadata_csv = metadata_dets["table_metadata_csv"]
 
             global_dict = {
                 "user_question": analysis_data["user_question"],

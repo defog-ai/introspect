@@ -16,11 +16,7 @@ from db_utils import (
     initialise_report,
     update_report_data,
 )
-from utils import (
-    table_metadata_csv,
-    client_description,
-    glossary,
-)
+from utils import get_metadata
 import integration_routes, admin_routes, auth_routes
 
 manager = ConnectionManager()
@@ -231,6 +227,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     if data.get("toolboxes") and type(data.get("toolboxes")) == list
                     else []
                 )
+                metadata_dets = get_metadata()
+                glossary = metadata_dets["glossary"]
+                client_description = metadata_dets["client_description"]
+                table_metadata_csv = metadata_dets["table_metadata_csv"]
                 # run the agent as per the request_type
                 err, agent_output = await report_data_manager.run_agent(
                     report_id=report_id,
