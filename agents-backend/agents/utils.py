@@ -173,7 +173,7 @@ def missing_param_error(param_name):
 # TODO: change this so that it is not hardcoded, and instead is fetched from the db
 table_metadata_csv = redis_client.get("integration:metadata")
 client_description = "In this assignment, assume that you are a medical data analyst who is working with lab sample data for T cells of cancer patients."
-glossary = """- The term `variable_value` refers specifically to the column `variable_value`, and not a generic value. NEVER ask a question like "which variable name are you referring to"
+glossary = """- If you encounter the term `variable_value` in the metadata, it refers specifically to the column `variable_value`, and not a generic value. NEVER ask a question like "which variable name are you referring to"
 - Match the terms used by users to the terms used in the database schema. For example, if a user asks for Regulatory T Cells, and the database uses the term Tregs, then modify your response accordingly.
 - Recall that the term `reportable` refers to quantitative variables
 - When asking clarifying questions, ONLY use the information in the `column_name` column"""
