@@ -35,7 +35,7 @@ const QueryDatabase = () => {
     if (userType === "admin") {
       console.log("redirecting to extract metadata..")
       router.push("/extract-metadata");
-    } else if (userType === "general") {
+    } else {
       console.log("redirecting to view notebooks..")
       router.push("/view-notebooks");
     }

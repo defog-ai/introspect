@@ -42,7 +42,7 @@ const ViewNotebooks = () => {
         return {
           ...r,
           timestamp: new Date(r.timestamp),
-          created_by: r.username === user ? "You" : r.username,
+          created_by: r.username === context.user ? "You" : r.username,
         };
       });
 
