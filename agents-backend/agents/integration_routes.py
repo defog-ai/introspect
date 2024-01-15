@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Request
 from defog import Defog
 import redis  # use redis for caching – atleast for now
@@ -60,17 +61,22 @@ async def generate_tables(request: Request):
 
         # make username into user key for defog to work
         db_creds["user"] = db_creds["username"]
+        # also delete username
+        del db_creds["username"]
+        # remove db_type from db_creds if it exists or sqlalchemy throws an error inside defog
+        if "db_type" in db_creds:
+            del db_creds["db_type"]
 
         # once this is done, we do not have to persist the db_creds
         # since they are already stored in the Defog connection string at ~/.defog/connection.json
         defog = Defog(api_key, db_type, db_creds)
-        table_names = defog.generate_db_schema(return_tables_only=True)
+        table_names = defog.generate_db_schema(tables=[], return_tables_only=True)
         redis_client.set(f"integration:status", "selected_tables")
         redis_client.set(f"integration:status", "gave_credentials")
         redis_client.set(f"integration:tables", json.dumps(table_names))
         redis_client.set(f"integration:db_type", db_type)
         redis_client.set(f"integration:db_creds", json.dumps(db_creds))
-        return {"tables": tables}
+        return {"tables": table_names}
 
 
 @router.post("/integration/get_tables_db_creds")
