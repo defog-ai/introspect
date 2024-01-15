@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import ErrorBoundary from "../components/common/ErrorBoundary";
 import LoadingReport from "../components/reports/ReportLoading";
 import { v4 } from "uuid";
-import { Context } from "@/components/common/Context";
+import { Context } from "../components/common/Context";
 
 const Doc = dynamic(() => import("../components/docs/Doc"), {
   ssr: false,
