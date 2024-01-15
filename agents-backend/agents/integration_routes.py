@@ -116,7 +116,7 @@ async def generate_metadata(request: Request):
             "error": "you must first provide the database credentials before this step"
         }
     table_metadata = defog.generate_db_schema(tables=tables, scan=True, upload=True)
-    metadata = pd.read_csv(StringIO(table_metadata)).to_csv(index=False)
+    metadata = table_metadata
     redis_client.set(f"integration:status", "edited_metadata")
     redis_client.set(f"integration:metadata", metadata)
     return {
