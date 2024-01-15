@@ -45,4 +45,4 @@ RUN mkdir -p /agents-python-server/report-assets/kaplan-meier-plots
 RUN mkdir -p /agents-python-server/report-assets/linechart 
 RUN mkdir -p /agents-python-server/report-assets/linecharts
 
-CMD python3 -m agents-python-server/create_admin_user.py && python3 -m hypercorn main:app -b 0.0.0.0:1235
+CMD python3 create_admin_user.py && python3 -m hypercorn main:app -b 0.0.0.0:1235
