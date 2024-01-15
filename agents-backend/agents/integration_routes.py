@@ -14,7 +14,7 @@ with open(".env.yaml", "r") as f:
 
 redis_host = env["redis_server_host"]
 
-redis_client = redis.Redis(host=redis_host, port=6379, db=0)
+redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 router = APIRouter()
 
 DEFOG_API_KEY = "rishabh"
@@ -59,10 +59,6 @@ async def generate_tables(request: Request):
         db_type = params.get("db_type")
         db_creds = params.get("db_creds")
 
-        # make username into user key for defog to work
-        db_creds["user"] = db_creds["username"]
-        # also delete username
-        del db_creds["username"]
         # remove db_type from db_creds if it exists or sqlalchemy throws an error inside defog
         if "db_type" in db_creds:
             del db_creds["db_type"]
@@ -86,13 +82,14 @@ async def get_tables_db_creds(request: Request):
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
 
-    tables = redis_client.get(f"integration:tables")
-    db_type = redis_client.get(f"integration:db_type")
-    db_creds = redis_client.get(f"integration:db_creds")
+    tables = redis_client.get("integration:tables")
+    selected_tables = redis_client.get("integration:selected_tables")
+    db_type = redis_client.get("integration:db_type")
+    db_creds = redis_client.get("integration:db_creds")
     if tables:
         tables = json.loads(tables)
         db_creds = json.loads(db_creds)
-        return {"tables": tables, "db_type": db_type, "db_creds": db_creds}
+        return {"tables": tables, "db_type": db_type, "db_creds": db_creds, "selected_tables": selected_tables}
     else:
         return {"error": "no tables found"}
 
@@ -107,16 +104,23 @@ async def generate_metadata(request: Request):
     tables = params.get("tables", None)
     if not tables:
         return {"error": "no tables selected"}
+    
+    redis_client.set("integration:selected_tables", json.dumps(tables))
 
-    defog = Defog()
-    if defog.db_creds is None:
+    api_key = DEFOG_API_KEY
+    db_type = redis_client.get(f"integration:db_type")
+    db_creds = redis_client.get(f"integration:db_creds")
+
+    if db_creds is None:
         return {
             "error": "you must first provide the database credentials before this step"
         }
-    table_metadata = defog.generate_db_schema(tables=tables, scan=True, upload=True)
-    metadata = table_metadata
+    
+    defog = Defog(api_key, db_type, json.loads(db_creds))
+    table_metadata = defog.generate_db_schema(tables=tables, scan=True, upload=True, return_format="csv_string")
+    metadata = pd.read_csv(StringIO(table_metadata)).fillna("").to_dict(orient="records")
     redis_client.set(f"integration:status", "edited_metadata")
-    redis_client.set(f"integration:metadata", metadata)
+    redis_client.set(f"integration:metadata", table_metadata)
     return {"metadata": metadata}
 
 
@@ -129,7 +133,7 @@ async def get_metadata(request: Request):
 
     metadata = redis_client.get("integration:metadata")
     if metadata:
-        metadata = pd.read_csv(StringIO(metadata)).to_dict(orient="records")
+        metadata = pd.read_csv(StringIO(metadata)).fillna("").to_dict(orient="records")
         return {"metadata": metadata}
     else:
         return {"error": "no metadata found"}

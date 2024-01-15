@@ -14,7 +14,7 @@ with open(".env.yaml", "r") as f:
 
 redis_host = env["redis_server_host"]
 router = APIRouter()
-redis_client = redis.Redis(host=redis_host, port=6379, db=0)
+redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
 SALT = "TOMMARVOLORIDDLE"
 DEFOG_API_KEY = "rishabh"
@@ -52,7 +52,7 @@ async def add_user(request: Request):
             (dets["username"] + SALT + dets["password"]).encode()
         ).hexdigest()
         cur.execute(
-            "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (%s, %s, %s, %s, %s)",
             (dets["username"], hashed_password, DEFOG_API_KEY, dets["user_type"], True),
         )
     conn.commit()
@@ -93,3 +93,4 @@ async def delete_user(request: Request):
     cur.execute("DELETE FROM defog_users WHERE username = %s", (username,))
     conn.commit()
     conn.close()
+    return {"status": "success"}
