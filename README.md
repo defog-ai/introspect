@@ -1,21 +1,5 @@
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
 ## Motivation
 
 This contains the self-hosted agents front-end that we will create for our enterprise users. It will help them:
@@ -28,15 +12,20 @@ This contains the self-hosted agents front-end that we will create for our enter
 
 To build the docker containers, make sure you have docker running on your system.
 
-You will need to have:
+Before building, you will need to:
 
-1. `.env.yaml` inside `agents-backend/agents`.
-2. You will also need to pass in GOOGLE_APPLICATION_CREDENTIALS_PATH as a build arg to docker compose for the agents-backend service. Like so: ` GOOGLE_APPLICATION_CREDENTIALS_PATH="path/to/google/creds.json" docker compose up -d`
+1. Create a file `.env.yaml` inside `agents-backend/agents`, using `.env.yaml.template` as an example. This file will contain all of the environment variables that the backend needs.
+2. You will also need to set GOOGLE_APPLICATION_CREDENTIALS_PATH, which will be used as a build arg to docker compose for the agents-backend service. You may do so by exporting the variable, or passing it directly to the docker compose command. The reason why we set this differently from the other env vars in agents-backend is because it needs to be accessible to multiple docker containers.
 3. The db will be populated with empty meta tables for now.
 4. For the actual table (genmab_sample) where the data is stored, you will need to get the sql script and run it on the docker container. This will eventually be automated/inbuilt into the process.
 
-Then run:
-`GOOGLE_APPLICATION_CREDENTIALS_PATH="path/to/google/creds.json" docker compose up -d`
+Altogether, the steps are:
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS_PATH="path/to/google/creds.json"
+docker compose up -d
+# alternatively
+GOOGLE_APPLICATION_CREDENTIALS_PATH="path/to/google/creds.json" docker compose up -d
+```
 
 To build the images and start the containers.
 
@@ -49,3 +38,30 @@ For now, can just directly go to `localhost:1234/doc` to start up a new doc. Onc
 A note about the partykit server: I couldn't connect to the websocket directly on port `1999`, which is where the partykit server runs.
 
 So I had to also open port `2000`, make an nginx that redirects `http://localhost:2000` to `ws://localhost:1999`, and connect to that port on the front end instead. You can notice this in the `.env.local` file.
+
+## Testing Locally
+
+The following sections explain how to test portions of the different containers locally. This could be helpful when debugging.
+
+### Agents App
+
+This project requires Node.js. If you don't have it, you can follow the instructions [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm#using-a-node-installer-to-install-nodejs-and-npm).
+
+First, install the npm dependencies.
+```bash
+npm install
+```
+
+Next, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:1234](http://localhost:1234) with your browser to see the result.
