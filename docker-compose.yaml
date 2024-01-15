@@ -32,8 +32,6 @@ services:
     build:
       context: .
       dockerfile: dockerfile.agents-partykit
-    volumes:
-      - agents-partykit:/agents-partykit/
     ports:
       # partykit
       - "1999:1999"
@@ -56,8 +54,6 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
-    volumes:
-      - agents-rabbitmq:/var/lib/rabbitmq
     expose:
       - "5672"
       - "15672"
@@ -88,9 +84,7 @@ services:
       - agents-redis:/data
 
 volumes:
-  agents-partykit:
   agents-postgres:
-  agents-rabbitmq:
   agents-redis:
 
 networks:
