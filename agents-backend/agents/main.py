@@ -52,6 +52,7 @@ report_assets_dir = env["report_assets_dir"]
 
 app.include_router(doc_endpoints.router)
 
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -211,8 +212,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 report_data_manager = ReportDataManager(
                     data["user_question"],
                     report_id,
-                    # the email is the email where we need to send the notification when the report creation is done.
-                    data.get("email"),
                     data.get("db_creds"),
                 )
 
@@ -269,11 +268,6 @@ async def websocket_endpoint(websocket: WebSocket):
                             await websocket.send_json(
                                 {"done": True, "request_type": request_type}
                             )
-                            # if it was gen_report, send an email
-                            if request_type == "gen_report":
-                                err = await report_data_manager.report_complete_mail()
-                                if err is not None:
-                                    print(err)
                         else:
                             # if not a generator agent
                             resp["output"] = agent_output

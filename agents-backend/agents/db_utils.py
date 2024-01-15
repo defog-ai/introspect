@@ -203,10 +203,6 @@ def get_report_data(report_id):
         report_data = None
         print(e)
         traceback.print_exc()
-        # slack_message(
-        #     message="Server error: Getting report data from DB",
-        #     params={"report_id": report_id, "error": e},
-        # )
 
     finally:
         return err, report_data
@@ -269,10 +265,6 @@ def update_report_data(report_id, request_type=None, new_data=None, replace=Fals
         err = str(e)
         print(e)
         traceback.print_exc()
-        # slack_message(
-        #     message="Server error: Updating report data in DB",
-        #     params={"report_id": report_id, "error": e},
-        # )
     finally:
         return err
 
@@ -507,10 +499,6 @@ async def update_doc_data(doc_id, col_names=[], new_data={}):
         err = str(e)
         print(e)
         traceback.print_exc()
-        # slack_message(
-        #     message="Server error: Updating report data in DB",
-        #     params={"report_id": report_id, "error": e},
-        # )
     finally:
         return err
 
@@ -1123,12 +1111,13 @@ def get_parent_analyses(parent_analyses=[]):
     finally:
         return err, analyses
 
+
 def get_db_conn():
     conn = psycopg2.connect(
         host=env["host"],
         dbname=env["database"],
         user=env["user"],
         password=env["password"],
-        port=env["port"]
+        port=env["port"],
     )
     return conn

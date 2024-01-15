@@ -27,7 +27,6 @@ COPY ./pages ./pages
 COPY ./public ./public
 COPY ./styles ./styles
 COPY ./utils ./utils
-# COPY jsconfig.json jsconfig.json
 COPY next.config.js next.config.js
 COPY package-lock.json package-lock.json
 COPY package.json package.json

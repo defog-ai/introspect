@@ -5,7 +5,6 @@ from agents.main_agent import (
     execute,
     get_clarification,
 )
-from send_email import send_email
 
 request_types = [
     "clarify",
@@ -19,12 +18,11 @@ prop_names = {
 
 
 class ReportDataManager:
-    def __init__(self, user_question, report_id, email, db_creds=None):
+    def __init__(self, user_question, report_id, db_creds=None):
         self.report_id = report_id
         self.report_data = None
         self.user_question = user_question
         self.invalid = False
-        self.email = email
         # check if this report exists in the main db
         # if so, load the report details from there
         err1, report_data = get_report_data(report_id)
@@ -136,9 +134,3 @@ class ReportDataManager:
             traceback.print_exc()
         finally:
             return err, result
-
-    async def report_complete_mail(self):
-        return
-        # if self.email is None or self.email == "":
-        #     return
-        # await send_email(to_email=self.email, params={"report_id": self.report_id})

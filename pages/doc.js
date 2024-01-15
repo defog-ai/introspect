@@ -14,6 +14,8 @@ export default function DocPage() {
   const router = useRouter();
   const [context, setContext] = useContext(Context);
 
+  console.log(context);
+
   const { user, token } = {
     user: "podcast-slot.0g@icloud.com",
     token: "dummy",

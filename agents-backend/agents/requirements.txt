@@ -4,7 +4,6 @@ pandas
 pyyaml
 defog
 snowflake-connector-python
-slack_sdk
 pandas
 resend
 sqlalchemy

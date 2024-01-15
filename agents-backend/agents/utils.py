@@ -128,32 +128,6 @@ def get_table_metadata_as_sql_creates_from_api_key(api_key):
         }
 
 
-def check_report_params(api_key, email, timestamp, approaches):
-    """Checks if all params send to the generate_report endpoint are valid."""
-    nones = [api_key, email, timestamp, approaches].count(None)
-    if nones > 0:
-        return {
-            "valid": False,
-            "error_message": "Missing one or more of the required parameters: api_key, email, timestamp or approaches.",
-        }
-
-    # check if empty strings after stripping
-    if api_key.strip() == "" or email.strip() == "" or timestamp.strip() == "":
-        return {
-            "valid": False,
-            "error_message": "One or more of the required parameters is an empty string.",
-        }
-
-    # TODO: check if timestamp, api_key, and email are valid
-    if len(approaches) == 0 or type(approaches) != list:
-        return {
-            "valid": False,
-            "error_message": "Param approaches must be a non empty array of questions.",
-        }
-
-    return {"valid": True}
-
-
 def api_response(ran_successfully=False, **extra):
     """Returns a JSON object with the ran_successfully key and any extra keys passed in."""
     return {"ran_successfully": ran_successfully, **extra}
@@ -194,12 +168,9 @@ def get_dfg(dfg_api_key, db_creds=None):
             },
         )
     else:
-        # eventually this will be removed to a better "default" solution
-        # chinook + survival data (in genmab_sample table)
+        # db_type, etc are already in /.defog/connections.json
         dfg = Defog(
             dfg_api_key,
-            db_type=env["customer_db_type"],
-            db_creds=env["customer_db_creds"],
         )
     return dfg
 

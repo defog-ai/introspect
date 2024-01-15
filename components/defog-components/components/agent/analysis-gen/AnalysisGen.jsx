@@ -6,7 +6,6 @@ import React, {
   useState,
 } from "react";
 import Clarify from "./Clarify";
-import Approaches from "./Approaches";
 import { ThemeContext } from "../../../context/ThemeContext";
 import styled from "styled-components";
 import Search from "antd/lib/input/Search";
@@ -17,14 +16,10 @@ const generationStages = ["clarify"];
 
 const agentRequestNames = {
   clarify: "Refine",
-  // gen_approaches: "Steps",
-  // gen_steps: "Steps",
 };
 
 const components = {
   clarify: Clarify,
-  // gen_approaches: Approaches,
-  // gen_steps: Steps,
 };
 
 export default function AnalysisGen({
