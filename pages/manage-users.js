@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { Context } from "../components/common/Context";
 import Meta from "../components/common/Meta";
 import Scaffolding from "../components/common/Scaffolding";
-import { Row, Col, Form, Input, Table, Button, message } from "antd";
+import { Row, Col, Form, Input, Table, Button, Space, message } from "antd";
 
 const ManageUsers = () => {
   const [loading, setLoading] = useState(false);
@@ -13,7 +13,10 @@ const ManageUsers = () => {
   const router = useRouter();
 
   const getUserDets = async () => {
-    const res = await fetch("/admin/get_users", {
+    if (!context.token) {
+      return;
+    }
+    const res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/admin/get_users`, {
       method: "POST",
       body: JSON.stringify({
         token: context.token,
@@ -23,7 +26,7 @@ const ManageUsers = () => {
       },
     });
     const data = await res.json();
-    if (data.status === "success") {
+    if (data.users) {
       setUserDets(data.users);
     } else {
       message.error(
@@ -57,7 +60,7 @@ const ManageUsers = () => {
     } else {
       getUserDets();
     }
-  }, []);
+  }, [context, context.token]);
 
   return (
     <>
@@ -76,7 +79,7 @@ const ManageUsers = () => {
               disabled={loading}
               onFinish={async (values) => {
                 setLoading(true);
-                const res = await fetch("/admin/add_users", {
+                const res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/admin/add_users`, {
                   method: "POST",
                   body: JSON.stringify({
                     ...values,
@@ -134,7 +137,7 @@ const ManageUsers = () => {
                       <a
                         onClick={async () => {
                           setLoading(true);
-                          const res = await fetch("/admin/delete_user", {
+                          const res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/admin/delete_user`, {
                             method: "POST",
                             body: JSON.stringify({
                               username: record.username,

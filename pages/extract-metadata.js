@@ -22,11 +22,15 @@ const ExtractMetadata = () => {
   const [loading, setLoading] = useState(false);
   const [metadata, setMetadata] = useState([]);
   const [context, setContext] = useContext(Context);
+  const [selectedTables, setSelectedTables] = useState([]);
   const router = useRouter();
   const [userType, setUserType] = useState("admin");
 
   const getTables = async () => {
     const token = context.token;
+    if (!token) {
+      return;
+    }
     const res = await fetch(
       `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_tables_db_creds`,
       {
@@ -38,14 +42,21 @@ const ExtractMetadata = () => {
     );
     const data = await res.json();
     if (!data.error) {
+      // reset the current values in the db_creds form
+      console.log(data);
+
       setDbType(data["db_type"]);
       setDbCreds(data["db_creds"]);
       setTables(data["tables"]);
+      setSelectedTables(data["selected_tables"]);
     }
   };
 
   const getMetadata = async () => {
     const token = context.token;
+    if (!token) {
+      return;
+    }
     const res = await fetch(
       `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_metadata`,
       {
@@ -57,7 +68,27 @@ const ExtractMetadata = () => {
     );
     const data = await res.json();
     if (!data.error) {
-      setMetadata(data.metadata);
+      setMetadata(data?.metadata || []);
+    }
+  };
+
+  const generateMetadata = async () => {
+    const token = context.token;
+    if (!token) {
+      return;
+    }
+    const res = await fetch(
+      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_metadata`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          token,
+        }),
+      }
+    );
+    const data = await res.json();
+    if (!data.error) {
+      setMetadata(data?.metadata || []);
     }
   };
 
@@ -97,13 +128,13 @@ const ExtractMetadata = () => {
     });
 
     // get the current status
-  }, [context]);
+  }, [context, context.token]);
 
   const dbCredOptions = {
-    postgres: ["host", "port", "username", "password", "database"],
-    mysql: ["host", "port", "username", "password", "database"],
-    redshift: ["host", "port", "username", "password", "database"],
-    snowflake: ["account", "warehouse", "username", "password"],
+    postgres: ["host", "port", "user", "password", "database"],
+    mysql: ["host", "port", "user", "password", "database"],
+    redshift: ["host", "port", "user", "password", "database"],
+    snowflake: ["account", "warehouse", "user", "password"],
     databricks: ["server_hostname", "access_token", "http_path", "schema"],
   };
 
@@ -140,30 +171,23 @@ const ExtractMetadata = () => {
                   setTables(data["tables"]);
                 }}
               >
-                <Form.Item name="db_type" label="Database Type">
+                <Form.Item name="db_type" label="Database Type" value={dbType}>
                   <Select
                     style={{ width: "100%" }}
-                    defaultValue={{
-                      value: dbType,
-                      label: dbType.toLocaleUpperCase(),
-                    }}
                     onChange={(e) => {
                       setDbType(e);
                     }}
-                  >
-                    <Option value="databricks">DataBricks</Option>
-                    <Option value="mysql">MySQL</Option>
-                    <Option value="postgres">PostgreSQL</Option>
-                    <Option value="redshift">Redshift</Option>
-                    <Option value="snowflake">Snowflake</Option>
-                  </Select>
+                    options={["databricks", "mysql", "postgres", "redshift", "snowflake"].map((item) => {
+                      return { value: item, key: item, label: item };
+                    })}
+                  />
                 </Form.Item>
                 {/* create form inputs based on the value selected above */}
                 {dbCredOptions[dbType] !== undefined &&
                   dbCredOptions[dbType].map((item) => {
                     return (
-                      <Form.Item label={item} name={item}>
-                        <Input style={{ width: "100%" }} />
+                      <Form.Item label={item} name={item} key={dbType + "_" + item}>
+                        <Input style={{ width: "100%" }} defaultValue={dbCreds[item] || ""} />
                       </Form.Item>
                     );
                   })}
@@ -188,7 +212,7 @@ const ExtractMetadata = () => {
                   onFinish={async (values) => {
                     setLoading(true);
                     const res = await fetch(
-                      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_metadata`,
+                      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_metadata`,
                       {
                         method: "POST",
                         body: JSON.stringify({
@@ -199,16 +223,22 @@ const ExtractMetadata = () => {
                     );
                     const data = await res.json();
                     setLoading(false);
-                    setMetadata(data["schema"]);
+                    setMetadata(data?.metadata || []);
                   }}
                 >
-                  <Form.Item name="tables" label="Tables to index">
+                  <Form.Item name="tables" label="Tables to index" value={selectedTables}>
                     <Select
                       mode="multiple"
                       style={{ width: "100%", maxWidth: 400 }}
+                      placeholder="Select tables to index"
+                      defaultValue={selectedTables}
+                      onChange={(e) => {
+                        console.log(e);
+                        setSelectedTables(e);
+                      }}
                     >
                       {tables.map((table) => (
-                        <Option value={table}>{table}</Option>
+                        <Option value={table} key={table}>{table}</Option>
                       ))}
                     </Select>
                   </Form.Item>
@@ -335,7 +365,7 @@ const ExtractMetadata = () => {
                       <Input.TextArea
                         key={index}
                         placeholder="Description of what this column does"
-                        initialValue={item.column_description}
+                        defaultValue={item.column_description}
                         autoSize={{ minRows: 2 }}
                         onChange={(e) => {
                           const newMetadata = [...metadata];
