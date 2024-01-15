@@ -3,9 +3,6 @@ from agents.clarifier.clarifier_agent import Clarifier
 from agents.planner_executor.planner_executor_agent import Executor
 import traceback
 import yaml
-from defog import Defog
-
-from utils import get_dfg
 
 # from db_utils import add_report_markdown
 
@@ -76,14 +73,6 @@ async def execute(
     print("at gen report")
     print("Evaling approaches")
     sys.stdout.flush()
-    try:
-        # if there's a different db_creds passed, reset dfg to that
-        dfg = get_dfg(dfg_api_key, db_creds=db_creds)
-
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        return {"success": False, "error_message": "Error connecting to db."}, None
 
     executor = Executor(
         report_id,
@@ -92,7 +81,7 @@ async def execute(
         glossary,
         table_metadata_csv,
         assignment_understanding,
-        dfg,
+        None,
         dfg_api_key=dfg_api_key,
         toolboxes=toolboxes,
         parent_analyses=parent_analyses,

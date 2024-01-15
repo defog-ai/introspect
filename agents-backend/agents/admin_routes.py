@@ -17,7 +17,7 @@ router = APIRouter()
 redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
 SALT = "TOMMARVOLORIDDLE"
-DEFOG_API_KEY = "rishabh"
+DEFOG_API_KEY = "genmab-survival-test"
 
 
 @router.post("/admin/add_users")

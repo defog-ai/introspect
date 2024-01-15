@@ -1,9 +1,25 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { Context } from "./Context";
 import { Layout, Menu } from "antd/lib";
 
 const Scaffolding = ({ id, userType, children }) => {
   const { Content, Sider } = Layout;
   const [items, setItems] = useState([]);
+  const [context, setContext] = useContext(Context);
+  
+  const logout = () => {
+    localStorage.removeItem("defogUser");
+    localStorage.removeItem("defogToken");
+    localStorage.removeItem("defogUserType");
+    setContext({
+      user: null,
+      token: null,
+      userType: null,
+    });
+
+    window.location.href = "/login";
+  }
+  
   useEffect(() => {
     let items = [];
     if (userType == "admin") {
@@ -18,20 +34,20 @@ const Scaffolding = ({ id, userType, children }) => {
           title: 'Manage Users',
           icon: <a href="/manage-users">🔐 Manage Users</a>,
         },
-        {
-          key: 'manage-model',
-          title: 'Instruct Model',
-          icon: <a href="/instruct-model">👨‍🏫 Instruct Model</a>,
-        },
+        // {
+        //   key: 'manage-model',
+        //   title: 'Instruct Model',
+        //   icon: <a href="/instruct-model">👨‍🏫 Instruct Model</a>,
+        // },
         {
           key: 'view-notebook',
           title: 'View your notebook',
           icon: <a href="/view-notebooks">📒 Your Notebooks</a>,
         },
         {
-          key: 'account',
-          title: 'Update Account',
-          icon: <a href="/account">🧾 Update Account</a>,
+          key: 'logout',
+          title: 'Logout',
+          icon: <a href="#" onClick={logout}>↪ Logout</a>,
         },
       ];
     } else {
@@ -42,9 +58,9 @@ const Scaffolding = ({ id, userType, children }) => {
           icon: <a href="/view-notebooks">Your Notebooks</a>,
         },
         {
-          key: 'account',
-          title: 'Update Account',
-          icon: <a href="/account">Update Account</a>,
+          key: 'logout',
+          title: 'Logout',
+          icon: <a href="#" onClick={logout}>Logout</a>,
         },
       ]
     }

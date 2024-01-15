@@ -61,7 +61,7 @@ class Executor:
             "dfg_api_key": dfg_api_key,
             "toolboxes": toolboxes,
             "assignment_understanding": assignment_understanding,
-            "dfg": dfg,
+            "dfg": None,
         }
 
         # keep storing store column names of each step's generated data

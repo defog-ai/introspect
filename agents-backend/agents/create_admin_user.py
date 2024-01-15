@@ -2,7 +2,7 @@ from db_utils import get_db_conn
 import hashlib
 
 SALT = "TOMMARVOLORIDDLE"
-DEFOG_API_KEY = "rishabh"
+DEFOG_API_KEY = "genmab-survival-test"
 
 con = get_db_conn()
 cur = con.cursor()

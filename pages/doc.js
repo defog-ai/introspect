@@ -15,20 +15,35 @@ export default function DocPage() {
   const router = useRouter();
   const [context, setContext] = useContext(Context);
 
-  console.log(context);
-
-  const { user, token } = {
-    user: "podcast-slot.0g@icloud.com",
-    token: "dummy",
-  };
-
+  const [user, setUser] = useState(context.user);
+  
   const apiToken = process.env.NEXT_PUBLIC_API_KEY;
   const docId = useRef(null);
 
   useEffect(() => {
-    if (router && (!user || !token)) {
+    let token = context.token;
+    let userType = context.userType;
+
+    if (!userType) {
+      // load from local storage and set context
+      const user = localStorage.getItem("defogUser");
+      setUser(user);
+      token = localStorage.getItem("defogToken");
+      userType = localStorage.getItem("defogUserType");
+
+      if (!user || !token || !userType) {
+        // redirect to login page
+        router.push("/login");
+        return;
+      }
+      setContext({
+        user: user,
+        token: token,
+        userType: userType,
+      });
+    }
+    if (!token) {
       router.push("/login");
-      return;
     }
 
     docId.current = router?.query?.docId;
@@ -60,7 +75,7 @@ export default function DocPage() {
     }
 
     validate();
-  }, [router, context, token, user, setContext]);
+  }, [router, context, setContext]);
 
   return docId.current ? (
     <ErrorBoundary>

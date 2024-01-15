@@ -18,9 +18,19 @@ from sklearn.model_selection import GridSearchCV, KFold
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import redis
+import json
+import yaml
+
+with open(".env.yaml", "r") as f:
+    env = yaml.safe_load(f)
+
+redis_host = env["redis_server_host"]
+redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
 encoding = tiktoken.encoding_for_model("gpt-4-0613")
 
+DEFOG_API_KEY = "genmab-survival-test"
 
 # make sure the query does not contain any malicious commands like drop, delete, etc.
 def safe_sql(query):
@@ -40,30 +50,21 @@ def safe_sql(query):
 
     return True
 
-
-async def get_query_using_defog(question, schema, glossary, dfg):
-    """
-    This function uses defog to generate an SQL query.
-    """
-    return dfg.get_query(
-        question,
-        schema=schema,
-        glossary=glossary,
-    )
-
-
-async def fetch_query_into_df(sql_query: str, dfg: Defog = None) -> pd.DataFrame:
+async def fetch_query_into_df(sql_query: str) -> pd.DataFrame:
     """
     Runs a sql query and stores the results in a pandas dataframe.
     """
 
-    if dfg is None:
-        # raise error
-        raise ValueError("dfg cannot be None")
     # important note: this is currently a blocking call
     # TODO: add an option to the defog library to make this async
+    
+    db_type = redis_client.get("integration:db_type")
+    db_creds = redis_client.get("integration:db_creds")
+    if db_creds is not None:
+        db_creds = json.loads(db_creds)
+    
     colnames, data, new_sql_query = execute_query(
-        sql_query, dfg.api_key, dfg.db_type, dfg.db_creds, retries=0
+        sql_query, DEFOG_API_KEY, db_type, db_creds, retries=0
     )
     df = pd.DataFrame(data, columns=colnames)
 

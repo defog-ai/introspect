@@ -4,6 +4,8 @@ import traceback
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from agents.planner_executor.tool_helpers.rerun_step import rerun_step_and_dependents
 
+DEFOG_API_KEY = "genmab-survival-test"
+
 from connection_manager import ConnectionManager
 from db_utils import (
     add_to_recently_viewed_docs,
@@ -19,7 +21,7 @@ from db_utils import (
     update_tool_run_data,
 )
 
-from utils import table_metadata_csv, get_dfg, client_description, glossary
+from utils import table_metadata_csv, client_description, glossary
 
 router = APIRouter()
 
@@ -149,7 +151,8 @@ async def get_docs(request: Request):
     """
     try:
         data = await request.json()
-        api_key = data.get("api_key")
+        # api_key = data.get("api_key")
+        api_key = DEFOG_API_KEY
 
         if api_key is None or type(api_key) != str:
             return {"success": False, "error_message": "Invalid api key."}
@@ -353,7 +356,6 @@ async def rerun_step(websocket: WebSocket):
                 "table_metadata_csv": table_metadata_csv,
                 "client_description": client_description,
                 "glossary": glossary,
-                "dfg": get_dfg(dfg_api_key),
             }
 
             if err:

@@ -17,7 +17,7 @@ redis_host = env["redis_server_host"]
 redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 router = APIRouter()
 
-DEFOG_API_KEY = "rishabh"
+DEFOG_API_KEY = "genmab-survival-test"
 
 
 @router.post("/integration/status")
@@ -84,6 +84,8 @@ async def get_tables_db_creds(request: Request):
 
     tables = redis_client.get("integration:tables")
     selected_tables = redis_client.get("integration:selected_tables")
+    if selected_tables:
+        selected_tables = json.loads(selected_tables)
     db_type = redis_client.get("integration:db_type")
     db_creds = redis_client.get("integration:db_creds")
     if tables:

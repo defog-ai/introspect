@@ -38,7 +38,7 @@ async def data_fetcher(
     
     print(f"Running query: {query}")
 
-    df = await fetch_query_into_df(query, global_dict.get("dfg"))
+    df = await fetch_query_into_df(query)
 
     return {
         "analysis": "",

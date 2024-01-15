@@ -27,7 +27,7 @@ import { ToolResults } from "./ToolResults";
 import StepsDag from "../common/StepsDag";
 import ErrorBoundary from "../common/ErrorBoundary";
 import { v4 } from "uuid";
-import { Context } from "../../components/common/Context";
+import { Context } from "../../../../components/common/Context";
 import { createAnalysis, getAnalysis } from "../../../../utils/utils";
 import setupBaseUrl from  "../../../../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../../../../utils/websocket-manager";

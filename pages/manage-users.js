@@ -65,10 +65,17 @@ const ManageUsers = () => {
   return (
     <>
       <Meta />
-      <Scaffolding id={"manage-users"}>
+      <Scaffolding id={"manage-users"} userType={"admin"}>
         <h1>Add New Users</h1>
-        <Row>
-          <Col span={{ xs: 24, md: 12 }}>
+        <Row gutter={
+          {
+            xs: 8,
+            sm: 16,
+            md: 24,
+            lg: 32,
+          }
+        }>
+          <Col span={{ xs: 24, md: 12 }} >
             <h2>Add Users</h2>
             <p>
               Paste in user details as a CSV file with the headers:

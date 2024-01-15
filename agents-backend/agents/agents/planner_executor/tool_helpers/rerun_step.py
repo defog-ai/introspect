@@ -190,7 +190,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
             new_data = None
             try:
                 result = await fetch_query_into_df(
-                    tool_run_details["sql"], global_dict.get("dfg")
+                    tool_run_details["sql"]
                 )
             except Exception as e:
                 err = str(e)

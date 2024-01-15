@@ -157,28 +157,6 @@ glossary = """- If you encounter the term `variable_value` in the metadata, it r
 - When asking clarifying questions, ONLY use the information in the `column_name` column"""
 
 
-def get_dfg(dfg_api_key, db_creds=None):
-    if db_creds is not None:
-        print("\nFOUND CUSTOM DB CREDS IN utils.py", db_creds, "\n")
-        dfg = Defog(
-            dfg_api_key,
-            db_type=db_creds.get("db_type"),
-            db_creds={
-                "host": db_creds.get("host"),
-                "port": db_creds.get("port"),
-                "database": db_creds.get("database"),
-                "user": db_creds.get("user"),
-                "password": db_creds.get("password"),
-            },
-        )
-    else:
-        # db_type, etc are already in /.defog/connections.json
-        dfg = Defog(
-            dfg_api_key,
-        )
-    return dfg
-
-
 def success_str(msg=""):
     return f"{Fore.GREEN}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
 
