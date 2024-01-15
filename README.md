@@ -33,7 +33,6 @@ You will need to have:
 1. `.env.yaml` inside `agents-backend/agents`.
 2. You will also need to pass in GOOGLE_APPLICATION_CREDENTIALS_PATH as a build arg to docker compose for the agents-backend service. Like so: ` GOOGLE_APPLICATION_CREDENTIALS_PATH="path/to/google/creds.json" docker compose up -d`
 3. The db will be populated with empty meta tables for now.
-4. For the actual table (genmab_sample) where the data is stored, you will need to get the sql script and run it on the docker container. This will eventually be automated/inbuilt into the process.
 
 Then run:
 `GOOGLE_APPLICATION_CREDENTIALS_PATH="path/to/google/creds.json" docker compose up -d`
