@@ -10,10 +10,14 @@ from colorama import Fore, Style
 import pika
 import redis
 
-redis_client = redis.Redis(host="localhost", port=6379, db=0)
+env = None
 
 with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
+
+redis_host = env["redis_server_host"]
+
+redis_client = redis.Redis(host=redis_host, port=6379, db=0)
 
 
 def replace_whitespace(s):

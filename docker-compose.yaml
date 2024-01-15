@@ -80,12 +80,22 @@ services:
     volumes:
       - agents-postgres:/var/lib/postgresql/data
 
+  agents-redis:
+    build:
+      context: .
+      dockerfile: dockerfile.agents-redis
+    networks:
+      - agents-network
+    volumes:
+      - agents-redis:/data
+
 volumes:
   agents-app:
   agents-python-server:
   agents-partykit:
   agents-postgres:
   agents-rabbitmq:
+  agents-redis:
 
 networks:
   agents-network:

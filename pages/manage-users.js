@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useContext } from 'react'
-import { useRouter } from 'next/router'
-import { Context } from "../components/common/Context"
-import Meta from '../components/common/Meta'
-import Scaffolding from '../components/common/Scaffolding'
-import { Row, Col, Form, Input, Table, Button, message } from 'antd';
+import React, { useState, useEffect, useContext } from "react";
+import { useRouter } from "next/router";
+import { Context } from "../components/common/Context";
+import Meta from "../components/common/Meta";
+import Scaffolding from "../components/common/Scaffolding";
+import { Row, Col, Form, Input, Table, Button, message } from "antd";
 
 const ManageUsers = () => {
   const [loading, setLoading] = useState(false);
@@ -13,22 +13,24 @@ const ManageUsers = () => {
   const router = useRouter();
 
   const getUserDets = async () => {
-    const res = await fetch('/admin/get_users', {
-      method: 'POST',
+    const res = await fetch("/admin/get_users", {
+      method: "POST",
       body: JSON.stringify({
-        token: context.token
+        token: context.token,
       }),
       headers: {
-        'Content-Type': 'application/json'
-      }
+        "Content-Type": "application/json",
+      },
     });
     const data = await res.json();
     if (data.status === "success") {
       setUserDets(data.users);
     } else {
-      message.error("There was an error fetching the user data. Please try again.");
+      message.error(
+        "There was an error fetching the user data. Please try again."
+      );
     }
-  }
+  };
 
   useEffect(() => {
     let token = context.token;
@@ -50,7 +52,7 @@ const ManageUsers = () => {
       });
     }
     if (!token) {
-      router.push('/login');
+      router.push("/login");
     } else {
       getUserDets();
     }
@@ -62,35 +64,40 @@ const ManageUsers = () => {
       <Scaffolding id={"manage-users"}>
         <h1>Add New Users</h1>
         <Row>
-          <Col span={{xs: 24, md: 12}}>
+          <Col span={{ xs: 24, md: 12 }}>
             <h2>Add Users</h2>
-            <p>Paste in user details as a CSV file with the headers: `user_id,password,user_type`</p>
+            <p>
+              Paste in user details as a CSV file with the headers:
+              `username,password,user_type`
+            </p>
             <Form
               name="add-users"
               disabled={loading}
-              onFinish={
-                async (values) => {
-                  setLoading(true);
-                  const res = await fetch('/admin/add_users', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                      ...values,
-                      token: context.token
-                    }),
-                    headers: {
-                      'Content-Type': 'application/json'
-                    }
-                  });
-                  const data = await res.json();
-                  if (data.status === "success") {
-                    message.success("Users added successfully! Refreshing the user data...");
-                  } else {
-                    message.error("There was an error adding the users. Please try again.");
-                  }
-                  await getUserDets();
-                  setLoading(false);
+              onFinish={async (values) => {
+                setLoading(true);
+                const res = await fetch("/admin/add_users", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    ...values,
+                    token: context.token,
+                  }),
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                });
+                const data = await res.json();
+                if (data.status === "success") {
+                  message.success(
+                    "Users added successfully! Refreshing the user data..."
+                  );
+                } else {
+                  message.error(
+                    "There was an error adding the users. Please try again."
+                  );
                 }
-              }
+                await getUserDets();
+                setLoading(false);
+              }}
             >
               <Form.Item label="CSV String" name="user_dets_csv">
                 <Input.TextArea />
@@ -101,57 +108,67 @@ const ManageUsers = () => {
                 </Button>
               </Form.Item>
             </Form>
-
           </Col>
-          <Col span={{xs: 24, md: 12}}>
+          <Col span={{ xs: 24, md: 12 }}>
             <h2>Users</h2>
-            {/* display a table of all users with the headers: `user_id`, `user_type`, `delete_user` */}
-            <Table dataSource={userDets} columns={[
-              {
-                title: 'User ID',
-                dataIndex: 'user_id',
-                key: 'user_id',
-              },
-              {
-                title: 'User Type',
-                dataIndex: 'user_type',
-                key: 'user_type',
-              },
-              {
-                title: 'Delete User',
-                key: 'delete_user',
-                render: (text, record) => (
-                  <Space size="middle">
-                    <a onClick={async() => {
-                      setLoading(true);
-                      const res = await fetch('/admin/delete_user', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                          user_id: record.user_id,
-                          token: context.token
-                        }),
-                        headers: {
-                          'Content-Type': 'application/json'
-                        }
-                      });
-                      const data = await res.json();
-                      if (data.status === "success") {
-                        message.success("User deleted successfully! Refreshing the user data...");
-                      } else {
-                        message.error("There was an error deleting the user. Please try again.");
-                      }
-                      await getUserDets();
-                      setLoading(false);
-                    }}>Delete</a>
-                  </Space>
-                ),
-              },
-            ]} />
+            {/* display a table of all users with the headers: `username`, `user_type`, `delete_user` */}
+            <Table
+              dataSource={userDets}
+              columns={[
+                {
+                  title: "User ID",
+                  dataIndex: "username",
+                  key: "username",
+                },
+                {
+                  title: "User Type",
+                  dataIndex: "user_type",
+                  key: "user_type",
+                },
+                {
+                  title: "Delete User",
+                  key: "delete_user",
+                  render: (text, record) => (
+                    <Space size="middle">
+                      <a
+                        onClick={async () => {
+                          setLoading(true);
+                          const res = await fetch("/admin/delete_user", {
+                            method: "POST",
+                            body: JSON.stringify({
+                              username: record.username,
+                              token: context.token,
+                            }),
+                            headers: {
+                              "Content-Type": "application/json",
+                            },
+                          });
+                          const data = await res.json();
+                          if (data.status === "success") {
+                            message.success(
+                              "User deleted successfully! Refreshing the user data..."
+                            );
+                          } else {
+                            message.error(
+                              "There was an error deleting the user. Please try again."
+                            );
+                          }
+                          await getUserDets();
+                          setLoading(false);
+                        }}
+                      >
+                        Delete
+                      </a>
+                    </Space>
+                  ),
+                },
+              ]}
+            />
           </Col>
         </Row>
       </Scaffolding>
     </>
-  )
-}
+  );
+};
 
 export default ManageUsers;

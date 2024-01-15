@@ -20,19 +20,7 @@ EXPOSE 1235
 
 ENV GOOGLE_APPLICATION_CREDENTIALS=/cloud-storage-creds.json
 
-COPY ./agents-backend/agents/agents ./agents
-COPY ./agents-backend/agents/__init__.py ./__init__.py
-COPY ./agents-backend/agents/.env.yaml ./.env.yaml
-COPY ./agents-backend/agents/connection_manager.py ./connection_manager.py
-COPY ./agents-backend/agents/db_utils.py ./db_utils.py
-COPY ./agents-backend/agents/doc_endpoints.py ./doc_endpoints.py
-COPY ./agents-backend/agents/gcs_consumer.py ./gcs_consumer.py
-COPY ./agents-backend/agents/gcs_utils.py ./gcs_utils.py
-COPY ./agents-backend/agents/main.py ./main.py
-COPY ./agents-backend/agents/README.md ./README.md
-COPY ./agents-backend/agents/report_data_manager.py ./report_data_manager.py
-COPY ./agents-backend/agents/sync-gcs.py ./sync-gcs.py
-COPY ./agents-backend/agents/utils.py ./utils.py
+COPY ./agents-backend/agents/ ./
 
 # create empty report assets dirs
 RUN mkdir -p /agents-python-server/report-assets

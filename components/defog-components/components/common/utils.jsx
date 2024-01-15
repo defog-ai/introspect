@@ -484,7 +484,7 @@ export const reFormatData = (data, columns) => {
   // so coerce them to a number
   // store the indexes of such columns
   const numericAsString = [];
-  // deal with columns like "user_id" etc coming in as numbers.
+  // deal with columns like "username" etc coming in as numbers.
   // if inferred type is numeric but variable Type is "categorical"
   const stringAsNumeric = [];
 

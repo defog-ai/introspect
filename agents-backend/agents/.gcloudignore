@@ -1,9 +1,0 @@
-env/
-./agents_gcp_test.py
-./tidbits.py
-t.py
-test.py
-./planner_explorations.ipynb
-./interact-demo.ipynb
-.env.yaml.test
-old-files/

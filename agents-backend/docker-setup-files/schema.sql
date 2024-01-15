@@ -164,21 +164,6 @@ CREATE TABLE public.defog_users (
 ALTER TABLE public.defog_users OWNER TO postgres;
 
 --
--- Name: defog_api_stats id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.defog_api_stats ALTER COLUMN id SET DEFAULT nextval('public.defog_api_stats_id_seq'::regclass);
-
-
---
--- Name: defog_api_stats defog_api_stats_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.defog_api_stats
-    ADD CONSTRAINT defog_api_stats_pkey PRIMARY KEY (id);
-
-
---
 -- Name: defog_docs defog_docs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
