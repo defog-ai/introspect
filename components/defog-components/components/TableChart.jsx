@@ -36,9 +36,9 @@ import Lottie from "lottie-react";
 import LoadingLottie from "./svg/loader.json";
 import { ThemeContext, lightThemeColor } from "../context/ThemeContext";
 import { ReactiveVariablesContext } from "../../docs/ReactiveVariablesContext";
-import { setupWebsocketManager } from "@/utils/websocket-manager";
-import setupBaseUrl from "@/utils/setupBaseUrl";
-import { getTableData, roundNumber } from "@/utils/utils";
+import { setupWebsocketManager } from "../../../utils/websocket-manager";
+import setupBaseUrl from "../../../utils/setupBaseUrl";
+import { getTableData, roundNumber } from "../../../utils/utils";
 
 // tabBarLeftContent: extra content for the tab bar on the left side
 export function TableChart({

@@ -6,14 +6,14 @@ import Meta from '../components/common/Meta'
 import Scaffolding from '../components/common/Scaffolding'
 import { Context } from '../components/common/Context';
 import { Input, Select, Form, Button, } from 'antd';
-import setupBaseURL from '../utils/setupBaseURL';
+import setupBaseUrl from '../utils/setupBaseUrl';
 
 const LogIn = () => {
   const [context, setContext] = useContext(Context);
   const router = useRouter();
 
   const handleLogin = async (values) => {
-    const urlToUse = setupBaseURL("http", "login");
+    const urlToUse = setupBaseUrl("http", "login");
     const response = await fetch(urlToUse, {
       method: "POST",
       body: JSON.stringify(values),

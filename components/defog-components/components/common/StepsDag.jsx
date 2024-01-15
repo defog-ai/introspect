@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { HiWrenchScrewdriver } from "react-icons/hi2";
 import { Popover } from "antd";
-import { createDag } from "@/utils/draw-dag";
+import { createDag } from "../../../../utils/draw-dag";
 
 const nodeCssSize = 15;
 

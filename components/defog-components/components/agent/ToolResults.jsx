@@ -11,7 +11,7 @@ import Lottie from "lottie-react";
 import LoadingLottie from "../svg/loader.json";
 import ErrorBoundary from "../common/ErrorBoundary";
 import { csvParse } from "d3";
-import { getToolRunData } from "@/utils/utils";
+import { getToolRunData } from "../../../../utils/utils";
 
 function parseData(data_csv) {
   const data = csvParse(data_csv);

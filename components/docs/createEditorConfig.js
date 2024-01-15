@@ -1,6 +1,6 @@
 // Creates a new editor instance.
 
-import { getCursorColor } from "@/utils/utils";
+import { getCursorColor } from "../../utils/utils";
 import { customBlockSchema } from "./createCustomBlockSchema";
 import { customSlashMenuItemList } from "./createCustomSlashMenuItems";
 

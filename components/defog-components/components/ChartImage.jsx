@@ -1,4 +1,3 @@
-import setupBaseUrl from "@/utils/setupBaseUrl";
 import React, { Fragment, useEffect, useRef } from "react";
 
 export default function ChartImage({ images = [] }) {

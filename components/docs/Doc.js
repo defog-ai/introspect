@@ -15,7 +15,7 @@ import { CustomFormattingToolbar } from "./CustomFormattingToolbar";
 import LoadingReport from "../reports/ReportLoading";
 import DocNav from "./DocNav";
 import { DocContext, RelatedAnalysesContext } from "./DocContext";
-import { getAllAnalyses, getToolboxes } from "@/utils/utils";
+import { getAllAnalyses, getToolboxes } from "../../utils/utils";
 import { DocSidebars } from "./DocSidebars";
 import { ReactiveVariablesContext } from "./ReactiveVariablesContext";
 import { ReactiveVariableNode } from "./customTiptap/ReactiveVariableNode";

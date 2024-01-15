@@ -30,7 +30,7 @@ import "prismjs/components/prism-sql";
 import "prismjs/components/prism-python";
 
 import "prismjs/themes/prism.css";
-import { roundNumber } from "@/utils/utils";
+import { roundNumber } from "../../../utils/utils";
 
 // tabBarLeftContent: extra content for the tab bar on the left side
 export function ToolResultsTable({

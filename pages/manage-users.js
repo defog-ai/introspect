@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import { Context } from "../components/common/Context"
 import Meta from '../components/common/Meta'
 import Scaffolding from '../components/common/Scaffolding'
-import { Row, Col, Form, Input, Table, message } from 'antd';
+import { Row, Col, Form, Input, Table, Button, message } from 'antd';
 
 const ManageUsers = () => {
   const [loading, setLoading] = useState(false);
@@ -91,7 +91,6 @@ const ManageUsers = () => {
                   setLoading(false);
                 }
               }
-              onFinishFailed={onFinishFailed}
             >
               <Form.Item label="CSV String" name="user_dets_csv">
                 <Input.TextArea />
