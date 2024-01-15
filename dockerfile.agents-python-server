@@ -45,5 +45,7 @@ RUN mkdir -p /agents-python-server/report-assets/kaplan-meier-plots
 RUN mkdir -p /agents-python-server/report-assets/linechart 
 RUN mkdir -p /agents-python-server/report-assets/linecharts
 
+# run the create_admin_user.py file to create the admin user
+RUN python3 -m create_admin_user.py
 
 CMD python3 -m hypercorn main:app -b 0.0.0.0:1235
