@@ -4,6 +4,8 @@ from uuid import uuid4
 from db_utils import get_db_conn
 from auth_utils import validate_user
 import hashlib
+import pandas as pd
+from io import StringIO
 
 router = APIRouter()
 redis_client = redis.Redis(host='localhost', port=6379, db=0)
@@ -15,23 +17,27 @@ DEFOG_API_KEY = "rishabh"
 async def add_user(request: Request):
     params = await request.json()
     token = params.get("token")
-    users = params.get("users", None)
+    user_dets_csv = params.get("user_dets_csv", None)
     if not validate_user(token, user_type="admin"):
         return {
             "error": "unauthorized"
         }
     
-    if not users:
+    if not user_dets_csv:
         return {
-            "error": "no users provided"
+            "error": "no users information provided"
         }
+    
+    # get the users from the csv
+    users = pd.read_csv(StringIO(user_dets_csv)).to_dict(orient="records")
     
     # create a password for each user
     userdets = []
     for user in users:
         dets = {
-            "user_id": user,
-            "password": uuid4().hex
+            "user_id": user.get("user_id", user.get("user_email")),
+            "password": user.get("password", user.get("user_password")),
+            "user_type": user.get("user_type", user.get("user_role"))
         }
         userdets.append(dets)
     
@@ -59,10 +65,11 @@ async def get_users(request: Request):
     
     conn = get_db_conn()
     cur = conn.cursor()
-    cur.execute("SELECT user_id FROM defog_users")
+    cur.execute("SELECT user_id, user_type FROM defog_users")
     users = cur.fetchall()
     conn.close()
 
+    users = pd.DataFrame(users, columns=["user_id", "user_type"]).to_dict(orient="records")
     return {
         "users": users
     }

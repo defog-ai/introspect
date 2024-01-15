@@ -31,14 +31,13 @@ async def status(request: Request):
         return {
             "error": "unauthorized"
         }
-    user_id = params.get("user_id", None)
-    status = redis_client.get(f"{user_id}:integration:status")
+    status = redis_client.get(f"integration:status")
     return {
         "status": status
     }
 
-@router.post("/integration/get_tables")
-async def get_tables(request: Request):
+@router.post("/integration/generate_tables")
+async def generate_tables(request: Request):
     params = await request.json()
     
     token = params.get("token", None)
@@ -47,9 +46,7 @@ async def get_tables(request: Request):
             "error": "unauthorized"
         }
     
-    user_id = params.get("user_id", None)
-    
-    tables = redis_client.get(f"{user_id}:integration:tables")
+    tables = redis_client.get(f"integration:tables")
     if tables:
         tables = json.loads(tables)
         return {
@@ -64,12 +61,67 @@ async def get_tables(request: Request):
         # since they are already stored in the Defog connection string at ~/.defog/connection.json
         defog = Defog(api_key, db_type, db_creds)
         table_names = defog.generate_db_schema(return_tables_only=True)
-        redis_client.set(f"{user_id}:integration:status", "selected_tables")
-        redis_client.set(f"{user_id}:integration:status", "gave_credentials")
-        redis_client.set(f"{user_id}:integration:tables", json.dumps(table_names))
+        redis_client.set(f"integration:status", "selected_tables")
+        redis_client.set(f"integration:status", "gave_credentials")
+        redis_client.set(f"integration:tables", json.dumps(table_names))
+        redis_client.set(f"integration:db_type", db_type)
+        redis_client.set(f"integration:db_creds", json.dumps(db_creds))
         return {
             "tables": tables
         }
+
+@router.post("/integration/get_tables_db_creds")
+async def get_tables_db_creds(request: Request):
+    params = await request.json()
+    token = params.get("token", None)
+    if not validate_user(token, user_type="admin"):
+        return {
+            "error": "unauthorized"
+        }
+    
+    tables = redis_client.get(f"integration:tables")
+    db_type = redis_client.get(f"integration:db_type")
+    db_creds = redis_client.get(f"integration:db_creds")
+    if tables:
+        tables = json.loads(tables)
+        db_creds = json.loads(db_creds)
+        return {
+            "tables": tables,
+            "db_type": db_type,
+            "db_creds": db_creds
+        }
+    else:
+        return {
+            "error": "no tables found"
+        }
+
+@router.post("/integration/generate_metadata")
+async def generate_metadata(request: Request):
+    params = await request.json()
+    token = params.get("token", None)
+    if not validate_user(token, user_type="admin"):
+        return {
+            "error": "unauthorized"
+        }
+    
+    tables = params.get("tables", None)
+    if not tables:
+        return {
+            "error": "no tables selected"
+        }
+    
+    defog = Defog()
+    if defog.db_creds is None:
+        return {
+            "error": "you must first provide the database credentials before this step"
+        }
+    table_metadata = defog.generate_db_schema(tables=tables, scan=True, upload=True)
+    metadata = pd.read_csv(StringIO(table_metadata)).to_csv(index=False)
+    redis_client.set(f"integration:status", "edited_metadata")
+    redis_client.set(f"integration:metadata", metadata)
+    return {
+        "metadata": metadata
+    }
 
 @router.post("/integration/get_metadata")
 async def get_metadata(request: Request):
@@ -80,34 +132,16 @@ async def get_metadata(request: Request):
             "error": "unauthorized"
         }
     
-    user_id = params.get("user_id", None)
-    tables = params.get("tables", None)
-    if not user_id:
+    metadata = redis_client.get("integration:metadata")
+    if metadata:
+        metadata = pd.read_csv(StringIO(metadata)).to_dict(orient="records")
         return {
-            "error": "unauthorized"
+            "metadata": metadata
         }
-    if not tables:
+    else:
         return {
-            "error": "no tables selected"
+            "error": "no metadata found"
         }
-    
-    if not user_id:
-        return {
-            "error": "unauthorized"
-        }
-    
-    defog = Defog()
-    if defog.db_creds is None:
-        return {
-            "error": "you must first provide the database credentials before this step"
-        }
-    table_metadata = defog.generate_db_schema(tables=tables, scan=True, upload=True)
-    metadata = pd.read_csv(StringIO(table_metadata)).to_dict(orient="records")
-    redis_client.set(f"{user_id}:integration:status", "edited_metadata")
-    redis_client.set(f"{user_id}:integration:metadata", json.dumps(metadata))
-    return {
-        "metadata": metadata
-    }
 
 @router.post("/integration/update_metadata")
 async def update_metadata(request: Request):
@@ -118,19 +152,16 @@ async def update_metadata(request: Request):
             "error": "unauthorized"
         }
     
-    user_id = params.get("user_id", None)
     metadata = params.get("metadata", None)
-    if not user_id:
-        return {
-            "error": "unauthorized"
-        }
     if not metadata:
         return {
             "error": "no metadata provided"
         }
     
-    redis_client.set(f"{user_id}:integration:status", "updated_metadata")
-    redis_client.set(f"{user_id}:integration:metadata", json.dumps(metadata))
+    metadata = pd.DataFrame(metadata).to_csv(index=False)
+
+    redis_client.set(f"integration:status", "updated_metadata")
+    redis_client.set(f"integration:metadata", metadata)
     return {
         "status": "success"
     }
