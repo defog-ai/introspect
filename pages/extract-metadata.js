@@ -25,35 +25,41 @@ const ExtractMetadata = () => {
   const router = useRouter();
   const [userType, setUserType] = useState("admin");
 
-  const getTables = async() => {
+  const getTables = async () => {
     const token = context.token;
-    const res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_tables_db_creds`, {
-      method: "POST",
-      body: JSON.stringify({
-        token
-      }),
-    });
+    const res = await fetch(
+      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_tables_db_creds`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          token,
+        }),
+      }
+    );
     const data = await res.json();
     if (!data.error) {
       setDbType(data["db_type"]);
       setDbCreds(data["db_creds"]);
       setTables(data["tables"]);
     }
-  }
+  };
 
-  const getMetadata = async() => {
+  const getMetadata = async () => {
     const token = context.token;
-    const res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_metadata`, {
-      method: "POST",
-      body: JSON.stringify({
-        token
-      }),
-    });
+    const res = await fetch(
+      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_metadata`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          token,
+        }),
+      }
+    );
     const data = await res.json();
     if (!data.error) {
       setMetadata(data.metadata);
     }
-  }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -87,20 +93,19 @@ const ExtractMetadata = () => {
     getTables().then(() => {
       getMetadata().then(() => {
         setLoading(false);
-      })
+      });
     });
 
     // get the current status
   }, [context]);
 
-
   const dbCredOptions = {
-    "postgres": ["host", "port", "username", "password", "database"],
-    "mysql": ["host", "port", "username", "password", "database"],
-    "redshift": ["host", "port", "username", "password", "database"],
-    "snowflake": ["account", "warehouse", "username", "password"],
-    "databricks": ["server_hostname", "access_token", "http_path", "schema"]
-  }
+    postgres: ["host", "port", "username", "password", "database"],
+    mysql: ["host", "port", "username", "password", "database"],
+    redshift: ["host", "port", "username", "password", "database"],
+    snowflake: ["account", "warehouse", "username", "password"],
+    databricks: ["server_hostname", "access_token", "http_path", "schema"],
+  };
 
   return (
     <>
@@ -121,24 +126,26 @@ const ExtractMetadata = () => {
                 onFinish={async (values) => {
                   values = {
                     ...values,
-                    db_type: values['db_type'] || dbType,
-                    token: context.token
-                  }
-                  const res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_tables`, {
-                    method: "POST",
-                    body: JSON.stringify(values)
-                  });
+                    db_type: values["db_type"] || dbType,
+                    token: context.token,
+                  };
+                  const res = await fetch(
+                    `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_tables`,
+                    {
+                      method: "POST",
+                      body: JSON.stringify(values),
+                    }
+                  );
                   const data = await res.json();
                   setTables(data["tables"]);
                 }}
               >
-
                 <Form.Item name="db_type" label="Database Type">
                   <Select
-                    style={{ width: "100%"}}
+                    style={{ width: "100%" }}
                     defaultValue={{
                       value: dbType,
-                      label: dbType.toLocaleUpperCase()
+                      label: dbType.toLocaleUpperCase(),
                     }}
                     onChange={(e) => {
                       setDbType(e);
@@ -152,11 +159,14 @@ const ExtractMetadata = () => {
                   </Select>
                 </Form.Item>
                 {/* create form inputs based on the value selected above */}
-                {dbCredOptions[dbType] !== undefined && dbCredOptions[dbType].map((item) => {
-                  return <Form.Item label={item} name={item}>
-                    <Input style={{width: "100%"}} />
-                  </Form.Item>
-                })}
+                {dbCredOptions[dbType] !== undefined &&
+                  dbCredOptions[dbType].map((item) => {
+                    return (
+                      <Form.Item label={item} name={item}>
+                        <Input style={{ width: "100%" }} />
+                      </Form.Item>
+                    );
+                  })}
                 <Form.Item wrapperCol={{ span: 24 }}>
                   <Button
                     type={"primary"}
@@ -177,12 +187,14 @@ const ExtractMetadata = () => {
                   disabled={loading}
                   onFinish={async (values) => {
                     setLoading(true);
+                    console.log(dbCreds);
                     const res = await fetch(
                       `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_metadata`,
                       {
                         method: "POST",
                         body: JSON.stringify({
-                          ...dbCreds,
+                          db_creds: dbCreds,
+                          db_type: dbType,
                           tables: values["tables"],
                           token: context.token,
                         }),
@@ -338,13 +350,12 @@ const ExtractMetadata = () => {
                     </Col>
                   </Row>
                 );
-              })
-            }
+              })}
           </Col>
         </Row>
       </Scaffolding>
     </>
-  )
-}
+  );
+};
 
-export default ExtractMetadata
+export default ExtractMetadata;
