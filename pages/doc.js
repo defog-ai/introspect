@@ -1,3 +1,4 @@
+import "@blocknote/react/style.css";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
