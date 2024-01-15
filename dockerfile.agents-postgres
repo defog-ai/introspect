@@ -4,6 +4,3 @@ FROM postgres:latest
 EXPOSE 5432
 
 COPY ./agents-backend/docker-setup-files/schema.sql /docker-entrypoint-initdb.d/
-
-# if this exists for you, uncomment
-COPY ./genmab_sample.sql /docker-entrypoint-initdb.d/
