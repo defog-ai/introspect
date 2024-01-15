@@ -41,7 +41,6 @@ Base.prepare(autoload_with=engine)
 Reports = Base.classes.defog_reports
 Docs = Base.classes.defog_docs
 Users = Base.classes.defog_users
-ApiStats = Base.classes.defog_api_stats
 TableCharts = Base.classes.defog_table_charts
 Toolboxes = Base.classes.defog_toolboxes
 ToolRuns = Base.classes.defog_tool_runs
