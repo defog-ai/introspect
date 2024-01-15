@@ -208,7 +208,7 @@ ALTER TABLE ONLY public.defog_toolboxes
 --
 
 ALTER TABLE ONLY public.defog_users
-    ADD CONSTRAINT defog_users_pkey PRIMARY KEY (token);
+    ADD CONSTRAINT defog_users_pkey PRIMARY KEY (username);
 
 
 --
