@@ -40,7 +40,7 @@ export const chartColors = [
 
 const ThemeContextProvider = ({ children }) => {
   const [theme, setTheme] = useState({
-    type: "dark",
+    type: "light",
     config: darkThemeColor,
   });
 
