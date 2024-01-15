@@ -28,7 +28,6 @@ COPY ./agents-backend/agents/db_utils.py ./db_utils.py
 COPY ./agents-backend/agents/doc_endpoints.py ./doc_endpoints.py
 COPY ./agents-backend/agents/gcs_consumer.py ./gcs_consumer.py
 COPY ./agents-backend/agents/gcs_utils.py ./gcs_utils.py
-COPY ./agents-backend/agents/genmab_sample.csv ./genmab_sample.csv
 COPY ./agents-backend/agents/main.py ./main.py
 COPY ./agents-backend/agents/README.md ./README.md
 COPY ./agents-backend/agents/report_data_manager.py ./report_data_manager.py
