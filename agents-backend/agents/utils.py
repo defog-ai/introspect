@@ -17,7 +17,7 @@ with open(".env.yaml", "r") as f:
 
 redis_host = env["redis_server_host"]
 
-redis_client = redis.Redis(host=redis_host, port=6379, db=0)
+redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
 
 def replace_whitespace(s):
