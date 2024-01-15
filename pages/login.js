@@ -6,18 +6,35 @@ import Meta from '../components/common/Meta'
 import Scaffolding from '../components/common/Scaffolding'
 import { Context } from '../components/common/Context';
 import { Input, Select, Form, Button, } from 'antd';
+import setupBaseURL from '../utils/setupBaseURL';
 
 const LogIn = () => {
   const [context, setContext] = useContext(Context);
   const router = useRouter();
 
   const handleLogin = async (values) => {
-    // TODO: handle login
-    console.log(values);
-    const response = await fetch("http://localhost:8000/login", {
+    const urlToUse = setupBaseURL("http", "login");
+    const response = await fetch(urlToUse, {
       method: "POST",
       body: JSON.stringify(values),
     });
+    
+    const data = await response.json();
+    if (data.status === "success") {
+      // set context
+      setContext({
+        user: values.username,
+        token: data.token,
+        userType: data.user_type,
+      });
+      // save to local storage
+      localStorage.setItem("defogUser", values.username);
+      localStorage.setItem("defogToken", data.token);
+      localStorage.setItem("defogUserType", data.user_type);
+
+      // redirect to home page
+      router.push("/");
+    }
   }
 
   return (

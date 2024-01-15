@@ -12,11 +12,23 @@ const QueryDatabase = () => {
   const router = useRouter();
 
   useEffect(() => {
-    const userType = context.userType;
+    let userType = context.userType;
     if (!userType) {
-      // redirect to login page
-      router.push("/login");
-      return;
+      // load from local storage and set context
+      const user = localStorage.getItem("defogUser");
+      const token = localStorage.getItem("defogToken");
+      userType = localStorage.getItem("defogUserType");
+
+      if (!user || !token || !userType) {
+        // redirect to login page
+        router.push("/login");
+        return;
+      }
+      setContext({
+        user: user,
+        token: token,
+        userType: userType,
+      });
     }
     setUserType(userType);
     setLoading(false);

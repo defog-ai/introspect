@@ -21,18 +21,76 @@ const ExtractMetadata = () => {
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(false);
   const [metadata, setMetadata] = useState([]);
-  const [allowedJoins, setAllowedJoins] = useState("");
   const [context, setContext] = useContext(Context);
   const router = useRouter();
   const [userType, setUserType] = useState("admin");
 
+  const getTables = async() => {
+    const token = context.token;
+    const res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_tables_db_creds`, {
+      method: "POST",
+      body: JSON.stringify({
+        token
+      }),
+    });
+    const data = await res.json();
+    if (!data.error) {
+      setDbType(data["db_type"]);
+      setDbCreds(data["db_creds"]);
+      setTables(data["tables"]);
+    }
+  }
+
+  const getMetadata = async() => {
+    const token = context.token;
+    const res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_metadata`, {
+      method: "POST",
+      body: JSON.stringify({
+        token
+      }),
+    });
+    const data = await res.json();
+    if (!data.error) {
+      setMetadata(data.metadata);
+    }
+  }
+
   useEffect(() => {
-    const userType = context.userType;
+    setLoading(true);
+    let userType = context.userType;
+    let token = context.token;
+    if (!userType) {
+      // load from local storage and set context
+      const user = localStorage.getItem("defogUser");
+      token = localStorage.getItem("defogToken");
+      userType = localStorage.getItem("defogUserType");
+
+      if (!user || !token || !userType) {
+        // redirect to login page
+        router.push("/login");
+        return;
+      }
+      setContext({
+        user: user,
+        token: token,
+        userType: userType,
+      });
+    }
+    setUserType(userType);
     if (userType === undefined) {
       router.push("/login");
     } else if (userType !== "admin") {
       router.push("/");
     }
+
+    // get the db creds and preloaded tables
+    getTables().then(() => {
+      getMetadata().then(() => {
+        setLoading(false);
+      })
+    });
+
+    // get the current status
   }, [context]);
 
 
@@ -63,9 +121,10 @@ const ExtractMetadata = () => {
                 onFinish={async (values) => {
                   values = {
                     ...values,
-                    db_type: values['db_type'] || dbType
+                    db_type: values['db_type'] || dbType,
+                    token: context.token
                   }
-                  const res = await fetch(`http://localhost:8000/integration/get_tables`, {
+                  const res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_tables`, {
                     method: "POST",
                     body: JSON.stringify(values)
                   });
@@ -119,12 +178,13 @@ const ExtractMetadata = () => {
                   onFinish={async (values) => {
                     setLoading(true);
                     const res = await fetch(
-                      "http://localhost:8000/get_metadata",
+                      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_metadata`,
                       {
                         method: "POST",
                         body: JSON.stringify({
                           ...dbCreds,
                           tables: values["tables"],
+                          token: context.token,
                         }),
                       }
                     );
@@ -171,12 +231,12 @@ const ExtractMetadata = () => {
                 onClick={async () => {
                   setLoading(true);
                   const res = await fetch(
-                    "http://localhost:8000/update_metadata",
+                    `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/update_metadata`,
                     {
                       method: "POST",
                       body: JSON.stringify({
+                        token: context.token,
                         metadata: metadata,
-                        allowed_joins: allowedJoins,
                       }),
                     }
                   );
@@ -188,8 +248,6 @@ const ExtractMetadata = () => {
                     data["suggested_joins"] !== null &&
                     data["suggested_joins"] !== ""
                   ) {
-                    console.log("Here!");
-                    setAllowedJoins(data["suggested_joins"]);
                     // also update the value of the text area
                     document.getElementById("allowed-joins").value =
                       data["suggested_joins"];
@@ -270,24 +328,6 @@ const ExtractMetadata = () => {
                         placeholder="Description of what this column does"
                         initialValue={item.column_description}
                         autoSize={{ minRows: 2 }}
-                        onKeyDown={async (e) => {
-                          // special behavior for cmd+enter
-                          if (e.key === "Enter" && e.metaKey) {
-                            const resp = await fetch(
-                              "http://localhost:8000/make_gguf_request",
-                              {
-                                method: "POST",
-                                body: JSON.stringify({
-                                  prompt: `# Task\nAdd a column description for the following column inside a SQL table. Only return the column description and nothing else.\n\n# Schema\nTable Name: ${item.table_name}\nColumn Name: ${item.column_name}\nData Type: ${item.data_type}\nColumn Description:`,
-                                }),
-                              }
-                            );
-                            const data = await resp.json();
-                            const description = data["completion"];
-                            // also update the value of the text area
-                            e.target.value = description;
-                          }
-                        }}
                         onChange={(e) => {
                           const newMetadata = [...metadata];
                           newMetadata[index]["column_description"] =
@@ -298,58 +338,7 @@ const ExtractMetadata = () => {
                     </Col>
                   </Row>
                 );
-              })}
-
-            {metadata.length > 0 ? (
-              <Row>
-                <Col span={24}>
-                  <h2 style={{ paddingTop: "1em" }}>Allowed Joins</h2>
-                  <Input.TextArea
-                    key={index}
-                    placeholder="Description of what this column does"
-                    initialvalue={item.column_description}
-                    autoSize={{minRows: 2}}
-                    onKeyDown={async (e) => {
-                      // special behavior for cmd+enter
-                      if (e.key === 'Enter' && e.metaKey) {
-                        const resp = await fetch("http://localhost:8000/make_gguf_request", {
-                          method: "POST",
-                          body: JSON.stringify({
-                            prompt: `# Task\nAdd a column description for the following column inside a SQL table. Only return the column description and nothing else.\n\n# Schema\nTable Name: ${item.table_name}\nColumn Name: ${item.column_name}\nData Type: ${item.data_type}\nColumn Description:`,
-                          })
-                          })
-                        const data = await resp.json();
-                        const description = data['completion']
-                        // also update the value of the text area
-                        e.target.value = description;
-                      }
-                    }}
-                    onChange={(e) => {
-                      setAllowedJoins(e.target.value);
-                    }}
-                  />
-                </Col>
-              </Row>
-              ) : null
-            }
-
-            {metadata.length > 0 ? 
-            <Row>
-              <Col span={24}>
-                <h2 style={{paddingTop: "1em"}}>Allowed Joins</h2>
-                <Input.TextArea
-                  id={"allowed-joins"}
-                  placeholder="Allowed Joins"
-                  initialvalue={allowedJoins}
-                  autoSize={{minRows: 2}}
-                  value={allowedJoins}
-                  onChange={(e) => {
-                    setAllowedJoins(e.target.value);
-                  }}
-                />
-              </Col>
-            </Row>
-            : null
+              })
             }
           </Col>
         </Row>
@@ -357,5 +346,5 @@ const ExtractMetadata = () => {
     </>
   )
 }
-  
+
 export default ExtractMetadata
