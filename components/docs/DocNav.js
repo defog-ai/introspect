@@ -4,7 +4,7 @@ import { GrNewWindow } from "react-icons/gr";
 
 const sidebarWidth = 170;
 
-export default function DocNav({ apiToken, currentDocId }) {
+export default function DocNav({ apiToken, username, currentDocId }) {
   const [sidebarsOpen, setSidebarsOpen] = useState({
     "analysis-list-sidebar": false,
     "db-creds-sidebar": false,
@@ -66,6 +66,7 @@ export default function DocNav({ apiToken, currentDocId }) {
         <div id="nav-other-docs" title="List of other docs of this user">
           <OtherDocs
             apiToken={apiToken}
+            username={username}
             currentDocId={currentDocId}
           ></OtherDocs>
         </div>

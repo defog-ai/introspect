@@ -30,6 +30,7 @@ const AnalysisBlock = createReactBlockSpec(
           <AnalysisAgent
             analysisId={block.props.analysisId}
             apiToken={editor.apiToken}
+            username={editor.username}
             editor={editor}
           />
         </ErrorBoundary>

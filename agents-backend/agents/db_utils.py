@@ -49,7 +49,7 @@ RecentlyViewedDocs = Base.classes.defog_recently_viewed_docs
 free_tier_quota = 100
 
 
-def initialise_report(user_question, api_key, custom_id=None, other_data={}):
+def initialise_report(user_question, api_key, username, custom_id=None, other_data={}):
     err = None
     timestamp = str(datetime.datetime.now())
     new_report_data = None
@@ -71,6 +71,7 @@ def initialise_report(user_question, api_key, custom_id=None, other_data={}):
                 "timestamp": timestamp,
                 "report_id": report_id,
                 "api_key": api_key,
+                "username": username,
             }
             if other_data is not None and type(other_data) is dict:
                 new_report_data.update(other_data)
@@ -347,6 +348,7 @@ def get_all_reports(api_key):
 
 async def add_to_recently_viewed_docs(username, api_key, doc_id, timestamp):
     try:
+        print("Adding to recently viewed docs for user: ", username, flush=True)
         with engine.begin() as conn:
             # add to recently accessed documents for this username
             # check if it exists
@@ -433,6 +435,7 @@ async def get_doc_data(doc_id, api_key, username, col_name="doc_blocks"):
                     "doc_blocks": None,
                     "doc_xml": None,
                     "doc_uint8": None,
+                    "username": username,
                 }
 
                 conn.execute(
@@ -444,12 +447,10 @@ async def get_doc_data(doc_id, api_key, username, col_name="doc_blocks"):
                             "doc_xml": None,
                             "doc_uint8": None,
                             "timestamp": timestamp,
+                            "username": username,
                         }
                     )
                 )
-
-            # add to recently viewed docs
-            await add_to_recently_viewed_docs(username, api_key, doc_id, timestamp)
 
     except Exception as e:
         traceback.print_exc()
@@ -611,7 +612,7 @@ async def get_table_data(table_id):
         return err, table_data
 
 
-async def get_all_docs(api_key):
+async def get_all_docs(username):
     # get reports from the reports table
     err = None
     own_docs = []
@@ -631,7 +632,7 @@ async def get_all_docs(api_key):
                     Docs.__table__.columns["doc_title"],
                     Docs.__table__.columns["timestamp"],
                     Docs.__table__.columns["archived"],
-                ).where(Docs.api_key == api_key)
+                ).where(Docs.username == username)
             )
             if rows.rowcount != 0:
                 rows = rows.fetchall()
@@ -648,7 +649,7 @@ async def get_all_docs(api_key):
             rows = conn.execute(
                 select(
                     RecentlyViewedDocs.__table__.columns["recent_docs"],
-                ).where(RecentlyViewedDocs.api_key == api_key)
+                ).where(RecentlyViewedDocs.username == username)
             )
 
             if rows.rowcount != 0:
@@ -658,16 +659,13 @@ async def get_all_docs(api_key):
                     doc = row._mapping
                     for recent_doc in doc["recent_docs"]:
                         # get the doc data from the docs table
-                        # also join with the users table to get the username
                         match = conn.execute(
                             select(
                                 Docs.__table__.columns["doc_id"],
                                 Docs.__table__.columns["doc_title"],
                                 Docs.__table__.columns["timestamp"],
-                                Users.__table__.columns["username"],
-                            )
-                            .where(Docs.doc_id == recent_doc[0])
-                            .join(Users, Users.token == Docs.api_key)
+                                Docs.__table__.columns["username"],
+                            ).where(Docs.doc_id == recent_doc[0])
                         ).fetchone()
 
                         if match:

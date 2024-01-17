@@ -131,11 +131,12 @@ async def create_report(request: Request):
     try:
         params = await request.json()
         api_key = params.get("api_key")
+        username = params.get("username")
 
         print("create_report", params)
 
         err, report_data = initialise_report(
-            "", api_key, params.get("custom_id"), params.get("other_data")
+            "", api_key, username, params.get("custom_id"), params.get("other_data")
         )
 
         if err is not None:

@@ -3,6 +3,7 @@ import { setupWebsocketManager } from "./websocket-manager";
 import * as Y from "yjs";
 
 const docsEndpoint = "ws://agents-python-server:1235/docs";
+
 const getDocsEndpoint = "http://agents-python-server:1235/get_doc";
 
 export default {
@@ -13,6 +14,8 @@ export default {
     const apiToken = params.get("api_token");
     const username = params.get("username");
     const docsBackend = await setupWebsocketManager(docsEndpoint);
+
+    console.log("onConnect", docId, apiToken, username);
 
     return await onConnect(ws, room, {
       load() {
@@ -39,11 +42,6 @@ export default {
                 // Create Uint8Array from bytes
                 uint8Array = new Uint8Array(byteValues);
                 Y.applyUpdate(yDoc, uint8Array);
-                // console.log("\n");
-                // console.log(
-                //   yDoc.getXmlFragment("document-store").firstChild.toJSON()
-                // );
-                // console.log("\n");
               }
 
               return yDoc;
@@ -60,7 +58,6 @@ export default {
           const title = yDoc.getMap("document-title").get("title");
 
           try {
-            console.log(apiToken, username);
             // write to db
             docsBackend.send({
               doc_uint8: JSON.stringify({ bytes: Array.from(yjsState) }),

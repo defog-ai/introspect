@@ -88,6 +88,7 @@ const ViewNotebooks = () => {
         },
         body: JSON.stringify({
           api_key: context.token,
+          username: context.user,
         }),
       }
     );

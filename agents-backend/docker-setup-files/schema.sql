@@ -34,6 +34,7 @@ CREATE TABLE public.defog_docs (
     editor_defog_blocks jsonb,
     api_key text NOT NULL,
     "timestamp" text,
+    username text,
     doc_xml text,
     doc_uint8 jsonb,
     doc_title text,

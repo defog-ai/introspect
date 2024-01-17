@@ -67,18 +67,6 @@ async def doc_websocket_endpoint(websocket: WebSocket):
 
             print(data.get("api_key"), data.get("username"), data.get("doc_id"))
 
-            if (
-                data.get("api_key") is not None
-                and data.get("username") is not None
-                and err is None
-            ):
-                await add_to_recently_viewed_docs(
-                    username=data.get("username"),
-                    api_key=data.get("api_key"),
-                    doc_id=data.get("doc_id"),
-                    timestamp=str(datetime.datetime.now()),
-                )
-
             await manager.send_personal_message(data, websocket)
     except WebSocketDisconnect as e:
         # print("Disconnected. Error: ", e)
@@ -91,6 +79,40 @@ async def doc_websocket_endpoint(websocket: WebSocket):
         # other reasons for disconnect, like websocket being closed or a timeout
         manager.disconnect(websocket)
         await websocket.close()
+
+
+@router.post("/add_to_recently_viewed_docs")
+async def add_to_recently_viewed_docs_endpoint(request: Request):
+    """
+    Add a document to the recently viewed docs of a user.
+    """
+    try:
+        data = await request.json()
+        username = data.get("username")
+        api_key = data.get("api_key")
+        doc_id = data.get("doc_id")
+
+        if username is None or type(username) != str:
+            return {"success": False, "error_message": "Invalid username."}
+
+        if api_key is None or type(api_key) != str:
+            return {"success": False, "error_message": "Invalid api key."}
+
+        if doc_id is None or type(doc_id) != str:
+            return {"success": False, "error_message": "Invalid document id."}
+
+        await add_to_recently_viewed_docs(
+            username=username,
+            api_key=api_key,
+            doc_id=doc_id,
+            timestamp=str(datetime.datetime.now()),
+        )
+
+        return {"success": True}
+    except Exception as e:
+        print("Error getting analyses: ", e)
+        traceback.print_exc()
+        return {"success": False, "error_message": "Unable to parse your request."}
 
 
 @router.post("/toggle_archive_status")
@@ -166,13 +188,12 @@ async def get_docs(request: Request):
     """
     try:
         data = await request.json()
-        # api_key = data.get("api_key")
-        api_key = DEFOG_API_KEY
+        username = data.get("username")
 
-        if api_key is None or type(api_key) != str:
-            return {"success": False, "error_message": "Invalid api key."}
+        if username is None or type(username) != str:
+            return {"success": False, "error_message": "Invalid username."}
 
-        err, own_docs, recently_viewed_docs = await get_all_docs(api_key)
+        err, own_docs, recently_viewed_docs = await get_all_docs(username)
         if err:
             return {"success": False, "error_message": err}
 

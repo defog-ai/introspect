@@ -29,7 +29,7 @@ import ErrorBoundary from "../common/ErrorBoundary";
 import { v4 } from "uuid";
 import { Context } from "../../../../components/common/Context";
 import { createAnalysis, getAnalysis } from "../../../../utils/utils";
-import setupBaseUrl from  "../../../../utils/setupBaseUrl";
+import setupBaseUrl from "../../../../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../../../../utils/websocket-manager";
 
 // the name of the prop where the data is stored for each stage
@@ -45,6 +45,7 @@ const agentRequestTypes = ["clarify", "gen_steps"];
 export const AnalysisAgent = ({
   analysisId,
   apiToken,
+  username,
   updateHook = () => {},
   editor,
 }) => {
@@ -305,7 +306,7 @@ export const AnalysisAgent = ({
         const res = await getAnalysis(analysisId);
         if (!res.success) {
           // create a new analysis
-          analysisData = (await createAnalysis(apiToken, analysisId))
+          analysisData = (await createAnalysis(apiToken, username, analysisId))
             .report_data;
 
           // also have to set docContext in this case
@@ -617,6 +618,7 @@ export const AnalysisAgent = ({
 
                         const res = await createAnalysis(
                           apiToken,
+                          username,
                           newAnalysisId,
                           {
                             other_data: {

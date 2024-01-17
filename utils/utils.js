@@ -52,6 +52,7 @@ export const getReport = getAnalysis;
 
 export const createAnalysis = async (
   apiToken,
+  username,
   customId = null,
   bodyData = {}
 ) => {
@@ -66,6 +67,7 @@ export const createAnalysis = async (
       body: JSON.stringify({
         api_key: apiToken,
         custom_id: customId,
+        username: username,
         ...bodyData,
       }),
     });
@@ -78,7 +80,7 @@ export const createAnalysis = async (
 
 export const createReport = createAnalysis;
 
-export const getAllDocs = async (apiToken) => {
+export const getAllDocs = async (apiToken, username) => {
   const urlToConnect = setupBaseUrl("http", "get_docs");
   let response;
   try {
@@ -89,6 +91,7 @@ export const getAllDocs = async (apiToken) => {
       },
       body: JSON.stringify({
         api_key: apiToken,
+        username: username,
       }),
     });
     return response.json();

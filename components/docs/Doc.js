@@ -22,9 +22,14 @@ import { ReactiveVariableNode } from "./customTiptap/ReactiveVariableNode";
 import { ReactiveVariableMention } from "./customTiptap/ReactiveVariableMention";
 import { RelatedAnalysesMiniMap } from "../defog-components/components/agent/RelatedAnalysesMiniMap";
 import ErrorBoundary from "../common/ErrorBoundary";
+import setupBaseUrl from "../../utils/setupBaseUrl";
 
 // remove the last slash from the url
 const partyEndpoint = process.env.NEXT_PUBLIC_PARTYKIT_ENDPOINT;
+const recentlyViewedEndpoint = setupBaseUrl(
+  "http",
+  "add_to_recently_viewed_docs"
+);
 
 export function Editor({ docId = null, username = null, apiToken = null }) {
   const [loading, setLoading] = useState(true);
@@ -39,7 +44,7 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
   );
 
   useEffect(() => {
-    async function getUserItems() {
+    async function setup() {
       // setup user items
       const items = docContext.userItems;
       const analyses = await getAllAnalyses(apiToken);
@@ -56,8 +61,21 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
         ...docContext,
         userItems: items,
       });
+
+      // add to recently viewed docs for this user
+      await fetch(recentlyViewedEndpoint, {
+        method: "POST",
+        body: JSON.stringify({
+          api_key: apiToken,
+          doc_id: docId,
+          username: username,
+        }),
+      })
+        .then((d) => d.json())
+        .then((d) => console.log(d));
     }
-    getUserItems();
+
+    setup();
   }, []);
 
   const yjsDoc = new Y.Doc();
@@ -79,6 +97,7 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
 
   window.editor = editor;
   editor.apiToken = apiToken;
+  editor.username = username;
   window.reactiveContext = reactiveContext;
 
   editor.onEditorContentChange(() => {
@@ -116,7 +135,11 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
         value={{ val: reactiveContext, update: setReactiveContext }}
       >
         <DocContext.Provider value={{ val: docContext, update: setDocContext }}>
-          <DocNav apiToken={apiToken} currentDocId={docId}></DocNav>
+          <DocNav
+            apiToken={apiToken}
+            username={username}
+            currentDocId={docId}
+          ></DocNav>
           <div id="content">
             <div id="editor-container">
               <BlockNoteView editor={editor} theme={"light"}>
