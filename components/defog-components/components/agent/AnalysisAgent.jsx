@@ -48,6 +48,7 @@ export const AnalysisAgent = ({
   username,
   updateHook = () => {},
   editor,
+  block,
 }) => {
   const [socketManager, setSocketManager] = useState(null);
   const [reRunManager, setReRunManager] = useState(null);
@@ -306,8 +307,15 @@ export const AnalysisAgent = ({
         const res = await getAnalysis(analysisId);
         if (!res.success) {
           // create a new analysis
-          analysisData = (await createAnalysis(apiToken, username, analysisId))
-            .report_data;
+          analysisData = await createAnalysis(apiToken, username, analysisId);
+
+          if (!analysisData.success || !analysisData.report_data) {
+            // stop loading, and delete this block
+            message.error(analysisData.error_message);
+            editor.removeBlocks([block]);
+          } else {
+            analysisData = analysisData.report_data;
+          }
 
           // also have to set docContext in this case
           docContext.update({

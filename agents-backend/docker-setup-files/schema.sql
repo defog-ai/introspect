@@ -90,7 +90,8 @@ CREATE TABLE public.defog_reports (
     report_id text NOT NULL,
     gen_steps jsonb,
     follow_up_analyses jsonb,
-    parent_analyses jsonb
+    parent_analyses jsonb,
+    username text
 );
 
 
