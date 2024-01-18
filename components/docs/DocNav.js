@@ -74,7 +74,7 @@ export default function DocNav({ apiToken, username, currentDocId }) {
         <div className="nav-spacer"></div>
         {/* eveything after this spacer is on the right of the nav */}
 
-        <div
+        {/* <div
           id="nav-db-creds"
           className={
             "nav-sidebar-btn-stick-right " +
@@ -88,7 +88,7 @@ export default function DocNav({ apiToken, username, currentDocId }) {
           }}
         >
           DB creds
-        </div>
+        </div> */}
         <div
           id="nav-analyses"
           className={
