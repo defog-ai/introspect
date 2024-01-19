@@ -17,14 +17,6 @@ tools = [
         "fn": dataset_metadata_describer,
     },
     {
-        "name": "py_aggregator",
-        "fn": py_aggregator,
-    },
-    {
-        "name": "py_column_summarizer",
-        "fn": py_column_summarizer,
-    },
-    {
         "name": "line_plot",
         "fn": line_plot,
     },
@@ -55,9 +47,5 @@ tools = [
     {
         "name": "heatmap",
         "fn": heatmap,
-    },
-    {
-        "name": "sampler",
-        "fn": sampler,
-    },
+    }
 ]

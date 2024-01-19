@@ -7,28 +7,13 @@
 toolbox_prompts = {
     "data-fetching": """
 - tool_name: data_fetcher
-  description: Fetches data from a postgres database, by converting a natural language question into a SQL query. Can do filters and aggregations. For simple questions that can be answered with SQL and do not require Python, this should be the only tool used.
+  description: Fetches, filters, aggregates, and performs arithmetic computations on data from a postgres database, by converting a natural language question into a SQL query. Can do filters and aggregations.
   inputs: [natural language description of the required as a string]
   outputs: pandas df""",
-    # --- --- --- #
-    "stats": """- tool_name: py_column_summarizer
-  description: Gets simple statistics about distribution of data (like mean, median, and percentiles) from a pandas df using numpy and pandas.
-  inputs: [pandas df]
-  outputs: pandas df
 
-- tool_name: dataset_metadata_describer
+    "stats": """- tool_name: dataset_metadata_describer
   description: Describes the columns available inside a dataset
   inputs: [None]
-  outputs: pandas df
-
-- tool_name: py_aggregator
-  description: Generates python code to get aggregates (with splits on multiple attributes).
-  inputs: [pandas df, list of columns to group by, list of columns to aggregate, list of aggregate functions]
-  outputs: pandas df
-  
-- tool_name: sampler
-  description: This function samples the given pandas dataframe and is used by other functions for downstream statistical analysis.
-  inputs: [pandas df, number of rows to sample]
   outputs: pandas df
 
 - tool_name: line_plot

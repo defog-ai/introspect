@@ -20,50 +20,6 @@ async def dataset_metadata_describer(
     }
 
 
-async def py_aggregator(
-    full_data: pd.DataFrame,
-    group_columns: list,
-    agg_columns: list,
-    agg_functions: list,
-    global_dict: dict = {},
-    **kwargs,
-) -> Tuple[str, pd.DataFrame]:
-    """
-    This function aggregates data given the question and gets some basic summary stats.
-    """
-    df = full_data.dropna(subset=group_columns + agg_columns)
-
-    # aggregate the data based on the group columns and aggregate columns
-    agg_df = df.groupby(group_columns).agg(agg_functions).reset_index()
-    # flatten the column names
-    agg_df.columns = ["_".join(col).strip() for col in agg_df.columns.values]
-
-    # return the aggregated dataframe
-    return {
-        "analysis": "",
-        "outputs": [{"data": agg_df}],
-    }
-
-
-async def py_column_summarizer(
-    full_data: pd.DataFrame, global_dict: dict = {}, **kwargs
-) -> Tuple[str, pd.DataFrame]:
-    """
-    This function samples data given the question and gets some basic summary stats.
-    TODO: Can convert to SQLAlchemy completely without need for pandas
-    TODO: We could consider returning bins and counts for a histogram in the future.
-    """
-    desc = full_data.describe()
-    analysis = ""
-    # copy index (contains stat names) to a column since we won't use index in the frontend
-    desc["stat"] = desc.index
-    # bring stat column to the front
-    cols = list(desc.columns)
-    cols = [cols[-1]] + cols[:-1]
-    desc = desc[cols]
-    return {"analysis": analysis, "outputs": [{"data": desc}]}
-
-
 async def t_test(
     full_data: pd.DataFrame,
     group_column: str,
@@ -314,16 +270,4 @@ async def anova_test(
                 "reactive_vars": reactive_vars,
             }
         ],
-    }
-
-
-async def sampler(
-    full_data: pd.DataFrame, n_rows: int = 10, global_dict: dict = {}, **kwargs
-):
-    """
-    This function samples data given the question and gets some basic summary stats.
-    """
-    sampled_df = full_data.sample(n_rows)
-    return {
-        "outputs": [{"data": sampled_df}],
     }
