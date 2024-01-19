@@ -2,7 +2,7 @@ requests
 psycopg2-binary
 pandas
 pyyaml
-defog>=0.56.4
+defog>=0.57.0
 snowflake-connector-python
 pandas
 sqlalchemy

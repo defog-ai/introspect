@@ -9,8 +9,8 @@ export default function ChartImage({ images = [] }) {
         <img
           ref={(ref) => (imgRefs.current[i] = ref)}
           src={
-            "https://storage.googleapis.com/defog-agents/report-assets/" +
-            image.path
+            "http://localhost:1235/get_assets?path=" +
+            encodeURIComponent(image.path)
           }
           key={i}
           alt={"Loading image"}

@@ -7,7 +7,7 @@ from defog import Defog
 
 import yaml
 from colorama import Fore, Style
-import pika
+# import pika
 import redis
 
 env = None
@@ -146,27 +146,27 @@ def warn_str(msg=""):
     return f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
 
 
-async def add_files_to_rabbitmq_queue(files):
-    print("Files for rabbit mq:", files)
-    err = None
-    try:
-        parameters = pika.URLParameters("amqp://admin:admin@agents-rabbitmq/")
+# async def add_files_to_rabbitmq_queue(files):
+#     print("Files for rabbit mq:", files)
+#     err = None
+#     try:
+#         parameters = pika.URLParameters("amqp://admin:admin@agents-rabbitmq/")
 
-        connection = pika.BlockingConnection(parameters)
-        channel = connection.channel()
+#         connection = pika.BlockingConnection(parameters)
+#         channel = connection.channel()
 
-        # Declare a queue
-        queue_name = "gcs"
-        channel.queue_declare(queue=queue_name)
+#         # Declare a queue
+#         queue_name = "gcs"
+#         channel.queue_declare(queue=queue_name)
 
-        channel.basic_publish(
-            exchange="",
-            routing_key=queue_name,
-            body=json.dumps(files),
-        )
-    except Exception as e:
-        print("Error adding files to rabbitmq queue")
-        traceback.print_exc()
-        err = str(e)
-    finally:
-        return err
+#         channel.basic_publish(
+#             exchange="",
+#             routing_key=queue_name,
+#             body=json.dumps(files),
+#         )
+#     except Exception as e:
+#         print("Error adding files to rabbitmq queue")
+#         traceback.print_exc()
+#         err = str(e)
+#     finally:
+#         return err

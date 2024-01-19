@@ -294,3 +294,12 @@ async def websocket_endpoint(websocket: WebSocket):
         # other reasons for disconnect, like websocket being closed or a timeout
         manager.disconnect(websocket)
         await websocket.close()
+
+@app.get("/get_assets")
+async def get_assets(path: str):
+    try:
+        return FileResponse(os.path.join(report_assets_dir, path))
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        return {"success": False, "error_message": "Error getting assets"}

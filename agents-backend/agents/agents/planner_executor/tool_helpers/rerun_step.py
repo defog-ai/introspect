@@ -2,7 +2,7 @@ from agents.planner_executor.tool_helpers.all_tools import *
 from db_utils import store_tool_run, get_tool_run, update_tool_run_data
 from colorama import Style
 from agents.planner_executor.execute_tool import execute_tool
-from gcs_utils import file_exists_in_gcs, get_file_from_gcs
+# from gcs_utils import file_exists_in_gcs, get_file_from_gcs
 from agents.planner_executor.tool_helpers.core_functions import *
 from utils import error_str, log_str, success_str
 from agents.planner_executor.tool_helpers.core_functions import *
@@ -117,14 +117,14 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
                             print(log_str(f"Input {var} found in the file system."))
                             found = True
 
-                        elif await file_exists_in_gcs(f_path):
-                            print(log_str(f"Input {var} found in GCS."))
-                            # load the file and replace the global_dict.variable_name reference with the dataset
-                            err = await get_file_from_gcs(f_path)
-                            if err:
-                                found = False
-                            else:
-                                found = True
+                        # elif await file_exists_in_gcs(f_path):
+                        #     print(log_str(f"Input {var} found in GCS."))
+                        #     # load the file and replace the global_dict.variable_name reference with the dataset
+                        #     err = await get_file_from_gcs(f_path)
+                        #     if err:
+                        #         found = False
+                        #     else:
+                        #         found = True
 
                         if found:
                             df = pd.read_feather(f_path)

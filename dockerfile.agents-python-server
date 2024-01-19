@@ -3,14 +3,6 @@ FROM python:3.10
 
 WORKDIR agents-python-server
 
-ARG GOOGLE_APPLICATION_CREDENTIALS_PATH
-
-
-
-
-# copy google creds
-COPY $GOOGLE_APPLICATION_CREDENTIALS_PATH /cloud-storage-creds.json
-
 # copy startup script
 COPY ./agents-backend/docker-setup-files/startup.sh /startup.sh
 
@@ -24,8 +16,6 @@ RUN pip install -r requirements.txt
 
 # expose python server port
 EXPOSE 1235
-
-ENV GOOGLE_APPLICATION_CREDENTIALS=/cloud-storage-creds.json
 
 COPY ./agents-backend/agents/ ./
 

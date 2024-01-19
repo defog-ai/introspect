@@ -50,29 +50,24 @@ async def generate_tables(request: Request):
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
 
-    tables = redis_client.get(f"integration:tables")
-    if tables:
-        tables = json.loads(tables)
-        return {"tables": tables}
-    else:
-        api_key = DEFOG_API_KEY
-        db_type = params.get("db_type")
-        db_creds = params.get("db_creds")
+    api_key = DEFOG_API_KEY
+    db_type = params.get("db_type")
+    db_creds = params.get("db_creds")
 
-        # remove db_type from db_creds if it exists or sqlalchemy throws an error inside defog
-        if "db_type" in db_creds:
-            del db_creds["db_type"]
+    # remove db_type from db_creds if it exists or sqlalchemy throws an error inside defog
+    if "db_type" in db_creds:
+        del db_creds["db_type"]
 
-        # once this is done, we do not have to persist the db_creds
-        # since they are already stored in the Defog connection string at ~/.defog/connection.json
-        defog = Defog(api_key, db_type, db_creds)
-        table_names = defog.generate_db_schema(tables=[], return_tables_only=True)
-        redis_client.set(f"integration:status", "selected_tables")
-        redis_client.set(f"integration:status", "gave_credentials")
-        redis_client.set(f"integration:tables", json.dumps(table_names))
-        redis_client.set(f"integration:db_type", db_type)
-        redis_client.set(f"integration:db_creds", json.dumps(db_creds))
-        return {"tables": table_names}
+    # once this is done, we do not have to persist the db_creds
+    # since they are already stored in the Defog connection string at ~/.defog/connection.json
+    defog = Defog(api_key, db_type, db_creds)
+    table_names = defog.generate_db_schema(tables=[], return_tables_only=True)
+    redis_client.set(f"integration:status", "selected_tables")
+    redis_client.set(f"integration:status", "gave_credentials")
+    redis_client.set(f"integration:tables", json.dumps(table_names))
+    redis_client.set(f"integration:db_type", db_type)
+    redis_client.set(f"integration:db_creds", json.dumps(db_creds))
+    return {"tables": table_names}
 
 
 @router.post("/integration/get_tables_db_creds")

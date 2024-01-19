@@ -11,8 +11,9 @@ from agents.planner_executor.tool_helpers.core_functions import (
 )
 import psycopg2
 import yaml
-from gcs_utils import store_files_to_gcs
-from utils import add_files_to_rabbitmq_queue, error_str, log_str, warn_str
+# from gcs_utils import store_files_to_gcs
+# from utils import add_files_to_rabbitmq_queue, error_str, log_str, warn_str
+from utils import warn_str
 
 with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
@@ -865,14 +866,14 @@ async def store_tool_run(analysis_id, step, run_result):
                         print("Could not store chart images to gcs")
 
             # add files to rabbitmq queue
-            if len(files_for_rabbitmq_queue) > 0:
-                err = await add_files_to_rabbitmq_queue(files_for_rabbitmq_queue)
-                if err is not None:
-                    print(error_str(err))
+            # if len(files_for_rabbitmq_queue) > 0:
+            #     err = await add_files_to_rabbitmq_queue(files_for_rabbitmq_queue)
+            #     if err is not None:
+            #         print(error_str(err))
 
-            # store images to gcs now
-            if len(files_to_store_in_gcs) > 0:
-                await store_files_to_gcs(files_to_store_in_gcs)
+            # # store images to gcs now
+            # if len(files_to_store_in_gcs) > 0:
+            #     await store_files_to_gcs(files_to_store_in_gcs)
 
         with engine.begin() as conn:
             # first check if this tool run already exists
@@ -1036,10 +1037,10 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
                         )
 
                 # add files to rabbitmq queue
-                if len(files_for_rabbitmq_queue) > 0:
-                    err = await add_files_to_rabbitmq_queue(files_for_rabbitmq_queue)
-                    if err is not None:
-                        print(error_str(err))
+                # if len(files_for_rabbitmq_queue) > 0:
+                #     err = await add_files_to_rabbitmq_queue(files_for_rabbitmq_queue)
+                #     if err is not None:
+                #         print(error_str(err))
 
                 conn.execute(
                     update(ToolRuns)

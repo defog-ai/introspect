@@ -15,15 +15,11 @@ To build the docker containers, make sure you have docker running on your system
 Before building, you will need to:
 
 1. Create a file `.env.yaml` inside `agents-backend/agents`, using `.env.yaml.template` as an example. This file will contain all of the environment variables that the backend needs.
-2. You will also need to set GOOGLE_APPLICATION_CREDENTIALS_PATH, which will be used as a build arg to docker compose for the agents-backend service. You may do so by exporting the variable, or passing it directly to the docker compose command. The reason why we set this differently from the other env vars in agents-backend is because it needs to be accessible to multiple docker containers.
-3. The db will be populated with empty meta tables for now.
+2. The db will be populated with empty meta tables for now.
 
 Altogether, the steps are:
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS_PATH="path/to/google/creds.json"
 docker compose up -d
-# alternatively
-GOOGLE_APPLICATION_CREDENTIALS_PATH="path/to/google/creds.json" docker compose up -d
 ```
 
 To build the images and start the containers.

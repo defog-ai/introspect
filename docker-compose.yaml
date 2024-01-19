@@ -14,10 +14,6 @@ services:
     build:
       context: .
       dockerfile: dockerfile.agents-python-server
-      args:
-        GOOGLE_APPLICATION_CREDENTIALS_PATH: "${GOOGLE_APPLICATION_CREDENTIALS_PATH:?Please set the GOOGLE_APPLICATION_CREDENTIALS_PATH variable to the path of your service account credentials file.}"
-    environment:
-      GOOGLE_APPLICATION_CREDENTIALS: /cloud-storage-creds.json
     # volumes:
     # - agents-python-server:/agents-python-server/
     ports:
@@ -43,25 +39,6 @@ services:
       - "2000"
     networks:
       - agents-network
-
-  agents-rabbitmq:
-    build:
-      context: .
-      dockerfile: dockerfile.agents-rabbitmq
-      args:
-        GOOGLE_APPLICATION_CREDENTIALS_PATH: "${GOOGLE_APPLICATION_CREDENTIALS_PATH:?Please set the GOOGLE_APPLICATION_CREDENTIALS_PATH variable to the path of your service account credentials file.}"
-    environment:
-      GOOGLE_APPLICATION_CREDENTIALS: /cloud-storage-creds.json
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    expose:
-      - "5672"
-      - "15672"
-    networks:
-      - agents-network
-    volumes:
-      - agents-assets:/agents-assets/
 
   agents-postgres:
     build:
