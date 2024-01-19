@@ -6,7 +6,7 @@ from utils import error_str
 import asyncio
 import requests
 
-async def data_fetcher(
+async def data_fetcher_and_aggregator(
     question: str,
     limit_rows: bool = False,
     global_dict: dict = {},

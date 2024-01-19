@@ -9,8 +9,8 @@ from ..toolboxes.plots.tools import *
 
 tools = [
     {
-        "name": "data_fetcher",
-        "fn": data_fetcher,
+        "name": "data_fetcher_and_aggregator",
+        "fn": data_fetcher_and_aggregator,
     },
     {
         "name": "dataset_metadata_describer",

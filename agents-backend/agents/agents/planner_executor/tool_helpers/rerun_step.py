@@ -173,7 +173,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
     # if this tool is data_fetcher
     # we need to check if the initial inputs to the function have changed
     # or just the SQL query
-    if f_nm == "data_fetcher":
+    if f_nm == "data_fetcher_and_aggregator":
         result = None
         initial_inputs = target_step.get("model_generated_inputs")
         if not initial_inputs:
@@ -252,7 +252,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
             print(f"Data fetcher inputs have changed. Running the function.")
             # run the data_fetcher tool normally with the new inputs
             result, signature = await execute_tool(
-                "data_fetcher", resolved_inputs, global_dict
+                "data_fetcher_and_aggregator", resolved_inputs, global_dict
             )
 
             err = result.get("error_message")
