@@ -44,8 +44,6 @@ async def validate_ms_sso(request: Request):
         print(e)
         return {"error": "invalid token"}
 
-    return {"status": "success"}
-
 @router.post("/login")
 async def login(request: Request):
     params = await request.json()
