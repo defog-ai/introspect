@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
+import { Context } from './Context';
 import { useRouter } from 'next/router';
+import setupBaseUrl from '../../utils/setupBaseUrl';
 
 const SSOButton = ({ msalInstance }) => {
   const [isLoginInProgress, setIsLoginInProgress] = useState(false);
   const router = useRouter();
+  const [context, setContext] = useContext(Context);
 
   const handleLogin = async () => {
     if (isLoginInProgress) {
