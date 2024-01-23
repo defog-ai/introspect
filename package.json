@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^4.8.1",
+    "@azure/msal-browser": "^3.7.1",
     "@blocknote/core": "^0.11.0",
     "@blocknote/react": "^0.11.0",
     "@dotlottie/react-player": "^1.6.12",
