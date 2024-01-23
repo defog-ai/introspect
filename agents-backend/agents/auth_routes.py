@@ -28,7 +28,7 @@ async def validate_ms_sso(request: Request):
         oid = decoded.get("oid", None)
         hashed_password = hashlib.sha256((username + SALT + oid).encode()).hexdigest()
         if not validate_user(hashed_password):
-            # create user
+            # if user does not exist, create the user
             conn = get_db_conn()
             cur = conn.cursor()
             hashed_password = hashed_password
@@ -39,7 +39,7 @@ async def validate_ms_sso(request: Request):
             conn.commit()
             conn.close()
         
-        return {"status": "success", "user_type": "user", "token": hashed_password}
+        return {"status": "success", "user_type": "user", "token": hashed_password, "user": username}
     except jwt.PyJWTError as e:
         print(e)
         return {"error": "invalid token"}
