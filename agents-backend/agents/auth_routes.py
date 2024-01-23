@@ -10,9 +10,6 @@ DEFOG_API_KEY = "genmab-survival-test"
 
 router = APIRouter()
 
-async def async_decode_jwt(token):
-    return jwt.decode(token, options={"verify_signature": False})
-
 @router.post("/validate_ms_sso")
 async def validate_ms_sso(request: Request):
     params = await request.json()
@@ -21,7 +18,7 @@ async def validate_ms_sso(request: Request):
         return {"error": "no token provided"}
     
     try:
-        decoded = await asyncio.to_thread(async_decode_jwt, token)
+        decoded = await asyncio.to_thread(jwt.decode, token, options={"verify_signature": False})
         username = decoded.get("preferred_username", None)
         if not username:
             return {"error": "invalid token"}
