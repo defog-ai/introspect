@@ -3,6 +3,9 @@ from colorama import Fore, Style
 import traceback
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from agents.planner_executor.tool_helpers.rerun_step import rerun_step_and_dependents
+from agents.planner_executor.tool_helpers.core_functions import analyse_data
+import pandas as pd
+from io import StringIO
 
 DEFOG_API_KEY = "genmab-survival-test"
 
@@ -442,6 +445,47 @@ async def rerun_step(websocket: WebSocket):
     except Exception as e:
         # print("Disconnected. Error: ", e)
         traceback.print_exc()
+        # other reasons for disconnect, like websocket being closed or a timeout
+        manager.disconnect(websocket)
+        await websocket.close()
+
+
+# setup an analyse_data websocket endpoint
+@router.websocket("/analyse_data")
+async def analyse_data_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            if data.get("question") is None:
+                await manager.send_personal_message(
+                    {"success": False, "error_message": "No question"}, websocket
+                )
+                continue
+
+            if data.get("data") is None:
+                await manager.send_personal_message(
+                    {"success": False, "error_message": "No data"}, websocket
+                )
+                continue
+
+            # read data from the csv
+            df = pd.read_csv(StringIO(data.get("data")))
+
+            async for chunk in analyse_data(data.get("question"), df):
+                await manager.send_personal_message(chunk, websocket)
+
+    except WebSocketDisconnect as e:
+        # print("Disconnected. Error: ", e)
+        # traceback.print_exc()
+        manager.disconnect(websocket)
+        await websocket.close()
+    except Exception as e:
+        # print("Disconnected. Error: ", e)
+        traceback.print_exc()
+        await manager.send_personal_message(
+            {"success": False, "error_message": str(e)[:300]}, websocket
+        )
         # other reasons for disconnect, like websocket being closed or a timeout
         manager.disconnect(websocket)
         await websocket.close()

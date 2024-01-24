@@ -18,7 +18,7 @@ export default function ReactiveVariableList({ query, editor, range }) {
             key: k + ": " + obj[k] + "-k" + i,
             val: obj[k],
             name: k,
-            nestLocation: nestLocation + "-" + k,
+            nestLocation: nestLocation + "---" + k,
             tableId: tableId,
           };
         }
@@ -28,7 +28,11 @@ export default function ReactiveVariableList({ query, editor, range }) {
           return {
             title: k,
             key: k + "-k" + i,
-            children: createMenuItems(obj[k], nestLocation + "-" + k, tableId),
+            children: createMenuItems(
+              obj[k],
+              nestLocation + "---" + k,
+              tableId
+            ),
           };
         }
       });

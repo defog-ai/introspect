@@ -70,9 +70,7 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
           doc_id: docId,
           username: username,
         }),
-      })
-        .then((d) => d.json())
-        .then((d) => console.log(d));
+      });
     }
 
     setup();

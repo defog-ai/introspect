@@ -282,7 +282,7 @@ export function ToolResultsTable({
                     nestedDivsUntilNumericKeys(
                       nestedKey,
                       obj[key],
-                      nestLocation + "-" + nestedKey
+                      nestLocation + "---" + nestedKey
                     )
                   )}
                 </div>

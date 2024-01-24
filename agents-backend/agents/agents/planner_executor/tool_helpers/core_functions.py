@@ -1,3 +1,4 @@
+import os
 from typing import Dict, List
 import tiktoken
 from datetime import date
@@ -22,15 +23,28 @@ import redis
 import json
 import yaml
 
+from openai import AsyncOpenAI
+
+# get OPENAI_API_KEY from env
+
+openai = None
+
 with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
 redis_host = env["redis_server_host"]
 redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
+if env.get("OPENAI_API_KEY") is None:
+    print("OPENAI_API_KEY not found in env")
+else:
+    openai = AsyncOpenAI(api_key=env.get("OPENAI_API_KEY"))
+
+
 encoding = tiktoken.encoding_for_model("gpt-4-0613")
 
 DEFOG_API_KEY = "genmab-survival-test"
+
 
 # make sure the query does not contain any malicious commands like drop, delete, etc.
 def safe_sql(query):
@@ -50,6 +64,7 @@ def safe_sql(query):
 
     return True
 
+
 async def fetch_query_into_df(sql_query: str) -> pd.DataFrame:
     """
     Runs a sql query and stores the results in a pandas dataframe.
@@ -57,12 +72,12 @@ async def fetch_query_into_df(sql_query: str) -> pd.DataFrame:
 
     # important note: this is currently a blocking call
     # TODO: add an option to the defog library to make this async
-    
+
     db_type = redis_client.get("integration:db_type")
     db_creds = redis_client.get("integration:db_creds")
     if db_creds is not None:
         db_creds = json.loads(db_creds)
-    
+
     colnames, data, new_sql_query = execute_query(
         sql_query, DEFOG_API_KEY, db_type, db_creds, retries=0
     )
@@ -143,3 +158,60 @@ def resolve_input(input, global_dict):
             return input
 
         return input
+
+
+async def analyse_data(question: str, data: pd.DataFrame) -> str:
+    """
+    Generate a short summary of the results for the given qn.
+    """
+    print("OPENAIIIII", openai, os.environ.get("OPENAI_API_KEY"))
+    if not openai:
+        yield {"success": False, "model_analysis": "OPENAI_API_KEY not found in env"}
+        return
+
+    if data is None:
+        yield {"success": False, "model_analysis": "No data found"}
+        return
+
+    if data.size > 50:
+        yield {"success": False, "model_analysis": "Data size too large"}
+        return
+
+    if question is None or question == "":
+        yield {"success": False, "model_analysis": "No question provided"}
+        return
+
+    df_csv = data.to_csv(float_format="%.3f", header=True)
+    user_analysis_prompt = f"""Generate a short summary of the results for the given qn: `{question}`\n\nand results:
+{df_csv}\n\n```"""
+    analysis_prompt = (
+        f"""Here is the brief summary of how the results answer the given qn:\n\n```"""
+    )
+    # get comma separated list of col names
+    col_names = ",".join(data.columns)
+
+    messages = [
+        {
+            "role": "assistant",
+            "content": f"User has the following columns available to them:\n\n"
+            + col_names
+            + "\n\n",
+        },
+        {"role": "user", "content": user_analysis_prompt},
+        {
+            "role": "assistant",
+            "content": analysis_prompt,
+        },
+    ]
+
+    completion = await openai.chat.completions.create(
+        model="gpt-4-0613", messages=messages, temperature=0, seed=42, stream=True
+    )
+
+    async for chunk in completion:
+        ct = chunk.choices[0]
+
+        if ct.finish_reason == "stop":
+            return
+
+        yield {"success": True, "model_analysis": ct.delta.content}

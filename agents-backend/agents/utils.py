@@ -7,6 +7,7 @@ from defog import Defog
 
 import yaml
 from colorama import Fore, Style
+
 # import pika
 import redis
 
@@ -65,6 +66,7 @@ def get_table_metadata_nested_dict(api_key):
             "success": False,
             "error_message": "Error getting table metadata. Is your api key correct?",
         }
+
 
 def get_table_metadata_as_sql_creates_from_json(metadata):
     metadata_sql = ""
@@ -144,29 +146,3 @@ def log_str(msg=""):
 
 def warn_str(msg=""):
     return f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
-
-
-# async def add_files_to_rabbitmq_queue(files):
-#     print("Files for rabbit mq:", files)
-#     err = None
-#     try:
-#         parameters = pika.URLParameters("amqp://admin:admin@agents-rabbitmq/")
-
-#         connection = pika.BlockingConnection(parameters)
-#         channel = connection.channel()
-
-#         # Declare a queue
-#         queue_name = "gcs"
-#         channel.queue_declare(queue=queue_name)
-
-#         channel.basic_publish(
-#             exchange="",
-#             routing_key=queue_name,
-#             body=json.dumps(files),
-#         )
-#     except Exception as e:
-#         print("Error adding files to rabbitmq queue")
-#         traceback.print_exc()
-#         err = str(e)
-#     finally:
-#         return err

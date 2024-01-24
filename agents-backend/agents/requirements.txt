@@ -19,3 +19,4 @@ colorama
 matplotlib
 seaborn
 redis
+openai

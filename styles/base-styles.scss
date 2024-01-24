@@ -1,15 +1,5 @@
 @import "./colors.scss";
 
-p {
-  margin: 0.5em 0;
-  &.small {
-    font-size: 13px;
-  }
-  &.uppercase {
-    text-transform: uppercase;
-  }
-}
-
 .sticky {
   position: sticky;
 }
@@ -70,4 +60,17 @@ $code: "Fira Code", monospace !important;
   align-items: center;
   justify-content: center;
   background: $very-light-gray;
+}
+
+p {
+  margin: 0.5em 0;
+  &.small {
+    font-size: 13px !important;
+  }
+  &.uppercase {
+    text-transform: uppercase;
+  }
+  &.code {
+    @include code;
+  }
 }

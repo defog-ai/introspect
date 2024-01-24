@@ -14,6 +14,8 @@ services:
     build:
       context: .
       dockerfile: dockerfile.agents-python-server
+      args:
+        OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
     # volumes:
     # - agents-python-server:/agents-python-server/
     ports:
@@ -22,6 +24,7 @@ services:
       - "1235:1235"
     volumes:
       - agents-assets:/agents-assets/
+
     networks:
       - agents-network
 

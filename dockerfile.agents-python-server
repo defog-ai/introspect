@@ -3,6 +3,11 @@ FROM python:3.10
 
 WORKDIR agents-python-server
 
+ARG OPENAI_API_KEY=""
+
+# set env vars
+ENV OPENAI_API_KEY=$OPENAI_API_KEY
+
 # copy startup script
 COPY ./agents-backend/docker-setup-files/startup.sh /startup.sh
 
@@ -27,6 +32,9 @@ RUN mkdir -p /agents-assets/report-assets/heatmaps
 RUN mkdir -p /agents-assets/report-assets/kaplan-meier-plots 
 RUN mkdir -p /agents-assets/report-assets/linechart 
 RUN mkdir -p /agents-assets/report-assets/linecharts
+RUN touch /agents-logs-out
+RUN touch /agents-logs-err
+
 
 # copy main supervisor conf
 COPY ./agents-backend/docker-setup-files/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -36,4 +44,4 @@ COPY ./agents-backend/docker-setup-files/start-python-server.conf /etc/superviso
 
 
 # start startup script
-CMD ["/bin/bash", "/startup.sh"]
+CMD /bin/bash /startup.sh $OPENAI_API_KEY

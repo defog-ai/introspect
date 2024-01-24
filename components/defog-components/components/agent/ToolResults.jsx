@@ -12,6 +12,7 @@ import LoadingLottie from "../svg/loader.json";
 import ErrorBoundary from "../common/ErrorBoundary";
 import { csvParse } from "d3";
 import { getToolRunData } from "../../../../utils/utils";
+import ToolRunAnalysis from "./ToolRunAnalysis";
 
 function parseData(data_csv) {
   const data = csvParse(data_csv);
@@ -280,13 +281,21 @@ export function ToolResults({
                 toolRunData?.parsedOutputs[activeNode.data.id]["reactive_vars"]
               }
             />
-            {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"] ? (
-              <div className="tool-run-analysis">
-                {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"]}
+            <div className="tool-run-analysis">
+              <p className="tool-run-analysis-header">ANALYSIS</p>
+              <div className="tool-run-analysis-text">
+                {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"] ? (
+                  <p style={{ whiteSpace: "pre-wrap" }} className="small code">
+                    {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"]}
+                  </p>
+                ) : (
+                  <ToolRunAnalysis
+                    question={analysisData.user_question}
+                    data_csv={toolRunData?.outputs[activeNode.data.id]["data"]}
+                  />
+                )}
               </div>
-            ) : (
-              <> </>
-            )}
+            </div>
           </>
         ) : (
           <></>

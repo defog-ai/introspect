@@ -386,7 +386,7 @@ export function TableChart({
                     nestedDivsUntilNumericKeys(
                       nestedKey,
                       obj[key],
-                      nestLocation + "-" + nestedKey
+                      nestLocation + "---" + nestedKey
                     )
                   )}
                 </div>

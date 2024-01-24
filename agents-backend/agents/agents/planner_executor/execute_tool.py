@@ -4,6 +4,7 @@ import pandas as pd
 from typing import Tuple
 import traceback
 import inspect
+from utils import error_str
 
 
 def parse_function_signature(param_signatures):
@@ -55,13 +56,17 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
 
             # if keyerror, then error string will not have "key error" in it but just the name of the key
             except KeyError as e:
-                print(f"Error for tool {tool_name}: KeyError, key not found {e}")
+                print(
+                    error_str(
+                        f"Error for tool {tool_name}: KeyError, key not found {e}"
+                    )
+                )
                 traceback.print_exc()
                 result = {
                     "error_message": f"KeyError: key not found {e}. This might be due to missing columns in the generated data from earlier. You might need to run data fetcher again to make sure the required columns is in the data. "
                 }
             except Exception as e:
-                print(f"Error for tool {tool_name}: {e}")
+                print(error_str(f"Error for tool {tool_name}: {e}"))
                 traceback.print_exc()
                 result = {"error_message": str(e)[:300]}
             finally:

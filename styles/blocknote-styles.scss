@@ -554,7 +554,7 @@ $grid: repeating-linear-gradient(
     color: $text-medium;
     top: 45px;
     padding-bottom: 42px;
-    border-left: 1px solid $light-gray;
+    // border-left: 1px solid $light-gray;
 
     p {
       font-size: 1em;
@@ -589,6 +589,9 @@ $grid: repeating-linear-gradient(
 
           margin-bottom: 5px;
           font-size: 1em;
+          span {
+            white-space: nowrap;
+          }
           @include reactive-vars();
         }
       }
@@ -622,6 +625,7 @@ $grid: repeating-linear-gradient(
     font-weight: bold;
     background-color: $light-blue;
     user-select: none;
+    font-family: $code;
   }
 }
 
@@ -1386,5 +1390,23 @@ $grid: repeating-linear-gradient(
     border: 0.5em solid white;
     border-radius: 4px;
     background: $very-light-gray;
+  }
+}
+
+.tool-run-analysis {
+  .tool-run-analysis-header {
+    border-radius: 4px;
+    font-size: 0.8em;
+    border-radius: 4px;
+    margin-bottom: 1em;
+    display: block;
+    color: $text-medium;
+    pointer-events: none;
+    margin-bottom: 1em;
+    font-family: $code;
+  }
+  .tool-run-analysis-text {
+    background-color: $very-light-gray;
+    padding: 1em;
   }
 }
