@@ -28,11 +28,11 @@ async def validate_ms_sso(request: Request):
             # if user does not exist, create the user
             conn = get_db_conn()
             cur = conn.cursor()
-            hashed_password = hashed_password
             cur.execute(
                 "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (%s, %s, %s, %s, %s)",
                 (username, hashed_password, DEFOG_API_KEY, "user", True),
             )
+            cur.close()
             conn.commit()
             conn.close()
         
