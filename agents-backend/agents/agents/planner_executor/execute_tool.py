@@ -63,7 +63,13 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
                 )
                 traceback.print_exc()
                 result = {
-                    "error_message": f"KeyError: key not found {e}. This might be due to missing columns in the generated data from earlier. You might need to run data fetcher again to make sure the required columns is in the data. "
+                    "error_message": f"KeyError: key not found {e}. This might be due to missing columns in the generated data from earlier. You might need to run data fetcher again to make sure the required columns is in the data."
+                }
+            except IndexError as e:
+                print(error_str(f"Error for tool {tool_name}: IndexError: {e}"))
+                traceback.print_exc()
+                result = {
+                    "error_message": f"IndexError: index not found {e}. This might be due to empty dataframes from columns in the generated data from earlier. You might need to run data fetcher again to make sure the query is correct."
                 }
             except Exception as e:
                 print(error_str(f"Error for tool {tool_name}: {e}"))

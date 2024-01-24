@@ -207,7 +207,7 @@ class Executor:
                     # store the column names in the tool_outputs_column_descriptions
                     if data is not None and type(data) == type(pd.DataFrame()):
                         # store max 20 columns
-                        self.tool_outputs_column_descriptions += f"\n{key}: pd.DataFrame with columns {list(data.columns)[:20]}\n"
+                        self.tool_outputs_column_descriptions += f"\n{key}: pd.DataFrame with {len(data)} rows and columns: {list(data.columns)[:20]}\n"
                         self.global_dict[key] = data
                         # warn if more than 20 columns
                         warn_str(

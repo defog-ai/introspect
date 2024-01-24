@@ -8,16 +8,27 @@ ARG OPENAI_API_KEY=""
 # set env vars
 ENV OPENAI_API_KEY=$OPENAI_API_KEY
 
-# copy startup script
-COPY ./agents-backend/docker-setup-files/startup.sh /startup.sh
-
 # need cmake for scikit
-RUN apt-get update && apt-get install -y python3-pip cmake supervisor
-
+RUN apt-get update && apt-get install -y python3-pip cmake supervisor cron
 
 COPY ./agents-backend/agents/requirements.txt ./requirements.txt
 # install requirements
 RUN pip install -r requirements.txt
+
+# copy deletion cron
+COPY ./agents-backend/docker-setup-files/delete-cron /etc/cron.d/delete-cron
+
+# copy startup script
+COPY ./agents-backend/docker-setup-files/startup.sh /startup.sh
+
+# Give execution rights on the cron job
+RUN chmod 0644 /etc/cron.d/delete-cron
+
+# Apply cron job
+RUN crontab /etc/cron.d/delete-cron
+ 
+# Create the log file to be able to run tail
+RUN touch /var/log/cron.log
 
 # expose python server port
 EXPOSE 1235
@@ -32,16 +43,16 @@ RUN mkdir -p /agents-assets/report-assets/heatmaps
 RUN mkdir -p /agents-assets/report-assets/kaplan-meier-plots 
 RUN mkdir -p /agents-assets/report-assets/linechart 
 RUN mkdir -p /agents-assets/report-assets/linecharts
-RUN touch /agents-logs-out
-RUN touch /agents-logs-err
+RUN touch /agent-logs-out
+RUN touch /agent-logs-err
 
+RUN crontab /etc/cron.d/delete-cron
 
 # copy main supervisor conf
 COPY ./agents-backend/docker-setup-files/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # copy supervisor startup conf
 COPY ./agents-backend/docker-setup-files/start-python-server.conf /etc/supervisor/conf.d/start-python-server.conf
-
 
 # start startup script
 CMD /bin/bash /startup.sh $OPENAI_API_KEY

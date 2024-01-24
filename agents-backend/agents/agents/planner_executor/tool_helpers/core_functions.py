@@ -164,7 +164,6 @@ async def analyse_data(question: str, data: pd.DataFrame) -> str:
     """
     Generate a short summary of the results for the given qn.
     """
-    print("OPENAIIIII", openai, os.environ.get("OPENAI_API_KEY"))
     if not openai:
         yield {"success": False, "model_analysis": "OPENAI_API_KEY not found in env"}
         return

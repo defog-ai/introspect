@@ -1,0 +1,1 @@
+*/15 * * * * root /usr/local/bin/python3 /agents-python-server/delete_cron.py >> /agent-logs-cron

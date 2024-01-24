@@ -12,5 +12,3 @@ service supervisor stop
 service supervisor start
 
 supervisorctl restart all
-
-tail -f /agent-logs-out

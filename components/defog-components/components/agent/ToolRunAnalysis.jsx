@@ -21,9 +21,9 @@ export default function ToolRunAnalysis({ question, data_csv }) {
       console.log(response);
 
       if (response && response.model_analysis) {
-        setToolRunAnalysis(
-          (toolRunAnalysis ? toolRunAnalysis : "") + response.model_analysis
-        );
+        setToolRunAnalysis((prev) => {
+          return (prev ? prev : "") + response.model_analysis;
+        });
       }
     } catch (error) {
       console.log(error);
