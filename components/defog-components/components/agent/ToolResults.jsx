@@ -129,6 +129,9 @@ export function ToolResults({
           newData.parsedOutputs[k].chart_images =
             newData.outputs[k].chart_images;
         }
+        if (newData.outputs[k].analysis) {
+          newData.parsedOutputs[k].analysis = newData.outputs[k].analysis;
+        }
       });
 
       // console.log("here", newData);
@@ -266,16 +269,25 @@ export function ToolResults({
             </ErrorBoundary>
           </>
         ) : toolRunData?.parsedOutputs[activeNode.data.id] ? (
-          <ToolResultsTable
-            toolRunId={toolRunId}
-            tableData={toolRunData?.parsedOutputs[activeNode.data.id]["data"]}
-            chartImages={
-              toolRunData?.parsedOutputs[activeNode.data.id]["chart_images"]
-            }
-            reactiveVars={
-              toolRunData?.parsedOutputs[activeNode.data.id]["reactive_vars"]
-            }
-          />
+          <>
+            <ToolResultsTable
+              toolRunId={toolRunId}
+              tableData={toolRunData?.parsedOutputs[activeNode.data.id]["data"]}
+              chartImages={
+                toolRunData?.parsedOutputs[activeNode.data.id]["chart_images"]
+              }
+              reactiveVars={
+                toolRunData?.parsedOutputs[activeNode.data.id]["reactive_vars"]
+              }
+            />
+            {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"] ? (
+              <div className="tool-run-analysis">
+                {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"]}
+              </div>
+            ) : (
+              <> </>
+            )}
+          </>
         ) : (
           <></>
         ))

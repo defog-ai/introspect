@@ -11,6 +11,7 @@ from agents.planner_executor.tool_helpers.core_functions import (
 )
 import psycopg2
 import yaml
+
 # from gcs_utils import store_files_to_gcs
 # from utils import add_files_to_rabbitmq_queue, error_str, log_str, warn_str
 from utils import warn_str
@@ -818,6 +819,7 @@ async def store_tool_run(analysis_id, step, run_result):
                 data = out.get("data")
                 chart_images = out.get("chart_images")
                 reactive_vars = out.get("reactive_vars")
+                analysis = out.get("analysis")
 
                 insert_data["outputs"][k] = {}
 
@@ -864,6 +866,10 @@ async def store_tool_run(analysis_id, step, run_result):
                         print(e)
                         traceback.print_exc()
                         print("Could not store chart images to gcs")
+
+                # check if it has analysis
+                if analysis is not None and analysis != "":
+                    insert_data["outputs"][k]["analysis"] = analysis
 
             # add files to rabbitmq queue
             # if len(files_for_rabbitmq_queue) > 0:

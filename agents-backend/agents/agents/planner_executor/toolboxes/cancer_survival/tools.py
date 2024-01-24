@@ -38,17 +38,8 @@ async def kaplan_meier_curve(
     It can also be used to generate a survival function for a given survival time column and status column, stratified by a third column.
     """
     success = False
-    analysis = ""
     error = None
-    # full_data = inputs[0]
-    # if full_data is not a dataframe, return empty result
-    if not isinstance(full_data, pd.DataFrame):
-        return {
-            "success": success,
-        }
-    # remove the first element which is the full data
     kmc_plot_path = ""
-    code_str = ""
     outputs = []
     try:
         data_x, data_y = get_x_y(
@@ -58,41 +49,12 @@ async def kaplan_meier_curve(
             survival=True,
         )
 
-        # put all the code above in a string replacing the variables with their values
-        code_str += f"""async def exec_code():
-    from sksurv.nonparametric import kaplan_meier_estimator
-    from sksurv.datasets import get_x_y
-    from sksurv.compare import compare_survival
-
-    survival_time_col = "{survival_time_col}"
-    status_col = "{status_col}"
-    analysis = ""
-
-    data_x, data_y = get_x_y(
-        full_data,
-        attr_labels=[status_col, survival_time_col],
-        pos_label=1,
-        survival=True,
-    )
-    """
-
         if not stratification_vars:
             kmc_plot_path = f"kaplan-meier-plots/kmc-{uuid4()}.png"
             time, survival_prob, conf_int = kaplan_meier_estimator(
                 data_y[status_col], data_y[survival_time_col], conf_type="log-log"
             )
 
-            code_str += f"""\n
-    kmc_plot_path = f"kaplan-meier-plots/kmc-{{uuid4()}}.png"
-    time, survival_prob, conf_int = kaplan_meier_estimator(
-    data_y[status_col], data_y[survival_time_col], conf_type="log-log")
-    plt.step(time, survival_prob, where="post")
-    plt.fill_between(time, conf_int[0], conf_int[1], alpha=0.25, step="post")
-    plt.ylim(0, 1)
-    plt.ylabel("est. probability of survival $\hat{{S}}(t)$")
-    plt.xlabel("time $t$")
-    plt.savefig({{report_assets_dir}}/{{kmc_plot_path}})
-)"""
             plt.step(time, survival_prob, where="post")
             plt.fill_between(time, conf_int[0], conf_int[1], alpha=0.25, step="post")
             plt.ylim(0, 1)
@@ -100,73 +62,15 @@ async def kaplan_meier_curve(
             plt.xlabel("time $t$")
             plt.savefig(f"{report_assets_dir}/{kmc_plot_path}")
             full_data.kmc_plot_paths = [kmc_plot_path]
+
             outputs.append(
                 {
                     "data": full_data,
-                    "analysis": analysis,
                     "chart_images": [{"type": "kmc", "path": kmc_plot_path}],
                 }
             )
 
         else:
-            code_str += f"""\n
-    stratification_vars = {stratification_vars}
-    kmc_plot_path = f"kaplan-meier-plots/kmc-{{uuid4()}}.png"
-
-    for stratification_var in stratification_vars:
-        groups = data_x[stratification_var].unique()
-
-        for group in groups:
-            mask = data_x[stratification_var] == group
-            
-            time_treatment, survival_prob_treatment, conf_int = kaplan_meier_estimator(
-                data_y[status_col][mask],
-                data_y[survival_time_col][mask],
-                conf_type="log-log",
-            )
-            plt.step(
-                time_treatment,
-                survival_prob_treatment,
-                where="post",
-                label= f"{{stratification_var}} = {{group}}",
-            )
-            plt.fill_between(
-                time_treatment,
-                conf_int[0],
-                conf_int[1],
-                alpha=0.25,
-                step="post",
-            )
-
-            plt.ylim(0, 1)
-            plt.ylabel("est. probability of survival")
-            plt.xlabel("time $t$")
-            plt.legend(loc="best")
-            plt.savefig(f"{{report_assets_dir}}/{{kmc_plot_path}}")
-
-        chi2, pvalue = compare_survival(
-            data_y, data_x.loc[:, stratification_var]
-        )
-        
-        reactive_vars[stratification_var] = {{
-            "chi2": chi2,
-            "pvalue": pvalue,
-        }}
-
-        if not hasattr(full_data, "kmc_plot_paths"):
-            full_data.kmc_plot_paths = [kmc_plot_path]
-        else:
-            full_data.kmc_plot_paths.append(kmc_plot_path)
-
-        analysis += f"For Kaplan Meier survival function on {{stratification_var}}: The chi2 statistic is {{chi2:.2f}} and the p-value is {{pvalue:.2f}}. "
-
-        plt.clf()
-        plt.close()
-    
-    full_data.reactive_vars = reactive_vars
-
-    return analysis, full_data"""
-
             for stratification_var in stratification_vars:
                 print("Running stratified analysis on", stratification_var)
                 print(data_x.loc[:, stratification_var])
@@ -212,19 +116,6 @@ async def kaplan_meier_curve(
                     data_y, data_x.loc[:, stratification_var]
                 )
 
-                # this_data.reactive_vars = {
-                #     stratification_var: {
-                #         "chi2": chi2,
-                #         "pvalue": pvalue,
-                #     }
-                # }
-
-                # if not hasattr(full_data, "kmc_plot_paths"):
-                #     full_data.kmc_plot_paths = [kmc_plot_path]
-                # else:
-                #     full_data.kmc_plot_paths.append(kmc_plot_path)
-
-                # this_data.analysis = f"For Kaplan Meier survival function on {stratification_var}: The chi2 statistic is {chi2:.2f} and the p-value is {pvalue:.2f}.\n"
                 plt.clf()
                 plt.close()
                 outputs.append(
@@ -250,13 +141,11 @@ async def kaplan_meier_curve(
         traceback.print_exc()
         analysis = ""
         full_data = pd.DataFrame()
-        code_str = ""
         error = e
     finally:
         return {
             "success": success,
             "outputs": outputs,
-            "code_str": code_str,
             "error": error,
         }
 

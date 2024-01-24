@@ -1,3 +1,4 @@
+import traceback
 from agents.planner_executor.tool_helpers.core_functions import (
     safe_sql,
     fetch_query_into_df,
@@ -5,6 +6,7 @@ from agents.planner_executor.tool_helpers.core_functions import (
 from utils import error_str
 import asyncio
 import requests
+
 
 async def data_fetcher_and_aggregator(
     question: str,
@@ -35,13 +37,34 @@ async def data_fetcher_and_aggregator(
     if not safe_sql(query):
         success = False
         print("Unsafe SQL Query")
-    
+
     print(f"Running query: {query}")
 
     df = await fetch_query_into_df(query)
 
+    analysis = ""
+
+    # if total number of cells in the df < 50, run an analysis
+    # if df.size < 50:
+    #     try:
+    #         payload = {
+    #             "request_type": "analyze_data",
+    #             "question": question,
+    #             # decimals at 0.3f
+    #             "data": df.to_json(orient="split", double_precision=5),
+    #         }
+    #         analysis = await asyncio.to_thread(requests.post, url, json=payload)
+
+    #         analysis = analysis.json()
+    #         analysis = analysis["model_analysis"]
+    #     except Exception as e:
+    #         print(f"Error in running analysis: {e}")
+    #         traceback.print_exc()
+    #         analysis = ""
+    # else:
+    #     analysis = ""
+
     return {
-        "analysis": "",
-        "outputs": [{"data": df}],
-        "sql": query,
+        "outputs": [{"data": df, "analysis": analysis}],
+        "sql": query.strip(),
     }

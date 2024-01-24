@@ -36,7 +36,10 @@ async def get_clarification(
             parent_analyses,
         )
 
-        clarification_questions, post_process = await clarifier.gen_clarification_questions()
+        (
+            clarification_questions,
+            post_process,
+        ) = await clarifier.gen_clarification_questions()
 
         return {
             "success": True,
@@ -70,7 +73,6 @@ async def execute(
     This function returns a generator that yields the report sections, intro and conclusion.
     This takes quite long as of now. Needs to be parallelised for the future.
     """
-    print("at gen report")
     print("Evaling approaches")
     sys.stdout.flush()
 

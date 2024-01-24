@@ -52,12 +52,20 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
             try:
                 # expand tool inputs
                 result = await fn(*tool_inputs, global_dict=global_dict)
-                # if result has no code_str, use inspect.getsource to get code_str
+
+            # if keyerror, then error string will not have "key error" in it but just the name of the key
+            except KeyError as e:
+                print(f"Error for tool {tool_name}: KeyError, key not found {e}")
+                traceback.print_exc()
+                result = {
+                    "error_message": f"KeyError: key not found {e}. This might be due to missing columns in the generated data from earlier. You might need to run data fetcher again to make sure the required columns is in the data. "
+                }
             except Exception as e:
                 print(f"Error for tool {tool_name}: {e}")
                 traceback.print_exc()
                 result = {"error_message": str(e)[:300]}
             finally:
+                # if result has no code_str, use inspect.getsource to get code_str
                 if "code_str" not in result:
                     if "ask_prompt" not in inspect.getsource(fn):
                         result["code_str"] = inspect.getsource(fn)

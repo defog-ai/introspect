@@ -20,6 +20,7 @@ with open(".env.yaml", "r") as f:
 
 dfg_api_key = env["api_key"]
 
+
 class Executor:
     """
     Convert task into steps
@@ -99,7 +100,7 @@ class Executor:
             next_step_data_description = ""
             while True:
                 url = "https://defog-llm-calls-ktcmdcmg4q-uc.a.run.app"
-                
+
                 if next_step_data_description.startswith("There was an error"):
                     payload = {
                         "request_type": "fix_error",
@@ -113,7 +114,7 @@ class Executor:
                         "previous_responses": self.previous_responses,
                         "next_step_data_description": "",
                         "error": next_step_data_description,
-                        "erroreous_response": ans
+                        "erroreous_response": ans,
                     }
                     ans = await asyncio.to_thread(requests.post, url, json=payload)
                 else:
@@ -130,7 +131,7 @@ class Executor:
                         "next_step_data_description": next_step_data_description,
                     }
                     ans = await asyncio.to_thread(requests.post, url, json=payload)
-                ans = ans.json()['generated_step']
+                ans = ans.json()["generated_step"]
                 print(ans)
                 match = re.search("(?:```yaml)([\s\S]*?)(?=```)", ans)
                 if match is None:
@@ -161,7 +162,7 @@ class Executor:
                         "There was an error running the tool: ", result["error_message"]
                     )
                     print("Retrying...")
-                    next_step_data_description = f"There was an error running the tool. This was the error:\n{result['error_message']}"
+                    next_step_data_description = f"There was an error running the tool {step['tool_name']}. This was the error:\n{result['error_message']}"
                     continue
 
                 self.previous_responses.append(ans)

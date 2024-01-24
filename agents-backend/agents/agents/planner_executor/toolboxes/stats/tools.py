@@ -7,6 +7,7 @@ from scipy import stats
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+
 async def dataset_metadata_describer(
     global_dict={}, **kwargs
 ) -> Tuple[str, pd.DataFrame]:
@@ -15,7 +16,6 @@ async def dataset_metadata_describer(
     temp_df = temp_df[["column_name", "data_type", "column_description"]]
     print(temp_df)
     return {
-        "analysis": "",
         "outputs": [{"data": temp_df}],
     }
 
@@ -141,11 +141,11 @@ async def t_test(
 
     t_test_df.reactive_vars = reactive_vars
     return {
-        "analysis": analysis,
         "outputs": [
             {
                 "data": t_test_df,
                 "reactive_vars": reactive_vars,
+                "analysis": analysis,
             }
         ],
     }
@@ -207,11 +207,11 @@ async def wilcoxon_test(
     )
     wilcoxon_df.reactive_vars = reactive_vars
     return {
-        "analysis": analysis,
         "outputs": [
             {
                 "data": wilcoxon_df,
                 "reactive_vars": reactive_vars,
+                "analysis": analysis,
             }
         ],
     }
@@ -263,11 +263,11 @@ async def anova_test(
     )
     anova_df.reactive_vars = reactive_vars
     return {
-        "analysis": analysis,
         "outputs": [
             {
                 "data": anova_df,
                 "reactive_vars": reactive_vars,
+                "analysis": analysis,
             }
         ],
     }
