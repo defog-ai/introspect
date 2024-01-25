@@ -1,10 +1,8 @@
-import os
 from typing import Dict, List
 import tiktoken
 from datetime import date
 import traceback
 import pandas as pd
-from sqlalchemy import create_engine
 from defog import Defog
 from defog.query import execute_query
 
@@ -72,7 +70,6 @@ async def fetch_query_into_df(sql_query: str) -> pd.DataFrame:
 
     # important note: this is currently a blocking call
     # TODO: add an option to the defog library to make this async
-
     db_type = redis_client.get("integration:db_type")
     db_creds = redis_client.get("integration:db_creds")
     if db_creds is not None:
@@ -165,7 +162,7 @@ async def analyse_data(question: str, data: pd.DataFrame) -> str:
     Generate a short summary of the results for the given qn.
     """
     if not openai:
-        yield {"success": False, "model_analysis": ""}
+        yield {"success": False, "model_analysis": "NONE"}
         return
 
     if data is None:
@@ -173,7 +170,7 @@ async def analyse_data(question: str, data: pd.DataFrame) -> str:
         return
 
     if data.size > 50:
-        yield {"success": False, "model_analysis": ""}
+        yield {"success": False, "model_analysis": "NONE"}
         return
 
     if question is None or question == "":
