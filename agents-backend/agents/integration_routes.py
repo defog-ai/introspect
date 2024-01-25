@@ -1,4 +1,3 @@
-import logging
 from fastapi import APIRouter, Request
 from defog import Defog
 import redis  # use redis for caching – atleast for now

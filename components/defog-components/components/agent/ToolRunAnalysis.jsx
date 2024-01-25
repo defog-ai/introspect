@@ -49,14 +49,16 @@ export default function ToolRunAnalysis({ question, data_csv }) {
   }, []);
 
   return (
-    <p style={{ whiteSpace: "pre-wrap" }} className="small code">
-      {!toolRunAnalysis || toolRunAnalysis === "" ? (
-        <>
-          <LoadingOutlined /> Loading analysis...
-        </>
-      ) : (
-        toolRunAnalysis
-      )}
-    </p>
+    toolRunAnalysis.slice(0, 4) !== "NONE" && (
+      <p style={{ whiteSpace: "pre-wrap" }} className="small code">
+        {!toolRunAnalysis || toolRunAnalysis === "" ? (
+          <>
+            <LoadingOutlined /> Loading analysis...
+          </>
+        ) : (
+          toolRunAnalysis
+        )}
+      </p>
+    )
   );
 }

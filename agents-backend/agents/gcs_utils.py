@@ -1,6 +1,5 @@
 # Imports the Google Cloud client library
 
-import logging
 from google.cloud.storage import Client, transfer_manager
 import traceback
 from utils import log_str, success_str, error_str

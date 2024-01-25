@@ -282,7 +282,6 @@ export function ToolResults({
               }
             />
             <div className="tool-run-analysis">
-              <p className="tool-run-analysis-header">ANALYSIS</p>
               <div className="tool-run-analysis-text">
                 {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"] ? (
                   <p style={{ whiteSpace: "pre-wrap" }} className="small code">
