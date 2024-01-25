@@ -1,0 +1,1 @@
+(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[593],{1599:function(n,_,e){(window.__NEXT_P=window.__NEXT_P||[]).push(["/msal_redirect",function(){return e(33137)}])},33137:function(n,_,e){"use strict";e.r(_);var u=e(28598);e(82684),_.default=()=>(0,u.jsx)("div",{children:"msal_redirect"})}},function(n){n.O(0,[774,888,179],function(){return n(n.s=1599)}),_N_E=n.O()}]);

@@ -3,10 +3,12 @@ services:
   agents-app:
     build:
       context: .
-      dockerfile: dockerfile.agents-app
+      # dockerfile: dockerfile.agents-app
+      dockerfile: dockerfile.agents-serve
     ports:
       # use a weird port to avoid conflicts with the user's local stuff
-      - "1234:1234"
+      - "80:80"
+      - "443:443"
     networks:
       - agents-network
 
