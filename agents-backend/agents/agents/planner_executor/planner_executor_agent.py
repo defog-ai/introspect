@@ -160,7 +160,8 @@ class Executor:
                     if retries < max_retries:
                         retries += 1
                         print(
-                            "There was an error running the tool: ", result["error_message"]
+                            "There was an error running the tool: ",
+                            result["error_message"],
                         )
                         print("Retrying...")
                         next_step_data_description = f"There was an error running the tool {step['tool_name']}. This was the error:\n{result['error_message']}"
@@ -212,6 +213,8 @@ class Executor:
                         # store max 20 columns
                         self.tool_outputs_column_descriptions += f"\n{key}: pd.DataFrame with {len(data)} rows and columns: {list(data.columns)[:20]}\n"
                         self.global_dict[key] = data
+                        # name the df too
+                        self.global_dict[key].name = key
                         # warn if more than 20 columns
                         warn_str(
                             f"More than 20 columns in dataset generated for {key}. Only storing the first 20."

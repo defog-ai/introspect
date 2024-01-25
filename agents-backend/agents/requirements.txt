@@ -4,7 +4,6 @@ pandas
 pyyaml
 defog>=0.57.0
 snowflake-connector-python
-pandas
 sqlalchemy
 scipy
 tiktoken
@@ -20,3 +19,4 @@ matplotlib
 seaborn
 redis
 openai
+pandasql

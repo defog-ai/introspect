@@ -13,6 +13,10 @@ tools = [
         "fn": data_fetcher_and_aggregator,
     },
     {
+        "name": "global_dict_data_fetcher_and_aggregator",
+        "fn": global_dict_data_fetcher_and_aggregator,
+    },
+    {
         "name": "dataset_metadata_describer",
         "fn": dataset_metadata_describer,
     },
@@ -47,5 +51,5 @@ tools = [
     {
         "name": "heatmap",
         "fn": heatmap,
-    }
+    },
 ]
