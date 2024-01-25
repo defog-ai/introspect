@@ -86,7 +86,7 @@ class Executor:
             done: false
             inputs: ['Get patient_id, celltype, treatment, survival_in_days, and status from the patients table']
             outputs_storage_keys: ['patient_data']
-            tool_name: "data_fetcher"
+            tool_name: "data_fetcher_and_aggregator"
             tool_run_id: "3496f202-92d3-4c06-a6b2-a093f9867a00"
 
             description: "Generate a Kaplan Meier survival curve stratified by cell type and treatment type"
