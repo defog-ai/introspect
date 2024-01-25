@@ -7,8 +7,8 @@
 toolbox_prompts = {
     "data-fetching": """
 - tool_name: data_fetcher_and_aggregator
-  description: Fetches, filters, aggregates, and performs arithmetic computations by converting a natural language question into a SQL query. Can do filters and aggregations. Important note: this tool can only be used once, at the beginning of the analysis. It cannot be used in the middle of the analysis.
-  inputs: [natural language description of the required as a string]
+  description: Converting a natural language question into a SQL query, that then runs on an external database. Fetches, filters, aggregates, and performs arithmetic computations on data. Remember that this tool does not have access to the data returned by the previous steps. It only has access to the data in the database.
+  inputs: [natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string]
   outputs: pandas df""",
 
     "stats": """- tool_name: dataset_metadata_describer
