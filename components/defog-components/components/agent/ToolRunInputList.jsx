@@ -108,7 +108,7 @@ const inputTypeToUI = {
     availableOutputNodes = [],
     setActiveNode = () => {}
   ) => {
-    const name_clipped = initialValue.replace(/global_dict\./g, "");
+    const name_clipped = initialValue?.replace(/global_dict\./g, "");
     const exists = availableOutputNodes.find(
       (node) => node.data.id === name_clipped
     );
