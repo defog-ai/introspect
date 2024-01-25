@@ -26,7 +26,7 @@ RUN chmod 0644 /etc/cron.d/delete-cron
 
 # Apply cron job
 RUN crontab /etc/cron.d/delete-cron
- 
+
 # Create the log file to be able to run tail
 RUN touch /var/log/cron.log
 
