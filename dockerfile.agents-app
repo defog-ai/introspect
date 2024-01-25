@@ -16,7 +16,7 @@ COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 ENV SHARP_IGNORE_GLOBAL_LIBVIPS=1
 # Forces Local Installation: By setting ENV SHARP_IGNORE_GLOBAL_LIBVIPS 1, you instruct sharp to ignore any globally installed libvips libraries and instead download and use a local, known-compatible version of libvips. This can help avoid compatibility issues and ensure that sharp has the correct version of libvips it needs.
 
-RUN npm ci
+RUN npm ci --verbose
 
 # Rebuild the source code only when needed
 FROM base AS builder
