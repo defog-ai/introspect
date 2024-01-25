@@ -18,8 +18,6 @@ export default function ToolRunAnalysis({ question, data_csv }) {
 
       const response = JSON.parse(event.data);
 
-      console.log(response);
-
       if (response && response.model_analysis) {
         setToolRunAnalysis((prev) => {
           return (prev ? prev : "") + response.model_analysis;
