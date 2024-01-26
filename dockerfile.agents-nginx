@@ -1,0 +1,15 @@
+# get nginx
+FROM nginx:latest
+
+# copy the nginx config file
+COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
+
+# copy the build output to replace the default nginx contents
+COPY ./out /var/www/html
+
+# expose ports 80 and 443
+EXPOSE 80
+EXPOSE 443
+
+# run nginx
+CMD ["nginx", "-g", "daemon off;"]

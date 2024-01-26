@@ -1,8 +1,0 @@
-# Use an Apache base image
-FROM python:3.10
-
-COPY ./out/ .
-
-EXPOSE 80
-
-CMD ["python3", "serve.py"]
