@@ -67,7 +67,9 @@ export const ReactiveVariableNode = Node.create({
   renderHTML({ HTMLAttributes }) {
     return ["reactive-var", mergeAttributes(HTMLAttributes)];
   },
-  addNodeView() {
+  addNodeView(d) {
+    console.log(d);
+
     return ReactNodeViewRenderer(ReactiveVariableNodeView);
   },
 });

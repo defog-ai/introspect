@@ -31,6 +31,7 @@ import { Context } from "../../../../components/common/Context";
 import { createAnalysis, getAnalysis } from "../../../../utils/utils";
 import setupBaseUrl from "../../../../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../../../../utils/websocket-manager";
+import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
 
 // the name of the prop where the data is stored for each stage
 const propNames = {
@@ -61,6 +62,7 @@ export const AnalysisAgent = ({
   const [pendingToolRunUpdates, setPendingToolRunUpdates] = useState({});
   const [reRunningSteps, setRerunningSteps] = useState([]);
   const relatedAnalysesContext = useContext(RelatedAnalysesContext);
+  const reactiveContext = useContext(ReactiveVariablesContext);
 
   const [analysisTitle, setAnalysisTitle] = useState(
     analysisData?.user_question?.toUpperCase()
@@ -248,12 +250,28 @@ export const AnalysisAgent = ({
           [res.tool_run_id]: Object.assign({}, res),
         };
       });
+
       // remove all pending updates for this tool_run_id
       // because all new data is already there in the received response
       setPendingToolRunUpdates((prev) => {
         const newUpdates = { ...prev };
         delete newUpdates[res.tool_run_id];
         return newUpdates;
+      });
+
+      // update reactive context
+      Object.keys(res?.tool_run_data?.outputs || {}).forEach((k, i) => {
+        if (!res?.tool_run_data?.outputs?.[k]?.reactive_vars) return;
+        const runId = res.tool_run_id;
+        reactiveContext.update((prev) => {
+          return {
+            ...prev,
+            [runId]: {
+              ...prev[runId],
+              [k]: res?.tool_run_data?.outputs?.[k]?.reactive_vars,
+            },
+          };
+        });
       });
     }
 

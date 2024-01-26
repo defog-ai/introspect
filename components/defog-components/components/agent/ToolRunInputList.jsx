@@ -9,7 +9,7 @@ const inputTypeToUI = {
         <span className="list-bracket">[</span>
         {initialValue.map((val, i) => {
           return (
-            <span key={i + "-" + val}>
+            <span key={inputName}>
               <Input
                 defaultValue={val}
                 size="small"

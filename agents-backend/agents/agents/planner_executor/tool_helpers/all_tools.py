@@ -11,10 +11,12 @@ tools = [
     {
         "name": "data_fetcher_and_aggregator",
         "fn": data_fetcher_and_aggregator,
+        "no_code": True,
     },
     {
         "name": "global_dict_data_fetcher_and_aggregator",
         "fn": global_dict_data_fetcher_and_aggregator,
+        "no_code": True,
     },
     {
         "name": "dataset_metadata_describer",

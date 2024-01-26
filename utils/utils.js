@@ -208,3 +208,7 @@ export const getToolRunData = async (toolRunId) => {
     return;
   }
 };
+
+export const isNullOrUndefined = function (val) {
+  return val === null || val === undefined;
+};

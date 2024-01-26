@@ -11,6 +11,7 @@ To create a new toolbox, you need to do the following:
 3. Inside `tool_helpers/all_tools.py`, import all your functions from the above `tools.py`, and add them to the tools object. This is the object that is looked up when running the tool.
 4. Inside `toolboxes/toolbox_prompts.py`, add another property to the toolbox_prompts object. The property name can be whatever you want your toolbox to be called (ideally your folder name you created above), and add a formatted description of your tools in the value. This is the string that will be sent to the model in the prompt. Make sure it is formatted like the other strings in that file.
 5. Inside `tool_helpers/toolbox_manager.py`, add your toolbox to the `all_toolboxes` list. The value you add should be the name of the property you created in the above step.
+6. If you don't want your tool'd code to be sent to the front end, add a property `"no_code": True` to the `tool_helpers/all_tools.py` entry you created in step 3.
 
 After you've completed the above, you can add users who will have access to these toolboxes by adding an entry into the defog_toolboxes table.
 

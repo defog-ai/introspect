@@ -1,3 +1,4 @@
+from operator import and_
 from .tool_helpers.all_tools import tools
 from defog import Defog
 import pandas as pd
@@ -78,8 +79,10 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
             finally:
                 # if result has no code_str, use inspect.getsource to get code_str
                 if "code_str" not in result:
-                    if "ask_prompt" not in inspect.getsource(fn):
+                    if not tool.get("no_code"):
                         result["code_str"] = inspect.getsource(fn)
+                    else:
+                        result["code_str"] = None
 
                 return result, parse_function_signature(
                     inspect.signature(fn).parameters

@@ -1,3 +1,4 @@
+import traceback
 from fastapi import APIRouter, Request
 from defog import Defog
 import redis  # use redis for caching – atleast for now
@@ -85,7 +86,12 @@ async def get_tables_db_creds(request: Request):
     if tables:
         tables = json.loads(tables)
         db_creds = json.loads(db_creds)
-        return {"tables": tables, "db_type": db_type, "db_creds": db_creds, "selected_tables": selected_tables}
+        return {
+            "tables": tables,
+            "db_type": db_type,
+            "db_creds": db_creds,
+            "selected_tables": selected_tables,
+        }
     else:
         return {"error": "no tables found"}
 
@@ -100,7 +106,7 @@ async def generate_metadata(request: Request):
     tables = params.get("tables", None)
     if not tables:
         return {"error": "no tables selected"}
-    
+
     redis_client.set("integration:selected_tables", json.dumps(tables))
 
     api_key = DEFOG_API_KEY
@@ -111,13 +117,22 @@ async def generate_metadata(request: Request):
         return {
             "error": "you must first provide the database credentials before this step"
         }
-    
-    defog = Defog(api_key, db_type, json.loads(db_creds))
-    table_metadata = defog.generate_db_schema(tables=tables, scan=True, upload=True, return_format="csv_string")
-    metadata = pd.read_csv(StringIO(table_metadata)).fillna("").to_dict(orient="records")
-    redis_client.set(f"integration:status", "edited_metadata")
-    redis_client.set(f"integration:metadata", table_metadata)
-    return {"metadata": metadata}
+
+    try:
+        defog = Defog(api_key, db_type, json.loads(db_creds))
+        table_metadata = defog.generate_db_schema(
+            tables=tables, scan=True, upload=True, return_format="csv_string"
+        )
+        metadata = (
+            pd.read_csv(StringIO(table_metadata)).fillna("").to_dict(orient="records")
+        )
+        redis_client.set(f"integration:status", "edited_metadata")
+        redis_client.set(f"integration:metadata", table_metadata)
+        return {"metadata": metadata}
+    except Exception as e:
+        traceback.print_exc()
+
+        return {"error": str(e)}
 
 
 @router.post("/integration/get_metadata")

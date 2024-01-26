@@ -94,22 +94,6 @@ export function TableChart({
     [reactiveContext.val, tableId]
   );
 
-  // useEffect(() => {
-  //   if (!reactiveVars) return;
-  //   Object.defineProperty(newTableData.reactive_vars, "analysisData", {
-  //     get() {
-  //       return analysisData;
-  //     },
-  //   });
-
-  //   reactiveContext.update((prev) => {
-  //     return {
-  //       ...prev,
-  //       [tableId]: newTableData.reactive_vars,
-  //     };
-  //   });
-  // }, [analysisData]);
-
   let extraTabs = [];
 
   function onMessage(msg) {

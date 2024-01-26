@@ -198,4 +198,4 @@ async def hazard_ratio(
         full_data = pd.DataFrame()
         success = False
     finally:
-        return {"success": success, "outputs": [{"data": full_data}]}
+        return {"success": success, "outputs": [{"data": results}]}

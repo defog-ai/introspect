@@ -4,7 +4,7 @@ all_toolboxes = ["cancer-survival", "f1"]
 
 
 def get_tool_library(toolboxes=[]):
-    toolboxes += ["data-fetching", "stats", "plots"]
+    toolboxes += ["data-fetching", "stats", "plots", "cancer-survival"]
     toolboxes = list(set(toolboxes))
     prompt = ""
     # now get the prompt for each

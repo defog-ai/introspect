@@ -73,26 +73,6 @@ const ExtractMetadata = () => {
     }
   };
 
-  const generateMetadata = async () => {
-    const token = context.token;
-    if (!token) {
-      return;
-    }
-    const res = await fetch(
-      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_metadata`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          token,
-        }),
-      }
-    );
-    const data = await res.json();
-    if (!data.error) {
-      setMetadata(data?.metadata || []);
-    }
-  };
-
   useEffect(() => {
     setLoading(true);
     let userType = context.userType;
@@ -172,7 +152,12 @@ const ExtractMetadata = () => {
                       }
                     );
                     const data = await res.json();
-                    setTables(data["tables"]);
+
+                    if (data.error) {
+                      message.error(data.error);
+                    } else {
+                      setTables(data["tables"]);
+                    }
                   } catch (e) {
                     console.log(e);
                   }
@@ -234,25 +219,35 @@ const ExtractMetadata = () => {
                   disabled={loading}
                   onFinish={async (values) => {
                     setLoading(true);
-                    const res = await fetch(
-                      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_metadata`,
-                      {
-                        method: "POST",
-                        body: JSON.stringify({
-                          tables: values["tables"],
-                          token: context.token,
-                        }),
+                    try {
+                      const res = await fetch(
+                        `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_metadata`,
+                        {
+                          method: "POST",
+                          body: JSON.stringify({
+                            tables: values["tables"],
+                            token: context.token,
+                          }),
+                        }
+                      );
+                      const data = await res.json();
+
+                      if (data.error) {
+                        message.error(data.error);
+                      } else {
+                        setMetadata(data?.metadata || []);
                       }
-                    );
-                    const data = await res.json();
+                    } catch (e) {
+                      console.log(e);
+                    }
+
                     setLoading(false);
-                    setMetadata(data?.metadata || []);
                   }}
                 >
                   <Form.Item
                     name="tables"
                     label="Tables to index"
-                    value={selectedTables}
+                    initialValue={selectedTables}
                   >
                     <Select
                       mode="multiple"
@@ -392,7 +387,13 @@ const ExtractMetadata = () => {
                     </Col>
                     <Col xs={{ span: 24 }} md={{ span: 12 }}>
                       <Input.TextArea
-                        key={index}
+                        key={
+                          index +
+                          "_name_" +
+                          item.column_name +
+                          "table_name_" +
+                          item.table_name
+                        }
                         placeholder="Description of what this column does"
                         defaultValue={item.column_description}
                         autoSize={{ minRows: 2 }}
