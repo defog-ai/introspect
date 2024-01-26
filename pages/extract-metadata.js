@@ -363,7 +363,7 @@ const ExtractMetadata = () => {
             {metadata.length > 0 &&
               metadata.map((item, index) => {
                 return (
-                  <Row key={index} style={{ marginTop: "1em" }}>
+                  <Row key={index + "_" + item} style={{ marginTop: "1em" }}>
                     <Col
                       xs={{ span: 24 }}
                       md={{ span: 4 }}
@@ -387,15 +387,8 @@ const ExtractMetadata = () => {
                     </Col>
                     <Col xs={{ span: 24 }} md={{ span: 12 }}>
                       <Input.TextArea
-                        key={
-                          index +
-                          "_name_" +
-                          item.column_name +
-                          "table_name_" +
-                          item.table_name
-                        }
                         placeholder="Description of what this column does"
-                        defaultValue={item.column_description}
+                        value={item.column_description}
                         autoSize={{ minRows: 2 }}
                         onChange={(e) => {
                           const newMetadata = [...metadata];

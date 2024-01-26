@@ -123,6 +123,7 @@ async def generate_metadata(request: Request):
         table_metadata = defog.generate_db_schema(
             tables=tables, scan=True, upload=True, return_format="csv_string"
         )
+
         metadata = (
             pd.read_csv(StringIO(table_metadata)).fillna("").to_dict(orient="records")
         )
