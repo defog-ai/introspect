@@ -131,7 +131,8 @@ async def kaplan_meier_curve(
                         },
                     }
                 )
-
+        
+        plt.close()
         success = True
     except Exception as e:
         success = False
