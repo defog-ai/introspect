@@ -30,6 +30,14 @@ async def boxplot(
     """
     Generates a boxplot using python's seaborn library. Also accepts faceting columns.
     """
+    if len(boxplot_cols) == 1:
+        if boxplot_cols[0] == "label":
+            new_col = "label_"
+        else:
+            new_col = "label"
+        boxplot_cols = [new_col, boxplot_cols[0]]
+        full_data[new_col] = ""
+    
     outputs = []
     boxplot_path = f"boxplots/boxplot-{uuid4()}.png"
     fig, ax = plt.subplots()
@@ -79,6 +87,8 @@ async def boxplot(
         )
         plt.xticks(rotation=45)
         plt.savefig(f"{report_assets_dir}/{boxplot_path}", dpi=300, bbox_inches="tight")
+    
+    plt.close()
 
     return {
         "outputs": [
@@ -181,6 +191,7 @@ async def heatmap(
         raise ValueError("Invalid aggregation_type")
 
     plt.savefig(f"{report_assets_dir}/{heatmap_path}", dpi=300, bbox_inches="tight")
+    plt.close()
 
     return {
         "outputs": [
@@ -227,6 +238,8 @@ async def line_plot(
     plot.figure.savefig(
         f"{report_assets_dir}/{chart_path}", dpi=300, bbox_inches="tight"
     )
+
+    plt.close()
 
     return {
         "outputs": [
