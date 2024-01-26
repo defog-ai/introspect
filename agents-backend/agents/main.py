@@ -49,7 +49,7 @@ report_assets_dir = env["report_assets_dir"]
 app.include_router(doc_endpoints.router)
 
 
-@app.get("/")
+@app.get("/ping")
 async def root():
     return {"message": "Hello World"}
 
