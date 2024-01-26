@@ -9,7 +9,7 @@ export default function ChartImage({ images = [] }) {
         <img
           ref={(ref) => (imgRefs.current[i] = ref)}
           src={
-            "http://localhost:1235/get_assets?path=" +
+            `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/get_assets?path=` +
             encodeURIComponent(image.path)
           }
           key={i}
