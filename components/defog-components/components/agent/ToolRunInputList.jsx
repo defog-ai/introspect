@@ -188,7 +188,7 @@ export function ToolRunInputList({
     <div className="tool-input-list">
       {inputs.map((input, i) => {
         return (
-          <div key={i} className="tool-input">
+          <div key={i + "_" + toolRunId} className="tool-input">
             <span className="tool-input-type">{functionSignature[i].type}</span>
             <span className="tool-input-name">{functionSignature[i].name}</span>
 

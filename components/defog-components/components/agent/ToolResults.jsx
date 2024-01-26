@@ -156,6 +156,8 @@ export function ToolResults({
     [toolRunDataCache, reactiveContext, analysisData]
   );
 
+  if (toolRunData) console.log(toolRunData);
+
   function handleEdit({ analysis_id, tool_run_id, update_prop, new_val }) {
     if (!tool_run_id) return;
     if (!analysis_id) return;

@@ -1,7 +1,9 @@
+import inspect
 from agents.planner_executor.tool_helpers.all_tools import *
 from db_utils import store_tool_run, get_tool_run, update_tool_run_data
 from colorama import Style
 from agents.planner_executor.execute_tool import execute_tool
+
 # from gcs_utils import file_exists_in_gcs, get_file_from_gcs
 from agents.planner_executor.tool_helpers.core_functions import *
 from utils import error_str, log_str, success_str
@@ -128,6 +130,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
 
                         if found:
                             df = pd.read_feather(f_path)
+                            df.name = var
                             global_dict[var] = df
 
                     if not found or tool_run_data["edited"]:
@@ -189,9 +192,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
             result = None
             new_data = None
             try:
-                result = await fetch_query_into_df(
-                    tool_run_details["sql"]
-                )
+                result = await fetch_query_into_df(tool_run_details["sql"])
             except Exception as e:
                 err = str(e)
                 result = None
@@ -200,6 +201,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
             if not err:
                 # save the result in the global_dict
                 global_dict[output_nm] = result
+                global_dict[output_nm].name = output_nm
                 # first remove any errors
                 update_res = await update_tool_run_data(
                     analysis_id,
@@ -261,6 +263,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
             # save the result["outputs"]
             if not err:
                 global_dict[output_nm] = result["outputs"][0]["data"]
+                global_dict[output_nm].name = output_nm
 
                 # first remove any errors from target_step
                 target_step["error_message"] = None
@@ -307,6 +310,10 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
     # with the resolved inputs
     else:
         code_str = tool_run_details["code_str"]
+        # if not code_str and it's the global_dict_data_fetcher_and_aggregator, get it's code_str
+        if not code_str and f_nm == "global_dict_data_fetcher_and_aggregator":
+            code_str = inspect.getsource(global_dict_data_fetcher_and_aggregator)
+
         # add a line calling the function and spread the inputs
         # define the function
         err = None
@@ -348,6 +355,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
                 data = result["outputs"][i]["data"]
                 if data is not None and isinstance(data, pd.DataFrame):
                     global_dict[out] = result["outputs"][i]["data"]
+                    global_dict[out].name = out
         else:
             print(error_str(f"Error re running step: {err}"))
 

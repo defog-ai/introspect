@@ -73,11 +73,19 @@ async def global_dict_data_fetcher_and_aggregator(
 
     # create metadata using input_df's columns as a csv string with the format:
     # table_name,column_name,column_data_type
-    metadata = ",".join(
+    metadata = "table_name,column_name,column_data_type\n"
+    metadata += "\n".join(
         [f"{df_name},{col},{input_df[col].dtype}" for col in input_df.columns]
     )
 
+    # replace "object\n" with "string\n" because there is no object data type in SQL
+    metadata = metadata.replace("object\n", "string\n")
+    print(
+        "Running global_dict_data_fetcher_and_aggregator with this custom metadata: \n"
+    )
+    print("\n\n")
     print(metadata)
+    print("\n\n")
 
     question += ". Give me SQLite SQL, not Postgres"
 
@@ -122,4 +130,3 @@ async def global_dict_data_fetcher_and_aggregator(
         "outputs": [{"data": df, "analysis": analysis}],
         "sql": query.strip(),
     }
-    pass
