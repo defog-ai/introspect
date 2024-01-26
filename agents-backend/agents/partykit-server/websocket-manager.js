@@ -1,9 +1,8 @@
 export function setupWebsocketManager(
-  url = "wss://agents.defog.ai/editor",
+  url = `ws://agents-nginx/editor`,
   onMessage = () => {}
 ) {
   let socket = null;
-  let _url = url;
   let log = false;
 
   function connect() {
