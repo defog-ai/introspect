@@ -67,7 +67,7 @@ def initialise_report(user_question, api_key, username, custom_id=None, other_da
                 report_id = str(uuid.uuid4())
             else:
                 report_id = custom_id
-            print("Creating new report with uuid: ", report_id)
+            print("Creating new report with uuid: ", report_id, flush=True)
             new_report_data = {
                 "user_question": user_question,
                 "timestamp": timestamp,
@@ -108,6 +108,7 @@ def initialise_report(user_question, api_key, username, custom_id=None, other_da
                         print(
                             "Could not find parent analysis with id: ",
                             parent_analysis_id,
+                            flush=True
                         )
 
     except Exception as e:
@@ -177,7 +178,7 @@ def get_report_data(report_id):
             err = "Could not find report. Are you sure you have the correct link?"
 
         elif report_id != "" and report_id is not None and report_id != "new":
-            print("Looking for uuid: ", report_id)
+            print("Looking for uuid: ", report_id, flush=True)
             # try to fetch report_data data
             with engine.begin() as conn:
                 rows = conn.execute(
@@ -186,7 +187,7 @@ def get_report_data(report_id):
 
                 if rows.rowcount != 0:
                     #  7b2b3091-02d1-45d4-9210-e8d855118690
-                    print("Found uuid: ", report_id)
+                    print("Found uuid: ", report_id, flush=True)
                     row = rows.fetchone()
                     report_data = report_data_from_row(row)
                 else:
@@ -242,8 +243,8 @@ def update_report_data(report_id, request_type=None, new_data=None, replace=Fals
                         curr_data = curr_data + new_data
                     else:
                         curr_data = new_data
-                    print("writing to ", request_type, "in report id: ", report_id)
-                    print("writing array of length: ", len(curr_data))
+                    print("writing to ", request_type, "in report id: ", report_id, flush=True)
+                    print("writing array of length: ", len(curr_data), flush=True)
                     # insert back into reports table
                     conn.execute(
                         update(Reports)
@@ -361,7 +362,7 @@ async def add_to_recently_viewed_docs(username, api_key, doc_id, timestamp):
             )
 
             if rows.rowcount != 0:
-                print("Adding to recently viewed docs for user: ", username)
+                print("Adding to recently viewed docs for user: ", username, flush=True)
                 # get the recent_docs array
                 row = rows.fetchone()
                 recent_docs = row.recent_docs or []
@@ -399,9 +400,9 @@ async def add_to_recently_viewed_docs(username, api_key, doc_id, timestamp):
                     )
                 )
     except Exception as e:
-        print(e)
+        print(e, flush=True)
         # traceback.print_exc()
-        print("Could not add to recently viewed docs\n")
+        print("Could not add to recently viewed docs\n", flush=True)
 
 
 async def get_doc_data(doc_id, api_key, username, col_name="doc_blocks"):
@@ -422,7 +423,7 @@ async def get_doc_data(doc_id, api_key, username, col_name="doc_blocks"):
 
             if rows.rowcount != 0:
                 # document exists
-                print("Found document with id: ", doc_id)
+                print("Found document with id: ", doc_id, flush=True)
                 row = rows.fetchone()
                 doc_data = {
                     "doc_id": row.doc_id,
@@ -431,7 +432,7 @@ async def get_doc_data(doc_id, api_key, username, col_name="doc_blocks"):
 
             else:
                 # create a new document
-                print("Creating new document with id: ", doc_id)
+                print("Creating new document with id: ", doc_id, flush=True)
                 doc_data = {
                     "doc_id": doc_id,
                     "doc_blocks": None,
@@ -478,12 +479,12 @@ async def update_doc_data(doc_id, col_names=[], new_data={}):
             )
 
             if rows.rowcount != 0:
-                print("Updating document with id: ", doc_id, "column: ", col_names)
+                print("Updating document with id: ", doc_id, "column: ", col_names, flush=True)
                 conn.execute(update(Docs).where(Docs.doc_id == doc_id).values(new_data))
             else:
                 err = "Doc not found."
                 print("\n\n\n")
-                print(err)
+                print(err, flush=True)
                 print("\n\n\n")
                 raise ValueError(err)
     except Exception as e:
@@ -501,7 +502,7 @@ def create_table_chart(table_data):
 
     try:
         with engine.begin() as conn:
-            print("Creating new table chart with id: ", table_data.get("table_id"))
+            print("Creating new table chart with id: ", table_data.get("table_id"), flush=True)
             conn.execute(insert(TableCharts).values(table_data))
 
     except Exception as e:
@@ -532,7 +533,7 @@ async def update_table_chart_data(table_id, edited_table_data):
                 err = "Invalid table id"
             else:
                 # print(edited_table_data)
-                print("Running table again...")
+                print("Running table again...", flush=True)
 
                 # execute the new code
                 err, analysis, updated_data = await execute_code(
@@ -563,7 +564,7 @@ async def update_table_chart_data(table_id, edited_table_data):
                     }
 
                     # insert the data back into TableCharts table
-                    print("writing to table chart, table id: ", table_id)
+                    print("writing to table chart, table id: ", table_id, flush=True)
                     updated_data["edited"] = True
 
                     conn.execute(
@@ -572,12 +573,12 @@ async def update_table_chart_data(table_id, edited_table_data):
                         .values(updated_data)
                     )
                 else:
-                    print("Error: ", err)
+                    print("Error: ", err, flush=True)
     except Exception as e:
         err = str(e)
         analysis = None
         updated_data = None
-        print(e)
+        print(e, flush=True)
         traceback.print_exc()
     finally:
         return err, analysis, updated_data
@@ -598,7 +599,7 @@ async def get_table_data(table_id):
 
             if rows.rowcount != 0:
                 # document exists
-                print("Found table with id: ", table_id)
+                print("Found table with id: ", table_id, flush=True)
                 row = rows.fetchone()
                 table_data = row._mapping
 
@@ -946,7 +947,7 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
     if tool_run_id is None or prop is None or analysis_id is None:
         return "Invalid tool run data"
 
-    print("Updating property: ", prop, " with value: ", new_val)
+    print("Updating property: ", prop, " with value: ", new_val, flush=True)
 
     try:
         with engine.begin() as conn:
