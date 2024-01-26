@@ -4,8 +4,14 @@ FROM nginx:latest
 # copy the nginx config file
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 
+ARG ENDPOINT=""
+ENV ENDPOINT=$ENDPOINT
+
 # copy the build output to replace the default nginx contents
 COPY ./out /var/www/html
+
+# modify every single file in the /var/www/html dir to replace the endpoint
+RUN find /var/www/html -type f -exec sed -i "s/DEFOGHOSTNAME/$ENDPOINT/g" {} \;
 
 # expose ports 80 and 443
 EXPOSE 80
