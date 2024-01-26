@@ -1,5 +1,5 @@
 export function setupWebsocketManager(
-  url = `wss://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/editor`,
+  url = `ws://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/editor`,
   onMessage = () => {}
 ) {
   let socket = null;
