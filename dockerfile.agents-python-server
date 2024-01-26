@@ -44,7 +44,6 @@ RUN mkdir -p /agents-assets/report-assets/kaplan-meier-plots
 RUN mkdir -p /agents-assets/report-assets/linechart 
 RUN mkdir -p /agents-assets/report-assets/linecharts
 RUN touch /agent-logs-out
-RUN touch /agent-logs-err
 
 RUN crontab /etc/cron.d/delete-cron
 

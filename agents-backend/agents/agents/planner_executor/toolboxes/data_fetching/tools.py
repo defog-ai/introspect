@@ -87,7 +87,7 @@ async def global_dict_data_fetcher_and_aggregator(
     print(metadata)
     print("\n\n")
 
-    question += ". Give me SQLite SQL, not Postgres"
+    question += ". Give me SQLite SQL, not Postgres. Remember that SQLite does not support all the features of Postgres like stddev, variance, etc. You will have to calculate them yourself."
 
     # send the data to an API, and get a response from it
     url = "https://defog-llm-calls-ktcmdcmg4q-uc.a.run.app"
