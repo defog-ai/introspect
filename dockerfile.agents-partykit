@@ -6,13 +6,6 @@ COPY ./agents-backend/agents/partykit-server ./
 
 RUN npm install
 
-RUN apt-get update && apt-get install -y nginx
-
-# copy nginx config
-COPY ./agents-backend/docker-setup-files/nginx.conf /etc/nginx/sites-available/default
-
 EXPOSE 1999
 
-EXPOSE 2000
-
-CMD service nginx start && npx partykit dev
+CMD npx partykit dev
