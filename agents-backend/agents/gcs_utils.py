@@ -24,7 +24,7 @@ async def store_files_to_gcs(paths):
             else (path, bucket.blob(path))
             for path in paths
         ]
-        print(file_blob_pairs, flush=True)
+        print(file_blob_pairs)
         # we can't use worker type "process" because spawing child process isn't allowed from daemons which is how i think the hypercorn server runs.
         transfer_manager.upload_many(file_blob_pairs, worker_type="thread")
 

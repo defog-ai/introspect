@@ -234,7 +234,6 @@ async def websocket_endpoint(websocket: WebSocket):
                         if "generator" in agent_output:
                             g = agent_output["generator"]
                             async for out in g():
-                                sys.stdout.flush()
                                 # allow our generators to yield None
                                 if out is not None:
                                     resp["output"] = {

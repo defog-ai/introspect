@@ -74,8 +74,7 @@ async def execute(
     This takes quite long as of now. Needs to be parallelised for the future.
     """
     print("Evaling approaches")
-    sys.stdout.flush()
-
+    
     executor = Executor(
         report_id,
         user_question,
