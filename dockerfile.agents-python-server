@@ -53,5 +53,7 @@ COPY ./agents-backend/docker-setup-files/supervisord.conf /etc/supervisor/conf.d
 # copy supervisor startup conf
 COPY ./agents-backend/docker-setup-files/start-python-server.conf /etc/supervisor/conf.d/start-python-server.conf
 
+ENV PYTHONUNBUFFERED=true
+
 # start startup script
 CMD /bin/bash /startup.sh $OPENAI_API_KEY
