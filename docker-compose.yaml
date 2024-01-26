@@ -50,6 +50,8 @@ services:
     build:
       context: .
       dockerfile: dockerfile.agents-nginx
+      args:
+        ENDPOINT: "${ENDPOINT}"
     ports:
       - "80:80"
       - "443:443"
