@@ -25,7 +25,7 @@ import ErrorBoundary from "../common/ErrorBoundary";
 import setupBaseUrl from "../../utils/setupBaseUrl";
 
 // remove the last slash from the url
-const partyEndpoint = process.env.NEXT_PUBLIC_PARTYKIT_ENDPOINT;
+const partyEndpoint = process.env.NEXT_PUBLIC_AGENTS_ENDPOINT;
 const recentlyViewedEndpoint = setupBaseUrl(
   "http",
   "add_to_recently_viewed_docs"
