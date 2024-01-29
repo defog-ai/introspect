@@ -15,6 +15,9 @@ COPY ./agents-backend/agents/requirements.txt ./requirements.txt
 # install requirements
 RUN pip install -r requirements.txt
 
+# install defog-python, which we want to isolate from the cached builds of the main requirements.txt for faster builds
+RUN pip install defog==0.60.0
+
 # copy deletion cron
 COPY ./agents-backend/docker-setup-files/delete-cron /etc/cron.d/delete-cron
 
