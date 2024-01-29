@@ -43,7 +43,38 @@ So I had to also open port `2000`, make an nginx that redirects `http://localhos
 
 The following sections explain how to test portions of the different containers locally. This could be helpful when debugging.
 
-### Running Agents App Locally
+### Testing the UI
+
+We use [playwright](https://playwright.dev/) to test the UI. The tests are located in `test-ui/`. To run the tests you can directly run the following command:
+
+```bash
+# if first time running, install playwright:
+npx playwright install
+# then run the tests:
+npx playwright test
+# or in UI mode (useful for debugging)
+npx playwright test --ui
+```
+
+This command will start all of the docker containers (if not already running) via [start-containers.sh](test-ui/start-containers.sh) and then run the tests. This is to spin up the full app and enable our tests to verify the end-to-end behavior (including the backend). If you're adding new containers to or removing any containers from our [docker-compose.yaml](docker-compose.yaml), please update the expected container count in [start-containers.sh](test-ui/start-containers.sh) to ensure that our container script expects the right number of containers.
+
+#### Test Structure
+
+Each test file `*.spec.js` should correspond with a route or some component of the UI. Once the test is done, it will output the results in the `test-results` folder, with a highly readable HTML output served at a custom port. You can view the results by opening the HTML file in your browser.
+
+#### VSCode Debugging
+
+You can also install the playwright extension for VSCode and debug the tests from there.
+
+#### Codegen for Tests
+
+You can use the following command to generate the playwright code from a set of recorded actions on the actual UI:
+
+```sh
+npx playwright codegen http://localhost:1234
+```
+
+### Running Front-end Locally
 
 This project requires Node.js. If you don't have it, you can follow the instructions [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm#using-a-node-installer-to-install-nodejs-and-npm).
 
