@@ -171,6 +171,21 @@ const ViewNotebooks = () => {
       <Meta />
       <Scaffolding id={"view-notebooks"} userType={context.userType}>
         <h1>Notebooks</h1>
+
+        <h2 className="header">Your notebooks</h2>
+        <div className="doc-icons-container">
+          {ownDocs && !loading ? (
+            <>
+              <DocIcon addDocIcon={true} />
+              {ownDocs.map((doc) => (
+                <DocIcon doc={doc} key={doc.doc_id} onClick={archiveToggle} />
+              ))}
+            </>
+          ) : (
+            <div>Loading docs...</div>
+          )}
+        </div>
+
         {recentlyViewed.length ? (
           <h2 className="header">Recently viewed</h2>
         ) : null}
@@ -188,20 +203,6 @@ const ViewNotebooks = () => {
             </>
           ) : (
             <div>Loading recently viewed docs...</div>
-          )}
-        </div>
-
-        <h2 className="header">Your notebooks</h2>
-        <div className="doc-icons-container">
-          {ownDocs && !loading ? (
-            <>
-              <DocIcon addDocIcon={true} />
-              {ownDocs.map((doc) => (
-                <DocIcon doc={doc} key={doc.doc_id} onClick={archiveToggle} />
-              ))}
-            </>
-          ) : (
-            <div>Loading docs...</div>
           )}
         </div>
 
