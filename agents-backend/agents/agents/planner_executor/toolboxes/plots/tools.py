@@ -226,6 +226,10 @@ async def line_plot(
     else:
         relevant_columns = [x_column, y_column]
     df = full_data.dropna(subset=relevant_columns)
+
+    # sort the dataframe by the x_column
+    df = df.sort_values(by=[x_column])
+
     chart_path = f"linecharts/linechart-{uuid4()}.png"
     fig, ax = plt.subplots()
     plt.xticks(rotation=45)
