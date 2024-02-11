@@ -22,7 +22,7 @@ toolbox_prompts = {
 
 - tool_name: line_plot
   description: This function generates a line plot using python's seaborn library. It should be used when the user wants to see how a variable changes over time, and should be used immediately after the data_fetcher tool.
-  inputs: ["global_dict.<input_df_name>", xaxis column, yaxis column, hue column (optional)],
+  inputs: ["global_dict.<input_df_name>", xaxis column, yaxis column, hue column (optional), facet column (optional), estimator ("mean" if data must be aggregated, None if it is not aggregated)]
   outputs: pandas df
   
 -tool_name: t_test

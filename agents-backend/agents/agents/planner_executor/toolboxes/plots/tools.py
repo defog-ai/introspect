@@ -37,7 +37,7 @@ async def boxplot(
             new_col = "label"
         boxplot_cols = [new_col, boxplot_cols[0]]
         full_data[new_col] = ""
-    
+
     outputs = []
     boxplot_path = f"boxplots/boxplot-{uuid4()}.png"
     fig, ax = plt.subplots()
@@ -87,7 +87,7 @@ async def boxplot(
         )
         plt.xticks(rotation=45)
         plt.savefig(f"{report_assets_dir}/{boxplot_path}", dpi=300, bbox_inches="tight")
-    
+
     plt.close()
 
     return {
@@ -213,6 +213,8 @@ async def line_plot(
     x_column: str,
     y_column: str,
     hue_column: str = None,
+    facet_col: str = None,
+    estimator: str = "mean",
     global_dict: dict = {},
     **kwargs,
 ):
@@ -228,12 +230,24 @@ async def line_plot(
     fig, ax = plt.subplots()
     plt.xticks(rotation=45)
     # create the plot
-    plot = sns.lineplot(
-        data=df[relevant_columns],
-        x=x_column,
-        y=y_column,
-        hue=hue_column,
-    )
+    if facet_col is None:
+        plot = sns.lineplot(
+            data=df[relevant_columns],
+            x=x_column,
+            y=y_column,
+            hue=hue_column,
+            estimator=estimator,
+        )
+    else:
+        plot = sns.relplot(
+            data=df[relevant_columns],
+            x=x_column,
+            y=y_column,
+            hue=hue_column,
+            kind="line",
+            col=facet_col,
+            estimator=estimator,
+        )
     # save the plot
     plot.figure.savefig(
         f"{report_assets_dir}/{chart_path}", dpi=300, bbox_inches="tight"

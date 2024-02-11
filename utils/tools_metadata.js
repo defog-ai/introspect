@@ -55,6 +55,16 @@ export const toolsMetadata = {
         default: null,
         type: "str",
       },
+      {
+        name: "facet_col",
+        default: null,
+        type: "str",
+      },
+      {
+        name: "estimator",
+        default: "mean",
+        type: "str",
+      },
     ],
   },
   kaplan_meier_curve: {
