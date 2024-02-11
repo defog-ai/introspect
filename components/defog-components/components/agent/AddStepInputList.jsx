@@ -43,7 +43,7 @@ const inputTypeToUI = {
           return (
             <span key={inputName}>
               <Input
-                autoFocus={config?.autoFocus}
+                // autoFocus={config?.autoFocus}
                 defaultValue={val}
                 size="small"
                 onChange={(ev) => {
@@ -194,12 +194,12 @@ export function AddStepInputList({
   const functionSignature = toolMetadata?.function_signature || [];
   const ctr = useRef(null);
 
-  useEffect(() => {
-    // if autoFocus, focus onthe first input
-    if (ctr && autoFocus) {
-      ctr?.current?.querySelector("input[type=text]")?.focus();
-    }
-  });
+  // useEffect(() => {
+  //   // if autoFocus, focus onthe first input
+  //   if (ctr && autoFocus) {
+  //     ctr?.current?.querySelector("input[type=text]")?.focus();
+  //   }
+  // });
 
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
