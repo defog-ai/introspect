@@ -73,7 +73,7 @@ const inputTypeToUI = {
     if (!initialValue) initialValue = "";
     return (
       <Input
-        autoFocus={config?.autoFocus}
+        // autoFocus={config?.autoFocus}
         rootClassName="tool-input-value"
         defaultValue={initialValue || ""}
         size="small"
@@ -86,7 +86,7 @@ const inputTypeToUI = {
   bool: (inputName, initialValue, onEdit, config = {}) => {
     return (
       <Select
-        autoFocus={config?.autoFocus}
+        // autoFocus={config?.autoFocus}
         rootClassName="tool-input-value"
         placeholder="Select a value"
         defaultValue={initialValue || null}
@@ -104,7 +104,7 @@ const inputTypeToUI = {
   },
   int: (inputName, initialValue, onEdit, config = {}) => (
     <Input
-      autoFocus={config?.autoFocus}
+      // autoFocus={config?.autoFocus}
       rootClassName="tool-input-value"
       defaultValue={initialValue || ""}
       type="number"
@@ -116,7 +116,7 @@ const inputTypeToUI = {
   ),
   float: (inputName, initialValue, onEdit, config = {}) => (
     <Input
-      autoFocus={config?.autoFocus}
+      // autoFocus={config?.autoFocus}
       size="small"
       type="number"
       defaultValue={initialValue}

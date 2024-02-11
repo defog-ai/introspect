@@ -215,16 +215,24 @@ async def line_plot(
     hue_column: str = None,
     facet_col: str = None,
     estimator: str = "mean",
+    units: str = None,
     global_dict: dict = {},
     **kwargs,
 ):
     """
     Creates a line plot of the data, using seaborn
     """
+    if estimator != "mean":
+        estimator = None
+
+    relevant_columns = [x_column, y_column]
     if hue_column:
-        relevant_columns = [x_column, y_column, hue_column]
-    else:
-        relevant_columns = [x_column, y_column]
+        relevant_columns.append(hue_column)
+    if facet_col:
+        relevant_columns.append(facet_col)
+    if units:
+        relevant_columns.append(units)
+
     df = full_data.dropna(subset=relevant_columns)
 
     # sort the dataframe by the x_column
@@ -241,6 +249,7 @@ async def line_plot(
             y=y_column,
             hue=hue_column,
             estimator=estimator,
+            units=units,
         )
     else:
         plot = sns.relplot(
@@ -251,6 +260,7 @@ async def line_plot(
             kind="line",
             col=facet_col,
             estimator=estimator,
+            units=units,
         )
     # save the plot
     plot.figure.savefig(
