@@ -4,7 +4,12 @@ from uuid import uuid4
 import matplotlib.pyplot as plt
 import pandas as pd
 
+# set default font to Arial
+plt.rcParams["font.family"] = "Arial"
+
 available_colors = plt.colormaps()
+
+sns.set_palette(["#009D94", "#0057CF", "#FFBD00", "#FF5C1C", "#691A6B"])
 
 import yaml
 
@@ -33,6 +38,15 @@ async def boxplot(
     boxplot_cols: list[DBColumn],
     facet: bool = False,
     facet_col: DBColumn = None,
+    color: DropdownSingleSelect = [
+        "#000000",
+        "#009D94",
+        "#0057CF",
+        "#FFBD00",
+        "#FF5C1C",
+        "#691A6B",
+    ],
+    opacity: DropdownSingleSelect = [0.1, 0.2, 0.3, 0.4, 0.5],
     global_dict: dict = {},
 ):
     """
@@ -72,7 +86,7 @@ async def boxplot(
         # color them black with opacity
         # small size dots
         g.map(
-            sns.stripplot, boxplot_cols[0], boxplot_cols[1], color="k", alpha=0.1, s=2
+            sns.stripplot, boxplot_cols[0], boxplot_cols[1], color=color, alpha=0.1, s=2
         )
         # save highres with high dpi
         g.figure.savefig(
@@ -89,7 +103,7 @@ async def boxplot(
             x=boxplot_cols[0],
             y=boxplot_cols[1],
             data=full_data,
-            color="k",
+            color=color,
             alpha=0.1,
             s=2,
         )

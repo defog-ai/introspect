@@ -230,6 +230,29 @@ export const toolsMetadata = {
         "name": "facet_col",
         "default": null,
         "type": "DBColumn"
+      },
+      {
+        "name": "color",
+        "default": [
+          "#000000",
+          "#009D94",
+          "#0057CF",
+          "#FFBD00",
+          "#FF5C1C",
+          "#691A6B"
+        ],
+        "type": "DropdownSingleSelect"
+      },
+      {
+        "name": "opacity",
+        "default": [
+          0.1,
+          0.2,
+          0.3,
+          0.4,
+          0.5
+        ],
+        "type": "DropdownSingleSelect"
       }
     ]
   },
