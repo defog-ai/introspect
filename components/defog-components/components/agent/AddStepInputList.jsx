@@ -194,13 +194,6 @@ export function AddStepInputList({
   const functionSignature = toolMetadata?.function_signature || [];
   const ctr = useRef(null);
 
-  // useEffect(() => {
-  //   // if autoFocus, focus onthe first input
-  //   if (ctr && autoFocus) {
-  //     ctr?.current?.querySelector("input[type=text]")?.focus();
-  //   }
-  // });
-
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
       {inputs.map((input, i) => {

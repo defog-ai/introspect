@@ -205,13 +205,6 @@ export function ToolRunInputList({
     setFunctionSignature(step.function_signature);
   }, [step]);
 
-  useEffect(() => {
-    // if autoFocus, focus onthe first input
-    if (ctr && autoFocus) {
-      ctr?.current?.querySelector("input[type=text]")?.focus();
-    }
-  });
-
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
       {inputs.map((input, i) => {

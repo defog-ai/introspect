@@ -118,6 +118,7 @@ export const AnalysisAgent = ({
     setPendingToolRunUpdates({});
   }
   useEffect(() => {
+    console.log(analysisData);
     if (analysisData?.gen_steps?.success && analysisData?.gen_steps?.steps) {
       setAnalysisSteps(
         analysisData.gen_steps.steps.slice().map((d) => {

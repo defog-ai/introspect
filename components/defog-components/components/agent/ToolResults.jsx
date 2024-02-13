@@ -40,7 +40,6 @@ export function ToolResults({
   setPendingToolRunUpdates = () => {},
   toolRunDataCache = {},
   setToolRunDataCache = () => {},
-  setAnalysisData = () => {},
 }) {
   const [toolRunId, setToolRunId] = useState(null);
   const [toolRunData, setToolRunData] = useState(null);
@@ -309,6 +308,8 @@ export function ToolResults({
             reactiveVars={
               toolRunData?.parsedOutputs[activeNode.data.id]["reactive_vars"]
             }
+            nodeId={activeNode.data.id}
+            analysisId={analysisId}
           />
           <div className="tool-run-analysis">
             <div className="tool-run-analysis-text">

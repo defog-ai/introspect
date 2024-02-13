@@ -1,5 +1,6 @@
 import datetime
 import inspect
+import os
 from uuid import uuid4
 from colorama import Fore, Style
 import traceback
@@ -10,6 +11,7 @@ from agents.planner_executor.tool_helpers.all_tools import tool_name_dict
 from agents.planner_executor.execute_tool import parse_function_signature
 import pandas as pd
 from io import StringIO
+from utils import log_msg
 
 DEFOG_API_KEY = "genmab-survival-test"
 
@@ -43,6 +45,8 @@ with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
 dfg_api_key = env["api_key"]
+
+report_assets_dir = env["report_assets_dir"]
 
 
 @router.websocket("/docs")
@@ -396,6 +400,8 @@ async def rerun_step(websocket: WebSocket):
 
             # get steps from db
             err, analysis_data = get_report_data(analysis_id)
+            if err:
+                return {"success": False, "error_message": err}
 
             metadata_dets = get_metadata()
             glossary = metadata_dets["glossary"]
@@ -570,9 +576,11 @@ async def create_new_step(request: Request):
         else:
             return {
                 "success": False,
-                "error_message": steps.get("error_message")
-                if steps is not None
-                else "No steps found for analysis",
+                "error_message": (
+                    steps.get("error_message")
+                    if steps is not None
+                    else "No steps found for analysis"
+                ),
             }
 
         tool = tool_name_dict[tool_name]
@@ -649,5 +657,90 @@ async def delete_doc_endpoint(request: Request):
         return {"success": True}
     except Exception as e:
         print("Error deleting doc: ", e)
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
+
+
+# download csv using tool_run_id and output_storage_key
+@router.post("/download_csv")
+async def download_csv(request: Request):
+    """
+    Download a csv using the tool run id and output storage key.
+    """
+    try:
+        data = await request.json()
+        tool_run_id = data.get("tool_run_id")
+        output_storage_key = data.get("output_storage_key")
+        analysis_id = data.get("analysis_id")
+
+        if tool_run_id is None or type(tool_run_id) != str:
+            return {"success": False, "error_message": "Invalid tool run id."}
+
+        if output_storage_key is None or type(output_storage_key) != str:
+            return {"success": False, "error_message": "Invalid output storage key."}
+
+        if analysis_id is None or type(analysis_id) != str:
+            return {"success": False, "error_message": "Invalid analysis id."}
+
+        # first try to find this file in the file system
+        f_name = tool_run_id + "_output-" + output_storage_key + ".feather"
+        f_path = os.path.join(report_assets_dir, "datasets", f_name)
+
+        if not os.path.isfile(f_path):
+            log_msg(
+                f"Input {output_storage_key} not found in the file system. Rerunning step: {tool_run_id}"
+            )
+            # re run this step
+            # get steps from db
+            err, analysis_data = get_report_data(analysis_id)
+            if err:
+                return {"success": False, "error_message": err}
+
+            metadata_dets = get_metadata()
+            glossary = metadata_dets["glossary"]
+            client_description = metadata_dets["client_description"]
+            table_metadata_csv = metadata_dets["table_metadata_csv"]
+
+            global_dict = {
+                "user_question": analysis_data["user_question"],
+                "table_metadata_csv": table_metadata_csv,
+                "client_description": client_description,
+                "glossary": glossary,
+            }
+
+            if err:
+                return {"success": False, "error_message": err}
+
+            steps = analysis_data.get("gen_steps")
+            if steps and steps.get("success") and steps.get("steps"):
+                steps = steps["steps"]
+            else:
+                return {"success": False, "error_message": steps["error_message"]}
+
+            async for err, reran_id, new_data in rerun_step_and_dependents(
+                analysis_id, tool_run_id, steps, global_dict=global_dict
+            ):
+                # don't need to yield unless there's an error
+                # if error, then bail
+                if err:
+                    return {"success": False, "error_message": err}
+        else:
+            log_msg(
+                f"Input {output_storage_key} found in the file system. No need to rerun step."
+            )
+
+        # now the file *should* be available
+        df = pd.read_feather(f_path)
+
+        return {
+            "success": True,
+            "tool_run_id": tool_run_id,
+            "output_storage_key": output_storage_key,
+            # get it as a csv string
+            "csv": df.to_csv(index=False),
+        }
+
+    except Exception as e:
+        print("Error downloading csv: ", e)
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}

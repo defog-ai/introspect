@@ -18,7 +18,11 @@ import {
 } from "./common/utils";
 import { FaRegCopy } from "react-icons/fa";
 
-import { TableOutlined, BarChartOutlined } from "@ant-design/icons";
+import {
+  TableOutlined,
+  BarChartOutlined,
+  DownloadOutlined,
+} from "@ant-design/icons";
 import ErrorBoundary from "./common/ErrorBoundary";
 import ChartImage from "./ChartImage";
 
@@ -31,10 +35,15 @@ import "prismjs/components/prism-python";
 
 import "prismjs/themes/prism.css";
 import { roundNumber } from "../../../utils/utils";
+import setupBaseUrl from "../../../utils/setupBaseUrl";
+
+const downloadCsvEndpoint = setupBaseUrl("http", "download_csv");
 
 // tabBarLeftContent: extra content for the tab bar on the left side
 export function ToolResultsTable({
   toolRunId,
+  analysisId,
+  nodeId,
   tableData = null,
   codeStr = null,
   sql = null,
@@ -42,11 +51,82 @@ export function ToolResultsTable({
   reactiveVars = null,
   handleEdit = () => {},
 }) {
-  const [socketManager, setSocketManager] = useState(null);
-  const [reRunning, setReRunning] = useState(false);
   const tableChartRef = useRef(null);
   const [sqlQuery, setSqlQuery] = useState(sql);
   const [toolCode, setToolCode] = useState(codeStr);
+  const [csvLoading, setCsvLoading] = useState(false);
+
+  async function saveCsv() {
+    if (csvLoading) return;
+
+    let csv = "";
+    try {
+      // tableData: {columns: Array(4), data: Array(1)}
+      if (!tableData) return;
+      const { columns, data } = tableData;
+
+      // if data has >= 1000 rows, it might have been truncated
+      // in this case, send a request to the server to get the full data
+      // we will send the tool run id and also the output_storage_key we need to download
+      if (data.length >= 1000) {
+        setCsvLoading(true);
+
+        const res = await fetch(downloadCsvEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tool_run_id: toolRunId,
+            output_storage_key: nodeId,
+            analysis_id: analysisId,
+          }),
+        }).then((r) => r.json());
+
+        if (!res?.success) {
+          message.error(res?.error_message || "Error saving CSV.");
+          return;
+        } else if (res?.success && res?.csv) {
+          csv = res.csv;
+        }
+      } else {
+        const filteredColumns = columns.filter((d) => d.title !== "index");
+        // Use columns to append to a string
+        csv = filteredColumns.map((d) => d.title).join(",") + "\n";
+        // Use data to append to a string
+        // go through each row and each column and append to csv
+        for (let i = 0; i < data.length; i++) {
+          let row = data[i];
+          for (let j = 0; j < filteredColumns.length; j++) {
+            csv += row[filteredColumns[j].title];
+            if (j < filteredColumns.length - 1) csv += ",";
+          }
+          csv += "\n";
+        }
+      }
+
+      // Create a blob and download it
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      // name with time stamp but without miliseconds
+
+      a.download = `${nodeId}-${new Date().toISOString().split(".")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      // delete a tag
+      a.remove();
+      message.success("CSV saved.");
+    } catch (e) {
+      console.error(e);
+      message.error("Error saving CSV.");
+    } finally {
+      setCsvLoading(false);
+    }
+  }
+
+  console.log("csvlading", csvLoading);
 
   let extraTabs = [];
 
@@ -227,16 +307,21 @@ export function ToolResultsTable({
     // convert to antd tabs
     tabs = (
       <Tabs
-        //   tabBarExtraContent={{
-        //     right: tableData.edited ? (
-        //       <Button onClick={runAgain} className="edited-button" type="primary">
-        //         {reRunning ? "Running..." : "Run again"}
-        //       </Button>
-        //     ) : (
-        //       <></>
-        //     ),
-        //     left: tabBarLeftContent || <></>,
-        //   }}
+        tabBarExtraContent={{
+          right: (
+            <Button
+              onClick={async () => {
+                await saveCsv();
+              }}
+              size="small"
+              title="Download CSV"
+              loading={csvLoading}
+              disabled={csvLoading}
+            >
+              <DownloadOutlined />
+            </Button>
+          ),
+        }}
         defaultActiveKey={!chartImages || !chartImages.length ? "0" : "1"}
         items={tabs.map((d, i) => ({
           key: String(i),
@@ -376,21 +461,6 @@ export function ToolResultsTable({
       );
     }
   }, [reactiveVars]);
-
-  function runAgain() {
-    if (!socketManager.isConnected() || !socketManager) {
-      message.error("Not connected to the servers.");
-      return;
-    }
-
-    setReRunning(true);
-    // else send it
-    socketManager.send({
-      run_again: true,
-      table_id: toolRunId,
-      data: tableData,
-    });
-  }
 
   return (
     <div className="table-chart-ctr" ref={tableChartRef}>

@@ -95,7 +95,9 @@ export default function DocNav({ apiToken, username, currentDocId }) {
           <a href={"?docId=new"} target="_blank">
             <div title="Start a new doc">
               <span>New</span>
-              <GrNewWindow />
+              <div>
+                <GrNewWindow />
+              </div>
             </div>
           </a>
         </div>
@@ -112,7 +114,9 @@ export default function DocNav({ apiToken, username, currentDocId }) {
         {/* delete this doc */}
         <div id="nav-delete-doc" title="Delete this doc" onClick={showModal}>
           <span>Delete</span>
-          <MdDeleteOutline fontSize={16} />
+          <div>
+            <MdDeleteOutline />
+          </div>
           <Modal
             okText={"Yes, delete"}
             okType="danger"

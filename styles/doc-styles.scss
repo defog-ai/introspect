@@ -24,7 +24,7 @@
 
   > div:not(.nav-spacer) {
     margin: 0 2px;
-    padding: 7px 10px;
+    padding: 0.5em 0.4em;
     cursor: pointer;
     user-select: none;
     &:hover {
@@ -32,8 +32,11 @@
     }
   }
 
-  #nav-new-doc {
-    padding: 0.5em 0.4em;
+  #nav-new-doc,
+  #nav-delete-doc {
+    div {
+      display: inline-block;
+    }
     svg {
       position: relative;
       margin-left: 5px;
