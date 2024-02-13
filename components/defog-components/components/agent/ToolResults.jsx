@@ -254,25 +254,90 @@ export function ToolResults({
   }
 
   useEffect(() => {
-    if (!activeNode || activeNode.data.isAddStepNode) return;
+    if (!activeNode) return;
 
-    async function getToolRun() {
-      const toolRun = activeNode.data.isTool
-        ? activeNode
-        : [...activeNode?.parents()][0];
-      const newId = toolRun?.data?.meta?.tool_run_id;
+    if (!activeNode.data.isAddStepNode) {
+      async function getToolRun() {
+        const toolRun = activeNode.data.isTool
+          ? activeNode
+          : [...activeNode?.parents()][0];
+        const newId = toolRun?.data?.meta?.tool_run_id;
 
-      if (!toolRun?.data?.isTool) {
-        console.error(
-          "Something's wrong on clicking node. No tool parents found."
-        );
-        console.log("Node clicked: ", activeNode);
+        if (!toolRun?.data?.isTool) {
+          console.error(
+            "Something's wrong on clicking node. No tool parents found."
+          );
+          console.log("Node clicked: ", activeNode);
+        }
+
+        await getNewData(newId);
       }
 
-      await getNewData(newId);
-    }
+      getToolRun();
+    } else {
+      async function getAvailableInputDfs() {
+        // if is add step node, we still need parent step data
+        const newToolRunDataCache = { ...toolRunDataCache };
+        // this is a lot of DRY code, but it's okay for now
+        let availableInputDfs = [];
+        try {
+          if (!activeNode || !activeNode.ancestors) availableInputDfs = [];
 
-    getToolRun();
+          availableInputDfs = [...dag.nodes()]
+            .filter(
+              (d) =>
+                !d.data.isTool &&
+                d.data.id !== activeNode.data.id &&
+                !d.data.isError &&
+                !d.data.isAddStepNode
+            )
+            .map((ancestor) => ancestor);
+        } catch (e) {
+          console.log(e);
+          availableInputDfs = [];
+        }
+
+        let parentIds = availableInputDfs.map((n) => n.data.step.tool_run_id);
+
+        // get data for all these nodes
+        let parentData = await Promise.all(
+          parentIds.map((id) => {
+            // try to get from cache
+            if (toolRunDataCache[id]) {
+              return toolRunDataCache[id];
+            }
+            return getToolRunData(id);
+          })
+        );
+
+        // update toolRunDataCache
+        parentData.forEach((d) => {
+          if (d.success) {
+            // parse outputs
+            d.tool_run_data.parsedOutputs = parseOutputs(
+              d.tool_run_data,
+              analysisData
+            );
+
+            newToolRunDataCache[d.tool_run_data.tool_run_id] = d;
+          }
+        });
+
+        setParentNodeData(
+          parentData.reduce((acc, d) => {
+            // for each output add a key to acc
+            if (d.success) {
+              Object.keys(d.tool_run_data.parsedOutputs).forEach((k) => {
+                acc[k] = d.tool_run_data.parsedOutputs[k];
+              });
+            }
+            return acc;
+          }, {})
+        );
+      }
+
+      getAvailableInputDfs();
+    }
   }, [activeNode, reRunningSteps]);
 
   const isStepReRunning = reRunningSteps.indexOf(toolRunId) > -1;
@@ -294,6 +359,7 @@ export function ToolResults({
           activeNode={activeNode}
           dag={dag}
           handleReRun={handleReRun}
+          parentNodeData={parentNodeData}
         />
       ) : toolRunData?.error_message && !activeNode.data.isTool ? (
         <ToolRunError error_message={toolRunData?.error_message}></ToolRunError>

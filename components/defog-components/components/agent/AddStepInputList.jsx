@@ -129,14 +129,17 @@ const inputTypeToUI = {
     inputName,
     initialValue,
     onEdit,
-    config = { availableInputDfs: [], analysisId: "", autoFocus: false }
+    config = {
+      availableInputDfs: [],
+      analysisId: "",
+      autoFocus: false,
+      setSelectedInputDf: () => {},
+    }
   ) => {
     const options =
       config?.availableInputDfs?.map((df) => {
-        return { label: df.data.id, value: "global_dict." + df.data.id };
+        return { label: df, value: "global_dict." + df };
       }) || [];
-
-    // return <span className="tool-input-value type-df">{name_clipped}</span>;
 
     return (
       <Select
@@ -179,20 +182,140 @@ const inputTypeToUI = {
       />
     );
   },
+  DBColumn: (
+    inputName,
+    initialValue,
+    onEdit,
+    config = {
+      availableParentColumns: [],
+      toolRunId: "",
+    }
+  ) => {
+    // dropdown with available columns
+    const options =
+      config?.availableParentColumns?.map((column) => {
+        return { label: column.title, value: column.title };
+      }) || [];
+
+    // return
+    return (
+      <Select
+        value={initialValue}
+        key={config.toolRunId + "_" + inputName}
+        size="small"
+        popupClassName="tool-input-value-dropdown"
+        options={options}
+        placeholder="Select a column name"
+        allowClear
+        onChange={(val) => {
+          onEdit(inputName, val);
+        }}
+      />
+    );
+  },
+  "list[DBColumn]": (
+    inputName,
+    initialValue,
+    onEdit,
+    config = {
+      availableParentColumns: [],
+      toolRunId: "",
+    }
+  ) => {
+    // dropdown with available columns
+    const options =
+      config?.availableParentColumns?.map((column) => {
+        return { label: column.title, value: column.title };
+      }) || [];
+
+    // similar to list, just that the new value and existing values are dropdowns
+    if (!initialValue) initialValue = [];
+    return (
+      <span className="tool-input-value tool-input-type-list tool-input-type-column-list">
+        <span className="list-bracket">[</span>
+        {initialValue.map((val, i) => {
+          return (
+            <span key={config.toolRunId + "_" + inputName + "_" + i}>
+              <Select
+                value={val}
+                showSearch
+                size="small"
+                placeholder="Select a column name"
+                allowClear
+                popupClassName="tool-input-value-dropdown"
+                options={options}
+                onChange={(val) => {
+                  // replace the value at i with the new value
+                  const newVal = initialValue.map((v, j) => {
+                    if (i === j) {
+                      return val;
+                    }
+                    return v;
+                  });
+                  onEdit(inputName, newVal);
+                }}
+              />
+              <div className="list-remove">
+                <MdDeleteOutline
+                  onClick={() =>
+                    onEdit(
+                      inputName,
+                      initialValue.filter((v, j) => j !== i)
+                    )
+                  }
+                />
+              </div>
+              {i !== initialValue.length - 1 ? (
+                <span className="list-separator">, </span>
+              ) : (
+                <></>
+              )}
+            </span>
+          );
+        })}
+        <div className="list-add">
+          <MdOutlineAddBox
+            onClick={() => {
+              onEdit(inputName, [...initialValue, ""]);
+            }}
+          ></MdOutlineAddBox>
+        </div>
+        <span className="list-bracket">]</span>
+      </span>
+    );
+  },
 };
 
 export function AddStepInputList({
   toolRunId,
   analysisId,
   toolMetadata,
-  availableInputDfs = [],
   inputs = [],
   onEdit = () => {},
-  newListValueDefault = "New Value",
-  autoFocus = true,
+  newListValueDefault = "",
+  parentNodeData = {},
 }) {
   const functionSignature = toolMetadata?.function_signature || [];
   const ctr = useRef(null);
+
+  const availableColumns = useMemo(() => {
+    // check if any of the inputs is global_dict.something
+    if (!inputs) return [];
+    let avail = [];
+
+    inputs.forEach((input) => {
+      if (typeof input !== "string") return;
+      if (input?.startsWith("global_dict.")) {
+        const id = input.split(".")[1];
+        const parent = parentNodeData[id];
+        if (parent) {
+          avail = avail.concat(parent.data.columns);
+        }
+      }
+    });
+
+    return avail;
+  }, [inputs, parentNodeData, toolRunId]);
 
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
@@ -208,9 +331,11 @@ export function AddStepInputList({
                 onEdit(i, prop, newVal);
               },
               {
-                availableInputDfs,
+                availableParentColumns: availableColumns,
+                availableInputDfs: Object.keys(parentNodeData),
                 newListValueDefault,
                 analysisId,
+                toolRunId,
               }
             )}
           </div>

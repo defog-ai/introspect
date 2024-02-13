@@ -273,3 +273,14 @@ export const easyColumnTypes = {
   "list[str]": "List of strings",
   list: "List",
 };
+
+// export const estimatorDefaultOptions = {
+//   // function name
+//   "line_plot": {
+//     // function parameter name
+//     "estimator": ["mean", "sum", "median", "std", "var", "count"]
+//   },
+//   "t_test": {
+//     "t_test_type": ["paired", "unpaired"]
+//   }
+// }

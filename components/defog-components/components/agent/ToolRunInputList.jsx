@@ -224,7 +224,7 @@ const inputTypeToUI = {
         <span className="list-bracket">[</span>
         {initialValue.map((val, i) => {
           return (
-            <span key={toolRunId + "_" + inputName}>
+            <span key={toolRunId + "_" + inputName + "_" + i}>
               <Select
                 value={val}
                 showSearch
@@ -283,7 +283,6 @@ export function ToolRunInputList({
   setActiveNode = () => {},
   handleEdit = () => {},
   parentNodeData = {},
-  autoFocus = true,
 }) {
   // parse inputs
   // if inputs doesn't start with global_dict, then it's it's type is whatever typeof returns

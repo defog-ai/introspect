@@ -14,3 +14,7 @@ class DBColumnList(list):
             super().__init__([DBColumn(f"col{i}") for i in range(args[0])])
         else:
             super().__init__(args)
+
+
+class DbDropdown(str):
+    pass
