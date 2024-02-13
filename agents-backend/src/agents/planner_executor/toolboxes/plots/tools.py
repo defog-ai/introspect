@@ -171,7 +171,7 @@ async def line_plot(
     y_column: DBColumn,
     hue_column: DBColumn = None,
     facet_col: DBColumn = None,
-    estimator: DropdownSingleSelect = ["mean", "median", "max", "min", "sum"],
+    estimator: DropdownSingleSelect = ["mean", "median", "max", "min", "sum", "None"],
     units: str = None,
     global_dict: dict = {},
     **kwargs,
@@ -185,10 +185,14 @@ async def line_plot(
         "max",
         "min",
         "sum",
+        "None",
     ]:
         raise ValueError(
             "Estimator must be a string and one of mean, median, max, min, sum"
         )
+
+    if estimator == "None":
+        estimator = None
 
     relevant_columns = [x_column, y_column]
     if hue_column:

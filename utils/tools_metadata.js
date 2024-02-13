@@ -67,14 +67,15 @@ export const toolsMetadata = {
           "median",
           "max",
           "min",
-          "sum"
+          "sum",
+          "None"
         ],
         "type": "DropdownSingleSelect"
       },
       {
         "name": "units",
         "default": null,
-        "type": "str"
+        "type": "DBColumn"
       }
     ]
   },
