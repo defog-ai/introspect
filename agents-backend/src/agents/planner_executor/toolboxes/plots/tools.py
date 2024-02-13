@@ -172,14 +172,14 @@ async def line_plot(
     hue_column: DBColumn = None,
     facet_col: DBColumn = None,
     estimator: DropdownSingleSelect = ["mean", "median", "max", "min", "sum", "None"],
-    units: str = None,
+    units: DBColumn = None,
     global_dict: dict = {},
     **kwargs,
 ):
     """
     Creates a line plot of the data, using seaborn
     """
-    if type(estimator) != str or estimator not in [
+    if estimator not in [
         "mean",
         "median",
         "max",
@@ -188,7 +188,7 @@ async def line_plot(
         "None",
     ]:
         raise ValueError(
-            "Estimator must be a string and one of mean, median, max, min, sum"
+            f"Estimator must was {estimator}, but it must be a string and one of mean, median, max, min, sum, None"
         )
 
     if estimator == "None":
