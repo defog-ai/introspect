@@ -52,6 +52,20 @@ async def boxplot(
     """
     Generates a boxplot using python's seaborn library. Also accepts faceting columns.
     """
+
+    if type(color) == list:
+        color = color[0]
+
+    if not color or type(color) != str:
+        raise ValueError("Color must be a string")
+
+    if type(opacity) == list:
+        opacity = opacity[0]
+
+    if not opacity or type(opacity) != float:
+        raise ValueError("Opacity must be a float")
+
+    print(color)
     if len(boxplot_cols) == 1:
         if boxplot_cols[0] == "label":
             new_col = "label_"
@@ -74,20 +88,29 @@ async def boxplot(
             col=facet_col,
             kind="box",
             col_wrap=4,
+            fill=False,
         )
         # boxplot with white boxes
         g.map(
             sns.boxplot,
             boxplot_cols[0],
             boxplot_cols[1],
-            color="white",
+            color=color,
+            fill=False,
         )
         # add points to the boxplot using stripplot
         # color them black with opacity
         # small size dots
         g.map(
-            sns.stripplot, boxplot_cols[0], boxplot_cols[1], color=color, alpha=0.1, s=2
+            sns.stripplot,
+            boxplot_cols[0],
+            boxplot_cols[1],
+            color=color,
+            alpha=opacity,
+            s=2,
         )
+        plt.xticks(rotation=45)
+
         # save highres with high dpi
         g.figure.savefig(
             f"{report_assets_dir}/{boxplot_path}", dpi=300, bbox_inches="tight"
@@ -97,19 +120,25 @@ async def boxplot(
         # drop rows with missing values
         full_data = full_data.dropna(subset=boxplot_cols, how="any")
         sns.boxplot(
-            x=boxplot_cols[0], y=boxplot_cols[1], data=full_data, ax=ax, color="white"
+            x=boxplot_cols[0],
+            y=boxplot_cols[1],
+            data=full_data,
+            ax=ax,
+            color=color,
+            fill=False,
         )
         sns.stripplot(
             x=boxplot_cols[0],
             y=boxplot_cols[1],
             data=full_data,
             color=color,
-            alpha=0.1,
+            alpha=opacity,
             s=2,
         )
         plt.xticks(rotation=45)
         plt.savefig(f"{report_assets_dir}/{boxplot_path}", dpi=300, bbox_inches="tight")
 
+    plt.clf()
     plt.close()
 
     return {
@@ -162,6 +191,7 @@ async def heatmap(
     )
 
     plt.savefig(f"{report_assets_dir}/{heatmap_path}", dpi=300, bbox_inches="tight")
+    plt.clf()
     plt.close()
 
     return {
@@ -193,6 +223,9 @@ async def line_plot(
     """
     Creates a line plot of the data, using seaborn
     """
+    if estimator is None:
+        estimator = "None"
+
     if estimator not in [
         "mean",
         "median",
@@ -249,7 +282,7 @@ async def line_plot(
     plot.figure.savefig(
         f"{report_assets_dir}/{chart_path}", dpi=300, bbox_inches="tight"
     )
-
+    plt.clf()
     plt.close()
 
     return {
