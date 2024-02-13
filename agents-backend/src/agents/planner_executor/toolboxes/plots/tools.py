@@ -4,6 +4,8 @@ from uuid import uuid4
 import matplotlib.pyplot as plt
 import pandas as pd
 
+available_colors = plt.colormaps()
+
 import yaml
 
 from agents.planner_executor.tool_helpers.tool_param_types import (
@@ -118,7 +120,7 @@ async def heatmap(
     color_column: DBColumn,
     # can be mean, median, max, min, or sum
     aggregation_type: DropdownSingleSelect = ["mean", "median", "max", "min", "sum"],
-    color_scale: str = "YlGnBu",
+    color_scale: DropdownSingleSelect = available_colors,
     global_dict: dict = {},
 ):
     """

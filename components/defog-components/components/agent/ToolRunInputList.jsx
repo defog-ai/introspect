@@ -300,6 +300,7 @@ const inputTypeToUI = {
         })}
         placeholder="Select a value"
         allowClear
+        showSearch
         onChange={(val) => {
           onEdit(inputName, val);
         }}
