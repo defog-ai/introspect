@@ -4,6 +4,7 @@ export const DocContext = createContext({
   userItems: {
     analyses: [],
     toolboxes: [],
+    metadata: {},
   },
   dbCreds: {
     dbType: "postgres",

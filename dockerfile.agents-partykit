@@ -2,7 +2,7 @@ FROM node:latest
 
 WORKDIR partykit-server
 
-COPY ./agents-backend/agents/partykit-server ./
+COPY ./agents-backend/src/partykit-server ./
 
 RUN npm install
 

@@ -49,6 +49,34 @@ dfg_api_key = env["api_key"]
 report_assets_dir = env["report_assets_dir"]
 
 
+# this is an init endpoint that sends things like metadata, glossary, etc
+# (basically everything stored in the redis server)
+# to the front end
+@router.post("/get_user_metadata")
+async def get_user_metadata(request: Request):
+    """
+    Send the metadata, glossary, etc to the front end.
+    """
+    try:
+        metadata_dets = get_metadata()
+        glossary = metadata_dets["glossary"]
+        client_description = metadata_dets["client_description"]
+        table_metadata_csv = metadata_dets["table_metadata_csv"]
+
+        return {
+            "success": True,
+            "metadata": {
+                "glossary": glossary,
+                "client_description": client_description,
+                "table_metadata_csv": table_metadata_csv,
+            },
+        }
+    except Exception as e:
+        print("Error getting metadata: ", e)
+        traceback.print_exc()
+        return {"success": False, "error_message": "Unable to parse your request."}
+
+
 @router.websocket("/docs")
 async def doc_websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)

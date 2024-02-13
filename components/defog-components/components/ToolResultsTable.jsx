@@ -126,8 +126,6 @@ export function ToolResultsTable({
     }
   }
 
-  console.log("csvlading", csvLoading);
-
   let extraTabs = [];
 
   // if reactive vars change, add dragstart handler to them

@@ -28,6 +28,37 @@ function parseData(data_csv) {
   };
 }
 
+function parseOutputs(data, analysisData) {
+  let parsedOutputs = {};
+  // go through data and parse all tables
+  Object.keys(data.outputs).forEach((k, i) => {
+    parsedOutputs[k] = {};
+    // check if this has data, reactive_vars and chart_images
+    if (data.outputs[k].data) {
+      parsedOutputs[k].data = parseData(data.outputs[k].data);
+    }
+    if (data.outputs[k].reactive_vars) {
+      parsedOutputs[k].reactive_vars = data.outputs[k].reactive_vars;
+
+      // check if title is defined
+      if (!parsedOutputs[k]?.reactive_vars?.title) {
+        Object.defineProperty(parsedOutputs[k].reactive_vars, "title", {
+          get() {
+            return analysisData?.user_question;
+          },
+        });
+      }
+    }
+    if (data.outputs[k].chart_images) {
+      parsedOutputs[k].chart_images = data.outputs[k].chart_images;
+    }
+    if (data.outputs[k].analysis) {
+      parsedOutputs[k].analysis = data.outputs[k].analysis;
+    }
+  });
+  return parsedOutputs;
+}
+
 export function ToolResults({
   analysisId,
   analysisData,
@@ -46,18 +77,17 @@ export function ToolResults({
   const [toolRunDataLoading, setToolRunDataLoading] = useState(false);
   const reactiveContext = useContext(ReactiveVariablesContext);
   const [edited, setEdited] = useState(false);
-  // const [isStepReRunning, setIsStepReRunning] = useState(false);
 
-  // useEffect(() => {
-  //   console.log(toolRunData);
-  // }, [toolRunData]);
+  const [parentNodeData, setParentNodeData] = useState({});
 
-  // useEffect(() => {
-  //   console.log(activeNode);
-  // }, [activeNode]);
+  const availableOutputNodes = useMemo(
+    () => [...dag?.nodes()].filter((n) => !n.data.isTool),
+    [dag]
+  );
 
   const getNewData = useCallback(
     async (newId) => {
+      if (!activeNode) return;
       setToolRunDataLoading(true);
 
       let res, newData;
@@ -71,15 +101,12 @@ export function ToolResults({
         res = await getToolRunData(newId);
       }
 
+      const newToolRunDataCache = { ...toolRunDataCache };
+
       if (res.success) {
         if (!hasCache) {
           // save to cache
-          setToolRunDataCache((prev) => {
-            return {
-              ...prev,
-              [newId]: res,
-            };
-          });
+          newToolRunDataCache[newId] = res;
         }
 
         // update reactive context
@@ -95,16 +122,86 @@ export function ToolResults({
             };
           });
         });
+
+        // make life easier
+        newData = res?.tool_run_data;
+
+        newData.parsedOutputs = parseOutputs(newData, analysisData);
+        // in case any of the inputs is a pd dataframe, we will also fetch those tool run's data
+
+        const inputs = newData?.step?.inputs || [];
+
+        let parentDfs = Array.from(
+          inputs.reduce((acc, input, i) => {
+            let inp = input;
+            // if input is a string, convert to array and do
+            if (!Array.isArray(input)) {
+              inp = [input];
+            }
+
+            inp.forEach((i) => {
+              // if not a string don't do anything
+              if (typeof i !== "string") return acc;
+
+              let matches = [...i.matchAll(/(?:global_dict\.)(\w+)/g)];
+              matches.forEach(([_, parent]) => {
+                acc.add(parent);
+              });
+            });
+            return acc;
+          }, new Set())
+        );
+
+        // find nodes in the dag that have this output_storage_keys
+        let parentNodes = availableOutputNodes.filter((n) => {
+          return parentDfs.indexOf(n.data.id) > -1;
+        });
+
+        // get data for all these nodes using node.data.step.tool_run_id
+        let parentIds = parentNodes.map((n) => n.data.step.tool_run_id);
+
+        // get data for all these nodes
+        let parentData = await Promise.all(
+          parentIds.map((id) => {
+            // try to get from cache
+            if (toolRunDataCache[id]) {
+              return toolRunDataCache[id];
+            }
+            return getToolRunData(id);
+          })
+        );
+
+        // update toolRunDataCache
+        parentData.forEach((d) => {
+          if (d.success) {
+            // parse outputs
+            d.tool_run_data.parsedOutputs = parseOutputs(
+              d.tool_run_data,
+              analysisData
+            );
+
+            newToolRunDataCache[d.tool_run_data.tool_run_id] = d;
+          }
+        });
+
+        setParentNodeData(
+          parentData.reduce((acc, d) => {
+            if (d.success) {
+              acc[d.tool_run_data.tool_run_id] = d.tool_run_data;
+            }
+            return acc;
+          }, {})
+        );
+
+        setToolRunId(newId);
+        setToolRunData(newData);
+        setEdited(newData.edited);
+        setToolRunDataLoading(false);
       } else {
         setToolRunDataLoading(false);
         setToolRunData(res?.tool_run_data);
         if (!hasCache) {
-          setToolRunDataCache((prev) => {
-            return {
-              ...prev,
-              [newId]: res,
-            };
-          });
+          newToolRunDataCache[newId] = res;
         }
 
         // remove from reactive context
@@ -114,53 +211,16 @@ export function ToolResults({
           delete newContext[newId];
           return newContext;
         });
-
-        return;
       }
 
-      // make life easier
-      newData = res?.tool_run_data;
-
-      newData.parsedOutputs = {};
-      // go through newData and parse all tables
-      Object.keys(newData.outputs).forEach((k, i) => {
-        newData.parsedOutputs[k] = {};
-        // check if this has data, reactive_vars and chart_images
-        if (newData.outputs[k].data) {
-          newData.parsedOutputs[k].data = parseData(newData.outputs[k].data);
-        }
-        if (newData.outputs[k].reactive_vars) {
-          newData.parsedOutputs[k].reactive_vars =
-            newData.outputs[k].reactive_vars;
-
-          // check if title is defined
-          if (!newData?.parsedOutputs[k]?.reactive_vars?.title) {
-            Object.defineProperty(
-              newData.parsedOutputs[k].reactive_vars,
-              "title",
-              {
-                get() {
-                  return analysisData?.user_question;
-                },
-              }
-            );
-          }
-        }
-        if (newData.outputs[k].chart_images) {
-          newData.parsedOutputs[k].chart_images =
-            newData.outputs[k].chart_images;
-        }
-        if (newData.outputs[k].analysis) {
-          newData.parsedOutputs[k].analysis = newData.outputs[k].analysis;
-        }
+      setToolRunDataCache((prev) => {
+        return {
+          ...prev,
+          ...newToolRunDataCache,
+        };
       });
-
-      setToolRunId(newId);
-      setToolRunData(newData);
-      setEdited(newData.edited);
-      setToolRunDataLoading(false);
     },
-    [toolRunDataCache, reactiveContext, analysisData]
+    [toolRunDataCache, reactiveContext, analysisData, activeNode]
   );
 
   function handleEdit({ analysis_id, tool_run_id, update_prop, new_val }) {
@@ -181,6 +241,8 @@ export function ToolResults({
       setEdited(true);
     }
     // edit this in the context too
+    // but only do batch update when we click on another node
+    // so we can prevent react rerendering
     setPendingToolRunUpdates((prev) => {
       return {
         [tool_run_id]: {
@@ -190,11 +252,6 @@ export function ToolResults({
       };
     });
   }
-
-  const availableOutputNodes = useMemo(
-    () => [...dag?.nodes()].filter((n) => !n.data.isTool),
-    [dag]
-  );
 
   useEffect(() => {
     if (!activeNode || activeNode.data.isAddStepNode) return;
@@ -212,30 +269,13 @@ export function ToolResults({
         console.log("Node clicked: ", activeNode);
       }
 
-      // if (newId === toolRunId) return;
       await getNewData(newId);
     }
 
     getToolRun();
   }, [activeNode, reRunningSteps]);
 
-  // useEffect(() => {
-  //   if (!toolRunId) return;
-
-  //   console.log(reRunningSteps, toolRunId);
-
-  //   if (toolRunId && reRunningSteps.indexOf(toolRunId) > -1) {
-  //     setIsStepReRunning(true);
-  //   } else {
-  //     // if isStepReRunning is being changed from true to false
-  //     // then get new data
-  //     setIsStepReRunning(false);
-  //   }
-  // }, [reRunningSteps]);
-
   const isStepReRunning = reRunningSteps.indexOf(toolRunId) > -1;
-
-  console.log(reRunningSteps);
 
   return !activeNode || !activeNode.data || !toolRunData ? (
     <></>
@@ -283,6 +323,7 @@ export function ToolResults({
               availableOutputNodes={availableOutputNodes}
               setActiveNode={setActiveNode}
               handleEdit={handleEdit}
+              parentNodeData={parentNodeData}
             ></ToolRunInputList>
             <h1 className="details-header">OUTPUTS</h1>
             <ToolRunOutputList

@@ -1,9 +1,12 @@
+from typing import List
 import seaborn as sns
 from uuid import uuid4
 import matplotlib.pyplot as plt
 import pandas as pd
 
 import yaml
+
+from agents.planner_executor.tool_helpers.DBColumn import DBColumn
 
 with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
@@ -22,9 +25,9 @@ def validate_column(df, col_name):
 
 async def boxplot(
     full_data: pd.DataFrame,
-    boxplot_cols: list,
+    boxplot_cols: list[DBColumn],
     facet: bool = False,
-    facet_col: str = "",
+    facet_col: DBColumn = None,
     global_dict: dict = {},
 ):
     """
@@ -107,9 +110,9 @@ async def boxplot(
 
 async def heatmap(
     full_data: pd.DataFrame,
-    x_position_column: str,
-    y_position_column: str,
-    color_column: str,
+    x_position_column: DBColumn,
+    y_position_column: DBColumn,
+    color_column: DBColumn,
     # can be mean, median, max, min, or sum
     aggregation_type: str = "mean",
     color_scale: str = "YlGnBu",
@@ -210,10 +213,10 @@ async def heatmap(
 
 async def line_plot(
     full_data: pd.DataFrame,
-    x_column: str,
-    y_column: str,
-    hue_column: str = None,
-    facet_col: str = None,
+    x_column: DBColumn,
+    y_column: DBColumn,
+    hue_column: DBColumn = None,
+    facet_col: DBColumn = None,
     estimator: str = "mean",
     units: str = None,
     global_dict: dict = {},

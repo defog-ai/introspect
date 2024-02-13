@@ -1,6 +1,7 @@
 import { Input, Select } from "antd";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
+import { easyColumnTypes } from "../../../../utils/utils";
 
 const inputTypeToUI = {
   list: (toolRunId, inputName, initialValue, onEdit) => {
@@ -122,12 +123,14 @@ const inputTypeToUI = {
     inputName,
     initialValue,
     onEdit,
-    availableOutputNodes = [],
-    setActiveNode = () => {}
+    config = {
+      availableOutputNodes: [],
+      setActiveNode: () => {},
+    }
   ) => {
     if (!initialValue) initialValue = "";
     const name_clipped = initialValue?.replace(/global_dict\./g, "");
-    const exists = availableOutputNodes.find(
+    const exists = config.availableOutputNodes.find(
       (node) => node.data.id === name_clipped
     );
 
@@ -136,7 +139,7 @@ const inputTypeToUI = {
         className="tool-input-value type-df"
         onClick={() => {
           if (exists) {
-            setActiveNode(exists);
+            config.setActiveNode(exists);
           }
         }}
         onMouseOver={(ev) => {
@@ -164,6 +167,112 @@ const inputTypeToUI = {
       </span>
     );
   },
+  DBColumn: (
+    toolRunId,
+    inputName,
+    initialValue,
+    onEdit,
+    config = {
+      availableOutputNodes: [],
+      setActiveNode: () => {},
+      availableParentColumns: [],
+    }
+  ) => {
+    // dropdown with available columns
+    const options =
+      config?.availableParentColumns?.map((column) => {
+        return { label: column.title, value: column.title };
+      }) || [];
+
+    // return
+    return (
+      <Select
+        value={initialValue}
+        key={toolRunId + "_" + inputName}
+        size="small"
+        popupClassName="tool-input-value-dropdown"
+        options={options}
+        placeholder="Select a column name"
+        allowClear
+        onChange={(val) => {
+          onEdit(inputName, val);
+        }}
+      />
+    );
+  },
+  "list[DBColumn]": (
+    toolRunId,
+    inputName,
+    initialValue,
+    onEdit,
+    config = {
+      availableOutputNodes: [],
+      setActiveNode: () => {},
+      availableParentColumns: [],
+    }
+  ) => {
+    // dropdown with available columns
+    const options =
+      config?.availableParentColumns?.map((column) => {
+        return { label: column.title, value: column.title };
+      }) || [];
+
+    // similar to list, just that the new value and existing values are dropdowns
+    if (!initialValue) initialValue = [];
+    return (
+      <span className="tool-input-value tool-input-type-list tool-input-type-column-list">
+        <span className="list-bracket">[</span>
+        {initialValue.map((val, i) => {
+          return (
+            <span key={toolRunId + "_" + inputName}>
+              <Select
+                value={val}
+                showSearch
+                size="small"
+                placeholder="Select a column name"
+                allowClear
+                popupClassName="tool-input-value-dropdown"
+                options={options}
+                onChange={(val) => {
+                  // replace the value at i with the new value
+                  const newVal = initialValue.map((v, j) => {
+                    if (i === j) {
+                      return val;
+                    }
+                    return v;
+                  });
+                  onEdit(inputName, newVal);
+                }}
+              />
+              <div className="list-remove">
+                <MdDeleteOutline
+                  onClick={() =>
+                    onEdit(
+                      inputName,
+                      initialValue.filter((v, j) => j !== i)
+                    )
+                  }
+                />
+              </div>
+              {i !== initialValue.length - 1 ? (
+                <span className="list-separator">, </span>
+              ) : (
+                <></>
+              )}
+            </span>
+          );
+        })}
+        <div className="list-add">
+          <MdOutlineAddBox
+            onClick={() => {
+              onEdit(inputName, [...initialValue, ""]);
+            }}
+          ></MdOutlineAddBox>
+        </div>
+        <span className="list-bracket">]</span>
+      </span>
+    );
+  },
 };
 
 export function ToolRunInputList({
@@ -173,12 +282,26 @@ export function ToolRunInputList({
   availableOutputNodes = [],
   setActiveNode = () => {},
   handleEdit = () => {},
+  parentNodeData = {},
   autoFocus = true,
 }) {
-  //   parse inputs
+  // parse inputs
   // if inputs doesn't start with global_dict, then it's it's type is whatever typeof returns
   // if it does start with global_dict, then it is a pandas dataframe
   // with a corresponding node somewhere in the dag
+  // if there's parsedOutputs, use the .columns property from that
+  let availableParentColumns = [];
+
+  Object.keys(parentNodeData).forEach((key) => {
+    if (!parentNodeData[key]?.parsedOutputs) return;
+    if (parentNodeData[key]?.parsedOutputs) {
+      Object.keys(parentNodeData[key]?.parsedOutputs).forEach((df) => {
+        availableParentColumns = availableParentColumns.concat(
+          parentNodeData[key]?.parsedOutputs[df]?.data?.columns || []
+        );
+      });
+    }
+  });
 
   const [inputs, setInputs] = useState(step.inputs);
   const [functionSignature, setFunctionSignature] = useState(
@@ -205,12 +328,19 @@ export function ToolRunInputList({
     setFunctionSignature(step.function_signature);
   }, [step]);
 
+  // in case any input is a pd dataframe, and one of the inputs is either DBColumn or list[DBColumn]
+  // we need to find all available db columns in that pd dataframe
+  // check the cache if we have tool run data available
+
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
       {inputs.map((input, i) => {
         return (
           <div key={i + "_" + toolRunId} className="tool-input">
-            <span className="tool-input-type">{functionSignature[i].type}</span>
+            <span className="tool-input-type">
+              {easyColumnTypes[functionSignature[i].type] ||
+                functionSignature[i].type}
+            </span>
             <span className="tool-input-name">{functionSignature[i].name}</span>
 
             {inputTypeToUI[functionSignature[i].type] ? (
@@ -221,8 +351,11 @@ export function ToolRunInputList({
                 function (prop, newVal) {
                   onEdit(i, prop, newVal);
                 },
-                availableOutputNodes,
-                setActiveNode
+                {
+                  availableOutputNodes,
+                  setActiveNode,
+                  availableParentColumns,
+                }
               )
             ) : (
               <span className="tool-input-value" contentEditable>

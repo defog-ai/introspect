@@ -7,6 +7,8 @@ from scipy import stats
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+from agents.planner_executor.tool_helpers.DBColumn import DBColumn
+
 
 async def dataset_metadata_describer(
     global_dict={}, **kwargs
@@ -22,9 +24,9 @@ async def dataset_metadata_describer(
 
 async def t_test(
     full_data: pd.DataFrame,
-    group_column: str,
-    score_column: str,
-    name_column: str,
+    group_column: DBColumn,
+    score_column: DBColumn,
+    name_column: DBColumn,
     t_test_type: str = "unpaired",
     global_dict: dict = {},
     **kwargs,
@@ -153,9 +155,9 @@ async def t_test(
 
 async def wilcoxon_test(
     full_data: pd.DataFrame,
-    group_column: str,
-    score_column: str,
-    name_column: str,
+    group_column: DBColumn,
+    score_column: DBColumn,
+    name_column: DBColumn,
     global_dict: dict = {},
     **kwargs,
 ):
@@ -219,8 +221,8 @@ async def wilcoxon_test(
 
 async def anova_test(
     full_data: pd.DataFrame,
-    group_column: str,
-    score_column: str,
+    group_column: DBColumn,
+    score_column: DBColumn,
     global_dict: dict = {},
     **kwargs,
 ):

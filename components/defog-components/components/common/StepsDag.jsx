@@ -107,7 +107,7 @@ export default function StepsDag({
           if (!g["nodes"][child]) {
             g["nodes"][child] = {
               id: child,
-              data: { id: child, step: step },
+              step: step,
               title: child,
               isTool: false,
               isError: step.error_message,

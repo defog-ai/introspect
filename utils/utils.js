@@ -232,6 +232,22 @@ export const deleteDoc = async (docId) => {
   }
 };
 
+export const getUserMetadata = async () => {
+  const url = setupBaseUrl("http", "get_user_metadata");
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response.json();
+  } catch (e) {
+    return { success: false, error_message: e };
+  }
+};
+
 export const toolDisplayNames = {
   data_fetcher_and_aggregator: "Fetch data from db",
   global_dict_data_fetcher_and_aggregator: "Query data",
@@ -244,4 +260,16 @@ export const toolDisplayNames = {
   wilcoxon_test: "Wilcoxon Test",
   boxplot: "Boxplot",
   heatmap: "Heatmap",
+};
+
+export const easyColumnTypes = {
+  DBColumn: "Column name",
+  "list[DBColumn]": "List of column names",
+  "pandas.core.frame.DataFrame": "Dataframe",
+  str: "String",
+  int: "Integer",
+  float: "Float",
+  bool: "Boolean",
+  "list[str]": "List of strings",
+  list: "List",
 };

@@ -15,7 +15,11 @@ import { CustomFormattingToolbar } from "./CustomFormattingToolbar";
 import LoadingReport from "../reports/ReportLoading";
 import DocNav from "./DocNav";
 import { DocContext, RelatedAnalysesContext } from "./DocContext";
-import { getAllAnalyses, getToolboxes } from "../../utils/utils";
+import {
+  getAllAnalyses,
+  getToolboxes,
+  getUserMetadata,
+} from "../../utils/utils";
 import { DocSidebars } from "./DocSidebars";
 import { ReactiveVariablesContext } from "./ReactiveVariablesContext";
 import { ReactiveVariableNode } from "./customTiptap/ReactiveVariableNode";
@@ -55,6 +59,13 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
       const toolboxes = await getToolboxes(username);
       if (toolboxes && toolboxes.success) {
         items.toolboxes = toolboxes.toolboxes;
+      }
+
+      // also get user's metadata
+      const metadata = await getUserMetadata();
+
+      if (metadata && metadata.success) {
+        items.metadata = metadata.metadata;
       }
 
       setDocContext({

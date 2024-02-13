@@ -839,7 +839,7 @@ $grid: repeating-linear-gradient(
             flex-direction: row;
             align-items: baseline;
             flex-wrap: wrap;
-            max-width: 500px !important;
+            max-width: 100% !important;
 
             span {
               display: flex;
@@ -873,7 +873,8 @@ $grid: repeating-linear-gradient(
               }
             }
 
-            .list-add {
+            .list-add,
+            .list-remove {
               padding-inline-start: 1.2em;
               svg {
                 position: relative;
@@ -891,12 +892,20 @@ $grid: repeating-linear-gradient(
                 }
               }
             }
+            .list-remove {
+              padding-inline-start: 0;
+            }
 
             .ant-input {
               margin-left: 0.5em;
               margin-right: 0.5em;
               font-size: 1em;
             }
+
+            .ant-select {
+              min-width: 200px;
+            }
+
             .list-bracket {
               font-size: 1.2em;
             }
@@ -1401,6 +1410,7 @@ $grid: repeating-linear-gradient(
 
 .tool-input-value-dropdown {
   font-family: $code;
+  min-width: 200px;
 
   .ant-select-item-option-content {
     font-size: 1em;

@@ -11,7 +11,7 @@ ENV OPENAI_API_KEY=$OPENAI_API_KEY
 # need cmake for scikit
 RUN apt-get update && apt-get install -y python3-pip cmake supervisor cron
 
-COPY ./agents-backend/agents/requirements.txt ./requirements.txt
+COPY ./agents-backend/src/requirements.txt ./requirements.txt
 # install requirements
 RUN pip install -r requirements.txt
 
@@ -36,7 +36,7 @@ RUN touch /var/log/cron.log
 # expose python server port
 EXPOSE 1235
 
-COPY ./agents-backend/agents/ ./
+COPY ./agents-backend/src/ ./
 
 # create empty report assets dirs
 RUN mkdir -p /agents-assets/report-assets

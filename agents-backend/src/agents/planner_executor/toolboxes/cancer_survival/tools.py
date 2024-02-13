@@ -22,14 +22,16 @@ from sksurv.linear_model import CoxPHSurvivalAnalysis
 from sklearn.model_selection import GridSearchCV, KFold
 import matplotlib.pyplot as plt
 
+from agents.planner_executor.tool_helpers.DBColumn import DBColumn
+
 
 # all of this is stolen from here https://scikit-survival.readthedocs.io/en/stable/user_guide/00-introduction.html
 # and here https://www.kaggle.com/code/fciscoalmeida/survival-analysis-in-python
 async def kaplan_meier_curve(
     full_data: pd.DataFrame,
-    survival_time_col: str,
-    status_col: str,
-    stratification_vars: list = None,
+    survival_time_col: DBColumn,
+    status_col: DBColumn,
+    stratification_vars: list[DBColumn] = [],
     **kwargs,
 ):
     """
@@ -49,7 +51,7 @@ async def kaplan_meier_curve(
             survival=True,
         )
 
-        if not stratification_vars:
+        if not stratification_vars or len(stratification_vars) == 0:
             kmc_plot_path = f"kaplan-meier-plots/kmc-{uuid4()}.png"
             time, survival_prob, conf_int = kaplan_meier_estimator(
                 data_y[status_col], data_y[survival_time_col], conf_type="log-log"
@@ -131,7 +133,7 @@ async def kaplan_meier_curve(
                         },
                     }
                 )
-        
+
         plt.close()
         success = True
     except Exception as e:
@@ -154,8 +156,8 @@ async def kaplan_meier_curve(
 # https://scikit-survival.readthedocs.io/en/stable/user_guide/00-introduction.html#Measuring-the-Performance-of-Survival-Models
 async def hazard_ratio(
     full_data: pd.DataFrame,
-    survival_time_col: str,
-    status_col: str,
+    survival_time_col: DBColumn,
+    status_col: DBColumn,
     **kwargs,
 ):
     """
