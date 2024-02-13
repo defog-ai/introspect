@@ -273,6 +273,39 @@ const inputTypeToUI = {
       </span>
     );
   },
+  DropdownSingleSelect: (
+    toolRunId,
+    inputName,
+    initialValue,
+    onEdit,
+    config = {
+      availableOutputNodes: [],
+      setActiveNode: () => {},
+      availableParentColumns: [],
+      functionSignature,
+    }
+  ) => {
+    const options =
+      config?.functionSignature?.find((sig) => sig.name === inputName)
+        ?.default || [];
+
+    return (
+      <Select
+        value={initialValue}
+        key={toolRunId + "_" + inputName}
+        size="small"
+        popupClassName="tool-input-value-dropdown"
+        options={options.map((opt) => {
+          return { label: opt, value: opt };
+        })}
+        placeholder="Select a value"
+        allowClear
+        onChange={(val) => {
+          onEdit(inputName, val);
+        }}
+      />
+    );
+  },
 };
 
 export function ToolRunInputList({
@@ -354,6 +387,7 @@ export function ToolRunInputList({
                   availableOutputNodes,
                   setActiveNode,
                   availableParentColumns,
+                  functionSignature,
                 }
               )
             ) : (

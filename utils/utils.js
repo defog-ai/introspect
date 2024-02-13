@@ -272,15 +272,5 @@ export const easyColumnTypes = {
   bool: "Boolean",
   "list[str]": "List of strings",
   list: "List",
+  DropdownSingleSelect: "String",
 };
-
-// export const estimatorDefaultOptions = {
-//   // function name
-//   "line_plot": {
-//     // function parameter name
-//     "estimator": ["mean", "sum", "median", "std", "var", "count"]
-//   },
-//   "t_test": {
-//     "t_test_type": ["paired", "unpaired"]
-//   }
-// }

@@ -16,5 +16,5 @@ class DBColumnList(list):
             super().__init__(args)
 
 
-class DbDropdown(str):
+class DropdownSingleSelect(str):
     pass

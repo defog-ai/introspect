@@ -7,7 +7,10 @@ from scipy import stats
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from agents.planner_executor.tool_helpers.DBColumn import DBColumn
+from agents.planner_executor.tool_helpers.tool_param_types import (
+    DBColumn,
+    DropdownSingleSelect,
+)
 
 
 async def dataset_metadata_describer(
@@ -27,7 +30,7 @@ async def t_test(
     group_column: DBColumn,
     score_column: DBColumn,
     name_column: DBColumn,
-    t_test_type: str = "unpaired",
+    t_test_type: DropdownSingleSelect = ["unpaired", "paired"],
     global_dict: dict = {},
     **kwargs,
 ) -> Tuple[str, pd.DataFrame]:
@@ -40,7 +43,7 @@ async def t_test(
     print(score_column)
     reactive_vars = {}
 
-    if name_column == "" or name_column is not None:
+    if name_column == "" or name_column is None:
         subset_columns = [group_column, score_column]
     else:
         subset_columns = [group_column, score_column, name_column]

@@ -1,6 +1,7 @@
 import { Input, Select } from "antd";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
+import { easyColumnTypes } from "../../../../utils/utils";
 
 const onHover = (ev, label, analysisId) => {
   // get the closest .analysis-content to the mouseovered element
@@ -284,6 +285,36 @@ const inputTypeToUI = {
       </span>
     );
   },
+  DropdownSingleSelect: (
+    inputName,
+    initialValue,
+    onEdit,
+    config = {
+      availableParentColumns: [],
+      toolRunId: "",
+      functionSignature: {},
+    }
+  ) => {
+    const options =
+      config?.functionSignature?.find((sig) => sig.name === inputName)
+        ?.default || [];
+
+    return (
+      <Select
+        value={initialValue}
+        size="small"
+        popupClassName="tool-input-value-dropdown"
+        options={options.map((option) => {
+          return { label: option, value: option };
+        })}
+        placeholder="Select a value"
+        allowClear
+        onChange={(val) => {
+          onEdit(inputName, val);
+        }}
+      />
+    );
+  },
 };
 
 export function AddStepInputList({
@@ -322,7 +353,10 @@ export function AddStepInputList({
       {inputs.map((input, i) => {
         return (
           <div key={i + "_" + toolRunId} className="tool-input">
-            <span className="tool-input-type">{functionSignature[i].type}</span>
+            <span className="tool-input-type">
+              {easyColumnTypes[functionSignature[i].type] ||
+                functionSignature[i].type}
+            </span>
             <span className="tool-input-name">{functionSignature[i].name}</span>
             {inputTypeToUI[functionSignature[i].type](
               functionSignature[i].name,
@@ -336,6 +370,7 @@ export function AddStepInputList({
                 newListValueDefault,
                 analysisId,
                 toolRunId,
+                functionSignature,
               }
             )}
           </div>

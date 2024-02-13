@@ -39,13 +39,22 @@ def parse_function_signature(param_signatures, fn_name):
             if str(p_type).startswith("<class"):
                 p_type = str(p_type)[8:-2]
             # if it contains "DBColumn", then just say "DBColumn"
-            if str(p_type) == "agents.planner_executor.tool_helpers.DBColumn.DBColumn":
+            if (
+                str(p_type)
+                == "agents.planner_executor.tool_helpers.tool_param_types.DBColumn"
+            ):
                 p_type = "DBColumn"
             # if it's a list of DBColumn, then just say "list[DBColumn]"
             if str(p_type).startswith(
-                "list[agents.planner_executor.tool_helpers.DBColumn.DBColumn]"
+                "list[agents.planner_executor.tool_helpers.tool_param_types.DBColumn]"
             ):
                 p_type = "list[DBColumn]"
+            # if DropdownSingleSelect, then just say "DropDownSingleSelect"
+            if (
+                str(p_type)
+                == "agents.planner_executor.tool_helpers.tool_param_types.DropdownSingleSelect"
+            ):
+                p_type = "DropdownSingleSelect"
 
         # if default value type is a class, convert to string
         if type(p_default_val) == type:

@@ -6,7 +6,10 @@ import pandas as pd
 
 import yaml
 
-from agents.planner_executor.tool_helpers.DBColumn import DBColumn
+from agents.planner_executor.tool_helpers.tool_param_types import (
+    DBColumn,
+    DropdownSingleSelect,
+)
 
 with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
@@ -114,7 +117,7 @@ async def heatmap(
     y_position_column: DBColumn,
     color_column: DBColumn,
     # can be mean, median, max, min, or sum
-    aggregation_type: str = "mean",
+    aggregation_type: DropdownSingleSelect = ["mean", "median", "max", "min", "sum"],
     color_scale: str = "YlGnBu",
     global_dict: dict = {},
 ):
@@ -125,73 +128,22 @@ async def heatmap(
     heatmap_path = f"heatmaps/heatmap-{uuid4()}.png"
     fig, ax = plt.subplots()
     plt.xticks(rotation=45)
-    if aggregation_type == "mean":
-        sns.heatmap(
-            full_data.pivot_table(
-                index=y_position_column,
-                columns=x_position_column,
-                values=color_column,
-                aggfunc="mean",
-            ),
-            annot=True,
-            fmt=".1f",
-            cmap=color_scale,
-            ax=ax,
-        )
-    elif aggregation_type == "median":
-        sns.heatmap(
-            full_data.pivot_table(
-                index=y_position_column,
-                columns=x_position_column,
-                values=color_column,
-                aggfunc="median",
-            ),
-            annot=True,
-            fmt=".1f",
-            cmap=color_scale,
-            ax=ax,
-        )
-    elif aggregation_type == "max":
-        sns.heatmap(
-            full_data.pivot_table(
-                index=y_position_column,
-                columns=x_position_column,
-                values=color_column,
-                aggfunc="max",
-            ),
-            annot=True,
-            fmt=".1f",
-            cmap=color_scale,
-            ax=ax,
-        )
-    elif aggregation_type == "min":
-        sns.heatmap(
-            full_data.pivot_table(
-                index=y_position_column,
-                columns=x_position_column,
-                values=color_column,
-                aggfunc="min",
-            ),
-            annot=True,
-            fmt=".1f",
-            cmap=color_scale,
-            ax=ax,
-        )
-    elif aggregation_type == "sum":
-        sns.heatmap(
-            full_data.pivot_table(
-                index=y_position_column,
-                columns=x_position_column,
-                values=color_column,
-                aggfunc="sum",
-            ),
-            annot=True,
-            fmt=".1f",
-            cmap=color_scale,
-            ax=ax,
-        )
-    else:
-        raise ValueError("Invalid aggregation_type")
+
+    if not aggregation_type or type(aggregation_type) != str:
+        raise ValueError("Aggregation type must be a string")
+
+    sns.heatmap(
+        full_data.pivot_table(
+            index=y_position_column,
+            columns=x_position_column,
+            values=color_column,
+            aggfunc=aggregation_type,
+        ),
+        annot=True,
+        fmt=".1f",
+        cmap=color_scale,
+        ax=ax,
+    )
 
     plt.savefig(f"{report_assets_dir}/{heatmap_path}", dpi=300, bbox_inches="tight")
     plt.close()
@@ -217,7 +169,7 @@ async def line_plot(
     y_column: DBColumn,
     hue_column: DBColumn = None,
     facet_col: DBColumn = None,
-    estimator: str = "mean",
+    estimator: DropdownSingleSelect = ["mean", "median", "max", "min", "sum"],
     units: str = None,
     global_dict: dict = {},
     **kwargs,
@@ -225,8 +177,16 @@ async def line_plot(
     """
     Creates a line plot of the data, using seaborn
     """
-    if estimator != "mean":
-        estimator = None
+    if type(estimator) != str or estimator not in [
+        "mean",
+        "median",
+        "max",
+        "min",
+        "sum",
+    ]:
+        raise ValueError(
+            "Estimator must be a string and one of mean, median, max, min, sum"
+        )
 
     relevant_columns = [x_column, y_column]
     if hue_column:

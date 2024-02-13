@@ -22,7 +22,7 @@ from sksurv.linear_model import CoxPHSurvivalAnalysis
 from sklearn.model_selection import GridSearchCV, KFold
 import matplotlib.pyplot as plt
 
-from agents.planner_executor.tool_helpers.DBColumn import DBColumn
+from agents.planner_executor.tool_helpers.tool_param_types import DBColumn
 
 
 # all of this is stolen from here https://scikit-survival.readthedocs.io/en/stable/user_guide/00-introduction.html

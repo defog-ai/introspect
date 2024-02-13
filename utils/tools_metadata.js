@@ -62,8 +62,14 @@ export const toolsMetadata = {
       },
       {
         "name": "estimator",
-        "default": "mean",
-        "type": "str"
+        "default": [
+          "mean",
+          "median",
+          "max",
+          "min",
+          "sum"
+        ],
+        "type": "DropdownSingleSelect"
       },
       {
         "name": "units",
@@ -145,8 +151,11 @@ export const toolsMetadata = {
       },
       {
         "name": "t_test_type",
-        "default": "unpaired",
-        "type": "str"
+        "default": [
+          "unpaired",
+          "paired"
+        ],
+        "type": "DropdownSingleSelect"
       }
     ]
   },
@@ -249,8 +258,14 @@ export const toolsMetadata = {
       },
       {
         "name": "aggregation_type",
-        "default": "mean",
-        "type": "str"
+        "default": [
+          "mean",
+          "median",
+          "max",
+          "min",
+          "sum"
+        ],
+        "type": "DropdownSingleSelect"
       },
       {
         "name": "color_scale",

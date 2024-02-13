@@ -113,6 +113,8 @@ export function AddStepUI({
         rootClassName="add-step-select-tool-name"
         options={toolOptions}
         value={selectedTool}
+        allowClear
+        showSearch
         onChange={(value) => {
           if (!activeNode.data.meta.inputs) return;
 

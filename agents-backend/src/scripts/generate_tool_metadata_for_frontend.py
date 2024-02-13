@@ -23,6 +23,7 @@ def generate_tool_json_for_frontend():
 
 j = generate_tool_json_for_frontend()
 
+
 j_str = json.dumps(j, indent=2)
 
 j_str = "export const toolsMetadata = " + j_str
