@@ -225,6 +225,10 @@ async def line_plot(
     """
     Creates a line plot of the data, using seaborn
     """
+
+    if type(estimator) == list:
+        estimator = estimator[0]
+
     if estimator is None:
         estimator = "None"
 
@@ -240,11 +244,12 @@ async def line_plot(
             f"Estimator must was {estimator}, but it must be a string and one of mean, median, max, min, sum, None"
         )
 
-    if type(estimator) == list:
-        estimator = estimator[0]
-
     if estimator == "None":
         estimator = None
+
+    # if x_column is a numerical value and y_column is a string, swap them
+    if full_data[x_column].dtype != "object" and full_data[y_column].dtype == "object":
+        x_column, y_column = y_column, x_column
 
     relevant_columns = [x_column, y_column]
     if hue_column:
@@ -254,7 +259,7 @@ async def line_plot(
     if units:
         relevant_columns.append(units)
 
-    df = full_data.dropna(subset=relevant_columns)
+    df = full_data.dropna(subset=relevant_columns)[relevant_columns]
 
     if units is not None:
         df = (
@@ -263,11 +268,11 @@ async def line_plot(
             .reset_index()
         )
 
-    print(df.dtypes, flush=True)
-
     # sort the dataframe by the x_column
     if df[x_column].dtype == "object":
-        df = df.sort_values(by=[x_column], key=natural_sort)
+        df["sort_key"] = df[x_column].apply(natural_sort)
+        df = df.sort_values(by="sort_key", key=natural_sort)
+        del df["sort_key"]
     else:
         df = df.sort_values(by=[x_column])
 
