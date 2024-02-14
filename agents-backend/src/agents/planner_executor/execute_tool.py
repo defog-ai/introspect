@@ -1,4 +1,5 @@
 from operator import and_
+import re
 from .tool_helpers.all_tools import tools
 from defog import Defog
 import pandas as pd
@@ -44,11 +45,14 @@ def parse_function_signature(param_signatures, fn_name):
                 == "agents.planner_executor.tool_helpers.tool_param_types.DBColumn"
             ):
                 p_type = "DBColumn"
-            # if it's a list of DBColumn, then just say "list[DBColumn]"
+            # if it's a list of DBColumn, then include the number of elements
             if str(p_type).startswith(
-                "list[agents.planner_executor.tool_helpers.tool_param_types.DBColumn]"
+                "agents.planner_executor.tool_helpers.tool_param_types.DBColumnList_"
             ):
-                p_type = "list[DBColumn]"
+                # get index of DBColumnList_ and use string from there till end
+                match = re.search("DBColumnList_", str(p_type)).start()
+                p_type = str(p_type)[match:]
+
             # if DropdownSingleSelect, then just say "DropDownSingleSelect"
             if (
                 str(p_type)

@@ -22,7 +22,10 @@ from sksurv.linear_model import CoxPHSurvivalAnalysis
 from sklearn.model_selection import GridSearchCV, KFold
 import matplotlib.pyplot as plt
 
-from agents.planner_executor.tool_helpers.tool_param_types import DBColumn
+from agents.planner_executor.tool_helpers.tool_param_types import (
+    DBColumn,
+    db_column_list_type_creator,
+)
 
 
 # all of this is stolen from here https://scikit-survival.readthedocs.io/en/stable/user_guide/00-introduction.html
@@ -31,7 +34,7 @@ async def kaplan_meier_curve(
     full_data: pd.DataFrame,
     survival_time_col: DBColumn,
     status_col: DBColumn,
-    stratification_vars: list[DBColumn] = [],
+    stratification_vars: db_column_list_type_creator(0) = [],
     **kwargs,
 ):
     """

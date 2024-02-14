@@ -16,6 +16,7 @@ import yaml
 from agents.planner_executor.tool_helpers.tool_param_types import (
     DBColumn,
     DropdownSingleSelect,
+    db_column_list_type_creator,
 )
 
 with open(".env.yaml", "r") as f:
@@ -35,7 +36,7 @@ def validate_column(df, col_name):
 
 async def boxplot(
     full_data: pd.DataFrame,
-    boxplot_cols: list[DBColumn],
+    boxplot_cols: db_column_list_type_creator(1, 2),
     facet: bool = False,
     facet_col: DBColumn = None,
     color: DropdownSingleSelect = [
