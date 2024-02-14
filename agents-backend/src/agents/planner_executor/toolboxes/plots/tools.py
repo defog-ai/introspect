@@ -254,7 +254,10 @@ async def line_plot(
     df = full_data.dropna(subset=relevant_columns)
 
     # sort the dataframe by the x_column
-    df = df.sort_values(by=[x_column], key=natural_sort)
+    if df[x_column].dtype == "object":
+        df = df.sort_values(by=[x_column], key=natural_sort)
+    else:
+        df = df.sort_values(by=[x_column])
 
     chart_path = f"linecharts/linechart-{uuid4()}.png"
     fig, ax = plt.subplots()
