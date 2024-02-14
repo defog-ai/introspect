@@ -101,7 +101,7 @@ export const toolsMetadata = {
       {
         "name": "stratification_vars",
         "default": [],
-        "type": "list[DBColumn]"
+        "type": "DBColumnList_0"
       }
     ]
   },
@@ -219,7 +219,7 @@ export const toolsMetadata = {
       {
         "name": "boxplot_cols",
         "default": null,
-        "type": "list[DBColumn]"
+        "type": "DBColumnList_1_2"
       },
       {
         "name": "facet",

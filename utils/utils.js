@@ -264,7 +264,7 @@ export const toolDisplayNames = {
 
 export const easyColumnTypes = {
   DBColumn: "Column name",
-  "list[DBColumn]": "List of column names",
+  DBColumnList: "List of column names",
   "pandas.core.frame.DataFrame": "Dataframe",
   str: "String",
   int: "Integer",

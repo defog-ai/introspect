@@ -1,4 +1,4 @@
-import { Input, Select } from "antd";
+import { Input, Select, message } from "antd";
 import React, {
   useCallback,
   useEffect,
@@ -217,15 +217,29 @@ const inputTypeToUI = {
       />
     );
   },
-  "list[DBColumn]": (
+  DBColumnList: (
     inputName,
     initialValue,
     onEdit,
     config = {
       availableParentColumns: [],
       toolRunId: "",
+      type: "",
     }
   ) => {
+    // find the min and max from the type
+    // usually exists as DBColumnList_min_max
+    // where max is optional
+    const minMax = config.type.split("_").slice(1);
+    const min = +minMax[0];
+    if (minMax.length === 1) minMax.push(minMax[0]);
+    let max = +minMax[1];
+
+    // if max is 0, then it's infinity
+    if (max === 0) {
+      max = Infinity;
+    }
+
     // dropdown with available columns
     const options =
       config?.availableParentColumns?.map((column) => {
@@ -233,7 +247,7 @@ const inputTypeToUI = {
       }) || [];
 
     // similar to list, just that the new value and existing values are dropdowns
-    if (!initialValue) initialValue = [];
+    if (!initialValue) initialValue = Array(min).fill("");
     return (
       <span className="tool-input-value tool-input-type-list tool-input-type-column-list">
         <span className="list-bracket">[</span>
@@ -262,12 +276,20 @@ const inputTypeToUI = {
               />
               <div className="list-remove">
                 <MdDeleteOutline
-                  onClick={() =>
+                  onClick={() => {
+                    // if the length is already at min, don't remove
+                    if (initialValue.length <= min) {
+                      message.error(
+                        `${inputName} requires at least ${min} column(s)`
+                      );
+                      return;
+                    }
+
                     onEdit(
                       inputName,
                       initialValue.filter((v, j) => j !== i)
-                    )
-                  }
+                    );
+                  }}
                 />
               </div>
               {i !== initialValue.length - 1 ? (
@@ -281,6 +303,13 @@ const inputTypeToUI = {
         <div className="list-add">
           <MdOutlineAddBox
             onClick={() => {
+              // if the length is already at max, don't add
+              if (initialValue.length >= max) {
+                message.error(
+                  `Maximum number of columns (${max}) reached for ${inputName}`
+                );
+                return;
+              }
               onEdit(inputName, [...initialValue, ""]);
             }}
           ></MdOutlineAddBox>
@@ -322,6 +351,13 @@ const inputTypeToUI = {
   },
 };
 
+function sanitizeInputType(type) {
+  if (typeof type === "string" && type.startsWith("DBColumnList_")) {
+    return "DBColumnList";
+  }
+  return type;
+}
+
 export function AddStepInputList({
   toolRunId,
   analysisId,
@@ -346,7 +382,7 @@ export function AddStepInputList({
             const el = node.querySelector(
               "div.tool-input-value, input.tool-input-value"
             );
-            console.log(el);
+
             if (!el) return;
             el.focus();
           }, 0);
@@ -378,28 +414,31 @@ export function AddStepInputList({
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
       {inputs.map((input, i) => {
+        const sanitizedType = sanitizeInputType(functionSignature[i].type);
+
         return (
           <div key={i + "_" + toolRunId} className="tool-input">
             <span className="tool-input-type">
-              {easyColumnTypes[functionSignature[i].type] ||
-                functionSignature[i].type}
+              {easyColumnTypes[sanitizedType] || sanitizedType}
             </span>
             <span className="tool-input-name">{functionSignature[i].name}</span>
-            {inputTypeToUI[functionSignature[i].type](
-              functionSignature[i].name,
-              input,
-              function (prop, newVal) {
-                onEdit(i, prop, newVal);
-              },
-              {
-                availableParentColumns: availableColumns,
-                availableInputDfs: Object.keys(parentNodeData),
-                newListValueDefault,
-                analysisId,
-                toolRunId,
-                functionSignature,
-              }
-            )}
+            {inputTypeToUI[sanitizedType] &&
+              inputTypeToUI[sanitizedType](
+                functionSignature[i].name,
+                input,
+                function (prop, newVal) {
+                  onEdit(i, prop, newVal);
+                },
+                {
+                  availableParentColumns: availableColumns,
+                  availableInputDfs: Object.keys(parentNodeData),
+                  newListValueDefault,
+                  analysisId,
+                  toolRunId,
+                  functionSignature,
+                  type: functionSignature[i].type,
+                }
+              )}
           </div>
         );
       })}
