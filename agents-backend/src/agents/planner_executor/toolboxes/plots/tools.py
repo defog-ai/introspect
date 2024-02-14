@@ -18,6 +18,7 @@ from agents.planner_executor.tool_helpers.tool_param_types import (
     DropdownSingleSelect,
     db_column_list_type_creator,
 )
+from agents.planner_executor.tool_helpers.sorting_functions import natural_sort
 
 with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
@@ -253,7 +254,7 @@ async def line_plot(
     df = full_data.dropna(subset=relevant_columns)
 
     # sort the dataframe by the x_column
-    df = df.sort_values(by=[x_column])
+    df = df.sort_values(by=[x_column], key=natural_sort)
 
     chart_path = f"linecharts/linechart-{uuid4()}.png"
     fig, ax = plt.subplots()
