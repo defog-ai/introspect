@@ -1,5 +1,11 @@
 import { Input, Select } from "antd";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 import { easyColumnTypes } from "../../../../utils/utils";
 
@@ -44,8 +50,8 @@ const inputTypeToUI = {
           return (
             <span key={inputName}>
               <Input
-                // autoFocus={config?.autoFocus}
                 defaultValue={val}
+                rootClassName="tool-input-value"
                 size="small"
                 onChange={(ev) => {
                   // replace the value at i with the new value
@@ -74,7 +80,6 @@ const inputTypeToUI = {
     if (!initialValue) initialValue = "";
     return (
       <Input
-        // autoFocus={config?.autoFocus}
         rootClassName="tool-input-value"
         defaultValue={initialValue || ""}
         size="small"
@@ -87,7 +92,6 @@ const inputTypeToUI = {
   bool: (inputName, initialValue, onEdit, config = {}) => {
     return (
       <Select
-        // autoFocus={config?.autoFocus}
         rootClassName="tool-input-value"
         placeholder="Select a value"
         defaultValue={initialValue || null}
@@ -105,7 +109,6 @@ const inputTypeToUI = {
   },
   int: (inputName, initialValue, onEdit, config = {}) => (
     <Input
-      // autoFocus={config?.autoFocus}
       rootClassName="tool-input-value"
       defaultValue={initialValue || ""}
       type="number"
@@ -117,10 +120,10 @@ const inputTypeToUI = {
   ),
   float: (inputName, initialValue, onEdit, config = {}) => (
     <Input
-      // autoFocus={config?.autoFocus}
       size="small"
       type="number"
       defaultValue={initialValue}
+      rootClassName="tool-input-value"
       onChange={(ev) => {
         onEdit(inputName, parseFloat(ev.target.value));
       }}
@@ -133,7 +136,6 @@ const inputTypeToUI = {
     config = {
       availableInputDfs: [],
       analysisId: "",
-      autoFocus: false,
       setSelectedInputDf: () => {},
     }
   ) => {
@@ -146,7 +148,7 @@ const inputTypeToUI = {
       <Select
         showSearch
         placeholder="Select a value"
-        rootClassName="add-step-df-select-ctr"
+        rootClassName="add-step-df-select-ctr tool-input-value"
         onChange={(val) => {
           onEdit(inputName, val);
         }}
@@ -205,6 +207,7 @@ const inputTypeToUI = {
         key={config.toolRunId + "_" + inputName}
         size="small"
         popupClassName="tool-input-value-dropdown"
+        rootClassName="tool-input-value"
         options={options}
         placeholder="Select a column name"
         allowClear
@@ -244,6 +247,7 @@ const inputTypeToUI = {
                 placeholder="Select a column name"
                 allowClear
                 popupClassName="tool-input-value-dropdown"
+                rootClassName="tool-input-value"
                 options={options}
                 onChange={(val) => {
                   // replace the value at i with the new value
@@ -326,9 +330,31 @@ export function AddStepInputList({
   onEdit = () => {},
   newListValueDefault = "",
   parentNodeData = {},
+  autoFocus = true,
 }) {
   const functionSignature = toolMetadata?.function_signature || [];
-  const ctr = useRef(null);
+  const ctr = useCallback(
+    (node) => {
+      if (!autoFocus) return;
+      if (node) {
+        // hacky as f from here: https://github.com/facebook/react/issues/20863
+        // my guess is requestAnimationFrame is needed to ensure browser is finished painting the DOM
+        // before we try to focus
+        window.requestAnimationFrame(() => {
+          setTimeout(() => {
+            // put the focus on the first input on first render
+            const el = node.querySelector(
+              "div.tool-input-value, input.tool-input-value"
+            );
+            console.log(el);
+            if (!el) return;
+            el.focus();
+          }, 0);
+        });
+      }
+    },
+    [toolRunId, toolMetadata]
+  );
 
   const availableColumns = useMemo(() => {
     // check if any of the inputs is global_dict.something

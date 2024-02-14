@@ -1,5 +1,11 @@
 import { Input, Select } from "antd";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 import { easyColumnTypes } from "../../../../utils/utils";
 
@@ -110,6 +116,7 @@ const inputTypeToUI = {
       <Input
         value={initialValue}
         key={toolRunId + "_" + inputName}
+        rootClassName="tool-input-value"
         size="small"
         type="number"
         onChange={(ev) => {
@@ -187,6 +194,7 @@ const inputTypeToUI = {
     // return
     return (
       <Select
+        rootClassName="tool-input-value"
         value={initialValue}
         key={toolRunId + "_" + inputName}
         size="small"
@@ -229,6 +237,7 @@ const inputTypeToUI = {
                 value={val}
                 showSearch
                 size="small"
+                rootClassName="tool-input-value"
                 placeholder="Select a column name"
                 allowClear
                 popupClassName="tool-input-value-dropdown"
@@ -294,6 +303,7 @@ const inputTypeToUI = {
         value={initialValue}
         key={toolRunId + "_" + inputName}
         size="small"
+        rootClassName="tool-input-value"
         popupClassName="tool-input-value-dropdown"
         options={options.map((opt) => {
           return { label: opt, value: opt };
@@ -341,7 +351,27 @@ export function ToolRunInputList({
     step.function_signature
   );
 
-  const ctr = useRef(null);
+  const ctr = useCallback(
+    (node) => {
+      if (node) {
+        // hacky as f from here: https://github.com/facebook/react/issues/20863
+        // my guess is requestAnimationFrame is needed to ensure browser is finished painting the DOM
+        // before we try to focus
+        window.requestAnimationFrame(() => {
+          setTimeout(() => {
+            // put the focus on the first input on first render
+            const el = node.querySelector(
+              "div.tool-input-value, input.tool-input-value"
+            );
+            console.log(el);
+            if (!el) return;
+            el.focus();
+          }, 0);
+        });
+      }
+    },
+    [toolRunId]
+  );
 
   // index is index in the step["inputs"] array
   function onEdit(index, prop, newVal) {
