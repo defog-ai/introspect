@@ -253,6 +253,15 @@ async def line_plot(
 
     df = full_data.dropna(subset=relevant_columns)
 
+    if units is not None:
+        df = (
+            df.groupby([i for i in relevant_columns if i != y_column])["y_column"]
+            .mean()
+            .reset_index()
+        )
+
+    print(df.dtypes)
+
     # sort the dataframe by the x_column
     if df[x_column].dtype == "object":
         df = df.sort_values(by=[x_column], key=natural_sort)
