@@ -1,9 +1,8 @@
-from typing import List
 import re
 import pandas as pd
 
 
-def natural_sort(l, ascending=False):
+def natural_sort(l, ascending=True):
     """
     Sorts a list or a pandas series in a natural way.
     If it's a list of numbers or datetimes, just sort them normally.
