@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # set default font to Arial
-plt.rcParams["font.family"] = "Arial"
+# TODO: enable this after figuring out how to install Arial font inside Docker
+# plt.rcParams["font.family"] = "Arial"
 
 available_colors = plt.colormaps()
 
@@ -67,7 +68,6 @@ async def boxplot(
     if not opacity or type(opacity) != float:
         raise ValueError("Opacity must be a float")
 
-    print(color)
     if len(boxplot_cols) == 1:
         if boxplot_cols[0] == "label":
             new_col = "label_"
@@ -240,6 +240,9 @@ async def line_plot(
             f"Estimator must was {estimator}, but it must be a string and one of mean, median, max, min, sum, None"
         )
 
+    if type(estimator) == list:
+        estimator = estimator[0]
+
     if estimator == "None":
         estimator = None
 
@@ -260,7 +263,7 @@ async def line_plot(
             .reset_index()
         )
 
-    print(df.dtypes)
+    print(df.dtypes, flush=True)
 
     # sort the dataframe by the x_column
     if df[x_column].dtype == "object":
