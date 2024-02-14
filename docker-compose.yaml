@@ -17,9 +17,6 @@ services:
     build:
       context: .
       dockerfile: dockerfile.agents-partykit
-    ports:
-      - "1999:1999"
-      - "2000:2000"
     networks:
       - agents-network
 
