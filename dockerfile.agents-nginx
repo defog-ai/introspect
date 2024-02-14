@@ -5,7 +5,7 @@ FROM nginx:latest
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 
 ARG ENDPOINT=""
-ENV ENDPOINT=$ENDPOINT
+ENV ENDPOINT="${ENDPOINT:-localhost:80}"
 
 # copy the build output to replace the default nginx contents
 COPY ./out /var/www/html
