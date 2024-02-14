@@ -24,4 +24,4 @@ def natural_sort(l, ascending=True):
         l = l.tolist()
 
     l.sort(key=alphanum_key, reverse=not ascending)
-    return l
+    return pd.Series(l)
