@@ -14,4 +14,4 @@ COPY ./agents-backend/docker-setup-files/nginx.conf /etc/nginx/sites-available/d
 EXPOSE 1999
 EXPOSE 2000
 
-CMD service nginx start && npx partykit dev
+CMD service nginx start && npx partykit dev --disable-request-cf-fetch

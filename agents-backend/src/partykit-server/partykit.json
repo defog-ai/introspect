@@ -1,5 +1,6 @@
 {
   "name": "defog-agent-partykit",
   "main": "server.js",
-  "port": 1999
+  "port": 1999,
+  "compatibilityDate": "2024-02-20"
 }
