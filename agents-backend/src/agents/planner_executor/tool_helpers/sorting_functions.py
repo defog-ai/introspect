@@ -2,7 +2,7 @@ import re
 import pandas as pd
 
 
-def natural_sort(l, ascending=True):
+def natural_sort_function(l, ascending=True):
     """
     Sorts a list or a pandas series in a natural way.
     If it's a list of numbers or datetimes, just sort them normally.
@@ -25,3 +25,21 @@ def natural_sort(l, ascending=True):
 
     l.sort(key=alphanum_key, reverse=not ascending)
     return l
+
+
+def natural_sort(df, time_column, units=None, ascending=True):
+    """
+    Sorts a dataframe in a natural way, using the natural_sort_function.
+    """
+    if df[time_column].dtype == "object":
+        order = natural_sort_function(df[time_column].unique().tolist())
+        df[time_column] = pd.Categorical(
+            df[time_column], categories=order, ordered=True
+        )
+        if units:
+            df = df.sort_values(by=[units, time_column], ascending=ascending)
+        else:
+            df = df.sort_values(by=time_column, ascending=ascending)
+    else:
+        df = df.sort_values(by=time_column, ascending=ascending)
+    return df

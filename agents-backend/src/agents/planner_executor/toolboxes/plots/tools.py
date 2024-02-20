@@ -269,15 +269,7 @@ async def line_plot(
         )
 
     # sort the dataframe by the x_column
-    if df[x_column].dtype == "object":
-        order = natural_sort(df[x_column].unique().tolist())
-        df[x_column] = pd.Categorical(df[x_column], categories=order, ordered=True)
-        if units is None:
-            df = df.sort_values(by=x_column)
-        else:
-            df = df.sort_values(by=[units, x_column])
-    else:
-        df = df.sort_values(by=x_column)
+    df = natural_sort(df, x_column, units)
 
     chart_path = f"linecharts/linechart-{uuid4()}.png"
     fig, ax = plt.subplots()
