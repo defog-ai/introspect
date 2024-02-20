@@ -31,14 +31,19 @@ toolbox_prompts = {
   outputs: pandas df
 
 -tool_name: wilcoxon_test
-    description: This function gets two groups and runs a wilcoxon test to check if there is a significant difference between their means.
-    inputs: ["global_dict.<input_df_name>", group column, score column, name column]
-    outputs: pandas df
+  description: This function gets two groups and runs a wilcoxon test to check if there is a significant difference between their means.
+  inputs: ["global_dict.<input_df_name>", group column, score column, name column]
+  outputs: pandas df
 
 -tool_name: anova_test
-    description: This function gets more than two groups and runs an anova test to check if there is a significant difference between their means.
-    inputs: ["global_dict.<input_df_name>", group column, score column]
-    outputs: pandas df
+  description: This function gets more than two groups and runs an anova test to check if there is a significant difference between their means.
+  inputs: ["global_dict.<input_df_name>", group column, score column]
+  outputs: pandas df
+
+- tool_name: fold_change
+  description: This function calculates the fold change over time for different groups. Fold change is the ratio of the final value to the initial value.
+  inputs: ["global_dict.<input_df_name>", value column (the numerical value), group column (the column that represents the group), time column (the column that represents the time point)]
+  outputs: pandas
 """,
     "plots": """-tool_name: boxplot
     description: Generates a boxplot using python's seaborn library. Also accepts a faceting column. This usually required the full dataset and not summary statistics. Use the facet feature only when specifically asked for it.

@@ -65,6 +65,11 @@ tools = [
         "display_name": "Heatmap",
         "fn": heatmap,
     },
+    {
+        "name": "fold_change",
+        "display_name": "Fold Change",
+        "fn": fold_change,
+    },
 ]
 
 tool_name_dict = {tool["name"]: tool for tool in tools}
