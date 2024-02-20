@@ -1,7 +1,7 @@
 export const toolsMetadata = {
   "data_fetcher_and_aggregator": {
     "name": "data_fetcher_and_aggregator",
-    "display_name": "Query data from a database",
+    "display_name": "Fetch data from a database",
     "function_signature": [
       {
         "name": "question",
@@ -12,7 +12,7 @@ export const toolsMetadata = {
   },
   "global_dict_data_fetcher_and_aggregator": {
     "name": "global_dict_data_fetcher_and_aggregator",
-    "display_name": "Query a dataframe",
+    "display_name": "Query data that has already been fetched from a database",
     "function_signature": [
       {
         "name": "question",
@@ -76,6 +76,25 @@ export const toolsMetadata = {
         "name": "units",
         "default": null,
         "type": "DBColumn"
+      },
+      {
+        "name": "plot_average_line",
+        "default": [
+          "False",
+          "True"
+        ],
+        "type": "DropdownSingleSelect"
+      },
+      {
+        "name": "average_type",
+        "default": [
+          "mean",
+          "median",
+          "max",
+          "min",
+          "mode"
+        ],
+        "type": "DropdownSingleSelect"
       }
     ]
   },
@@ -474,6 +493,32 @@ export const toolsMetadata = {
           "crest_r"
         ],
         "type": "DropdownSingleSelect"
+      }
+    ]
+  },
+  "fold_change": {
+    "name": "fold_change",
+    "display_name": "Fold Change",
+    "function_signature": [
+      {
+        "name": "full_data",
+        "default": null,
+        "type": "pandas.core.frame.DataFrame"
+      },
+      {
+        "name": "value_column",
+        "default": null,
+        "type": "DBColumn"
+      },
+      {
+        "name": "group_column",
+        "default": null,
+        "type": "DBColumn"
+      },
+      {
+        "name": "time_column",
+        "default": null,
+        "type": "DBColumn"
       }
     ]
   }

@@ -219,12 +219,22 @@ async def line_plot(
     facet_col: DBColumn = None,
     estimator: DropdownSingleSelect = ["mean", "median", "max", "min", "sum", "None"],
     units: DBColumn = None,
+    plot_average_line: DropdownSingleSelect = ["False", "True"],
+    average_type: DropdownSingleSelect = ["mean", "median", "max", "min", "mode"],
     global_dict: dict = {},
     **kwargs,
 ):
     """
     Creates a line plot of the data, using seaborn
     """
+    if type(plot_mean) == list:
+        plot_mean = plot_mean[0]
+
+    if type(average_type) == list:
+        average_type = average_type[0]
+
+    if type(plot_average_line) == list:
+        plot_average_line = plot_average_line[0]
 
     if type(estimator) == list:
         estimator = estimator[0]
@@ -284,6 +294,26 @@ async def line_plot(
             estimator=estimator,
             units=units,
         )
+        # Calculating the median value of 'y'
+        if average_type == "median":
+            value_to_plot = df[y_column].median()
+        elif average_type == "mean":
+            value_to_plot = df[y_column].mean()
+        elif average_type == "max":
+            value_to_plot = df[y_column].max()
+        elif average_type == "min":
+            value_to_plot = df[y_column].min()
+        elif average_type == "mode":
+            value_to_plot = df[y_column].mode()
+
+        # Adding a horizontal line for the median value
+        if plot_average_line == "True":
+            plt.axhline(
+                y=value_to_plot,
+                color="r",
+                linestyle="--",
+                label=f"{average_type.title()}: {value_to_plot:.2f}",
+            )
     else:
         plot = sns.relplot(
             data=df[relevant_columns],
@@ -295,6 +325,29 @@ async def line_plot(
             estimator=estimator,
             units=units,
         )
+
+        for group, ax in plot.axes_dict.items():
+            if average_type == "median":
+                value_to_plot = df[df[facet_col] == group][y_column].median()
+            elif average_type == "mean":
+                value_to_plot = df[df[facet_col] == group][y_column].mean()
+            elif average_type == "max":
+                value_to_plot = df[df[facet_col] == group][y_column].max()
+            elif average_type == "min":
+                value_to_plot = df[df[facet_col] == group][y_column].min()
+            elif average_type == "mode":
+                value_to_plot = df[df[facet_col] == group][y_column].mode()
+            ax.axhline(
+                y=value_to_plot,
+                color="r",
+                linestyle="--",
+                label=f"{average_type.title()}: {value_to_plot:.2f}",
+            )
+
+        # Adding a legend to each subplot
+        for ax in plot.axes.flat:
+            ax.legend()
+
     # save the plot
     plot.figure.savefig(
         f"{report_assets_dir}/{chart_path}", dpi=300, bbox_inches="tight"
