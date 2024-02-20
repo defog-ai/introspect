@@ -12,6 +12,8 @@ from agents.planner_executor.tool_helpers.tool_param_types import (
     DropdownSingleSelect,
 )
 
+from agents.planner_executor.tool_helpers.sorting_functions import natural_sort
+
 
 async def dataset_metadata_describer(
     global_dict={}, **kwargs
@@ -273,6 +275,36 @@ async def anova_test(
                 "data": anova_df,
                 "reactive_vars": reactive_vars,
                 "analysis": analysis,
+            }
+        ],
+    }
+
+
+async def fold_change(
+    full_data: pd.DataFrame,
+    value_column: DBColumn,
+    group_column: DBColumn,
+    time_column: DBColumn,
+    global_dict: dict = {},
+):
+    """
+    This function calculates the fold change between two groups of values.
+    """
+    df = full_data.dropna(subset=[value_column, group_column, time_column])
+
+    df = df.groupby([group_column, time_column])[value_column].mean().reset_index()
+    df = natural_sort(df, time_column, group_column)
+
+    # calculate the fold change for each group, which is the ratio of the value in first time_column to the value in a given time_column
+    fold_change_df = df.pivot(
+        index=time_column, columns=group_column, values=value_column
+    )
+    fold_change_df = fold_change_df / fold_change_df.iloc[0]
+    fold_change_df = fold_change_df.dropna(how="all", axis=1).reset_index()
+    return {
+        "outputs": [
+            {
+                "data": df,
             }
         ],
     }
