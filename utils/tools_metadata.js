@@ -1,7 +1,7 @@
 export const toolsMetadata = {
   "data_fetcher_and_aggregator": {
     "name": "data_fetcher_and_aggregator",
-    "display_name": "Fetch data from a database",
+    "display_name": "Fetch data from database",
     "function_signature": [
       {
         "name": "question",
@@ -12,7 +12,7 @@ export const toolsMetadata = {
   },
   "global_dict_data_fetcher_and_aggregator": {
     "name": "global_dict_data_fetcher_and_aggregator",
-    "display_name": "Query data that has already been fetched from a database",
+    "display_name": "Query data from a pandas dataframe",
     "function_signature": [
       {
         "name": "question",

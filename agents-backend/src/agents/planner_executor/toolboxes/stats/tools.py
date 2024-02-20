@@ -304,7 +304,7 @@ async def fold_change(
     return {
         "outputs": [
             {
-                "data": df,
+                "data": fold_change_df,
             }
         ],
     }

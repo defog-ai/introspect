@@ -10,13 +10,13 @@ from ..toolboxes.plots.tools import *
 tools = [
     {
         "name": "data_fetcher_and_aggregator",
-        "display_name": "Data Fetcher and Aggregator",
+        "display_name": "Fetch data from database",
         "fn": data_fetcher_and_aggregator,
         "no_code": True,
     },
     {
         "name": "global_dict_data_fetcher_and_aggregator",
-        "display_name": "Global Dict Data Fetcher and Aggregator",
+        "display_name": "Query data from a pandas dataframe",
         "fn": global_dict_data_fetcher_and_aggregator,
         "no_code": True,
     },

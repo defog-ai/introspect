@@ -227,9 +227,6 @@ async def line_plot(
     """
     Creates a line plot of the data, using seaborn
     """
-    if type(plot_mean) == list:
-        plot_mean = plot_mean[0]
-
     if type(average_type) == list:
         average_type = average_type[0]
 
@@ -241,6 +238,9 @@ async def line_plot(
 
     if estimator is None:
         estimator = "None"
+
+    if facet_col == hue_column:
+        hue_column = None
 
     if estimator not in [
         "mean",
@@ -255,6 +255,9 @@ async def line_plot(
         )
 
     if estimator == "None":
+        estimator = None
+
+    if units:
         estimator = None
 
     # if x_column is a numerical value and y_column is a string, swap them
@@ -314,6 +317,8 @@ async def line_plot(
                 linestyle="--",
                 label=f"{average_type.title()}: {value_to_plot:.2f}",
             )
+
+        plt.xticks(rotation=45)
     else:
         plot = sns.relplot(
             data=df[relevant_columns],
@@ -324,6 +329,7 @@ async def line_plot(
             col=facet_col,
             estimator=estimator,
             units=units,
+            col_wrap=4,
         )
 
         for group, ax in plot.axes_dict.items():
@@ -337,16 +343,19 @@ async def line_plot(
                 value_to_plot = df[df[facet_col] == group][y_column].min()
             elif average_type == "mode":
                 value_to_plot = df[df[facet_col] == group][y_column].mode()
-            ax.axhline(
-                y=value_to_plot,
-                color="r",
-                linestyle="--",
-                label=f"{average_type.title()}: {value_to_plot:.2f}",
-            )
+            if plot_average_line == "True":
+                ax.axhline(
+                    y=value_to_plot,
+                    color="r",
+                    linestyle="--",
+                    label=f"{average_type.title()}: {value_to_plot:.2f}",
+                )
+            try:
+                plot.xticks(rotation=45)
+            except:
+                print("Error in rotating xticks")
 
-        # Adding a legend to each subplot
-        for ax in plot.axes.flat:
-            ax.legend()
+    plt.xticks(rotation=45)
 
     # save the plot
     plot.figure.savefig(
