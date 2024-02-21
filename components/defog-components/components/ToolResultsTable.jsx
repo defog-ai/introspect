@@ -204,7 +204,7 @@ export function ToolResultsTable({
             columns={tableData.columns.filter((d) => d.title !== "index")}
             // scroll={{ x: "max-content" }}
             size="small"
-            pagination={{ pageSize: 8, showSizeChanger: false }}
+            pagination={{ defaultPageSize: 10, showSizeChanger: true }}
           />
         ),
         tabLabel: "Table",
