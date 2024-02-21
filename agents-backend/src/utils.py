@@ -127,7 +127,7 @@ def get_metadata():
 - When asking clarifying questions, ONLY use the information in the `column_name` column
 - When a user asks how something changes, they are typically looking to get a line chart or boxplot of a variable_value over time, using the visit_timepoint column
 - If a user asks how the expression of a gene changes over time, they are asking for a line chart of the variable_value over time, using the visit_timepoint column for data where the variable_name includes the gene name
-- When filtering over the variable_name, variable_name_clean, or variable_name_clean_std columns, use the `LIKE` operator with the `%` wildcard
+- When filtering over the variable_name column, always use the `LIKE` operator with the `%` wildcard. Remember that you can chain multiple `LIKE` operators with `AND` or `OR` to filter over multiple patterns, like `variable_name LIKE '%CD4%' AND variable_name LIKE '%Tregs%'`
 """
     # - If asked for proportion, refer to the flow_cytometry table
     # - If asked for concentration, refer to the cytokine table
