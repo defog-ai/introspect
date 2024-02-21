@@ -772,3 +772,63 @@ async def download_csv(request: Request):
         print("Error downloading csv: ", e)
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
+
+
+# an endpoint to delete steps.
+# we will get a list of tool run ids
+# we will remove these from the analysis
+
+
+@router.post("/delete_steps")
+async def delete_steps(request: Request):
+    """
+    Delete steps using the tool run ids passed.
+    """
+    try:
+        data = await request.json()
+        tool_run_ids = data.get("tool_run_ids")
+        analysis_id = data.get("analysis_id")
+
+        if tool_run_ids is None or type(tool_run_ids) != list:
+            return {"success": False, "error_message": "Invalid tool run ids."}
+
+        if analysis_id is None or type(analysis_id) != str:
+            return {"success": False, "error_message": "Invalid analysis id."}
+
+        # try to get this analysis' data
+        err, analysis_data = get_report_data(analysis_id)
+        if err:
+            return {"success": False, "error_message": err}
+
+        # get the steps
+        steps = analysis_data.get("gen_steps")
+        if steps and steps["success"]:
+            steps = steps["steps"]
+        else:
+            return {
+                "success": False,
+                "error_message": (
+                    steps.get("error_message")
+                    if steps is not None
+                    else "No steps found for analysis"
+                ),
+            }
+
+        # remove the steps with these tool run ids
+        new_steps = [s for s in steps if s["tool_run_id"] not in tool_run_ids]
+
+        # # # update report data
+        update_err = update_report_data(
+            analysis_id, "gen_steps", new_steps, replace=True
+        )
+
+        if update_err:
+            return {"success": False, "error_message": update_err}
+
+        return {"success": True, "new_steps": new_steps}
+
+    except Exception as e:
+        print("Error deleting steps: ", e)
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
+    return

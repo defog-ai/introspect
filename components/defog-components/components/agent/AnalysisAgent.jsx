@@ -118,15 +118,26 @@ export const AnalysisAgent = ({
     setPendingToolRunUpdates({});
   }
   useEffect(() => {
-    console.log(analysisData);
     if (analysisData?.gen_steps?.success && analysisData?.gen_steps?.steps) {
       setAnalysisSteps(
         analysisData.gen_steps.steps.slice().map((d) => {
-          d.id = v4().slice(0, 8) + "-" + d["tool_name"];
+          d.id = d["tool_name"] + "-" + v4().slice(0, 8);
           return d;
         })
       );
     }
+    if (!analysisData?.gen_steps?.success) {
+      setAnalysisSteps([]);
+    }
+
+    // set last existing stage
+    const lastExistingStage = Object.keys(analysisData)
+      .filter((d) => agentRequestTypes.includes(d))
+      .sort(
+        (a, b) => agentRequestTypes.indexOf(a) - agentRequestTypes.indexOf(b)
+      )
+      .pop();
+    setCurrentStage(lastExistingStage);
   }, [analysisData]);
 
   useEffect(() => {
@@ -366,14 +377,6 @@ export const AnalysisAgent = ({
           });
         } else {
           analysisData = res.report_data;
-          const lastExistingStage = Object.keys(analysisData)
-            .filter((d) => agentRequestTypes.includes(d))
-            .sort(
-              (a, b) =>
-                agentRequestTypes.indexOf(a) - agentRequestTypes.indexOf(b)
-            )
-            .pop();
-          setCurrentStage(lastExistingStage);
         }
         setAnalysisData(analysisData);
         setAnalysisTitle(analysisData?.user_question?.toUpperCase());

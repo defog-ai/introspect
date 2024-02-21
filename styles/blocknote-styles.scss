@@ -360,6 +360,16 @@ $grid: repeating-linear-gradient(
       }
     }
 
+    &.to-be-deleted:not(.graph-node-add) {
+      background-color: $dark-red !important;
+      border: none !important;
+      svg {
+        path {
+          fill: none !important;
+        }
+      }
+    }
+
     &.tool {
       // height: 50px;
       background-color: white;
@@ -391,6 +401,15 @@ $grid: repeating-linear-gradient(
             path {
               fill: $text-dark;
             }
+          }
+        }
+      }
+
+      &.to-be-deleted {
+        background-color: $dark-red !important;
+        svg {
+          path {
+            fill: none !important;
           }
         }
       }
@@ -910,23 +929,31 @@ $grid: repeating-linear-gradient(
               font-size: 1.2em;
             }
           }
-
-          .tool-re-run {
+          .tool-action-buttons {
             position: absolute;
             right: 10px;
             top: 10px;
-            background-color: $text-blue;
-            padding: 5px;
-            border-radius: 4px;
-            color: $white;
-            font-weight: bold;
-            font-size: 0.8em;
-            cursor: pointer;
+            display: flex;
+            flex-direction: row;
+            .tool-action-button {
+              background-color: $text-blue;
+              margin: 0 5px;
+              padding: 5px;
+              border-radius: 4px;
+              color: $white;
+              font-weight: bold;
+              font-size: 0.8em;
+              cursor: pointer;
 
-            &.tool-re-run-loading {
-              background-color: $text-very-light;
-              color: $text-light;
-              cursor: default;
+              &.tool-action-button-loading {
+                background-color: $text-very-light;
+                color: $text-light;
+                cursor: default;
+              }
+
+              &.tool-delete {
+                background-color: $medium-red;
+              }
             }
           }
 
@@ -1014,6 +1041,7 @@ $grid: repeating-linear-gradient(
             .tool-output-data {
               flex-grow: 1;
               margin-right: 2em;
+              min-width: 0;
               .tool-output-data-value {
                 color: $text-medium;
                 * {
@@ -1064,6 +1092,7 @@ $grid: repeating-linear-gradient(
             .tool-code {
               flex-grow: 2;
               margin-right: 1em;
+              min-width: 0;
 
               .tool-code-ctr {
                 background: $very-light-gray !important;

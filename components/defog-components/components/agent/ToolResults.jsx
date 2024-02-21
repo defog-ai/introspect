@@ -14,6 +14,9 @@ import { csvParse } from "d3";
 import { getToolRunData, toolDisplayNames } from "../../../../utils/utils";
 import ToolRunAnalysis from "./ToolRunAnalysis";
 import { AddStepUI } from "./AddStepUI";
+import { MdDeleteOutline } from "react-icons/md";
+import { Modal } from "antd";
+import setupBaseUrl from "../../../../utils/setupBaseUrl";
 
 function parseData(data_csv) {
   const data = csvParse(data_csv);
@@ -59,6 +62,8 @@ function parseOutputs(data, analysisData) {
   return parsedOutputs;
 }
 
+const deleteStepsEndpoint = setupBaseUrl("http", "delete_steps");
+
 export function ToolResults({
   analysisId,
   analysisData,
@@ -71,6 +76,8 @@ export function ToolResults({
   setPendingToolRunUpdates = () => {},
   toolRunDataCache = {},
   setToolRunDataCache = () => {},
+  setAnalysisData = () => {},
+  setAnalysisSteps = () => {},
 }) {
   const [toolRunId, setToolRunId] = useState(null);
   const [toolRunData, setToolRunData] = useState(null);
@@ -84,6 +91,99 @@ export function ToolResults({
     () => [...dag?.nodes()].filter((n) => !n.data.isTool),
     [dag]
   );
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  async function handleDelete(ev) {
+    try {
+      ev.preventDefault();
+      ev.stopPropagation();
+      // actually delete the steps
+
+      const deleteToolRunIds = [...activeNode.descendants()]
+        .filter((d) => d?.data?.isTool)
+        .map((d) => d?.data?.meta?.tool_run_id);
+
+      const res = await fetch(deleteStepsEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          analysis_id: analysisId,
+          tool_run_ids: deleteToolRunIds,
+        }),
+      }).then((r) => r.json());
+
+      if (res.success && res.new_steps) {
+        setAnalysisData((prev) => {
+          // if new steps are empty, delete the gen_steps key
+          // else update the steps
+          if (res.new_steps.length === 0) {
+            const newData = { ...prev };
+            delete newData.gen_steps;
+            return newData;
+          } else {
+            return {
+              ...prev,
+              gen_steps: {
+                ...prev.gen_steps,
+                steps: res.new_steps,
+              },
+            };
+          }
+        });
+
+        // also set setAnalysisSteps
+        // setAnalysisSteps(res.new_steps);
+      }
+    } catch (e) {
+      console.log(e);
+    } finally {
+      handleCancel();
+    }
+  }
+
+  function handleCancel(ev) {
+    ev?.preventDefault();
+    ev?.stopPropagation();
+    setShowDeleteModal(false);
+    // also find out all the descendants of this node
+    // add a class to them to-be-deleted
+
+    [...activeNode.descendants()].forEach((d) => {
+      const id = d.data.id;
+      const node = document.querySelector(`.graph-node.${id}`);
+      if (!node) return;
+
+      // add a class highlighted
+      node.classList.remove("to-be-deleted");
+    });
+  }
+
+  function showModal(ev) {
+    try {
+      ev.preventDefault();
+      ev.stopPropagation();
+      setShowDeleteModal(true);
+      // also find out all the descendants of this node
+      // add a class to them to-be-deleted
+
+      [...activeNode.descendants()].forEach((d) => {
+        const id = d.data.id;
+        // get the closest .analysis-content to the mouseovered element
+        const closest = ev.target.closest(".analysis-content");
+        if (!closest) return;
+        // now get the closest .graph-node with the class name output
+        const node = closest.querySelector(`.graph-node.${id}`);
+        if (!node) return;
+        // add a class highlighted
+        node.classList.add("to-be-deleted");
+      });
+    } catch (e) {
+      console.log(e);
+    }
+  }
 
   const getNewData = useCallback(
     async (newId) => {
@@ -371,13 +471,32 @@ export function ToolResults({
                 error_message={toolRunData?.error_message}
               ></ToolRunError>
             )}
-            {edited && (
+            <div className="tool-action-buttons">
+              {edited && (
+                <ToolReRun
+                  onClick={() => {
+                    handleReRun(toolRunId);
+                  }}
+                ></ToolReRun>
+              )}
               <ToolReRun
-                onClick={() => {
-                  handleReRun(toolRunId);
-                }}
+                onClick={showModal}
+                text="Delete"
+                className="tool-delete"
               ></ToolReRun>
-            )}
+              <Modal
+                okText={"Yes, delete"}
+                okType="danger"
+                title="Are you sure?"
+                open={showDeleteModal}
+                onOk={handleDelete}
+                onCancel={handleCancel}
+              >
+                <p>
+                  All child steps (highlighted in red) will also be deleted.
+                </p>
+              </Modal>
+            </div>
             <h1 className="tool-name">
               {toolDisplayNames[toolRunData.step.tool_name]}
             </h1>

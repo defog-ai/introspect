@@ -155,21 +155,19 @@ class Executor:
 
                 step["error_message"] = result.get("error_message")
 
+                self.previous_responses.append(ans)
+
                 # retry logic if there's an error message
                 if result.get("error_message"):
-                    if retries < max_retries:
-                        retries += 1
-                        print(
-                            "There was an error running the tool: ",
-                            result["error_message"],
-                        )
-                        print("Retrying...")
-                        next_step_data_description = f"There was an error running the tool {step['tool_name']}. This was the error:\n{result['error_message']}"
-                        continue
-                    else:
-                        break
+                    retries += 1
+                    print(
+                        "There was an error running the tool: ",
+                        result["error_message"],
+                    )
+                    print("Retrying...")
+                    next_step_data_description = f"There was an error running the tool {step['tool_name']}. This was the error:\n{result['error_message']}"
+                    continue
 
-                self.previous_responses.append(ans)
                 step["function_signature"] = tool_function_parameters
                 # when we're re running, we will need to reconstruct the model messages
                 # store these for later
