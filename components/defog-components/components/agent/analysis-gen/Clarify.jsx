@@ -1,11 +1,16 @@
-import { Button, Input, Select, Slider } from "antd";
-import React, { useState, useRef, Fragment } from "react";
+import { Button, Divider, Input, Select, Slider, Space } from "antd";
+import React, { useState, useRef, Fragment, useMemo } from "react";
 import styled from "styled-components";
 import Lottie from "lottie-react";
 import LoadingLottie from "../../svg/loader.json";
 import AgentLoader from "../../common/AgentLoader";
 import Writer from "../Writer";
-import { ArrowRightOutlined, BorderRightOutlined } from "@ant-design/icons";
+import {
+  ArrowRightOutlined,
+  BorderRightOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
+import Search from "antd/es/input/Search";
 
 export default function Clarify({
   data,
@@ -16,6 +21,21 @@ export default function Clarify({
 }) {
   const [submitted, setSubmitted] = useState(false);
   const answers = useRef(data?.clarification_questions);
+
+  // this will contain all default values or options for the UI elements
+  let defaults = [];
+
+  if (data && data.clarification_questions && data.success) {
+    data.clarification_questions.map((q, i) => {
+      if (q.ui_tool === "multi select") {
+        defaults.push(createDropdownOptions(q.ui_tool_options, q));
+      } else {
+        defaults.push("");
+      }
+    });
+  }
+
+  const [uiDefaults, setUIDefaults] = useState(defaults);
 
   if (!data || !data.clarification_questions || !data.success)
     return (
@@ -36,15 +56,33 @@ export default function Clarify({
     );
   }
 
-  function createDropdownOptions(arr) {
+  function createDropdownOptions(arr, q) {
     if (!Array.isArray(arr) || !arr) {
       return [];
     }
-    return arr.map((d) => ({
+    const opts = arr.map((d) => ({
       label: d,
       value: d,
       className: "analysis-dropdown-item",
     }));
+
+    // sometimes a new option might have been created and selected
+    // make sure that one exists in the arr, if it doesn't add an option for it
+    // we can also just overwrite on the backend, but easier/faster to do it here
+    try {
+      q.response.map((d) => {
+        if (!arr.includes(d)) {
+          opts.push({
+            label: d,
+            value: d,
+            className: "analysis-dropdown-item",
+          });
+        }
+      });
+    } catch (e) {
+      console.log(e);
+    }
+    return opts;
   }
 
   function updateAnswer(newAns, i, formattedReponse = null) {
@@ -82,12 +120,40 @@ export default function Clarify({
 
   const UIs = {
     "multi select": (q, i, opts) => {
+      const dropdownOpts = uiDefaults[i] || [];
+
       return (
         <Select
           mode="multiple"
-          options={createDropdownOptions(opts)}
+          options={dropdownOpts}
           popupClassName="analysis-dropdown"
           defaultValue={q.response}
+          dropdownRender={(menu) => (
+            <>
+              {menu}
+              <Divider style={{ margin: "8px 0" }} />
+              <Space style={{ padding: "0 8px 4px" }}>
+                <Search
+                  placeholder="New item"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onSearch={(value, e, info) => {
+                    // add this to uiDefaults at index i
+                    let newOpts = uiDefaults.slice();
+                    newOpts[i] = newOpts[i].concat({
+                      label: value,
+                      value: value,
+                      className: "analysis-dropdown-item",
+                    });
+
+                    setUIDefaults(newOpts);
+                  }}
+                  enterButton="Add"
+                  rootClassName="analysis-dropdown-add-item"
+                />
+              </Space>
+            </>
+          )}
           onChange={(_, allSel) => {
             return updateAnswer(
               allSel.map((d) => d.value),

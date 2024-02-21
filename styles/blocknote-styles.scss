@@ -1332,6 +1332,25 @@ $grid: repeating-linear-gradient(
   }
 }
 
+.analysis-dropdown-add-item {
+  .ant-input-group-addon {
+    // border-radius: 0 !important;
+
+    background-color: $light-orange;
+  }
+  button {
+    background: none;
+    border: 1px solid $medium-orange;
+    border-radius: 0;
+    &:hover {
+      background: none !important;
+    }
+  }
+  span {
+    color: $text-orange;
+  }
+}
+
 .analysis-dropdown {
   // background-color: #eff2fd;
   border: 1px solid $medium-orange;

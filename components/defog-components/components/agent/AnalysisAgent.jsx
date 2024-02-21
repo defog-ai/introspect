@@ -311,10 +311,11 @@ export const AnalysisAgent = ({
 
   useEffect(() => {
     function closeAnalysisOnClickOutside(e) {
-      // only close if this wasn't the analysis title or the recipe itself
+      // only close if this wasn't the analysis title or the recipe/ analysis dropdown itself
       if (
         !e.target.closest(".analysis-title") &&
-        !e.target.closest(".analysis-recipe")
+        !e.target.closest(".analysis-recipe") &&
+        !e.target.closest(".analysis-dropdown")
       )
         recipeShowing && setRecipeShowing(false);
     }
