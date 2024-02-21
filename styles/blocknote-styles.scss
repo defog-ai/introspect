@@ -1029,16 +1029,36 @@ $grid: repeating-linear-gradient(
                 width: fit-content;
               }
             }
+            .ant-collapse {
+              font-size: 16px;
+            }
             .tool-code-header,
-            .tool-output-data-header {
+            .tool-output-data-header,
+            .ant-collapse-header-text {
               font-size: 0.8em;
               border-radius: 4px;
-              margin-bottom: 1em;
+              font-weight: normal;
               display: block;
-              color: $text-medium;
+              color: $text-medium !important;
               pointer-events: none;
               margin-bottom: 1em;
               font-family: $code;
+            }
+            .ant-collapse-item {
+              .ant-collapse-content-box {
+                border: none;
+              }
+              .ant-collapse-header-text {
+                margin-bottom: 0em;
+                font-size: 0.8em;
+                text-decoration: none;
+              }
+
+              .ant-collapse-expand-icon {
+                color: $text-medium;
+                margin-right: 0.2em;
+                opacity: 1;
+              }
             }
 
             .tool-code {
@@ -1049,6 +1069,7 @@ $grid: repeating-linear-gradient(
                 background: $very-light-gray !important;
                 margin-bottom: 1em;
                 display: block;
+
                 .w-tc-editor-preview {
                   user-select: none;
                 }

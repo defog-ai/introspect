@@ -1,4 +1,6 @@
+import { CaretDownOutlined, CaretRightOutlined } from "@ant-design/icons";
 import { CodeEditor } from "../CodeEditor";
+import { useRef, useState } from "react";
 
 export function ToolRunOutputList({
   analysisId,
@@ -12,6 +14,9 @@ export function ToolRunOutputList({
 }) {
   //   parse outputs
   //   each output is a node somewhere in the dag
+
+  const codeCtrRef = useRef(null);
+  const [codeCollapsed, setCodeCollapsed] = useState(true);
 
   return (
     <div className="tool-output-list">
@@ -32,17 +37,58 @@ export function ToolRunOutputList({
         )}
         {codeStr && (
           <>
-            <p className="tool-code-header">Code</p>
-            <CodeEditor
-              key={codeStr}
-              className="tool-code-ctr"
-              analysisId={analysisId}
-              toolRunId={toolRunId}
-              code={codeStr}
-              language="python"
-              handleEdit={handleEdit}
-              updateProp={"code_str"}
-            ></CodeEditor>
+            <p
+              style={{ pointerEvents: "all", cursor: "pointer" }}
+              className="tool-code-header"
+              onClick={() => {
+                setCodeCollapsed(!codeCollapsed);
+                // get scroll height of tool-code-ctr inside codeCtrRef
+                if (codeCtrRef.current) {
+                  const codeCtr =
+                    codeCtrRef.current.querySelector(".tool-code-ctr");
+                  if (codeCtr) {
+                    codeCtrRef.current.style.maxHeight = codeCollapsed
+                      ? `${codeCtr.scrollHeight}px`
+                      : "0px";
+                  }
+                }
+              }}
+            >
+              <span>
+                {
+                  <CaretRightOutlined
+                    style={{
+                      transition: "transform 0.3s ease-in-out",
+                      marginRight: "3px",
+                      top: "1px",
+                      transform: codeCollapsed
+                        ? "rotate(0deg)"
+                        : "rotate(90deg)",
+                    }}
+                  />
+                }
+              </span>
+              Code
+            </p>
+            <div
+              ref={codeCtrRef}
+              style={{
+                overflow: "hidden",
+                maxHeight: "0px",
+                transition: "max-height 0.6s ease-in-out",
+              }}
+            >
+              <CodeEditor
+                key={codeStr}
+                className="tool-code-ctr"
+                analysisId={analysisId}
+                toolRunId={toolRunId}
+                code={codeStr}
+                language="python"
+                handleEdit={handleEdit}
+                updateProp={"code_str"}
+              ></CodeEditor>
+            </div>
           </>
         )}
       </div>
