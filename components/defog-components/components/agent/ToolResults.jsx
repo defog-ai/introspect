@@ -88,7 +88,7 @@ export function ToolResults({
   const [parentNodeData, setParentNodeData] = useState({});
 
   const availableOutputNodes = useMemo(
-    () => [...dag?.nodes()].filter((n) => !n.data.isTool),
+    () => (dag && [...dag?.nodes()].filter((n) => !n.data.isTool)) || [],
     [dag]
   );
 

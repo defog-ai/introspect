@@ -240,9 +240,21 @@ async def websocket_endpoint(websocket: WebSocket):
                                         "success": True,
                                         agent_output["prop_name"]: out,
                                     }
-                                    await websocket.send_json(resp)
+
+                                    overwrite_key = getattr(out, "overwrite_key", None)
+                                    # if the out has an overwrite_key
                                     # update report data in db
-                                    report_data_manager.update(request_type, out)
+                                    report_data_manager.update(
+                                        request_type,
+                                        out,
+                                        False,
+                                        overwrite_key,
+                                    )
+
+                                    if overwrite_key:
+                                        resp["overwrite_key"] = overwrite_key
+
+                                    await websocket.send_json(resp)
 
                             # send done true
                             await websocket.send_json(
@@ -293,6 +305,7 @@ async def websocket_endpoint(websocket: WebSocket):
         # other reasons for disconnect, like websocket being closed or a timeout
         manager.disconnect(websocket)
         await websocket.close()
+
 
 @app.get("/get_assets")
 async def get_assets(path: str):

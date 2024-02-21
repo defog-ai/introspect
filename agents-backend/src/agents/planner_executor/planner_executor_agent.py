@@ -5,7 +5,7 @@ from uuid import uuid4
 from agents.planner_executor.execute_tool import execute_tool
 from agents.planner_executor.tool_helpers.core_functions import resolve_input
 from db_utils import store_tool_run
-from utils import warn_str
+from utils import warn_str, YieldList
 from .tool_helpers.toolbox_manager import get_tool_library
 import asyncio
 import requests
@@ -139,7 +139,6 @@ class Executor:
                     break
 
                 step = yaml.safe_load(match[1].strip())[0]
-                steps.append(step)
 
                 # add a unique id to this tool as the tool_run prop
                 step["tool_run_id"] = str(uuid4())
@@ -165,7 +164,7 @@ class Executor:
                         result["error_message"],
                     )
                     print("Retrying...")
-                    next_step_data_description = f"There was an error running the tool {step['tool_name']}. This was the error:\n{result['error_message']}"
+                    next_step_data_description = f"There was an error running the tool {step['tool_name']}. This was the error:\n{result['error_message']}\n Instead of suffixing older output names with _updated, _v2, etc, re use the older output names of previously generated steps."
                     continue
 
                 step["function_signature"] = tool_function_parameters
@@ -194,7 +193,7 @@ class Executor:
 
                 if "error_message" in result:
                     print(result["error_message"])
-                    yield [step]
+                    yield YieldList([step])
                     break
 
                 # check if zip is possible
@@ -222,7 +221,31 @@ class Executor:
                     next_step_data_description = f"The global_dict contains the following keys with data and columns:\n```{self.tool_outputs_column_descriptions}```\n"
 
                 print(next_step_data_description)
-                yield [step]
+
+                # if we're here, means this step ran successfully.
+                # if the outputs of this step match any of the previous steps, either exactly or:
+                # , means that we should overwrite the previous step with this step. this was probably a "correction" of some of the previous step.
+                is_correction = False
+
+                yield_val = YieldList([step])
+
+                for i, previous_step in enumerate(steps):
+                    if set(previous_step["outputs_storage_keys"]) == set(
+                        step["outputs_storage_keys"]
+                    ):
+                        print("\n")
+                        print("This step is a correction of a previous step")
+                        print("\n\n")
+                        is_correction = True
+                        # we've already written that step, and sent it to the front end.
+                        # steal the tool_run_id of the older step
+                        step["tool_run_id"] = previous_step["tool_run_id"]
+                        yield_val.overwrite_key = "tool_run_id"
+
+                if not is_correction:
+                    steps.append(step)
+
+                yield yield_val
 
                 if "done" in step and step["done"] is True:
                     break

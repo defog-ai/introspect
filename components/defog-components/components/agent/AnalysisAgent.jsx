@@ -130,14 +130,16 @@ export const AnalysisAgent = ({
       setAnalysisSteps([]);
     }
 
-    // set last existing stage
-    const lastExistingStage = Object.keys(analysisData)
-      .filter((d) => agentRequestTypes.includes(d))
-      .sort(
-        (a, b) => agentRequestTypes.indexOf(a) - agentRequestTypes.indexOf(b)
-      )
-      .pop();
-    setCurrentStage(lastExistingStage);
+    if (analysisData) {
+      // set last existing stage
+      const lastExistingStage = Object.keys(analysisData)
+        .filter((d) => agentRequestTypes.includes(d))
+        .sort(
+          (a, b) => agentRequestTypes.indexOf(a) - agentRequestTypes.indexOf(b)
+        )
+        .pop();
+      setCurrentStage(lastExistingStage);
+    }
   }, [analysisData]);
 
   useEffect(() => {
@@ -207,31 +209,29 @@ export const AnalysisAgent = ({
 
         let newAnalysisData = { ...prev };
 
-        response.output[prop].forEach((res) => {
-          // we can either append to the stage's current data
-          // or merge to something based on a merge_key
-          // fheck if the response has a merge_key
-          let idx = -1;
-          if (res.merge && res.merge_key) {
-            // find the element in the stage's data that has the same merge_key
-            // if it exists, update it
-            // else append
-            idx = newAnalysisData[rType][prop]?.findIndex(
-              (d) => d[res.merge_key] === res[res.merge_key]
+        // check if the response has an "overwrite_key"
+        // if there's an overwrite_key provided,
+        // then go through old data, and the new_data
+        // if the overwrite_key is found in the old data, replace it with the elements that exist new_data with the same overwrite_key
+        // if it's not found, just append the item to the end
+        const overwrite_key = response.overwrite_key;
+        if (overwrite_key) {
+          response.output[prop].forEach((res) => {
+            const idx = newAnalysisData[rType][prop].findIndex(
+              (d) => d[overwrite_key] === res[overwrite_key]
             );
-          }
 
-          if (idx > -1) {
-            // update
-            newAnalysisData[rType][prop][idx] = {
-              ...newAnalysisData[rType][prop][idx],
-              ...res,
-            };
-          } else {
-            // append
-            newAnalysisData[rType][prop].push(res);
-          }
-        });
+            if (idx > -1) {
+              newAnalysisData[rType][prop][idx] = res;
+            } else {
+              newAnalysisData[rType][prop].push(res);
+            }
+          });
+        } else {
+          newAnalysisData[rType][prop] = newAnalysisData[rType][prop].concat(
+            response.output[prop]
+          );
+        }
 
         return newAnalysisData;
       });

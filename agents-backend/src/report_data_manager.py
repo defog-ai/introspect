@@ -56,7 +56,9 @@ class ReportDataManager:
                     self.report_id, "user_question", self.user_question, True
                 )
 
-    def update(self, request_type=None, new_data=None, replace=False):
+    def update(
+        self, request_type=None, new_data=None, replace=False, overwrite_key=None
+    ):
         if (
             request_type is None
             or new_data is None
@@ -64,7 +66,9 @@ class ReportDataManager:
         ):
             return
 
-        err = update_report_data(self.report_id, request_type, new_data, replace)
+        err = update_report_data(
+            self.report_id, request_type, new_data, replace, overwrite_key
+        )
         if err is not None:
             print(err)
             return

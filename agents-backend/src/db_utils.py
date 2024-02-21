@@ -12,9 +12,7 @@ from agents.planner_executor.tool_helpers.core_functions import (
 import psycopg2
 import yaml
 
-# from gcs_utils import store_files_to_gcs
-# from utils import add_files_to_rabbitmq_queue, error_str, log_str, warn_str
-from utils import warn_str
+from utils import warn_str, YieldList
 
 with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
@@ -204,7 +202,9 @@ def get_report_data(report_id):
         return err, report_data
 
 
-def update_report_data(report_id, request_type=None, new_data=None, replace=False):
+def update_report_data(
+    report_id, request_type=None, new_data=None, replace=False, overwrite_key=None
+):
     err = None
     request_types = [
         "clarify",
@@ -236,10 +236,43 @@ def update_report_data(report_id, request_type=None, new_data=None, replace=Fals
                     row = rows.fetchone()
                     # print(row)
                     curr_data = getattr(row, request_type) or []
-                    # if new data is a list, concat
+                    print("current data length ", len(curr_data))
+
+                    # if new data is a list and we're not asked to replace, concat
                     # if new data is anything else, replace
-                    if type(new_data) == list and not replace:
-                        curr_data = curr_data + new_data
+                    if (
+                        type(new_data) == list or type(new_data) == YieldList
+                    ) and not replace:
+                        if not overwrite_key or type(overwrite_key) != str:
+                            curr_data = curr_data + new_data
+                        # if there's an overwrite_key provided,
+                        # then go through old data, and the new_data
+                        # if the overwrite_key is found in the old data, replace it with the elements that exist new_data with the same overwrite_key
+                        # if it's not found, just append the item to the end
+                        else:
+                            print(
+                                "Overwriting data with overwrite_key: ", overwrite_key
+                            )
+                            replaced = 0
+                            for i, item in enumerate(new_data):
+                                found = False
+                                for j, old_item in enumerate(curr_data):
+                                    if old_item.get(overwrite_key) == item.get(
+                                        overwrite_key
+                                    ):
+                                        curr_data[j] = item
+                                        found = True
+                                        replaced += 1
+                                        break
+                                if not found:
+                                    curr_data.append(item)
+
+                            print(
+                                f"Replaced {replaced} items in {request_type} with overwrite_key: {overwrite_key}"
+                            )
+                            print(
+                                "New length of ", request_type, " is ", len(curr_data)
+                            )
                     else:
                         curr_data = new_data
                     print("writing to ", request_type, "in report id: ", report_id)
@@ -576,9 +609,11 @@ async def update_table_chart_data(table_id, edited_table_data):
                         "sql": edited_table_data.get("sql"),
                         "code": edited_table_data.get("code"),
                         "tool": edited_table_data.get("tool"),
-                        "reactive_vars": updated_data.reactive_vars
-                        if hasattr(updated_data, "reactive_vars")
-                        else None,
+                        "reactive_vars": (
+                            updated_data.reactive_vars
+                            if hasattr(updated_data, "reactive_vars")
+                            else None
+                        ),
                         "table_id": table_id,
                         "chart_images": chart_images,
                         "error": None,

@@ -85,7 +85,7 @@ export default function StepsDag({
         // add this parent to the list of parents for this step
         g["nodes"][step_id]["parents"].add(parent);
         if (!g["nodes"][parent]) {
-          print("Error: parent not found for step: ", step);
+          console.log("Error: parent not found for step: ", step);
           console.log(parents, g["nodes"], step);
           return;
         }

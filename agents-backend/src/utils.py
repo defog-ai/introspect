@@ -21,6 +21,13 @@ redis_host = env["redis_server_host"]
 redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
 
+# custom list class with a overwrite_key attribute
+class YieldList(list):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.overwrite_key = None
+
+
 def replace_whitespace(s):
     pattern = re.compile(r'",\s*"')
     return re.sub(pattern, '", "', s)

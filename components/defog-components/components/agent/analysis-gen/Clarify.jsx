@@ -138,6 +138,9 @@ export default function Clarify({
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                   onSearch={(value, e, info) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (!value || value === "") return;
                     // add this to uiDefaults at index i
                     let newOpts = uiDefaults.slice();
                     newOpts[i] = newOpts[i].concat({

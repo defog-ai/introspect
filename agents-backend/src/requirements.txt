@@ -22,3 +22,4 @@ tiktoken
 snowflake-connector-python
 mysql-connector-python
 google-cloud-bigquery
+statsmodels

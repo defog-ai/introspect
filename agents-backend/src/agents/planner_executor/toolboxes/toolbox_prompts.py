@@ -27,7 +27,7 @@ toolbox_prompts = {
   
 -tool_name: t_test
   description: This function gets two groups and runs a t-test to check if there is a significant difference between their means. There are two ways to run the test: paired and unpaired. Paired test has one group column, unpaired has one group column.
-  inputs: ["global_dict.<input_df_name>", group column, score column, name column, type of t test as a string (paired or unpaired)]
+  inputs: ["global_dict.<input_df_name>", group column, score column, name column or None, type of t test as a string (paired or unpaired)]
   outputs: pandas df
 
 -tool_name: wilcoxon_test
