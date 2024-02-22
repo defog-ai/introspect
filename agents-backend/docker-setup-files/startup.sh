@@ -10,9 +10,9 @@ echo -e "\nOPENAI_API_KEY: \"$1\"\n" >> /agents-python-server/.env.yaml
 
 # while testing, we can just do this instead of running the server with supervisor for easier debugging
 # in prod, we will run the server with supervisor, and this line will be commented out
-# python3 -u -m hypercorn main:app -b 0.0.0.0:1235
+python3 -u -m hypercorn main:app -b 0.0.0.0:1235
 
-service supervisor stop
-service supervisor start
+# service supervisor stop
+# service supervisor start
 
-supervisorctl restart all
+# supervisorctl restart all

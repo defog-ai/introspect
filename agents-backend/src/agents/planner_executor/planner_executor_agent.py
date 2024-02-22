@@ -77,7 +77,7 @@ class Executor:
 
     async def execute(self):
         async def generator():
-            max_retries = 1
+            max_retries = 2
             retries = 0
             steps = []
             """SAMPLE:
@@ -159,6 +159,13 @@ class Executor:
                 # retry logic if there's an error message
                 if result.get("error_message"):
                     retries += 1
+                    if retries > max_retries:
+                        print(
+                            f"Error running tool {step['tool_name']} after {max_retries} retries"
+                        )
+                        print("Error message: ", result["error_message"])
+                        break
+
                     print(
                         "There was an error running the tool: ",
                         result["error_message"],
@@ -180,21 +187,6 @@ class Executor:
                         len(step["inputs"]), len(step["function_signature"])
                     ):
                         step["inputs"].append(step["function_signature"][i]["default"])
-
-                # store tool run
-                store_result = await store_tool_run(self.analysis_id, step, result)
-
-                retries = 0
-
-                if store_result["success"] is False:
-                    print("Tool run storage failed")
-                    print(store_result.get("error_message"))
-                    break
-
-                if "error_message" in result:
-                    print(result["error_message"])
-                    yield YieldList([step])
-                    break
 
                 # check if zip is possible
                 if len(step["outputs_storage_keys"]) != len(result["outputs"]):
@@ -245,7 +237,24 @@ class Executor:
                 if not is_correction:
                     steps.append(step)
 
+                # store tool run
+                store_result = await store_tool_run(self.analysis_id, step, result)
+
+                retries = 0
+
+                if store_result["success"] is False:
+                    print("Tool run storage failed")
+                    print(store_result.get("error_message"))
+                    break
+
                 yield yield_val
+
+                # if we still have an error in result, we somehow beat the max_retries check in the if condition above
+                # so we should break out of the loop
+                # this should never happen in normal circumstances
+                if "error_message" in result:
+                    print(result["error_message"])
+                    break
 
                 if "done" in step and step["done"] is True:
                     break

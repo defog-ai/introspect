@@ -28,7 +28,11 @@ import StepsDag from "../common/StepsDag";
 import ErrorBoundary from "../common/ErrorBoundary";
 import { v4 } from "uuid";
 import { Context } from "../../../../components/common/Context";
-import { createAnalysis, getAnalysis } from "../../../../utils/utils";
+import {
+  createAnalysis,
+  getAnalysis,
+  getToolRunData,
+} from "../../../../utils/utils";
 import setupBaseUrl from "../../../../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../../../../utils/websocket-manager";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
@@ -216,17 +220,28 @@ export const AnalysisAgent = ({
         // if it's not found, just append the item to the end
         const overwrite_key = response.overwrite_key;
         if (overwrite_key) {
-          response.output[prop].forEach((res) => {
+          const newToolRunDataCache = { ...toolRunDataCache };
+          response.output[prop].forEach(async (res) => {
             const idx = newAnalysisData[rType][prop].findIndex(
               (d) => d[overwrite_key] === res[overwrite_key]
             );
 
             if (idx > -1) {
               newAnalysisData[rType][prop][idx] = res;
+              if (rType === "gen_steps" && res.tool_run_id) {
+                // if this is gen_steps, we also need to update the latest tool run data
+                // update it in the cache
+                const updatedData = await getToolRunData(res.tool_run_id);
+                if (updatedData.success) {
+                  newToolRunDataCache[updatedData.tool_run_id] = updatedData;
+                }
+              }
             } else {
               newAnalysisData[rType][prop].push(res);
             }
           });
+
+          setToolRunDataCache(newToolRunDataCache);
         } else {
           newAnalysisData[rType][prop] = newAnalysisData[rType][prop].concat(
             response.output[prop]
