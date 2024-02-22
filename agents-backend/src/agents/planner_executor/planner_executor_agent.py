@@ -194,26 +194,6 @@ class Executor:
                     print("Length of outputs_storage_keys and outputs don't match")
                     pass
 
-                for key, output in zip(step["outputs_storage_keys"], result["outputs"]):
-                    data = output.get("data")
-                    # if output data exists and data type is a pandas dataframe
-                    # store the column names in the tool_outputs_column_descriptions
-                    if data is not None and type(data) == type(pd.DataFrame()):
-                        # store max 20 columns
-                        self.tool_outputs_column_descriptions += f"\n{key}: pd.DataFrame with {len(data)} rows and columns: {list(data.columns)[:20]}\n"
-                        self.global_dict[key] = data
-                        # name the df too
-                        self.global_dict[key].name = key
-                        # warn if more than 20 columns
-                        warn_str(
-                            f"More than 20 columns in dataset generated for {key}. Only storing the first 20."
-                        )
-
-                if self.tool_outputs_column_descriptions:
-                    next_step_data_description = f"The global_dict contains the following keys with data and columns:\n```{self.tool_outputs_column_descriptions}```\n"
-
-                print(next_step_data_description)
-
                 # if we're here, means this step ran successfully.
                 # if the outputs of this step match any of the previous steps, either exactly or:
                 # , means that we should overwrite the previous step with this step. this was probably a "correction" of some of the previous step.
@@ -248,6 +228,39 @@ class Executor:
                     break
 
                 yield yield_val
+
+                for key, output in zip(step["outputs_storage_keys"], result["outputs"]):
+                    data = output.get("data")
+                    # if output data exists and data type is a pandas dataframe
+                    # store the column names in the tool_outputs_column_descriptions
+                    if data is not None and type(data) == type(pd.DataFrame()):
+                        # if there's an overwrite key, check if there's a line that already exists
+                        replace_line = re.search(
+                            f"({key}: pd.DataFrame with )([\s\S]*?)(?=\\n)",
+                            self.tool_outputs_column_descriptions,
+                        )
+                        if yield_val.overwrite_key and replace_line:
+                            self.tool_outputs_column_descriptions = self.tool_outputs_column_descriptions.replace(
+                                replace_line.group(2),
+                                f"{len(data)} rows and columns: {list(data.columns)[:20]}",
+                            )
+                        else:
+                            # store max 20 columns
+                            self.tool_outputs_column_descriptions += f"\n{key}: pd.DataFrame with {len(data)} rows and columns: {list(data.columns)[:20]}\n"
+
+                        self.global_dict[key] = data
+                        # name the df too
+                        self.global_dict[key].name = key
+                        # warn if more than 20 columns
+                        warn_str(
+                            f"More than 20 columns in dataset generated for {key}. Only storing the first 20."
+                        )
+
+                if self.tool_outputs_column_descriptions:
+                    # if there's an overwrite key, replace the
+                    next_step_data_description = f"The global_dict contains the following keys with data and columns:\n```{self.tool_outputs_column_descriptions}```\n"
+
+                print(next_step_data_description)
 
                 # if we still have an error in result, we somehow beat the max_retries check in the if condition above
                 # so we should break out of the loop
