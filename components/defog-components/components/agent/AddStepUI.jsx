@@ -60,55 +60,58 @@ export function AddStepUI({
     <div className="add-step-ctr">
       <h1 className="tool-name">New step</h1>
       <h1 className="inputs-header">TOOL</h1>
-      <ToolReRun
-        text="Run"
-        loading={loading}
-        onClick={async () => {
-          setLoading(true);
+      <div className="tool-action-buttons">
+        <ToolReRun
+          text="Run"
+          loading={loading || selectedTool === null}
+          onClick={async () => {
+            setLoading(true);
 
-          try {
-            const newStepSuccess = await fetch(createNewStepEndpoint, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                parent_step: activeNode.data.meta.parent_step,
-                tool_name: selectedTool,
-                inputs: inputs,
-                analysis_id: analysisId,
-                outputs_storage_keys: outputs,
-              }),
-            }).then((r) => r.json());
+            try {
+              const newStepSuccess = await fetch(createNewStepEndpoint, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  parent_step: activeNode.data.meta.parent_step,
+                  tool_name: selectedTool,
+                  inputs: inputs,
+                  analysis_id: analysisId,
+                  outputs_storage_keys: outputs,
+                }),
+              }).then((r) => r.json());
 
-            activeNode.data.meta.loading = true;
+              activeNode.data.meta.loading = true;
 
-            if (!newStepSuccess.success) {
-              message.error(
-                newStepSuccess?.error_message || "Something went wrong"
-              );
-              return;
-            } else if (
-              !newStepSuccess.new_step ||
-              !newStepSuccess.tool_run_id
-            ) {
-              message.error(
-                "Something went wrong. New step or tool run data or tool run id is missing in the server response."
-              );
-            } else {
-              const toolRunId = newStepSuccess.tool_run_id;
+              if (!newStepSuccess.success) {
+                message.error(
+                  newStepSuccess?.error_message || "Something went wrong"
+                );
+              } else if (
+                !newStepSuccess.new_step ||
+                !newStepSuccess.tool_run_id
+              ) {
+                message.error(
+                  "Something went wrong. New step or tool run data or tool run id is missing in the server response."
+                );
+              } else {
+                const toolRunId = newStepSuccess.tool_run_id;
 
-              // re run the tool
-              handleReRun(toolRunId, {
-                action: "add_step",
-                new_step: newStepSuccess.new_step,
-              });
+                // re run the tool
+                handleReRun(toolRunId, {
+                  action: "add_step",
+                  new_step: newStepSuccess.new_step,
+                });
+              }
+            } catch (e) {
+              console.log(e);
+            } finally {
+              setLoading(false);
             }
-          } catch (e) {
-            console.log(e);
-          }
-        }}
-      />
+          }}
+        />
+      </div>
       <Select
         rootClassName="add-step-select-tool-name"
         options={toolOptions}

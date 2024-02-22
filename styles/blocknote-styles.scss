@@ -935,6 +935,7 @@ $grid: repeating-linear-gradient(
             top: 10px;
             display: flex;
             flex-direction: row;
+
             .tool-action-button {
               background-color: $text-blue;
               margin: 0 5px;
@@ -944,15 +945,16 @@ $grid: repeating-linear-gradient(
               font-weight: bold;
               font-size: 0.8em;
               cursor: pointer;
+              pointer-events: all;
 
               &.tool-action-button-loading {
                 background-color: $text-very-light;
                 color: $text-light;
-                cursor: default;
+                pointer-events: none;
               }
 
               &.tool-delete {
-                background-color: $medium-red;
+                background-color: $dark-red;
               }
             }
           }

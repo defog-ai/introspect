@@ -16,6 +16,9 @@ async def data_fetcher_and_aggregator(
     """
     This function generates a SQL query and runs it to get the answer.
     """
+    if question == "" or question is None:
+        raise ValueError("Question cannot be empty")
+
     glossary = global_dict.get("glossary", "")
     metadata = global_dict.get("table_metadata_csv", "")
 
@@ -68,6 +71,9 @@ async def global_dict_data_fetcher_and_aggregator(
     """
     This function generates a SQL query and runs it on df to get the answer.
     """
+    if question == "" or question is None:
+        raise ValueError("Question cannot be empty")
+
     glossary = global_dict.get("glossary", "")
     df_name = input_df.name
 
