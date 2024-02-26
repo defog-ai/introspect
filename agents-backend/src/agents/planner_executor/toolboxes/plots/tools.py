@@ -10,7 +10,7 @@ import pandas as pd
 
 available_colors = plt.colormaps()
 
-sns.set_palette(["#009D94", "#0057CF", "#FFBD00", "#FF5C1C", "#691A6B"])
+sns.set_palette(["#009D94", "#FF5C1C", "#0057CF", "#691A6B", "#FFBD00"])
 
 import yaml
 
