@@ -128,16 +128,17 @@ def missing_param_error(param_name):
 def get_metadata():
     table_metadata_csv = redis_client.get("integration:metadata")
     client_description = "In this assignment, assume that you are a medical data analyst who is working with lab sample data for T cells of cancer patients."
-    glossary = """- If you encounter the term `variable_value` in the metadata, it refers specifically to the column `variable_value`, and not a generic value. NEVER ask a question like "which variable name are you referring to"
+    glossary = """- When generating SQL queries, return all the columns that have even a small chance of being relevant to the user's question. It's better to return too much data than too little.
 - Match the terms used by users to the terms used in the database schema. For example, if a user asks for Regulatory T Cells, and the database had the term Tregs, then modify your response accordingly.
 - Recall that the term `reportable` refers to quantitative variables
-- When asking clarifying questions, ONLY use the information in the `column_name` column
 - When a user asks how something changes, they are typically looking to get a line chart or boxplot of a variable_value over time, using the visit_timepoint column
 - If a user asks how the expression of a gene changes over time, they are asking for a line chart of the variable_value over time, using the visit_timepoint column for data where the variable_name includes the gene name
-- When filtering over the variable_name column, always use the `LIKE` operator with the `%` wildcard. Remember that you can chain multiple `LIKE` operators with `AND` or `OR` to filter over multiple patterns, like `variable_name LIKE '%CD4%' AND variable_name LIKE '%Tregs%'`
+- If asked for proportion, refer to the flow_cytometry table. If asked for concentration, refer to the cytokine table
+- If asked about how a gene expression changes over time, refer to the flow cytometry table. **Typically, genes are written as KI67+, CD45RA+ etc***
+- If asked about how a cytokine (like IL6) changes, refer to the cytokine table. **Typically, cytokines are written as IL-6, IL-10, PD-L1 etc***
+- When filtering over the variable_name column, always use the `LIKE` operator with the `%` wildcard. Remember that you can chain multiple `LIKE` operators with `AND` or `OR` to filter over multiple patterns. For example: `variable_name LIKE '%CD4%' AND variable_name LIKE '%SOME_GENE_NAME%'` or `variable_name LIKE '%CD4%' AND variable_name LIKE '%Tregs%'`
+- When asked how does X change upon treatment, the user is asking for a comparison of the variable_value over time, using the visit_timepoint column
 """
-    # - If asked for proportion, refer to the flow_cytometry table
-    # - If asked for concentration, refer to the cytokine table
     return {
         "table_metadata_csv": table_metadata_csv,
         "client_description": client_description,
