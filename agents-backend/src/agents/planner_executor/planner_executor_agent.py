@@ -77,7 +77,7 @@ class Executor:
 
     async def execute(self):
         async def generator():
-            max_retries = 2
+            max_retries = 1
             retries = 0
             steps = []
             """SAMPLE:
@@ -143,6 +143,8 @@ class Executor:
                 # add a unique id to this tool as the tool_run prop
                 step["tool_run_id"] = str(uuid4())
 
+                print(step)
+
                 # prepare to execute this step, by resolving the inputs
                 # if there's a global_dict.variable_name reference in step["inputs"], replace it with the value from global_dict
                 resolved_inputs = resolve_input(step["inputs"], self.global_dict)
@@ -159,11 +161,15 @@ class Executor:
                 # retry logic if there's an error message
                 if result.get("error_message"):
                     retries += 1
-                    if retries > max_retries:
+                    if retries >= max_retries:
                         print(
                             f"Error running tool {step['tool_name']} after {max_retries} retries"
                         )
                         print("Error message: ", result["error_message"])
+                        step["function_signature"] = tool_function_parameters
+                        step["model_generated_inputs"] = step["inputs"].copy()
+                        yield_step = YieldList([step])
+                        yield yield_step
                         break
 
                     print(
@@ -212,6 +218,7 @@ class Executor:
                         # we've already written that step, and sent it to the front end.
                         # steal the tool_run_id of the older step
                         step["tool_run_id"] = previous_step["tool_run_id"]
+                        step["tool_run_data"] = {}
                         yield_val.overwrite_key = "tool_run_id"
 
                 if not is_correction:
