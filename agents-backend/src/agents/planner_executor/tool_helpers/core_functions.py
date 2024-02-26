@@ -33,7 +33,11 @@ with open(".env.yaml", "r") as f:
 redis_host = env["redis_server_host"]
 redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
-if env.get("OPENAI_API_KEY") is None or env.get("OPENAI_API_KEY") == "None" or env.get("OPENAI_API_KEY") == "":
+if (
+    env.get("OPENAI_API_KEY") is None
+    or env.get("OPENAI_API_KEY") == "None"
+    or env.get("OPENAI_API_KEY") == ""
+):
     print("OPENAI_API_KEY not found in env")
 else:
     openai = AsyncOpenAI(api_key=env.get("OPENAI_API_KEY"))
@@ -141,7 +145,8 @@ def resolve_input(input, global_dict):
 
     elif isinstance(input, str) and input.startswith("global_dict."):
         variable_name = input.split(".")[1]
-        return global_dict[variable_name]
+        print(input)
+        return global_dict.get(variable_name)
 
     else:
         if isinstance(input, str):
