@@ -133,9 +133,10 @@ class Executor:
                     ans = await asyncio.to_thread(requests.post, url, json=payload)
                 ans = ans.json()["generated_step"]
                 print(ans)
+
                 match = re.search("(?:```yaml)([\s\S]*?)(?=```)", ans)
+
                 if match is None:
-                    print("No yaml found")
                     break
 
                 step = yaml.safe_load(match[1].strip())[0]
@@ -158,28 +159,6 @@ class Executor:
 
                 self.previous_responses.append(ans)
 
-                # retry logic if there's an error message
-                if result.get("error_message"):
-                    retries += 1
-                    if retries >= max_retries:
-                        print(
-                            f"Error running tool {step['tool_name']} after {max_retries} retries"
-                        )
-                        print("Error message: ", result["error_message"])
-                        step["function_signature"] = tool_function_parameters
-                        step["model_generated_inputs"] = step["inputs"].copy()
-                        yield_step = YieldList([step])
-                        yield yield_step
-                        break
-
-                    print(
-                        "There was an error running the tool: ",
-                        result["error_message"],
-                    )
-                    print("Retrying...")
-                    next_step_data_description = f"There was an error running the tool {step['tool_name']}. This was the error:\n{result['error_message']}\n Instead of suffixing older output names with _updated, _v2, etc, re use the older output names of previously generated steps."
-                    continue
-
                 step["function_signature"] = tool_function_parameters
                 # when we're re running, we will need to reconstruct the model messages
                 # store these for later
@@ -194,8 +173,11 @@ class Executor:
                     ):
                         step["inputs"].append(step["function_signature"][i]["default"])
 
-                # check if zip is possible
-                if len(step["outputs_storage_keys"]) != len(result["outputs"]):
+                # if there's no error, check if zip is possible
+                # this should never really happen
+                if not result.get("error_message") and (
+                    len(step.get("outputs_storage_keys")) != len(result.get("outputs"))
+                ):
                     # TODO: REDO THIS STEP
                     print("Length of outputs_storage_keys and outputs don't match")
                     pass
@@ -227,12 +209,29 @@ class Executor:
                 # store tool run
                 store_result = await store_tool_run(self.analysis_id, step, result)
 
-                retries = 0
-
                 if store_result["success"] is False:
                     print("Tool run storage failed")
                     print(store_result.get("error_message"))
                     break
+
+                # retry logic if there's an error message
+                if result.get("error_message"):
+                    retries += 1
+                    if retries >= max_retries:
+                        print(
+                            f"Error running tool {step['tool_name']} after {max_retries} retries"
+                        )
+                        print("Error message: ", result["error_message"])
+                        yield yield_val
+                        break
+
+                    print(
+                        "There was an error running the tool: ",
+                        result["error_message"],
+                    )
+                    print("Retrying...")
+                    next_step_data_description = f"There was an error running the tool {step['tool_name']}. This was the error:\n{result['error_message']}\n Instead of suffixing older output names with _updated, _v2, etc, re use the older output names of previously generated steps."
+                    continue
 
                 yield yield_val
 
@@ -268,6 +267,8 @@ class Executor:
                     next_step_data_description = f"The global_dict contains the following keys with data and columns:\n```{self.tool_outputs_column_descriptions}```\n"
 
                 print(next_step_data_description)
+
+                retries = 0
 
                 # if we still have an error in result, we somehow beat the max_retries check in the if condition above
                 # so we should break out of the loop

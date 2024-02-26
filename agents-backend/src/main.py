@@ -277,7 +277,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             {
                                 "done": True,
                                 "success": False,
-                                "error_message": "Something went wrong. Please try again or contact us if this persists.",
+                                "error_message": str(e)[:300],
                             }
                         )
 

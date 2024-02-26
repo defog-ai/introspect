@@ -130,6 +130,7 @@ export const AnalysisAgent = ({
         })
       );
     }
+
     if (!analysisData?.gen_steps?.success) {
       setAnalysisSteps([]);
     }
@@ -218,6 +219,7 @@ export const AnalysisAgent = ({
         // then go through old data, and the new_data
         // if the overwrite_key is found in the old data, replace it with the elements that exist new_data with the same overwrite_key
         // if it's not found, just append the item to the end
+
         const overwrite_key = response.overwrite_key;
         if (overwrite_key) {
           const newToolRunDataCache = { ...toolRunDataCache };
@@ -254,9 +256,12 @@ export const AnalysisAgent = ({
     if (response.done) {
       setStageDone(true);
       setAnalysisBusy(false);
+      // if the length of steps is 0, set stage to clarify
+      if (rType === "gen_steps" && !analysisData?.gen_steps?.steps?.length) {
+        setCurrentStage("clarify");
+      }
     }
   }
-
   async function onReRunMessage(event) {
     const res = JSON.parse(event.data);
     // re run messages can be of two types:
