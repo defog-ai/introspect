@@ -5,6 +5,8 @@ import traceback
 import pandas as pd
 from defog import Defog
 from defog.query import execute_query
+import asyncio
+
 
 # these are needed for the exec_code function
 from uuid import uuid4
@@ -79,8 +81,13 @@ async def fetch_query_into_df(sql_query: str) -> pd.DataFrame:
     if db_creds is not None:
         db_creds = json.loads(db_creds)
 
-    colnames, data, new_sql_query = execute_query(
-        sql_query, DEFOG_API_KEY, db_type, db_creds, retries=0
+    colnames, data, new_sql_query = await asyncio.to_thread(
+        execute_query,
+        sql_query,
+        DEFOG_API_KEY,
+        db_type,
+        db_creds,
+        retries=0
     )
     df = pd.DataFrame(data, columns=colnames)
 
