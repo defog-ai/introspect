@@ -7,6 +7,7 @@ import pandas as pd
 from io import StringIO
 from auth_utils import validate_user
 import yaml
+import asyncio
 
 env = None
 with open(".env.yaml", "r") as f:
@@ -61,7 +62,11 @@ async def generate_tables(request: Request):
     # once this is done, we do not have to persist the db_creds
     # since they are already stored in the Defog connection string at ~/.defog/connection.json
     defog = Defog(api_key, db_type, db_creds)
-    table_names = defog.generate_db_schema(tables=[], return_tables_only=True)
+    table_names = await asyncio.to_thread(
+        defog.generate_db_schema,
+        tables=[],
+        return_tables_only=True
+    )
     redis_client.set(f"integration:status", "selected_tables")
     redis_client.set(f"integration:status", "gave_credentials")
     redis_client.set(f"integration:tables", json.dumps(table_names))
@@ -120,8 +125,12 @@ async def generate_metadata(request: Request):
 
     try:
         defog = Defog(api_key, db_type, json.loads(db_creds))
-        table_metadata = defog.generate_db_schema(
-            tables=tables, scan=True, upload=True, return_format="csv_string"
+        table_metadata = await asyncio.to_thread(
+            defog.generate_db_schema,
+            tables=tables,
+            scan=True,
+            upload=True,
+            return_format="csv_string"
         )
 
         metadata = (
