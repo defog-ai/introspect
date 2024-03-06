@@ -22,7 +22,7 @@ toolbox_prompts = {
 
 - tool_name: line_plot
   description: This function generates a line plot using python's seaborn library. It should be used when the user wants to see how a variable changes over time, and should be used immediately after the data_fetcher tool.
-  inputs: ["global_dict.<input_df_name>", xaxis column (exactly a single column - often a datetime or string), yaxis column (exactly a single column - always a numerical value), hue column (optional), facet column (optional), estimator ("mean" if data must be aggregated, "None" if it is not aggregated), individual_id_column (optional - refers to the column that contains individual data points, often some kind of id), plot_average_line (optional - True if the user wants to plot the average line), average_type (optional - mean, median, max, min, mode)]
+  inputs: ["global_dict.<input_df_name>", xaxis column (exactly a single column - often a datetime or string), yaxis column (exactly a single column - always a numerical value), hue column or None, facet column or None, estimator ("mean" if data must be aggregated, "None" if it is not aggregated), individual_id_column or None - refers to the column that contains individual data points, often some kind of id), plot_average_line or None - True if the user wants to plot an average or median line, average_line_type or None - the kind of value for the average line to have. Can be mean, median, max, min, or mode]
   outputs: pandas df
   
 -tool_name: t_test
@@ -42,7 +42,7 @@ toolbox_prompts = {
 
 - tool_name: fold_change
   description: This function calculates the fold change over time for different groups. Fold change is the ratio of the final value to the initial value.
-  inputs: ["global_dict.<input_df_name>", value column (the numerical value), group column (the column that represents the group), time column (the column that represents the time point)]
+  inputs: ["global_dict.<input_df_name>", value column (the numerical value), individual id column (the column that represents individual ids to calculate fold change for), time column (the column that represents the time point), group column or None (the column that represents the groups that individuals belong to, like cohort or study)]
   outputs: pandas
 """,
     "plots": """-tool_name: boxplot
