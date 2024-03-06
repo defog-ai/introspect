@@ -77,7 +77,7 @@ class Executor:
 
     async def execute(self):
         async def generator():
-            max_retries = 1
+            max_retries = 2
             retries = 0
             steps = []
             """SAMPLE:
@@ -267,8 +267,6 @@ class Executor:
                     next_step_data_description = f"The global_dict contains the following keys with data and columns:\n```{self.tool_outputs_column_descriptions}```\n"
 
                 print(next_step_data_description)
-
-                retries = 0
 
                 # if we still have an error in result, we somehow beat the max_retries check in the if condition above
                 # so we should break out of the loop
