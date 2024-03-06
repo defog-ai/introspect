@@ -63,10 +63,10 @@ async def generate_tables(request: Request):
     # since they are already stored in the Defog connection string at ~/.defog/connection.json
     defog = Defog(api_key, db_type, db_creds)
     table_names = await asyncio.to_thread(
-        defog.generate_db_schema,
-        tables=[],
-        return_tables_only=True
+        defog.generate_db_schema, tables=[], return_tables_only=True
     )
+    if "schema" in db_creds:
+        table_names = [f"{db_creds['schema']}.{table}" for table in table_names]
     redis_client.set(f"integration:status", "selected_tables")
     redis_client.set(f"integration:status", "gave_credentials")
     redis_client.set(f"integration:tables", json.dumps(table_names))
@@ -116,7 +116,7 @@ async def generate_metadata(request: Request):
 
     api_key = DEFOG_API_KEY
     db_type = redis_client.get(f"integration:db_type")
-    db_creds = redis_client.get(f"integration:db_creds")
+    db_creds = json.loads(redis_client.get(f"integration:db_creds"))
 
     if db_creds is None:
         return {
@@ -124,18 +124,73 @@ async def generate_metadata(request: Request):
         }
 
     try:
-        defog = Defog(api_key, db_type, json.loads(db_creds))
+        defog = Defog(api_key, db_type, db_creds)
+
+        if "schema" in db_creds:
+            schema = db_creds["schema"]
+            tables = [table.replace(schema + ".", "") for table in tables]
+
         table_metadata = await asyncio.to_thread(
             defog.generate_db_schema,
             tables=tables,
-            scan=True,
+            scan=False,
             upload=True,
-            return_format="csv_string"
+            return_format="csv_string",
         )
 
-        metadata = (
-            pd.read_csv(StringIO(table_metadata)).fillna("").to_dict(orient="records")
+        hard_coded_descriptions = {
+            "accession_id": "Unique identifier for each sample or data entry.",
+            "well": "The specific location of the sample on the plate, crucial for mapping assay results. Possible values include: A04, A05, A06, A07, A08, A09, A10, A11, A12, B04",
+            "plate_sample": "A code that uniquely identifies a sample on its plate.. Possible values include: U001, U002, U009, U017, U025, U033",
+            "assay": "Often refers to the name of a cytokine. The type of biochemical assay performed. Possible values include: GM-CSF, Granzyme B, I-TAC, IL-17a, IL-1b, IP-10, MCP-1, PD-1, PD-L1, gp130",
+            "signal": "The raw signal output from the assay, indicating the measurement intensity.",
+            "mean": "Average signal across replicates or related samples, providing a baseline for comparison.",
+            "cv": "Coefficient of Variation, showing the variability of assay results relative to the mean.",
+            "calc_concentration": "The calculated concentration of the target in the sample",
+            "calc_conc_mean": "The average calculated concentration across samples or replicates. Use for standardizing measurements and providing a baseline",
+            "calc_conc_cv": "Coefficient of Variation for the calculated concentrations, assessing precision across measurements.",
+            "verified": "Indicates whether the assay result has been verified. Possible values include: PASS, FAIL",
+            "sample": "A general identifier or description for the sample.",
+            "cohort": "The name of the cohort or group to which the sample belongs, which could be based on study design",
+            "study_participant_id": "A unique identifier for the study participant from whom the sample was collected, ensuring privacy and tracking.",
+            "visit_timepoint": 'Timepoint of the participant\'s visit when the sample was collected. This is in the format CXDY, where X is the cycle number and Y is the day within that cycle. A "baseline" refers to the visit_timepoint corresponding to C1D1',
+            "coc": "Chain of Custody, detailing the sample's handling history to ensure integrity.",
+            "status": "The current status of the sample or assay.",
+            "disposition": "The outcome or decision regarding the sample's analysis or use.",
+            "sample_type": "The type of biological material, providing context for assay interpretation. For example, Tissue",
+            "cd": "An abbreviation for a specific department or classification, indicating organizational context. For example, Biomarker Ops",
+            "study": "Name or identifier of the study the data pertains to.",
+            "pooled": "Indicates whether the sample was part of a pooled set, important for data analysis.",
+            "restriction_class": "Describes any restrictions on the sample's use, ensuring compliance with regulations. Possible values: Long Term Sample Retention",
+            "location": "The physical or logical location for the sample or data storage, facilitating retrieval and management.",
+            "collection_date": "The date when the sample was collected, important for temporal analysis.",
+            "project_id": "A unique identifier for the project associated with the data, useful for tracking and management.",
+            "sample_list_study_participant_id": "Identifier linking the sample to a study participant.",
+            "panel_id": "Identifier for the panel of tests or measurements applied to the sample.",
+            "parent_population": "The larger population from which the sample's population is derived. Ignore this for SQL queries.",
+            "population": "Specific population group the sample belongs to within the study. Possible values: Temra T cells, Tregs, central memory T cells, effector memory T cells, naive T cells, parent T cells",
+            "variable_name": "Name of the variable. This is generally in the format `PARENT_CELL+/XXX GENE_NAME XXX`, where the PARENT_CELL can be CD4+, CD8+ etc",
+            "variable_value": "Value of the measurement named in variable_name.",
+            "viability_percentage": "ercentage of viable cells in the sample, if applicable.",
+            "original_result_unit_raw": "Original unit of the result before any processing. Possible values: median, percent_parent",
+            "original_result_unit": "Unit of the original result. Should generally be ignored when creating queries",
+            "readout_type": "Type of readout",
+            "parent_cell_count": "Number of parent cells",
+            "parent_cell_count_flag": "Flag indicating if parent cell count is present",
+            "mfi_reportable_marker": "Reportable marker for MFI",
+        }
+
+        table_metadata = pd.read_csv(StringIO(table_metadata)).fillna("")
+        table_metadata["column_description"] = table_metadata["column_name"].apply(
+            lambda x: hard_coded_descriptions.get(x, x)
         )
+
+        table_metadata["table_name"] = table_metadata["table_name"].apply(
+            lambda x: "gmb_gxp_rdap_dev." + schema + "." + x
+        )
+
+        metadata = table_metadata.to_dict(orient="records")
+        table_metadata = table_metadata.to_csv(index=False)
         redis_client.set(f"integration:status", "edited_metadata")
         redis_client.set(f"integration:metadata", table_metadata)
         return {"metadata": metadata}
