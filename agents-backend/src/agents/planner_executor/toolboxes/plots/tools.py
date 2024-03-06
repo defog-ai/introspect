@@ -287,6 +287,12 @@ async def line_plot(
     chart_path = f"linecharts/linechart-{uuid4()}.png"
     fig, ax = plt.subplots()
     plt.xticks(rotation=45)
+
+    if units:
+        linewidth = 0.75
+    else:
+        linewidth = 1
+
     # create the plot
     if facet_col is None:
         plot = sns.lineplot(
@@ -296,6 +302,7 @@ async def line_plot(
             hue=hue_column,
             estimator=estimator,
             units=units,
+            linewidth=linewidth,
         )
         # Calculating the median value of 'y'
         if average_type == "median":
@@ -313,9 +320,10 @@ async def line_plot(
         if plot_average_line == "True":
             plt.axhline(
                 y=value_to_plot,
-                color="r",
+                color="k",
                 linestyle="--",
                 label=f"{average_type.title()}: {value_to_plot:.2f}",
+                linewidth=2,
             )
 
         plt.xticks(rotation=45)
@@ -330,6 +338,7 @@ async def line_plot(
             estimator=estimator,
             units=units,
             col_wrap=4,
+            linewidth=linewidth,
         )
 
         for group, ax in plot.axes_dict.items():
@@ -346,9 +355,10 @@ async def line_plot(
             if plot_average_line == "True":
                 ax.axhline(
                     y=value_to_plot,
-                    color="r",
+                    color="k",
                     linestyle="--",
                     label=f"{average_type.title()}: {value_to_plot:.2f}",
+                    linewidth=2,
                 )
             try:
                 plot.xticks(rotation=45)
