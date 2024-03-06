@@ -677,7 +677,7 @@ export const AnalysisAgent = ({
                         />
                       </div>
                     </div>
-                    <div
+                    {/* <div
                       className="start-follow-up"
                       onClick={async () => {
                         const newAnalysisId = "analysis-" + v4();
@@ -730,7 +730,7 @@ export const AnalysisAgent = ({
                     >
                       <PlusCircleOutlined />
                       Start a new follow-up analysis
-                    </div>
+                    </div> */}
                   </>
                 </>
               ) : (
