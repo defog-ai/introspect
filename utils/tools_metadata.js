@@ -511,12 +511,17 @@ export const toolsMetadata = {
         "type": "DBColumn"
       },
       {
-        "name": "group_column",
+        "name": "individual_id_column",
         "default": null,
         "type": "DBColumn"
       },
       {
         "name": "time_column",
+        "default": null,
+        "type": "DBColumn"
+      },
+      {
+        "name": "group_column",
         "default": null,
         "type": "DBColumn"
       }
