@@ -13,6 +13,7 @@ from agents.planner_executor.tool_helpers.tool_param_types import (
 )
 
 from agents.planner_executor.tool_helpers.sorting_functions import natural_sort
+from agents.planner_executor.toolboxes.plots.tools import line_plot
 
 
 async def dataset_metadata_describer(
@@ -283,24 +284,51 @@ async def anova_test(
 async def fold_change(
     full_data: pd.DataFrame,
     value_column: DBColumn,
-    group_column: DBColumn,
+    individual_id_column: DBColumn,
     time_column: DBColumn,
+    group_column: DBColumn = None,
     global_dict: dict = {},
 ):
     """
     This function calculates the fold change between two groups of values.
     """
-    df = full_data.dropna(subset=[value_column, group_column, time_column])
+    df = full_data.dropna(subset=[value_column, individual_id_column, time_column])
+    if len(df) == 0:
+        return {"error_message": "No data to calculate fold change."}
 
-    df = df.groupby([group_column, time_column])[value_column].mean().reset_index()
-    df = natural_sort(df, time_column, group_column)
+    df = (
+        df.groupby([individual_id_column, time_column])[value_column]
+        .mean()
+        .reset_index()
+    )
+    df = natural_sort(df, time_column, individual_id_column)
 
     # calculate the fold change for each group, which is the ratio of the value in first time_column to the value in a given time_column
     fold_change_df = df.pivot(
-        index=time_column, columns=group_column, values=value_column
+        index=time_column, columns=individual_id_column, values=value_column
     )
     fold_change_df = fold_change_df / fold_change_df.iloc[0]
-    fold_change_df = fold_change_df.dropna(how="all", axis=1).reset_index()
+    # fold_change_df = fold_change_df.dropna(how="all", axis=1).reset_index()
+
+    # unpivot the dataframe
+    fold_change_df = fold_change_df.reset_index()
+    fold_change_df = fold_change_df.melt(
+        id_vars=[time_column], var_name=individual_id_column, value_name="fold_change"
+    )
+
+    # plot charts – we always want to create a line chart here
+    df = natural_sort(df, time_column, individual_id_column)
+
+    # plot the fold change
+    return line_plot(
+        full_data=fold_change_df,
+        xaxis_column=time_column,
+        yaxis_column="fold_change",
+        units=individual_id_column,
+        facet_col=group_column,
+        global_dict=global_dict,
+    )
+
     return {
         "outputs": [
             {
