@@ -293,6 +293,13 @@ async def fold_change(
     This function calculates the fold change between two groups of values.
     """
     df = full_data.dropna(subset=[value_column, individual_id_column, time_column])
+
+    if group_column is not None:
+        id_group = (
+            df.dropna(subset=[individual_id_column, group_column])
+            .set_index(individual_id_column)[group_column]
+            .to_dict()
+        )
     if len(df) == 0:
         return {"error_message": "No data to calculate fold change."}
 
@@ -312,27 +319,38 @@ async def fold_change(
 
     # unpivot the dataframe
     fold_change_df = fold_change_df.reset_index()
-    fold_change_df = fold_change_df.melt(
+    fold_change_df_melted = fold_change_df.melt(
         id_vars=[time_column], var_name=individual_id_column, value_name="fold_change"
     )
 
     # plot charts – we always want to create a line chart here
-    df = natural_sort(df, time_column, individual_id_column)
-
-    # plot the fold change
-    return line_plot(
-        full_data=fold_change_df,
-        xaxis_column=time_column,
-        yaxis_column="fold_change",
-        units=individual_id_column,
-        facet_col=group_column,
-        global_dict=global_dict,
+    fold_change_df_melted = natural_sort(
+        fold_change_df_melted, time_column, individual_id_column
     )
 
+    if group_column is not None:
+        fold_change_df_melted[group_column] = fold_change_df_melted[
+            individual_id_column
+        ].map(id_group.get)
+
+    # plot the fold change
+    resp = await line_plot(
+        fold_change_df_melted,
+        time_column,
+        "fold_change",
+        units=individual_id_column,
+        facet_col=group_column,
+    )
     return {
         "outputs": [
             {
                 "data": fold_change_df,
+                "chart_images": [
+                    {
+                        "type": "lineplot",
+                        "path": resp["outputs"][0]["chart_images"][0]["path"],
+                    }
+                ],
             }
         ],
     }
