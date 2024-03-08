@@ -429,7 +429,12 @@ async def rerun_step(websocket: WebSocket):
             # get steps from db
             err, analysis_data = get_report_data(analysis_id)
             if err:
-                return {"success": False, "error_message": err}
+                return {
+                    "success": False,
+                    "error_message": err,
+                    "tool_run_id": tool_run_id,
+                    "analysis_id": analysis_id,
+                }
 
             metadata_dets = get_metadata()
             glossary = metadata_dets["glossary"]
@@ -444,13 +449,23 @@ async def rerun_step(websocket: WebSocket):
             }
 
             if err:
-                return {"success": False, "error_message": err}
+                return {
+                    "success": False,
+                    "error_message": err,
+                    "tool_run_id": tool_run_id,
+                    "analysis_id": analysis_id,
+                }
 
             steps = analysis_data["gen_steps"]
             if steps["success"]:
                 steps = steps["steps"]
             else:
-                return {"success": False, "error_message": steps["error_message"]}
+                return {
+                    "success": False,
+                    "error_message": steps["error_message"],
+                    "tool_run_id": tool_run_id,
+                    "analysis_id": analysis_id,
+                }
 
             print([s["inputs"] for s in steps])
             async for err, reran_id, new_data in rerun_step_and_dependents(
@@ -464,6 +479,7 @@ async def rerun_step(websocket: WebSocket):
                             {
                                 "success": True,
                                 "tool_run_id": reran_id,
+                                "analysis_id": analysis_id,
                                 "tool_run_data": new_data,
                             },
                             websocket,
@@ -477,6 +493,7 @@ async def rerun_step(websocket: WebSocket):
                                 "pre_tool_run_message": new_data.get(
                                     "pre_tool_run_message"
                                 ),
+                                "analysis_id": analysis_id,
                             },
                             websocket,
                         )
@@ -487,6 +504,7 @@ async def rerun_step(websocket: WebSocket):
                             "success": False,
                             "error_message": err,
                             "tool_run_id": reran_id,
+                            "analysis_id": analysis_id,
                         },
                         websocket,
                     )

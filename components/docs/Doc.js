@@ -27,6 +27,7 @@ import { ReactiveVariableMention } from "./customTiptap/ReactiveVariableMention"
 import { RelatedAnalysesMiniMap } from "../defog-components/components/agent/RelatedAnalysesMiniMap";
 import ErrorBoundary from "../common/ErrorBoundary";
 import setupBaseUrl from "../../utils/setupBaseUrl";
+import { setupWebsocketManager } from "../../utils/websocket-manager";
 
 // remove the last slash from the url
 const partyEndpoint = process.env.NEXT_PUBLIC_AGENTS_ENDPOINT;
@@ -46,6 +47,13 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
   const [relatedAnalysesContext, setRelatedAnalysesContext] = useState(
     useContext(RelatedAnalysesContext)
   );
+
+  // this is the main socket manager for the agent
+  const [socketManager, setSocketManager] = useState(null);
+  // this is for editing tool inputs/outputs
+  const [toolSocketManager, setToolSocketManager] = useState(null);
+  // this is for handling re runs of tools
+  const [reRunManager, setReRunManager] = useState(null);
 
   useEffect(() => {
     async function setup() {
@@ -68,9 +76,30 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
         items.metadata = metadata.metadata;
       }
 
+      const urlToConnect = setupBaseUrl("ws", "ws");
+      const mgr = await setupWebsocketManager(urlToConnect);
+      setSocketManager(mgr);
+
+      const rerunMgr = await setupWebsocketManager(
+        urlToConnect.replace("/ws", "/step_rerun")
+      );
+
+      setReRunManager(rerunMgr);
+
+      const toolSocketManager = await setupWebsocketManager(
+        urlToConnect.replace("/ws", "/edit_tool_run"),
+        (d) => console.log(d)
+      );
+      setToolSocketManager(toolSocketManager);
+
       setDocContext({
         ...docContext,
         userItems: items,
+        socketManagers: {
+          mainManager: mgr,
+          reRunManager: rerunMgr,
+          toolSocketManager: toolSocketManager,
+        },
       });
 
       // add to recently viewed docs for this user
@@ -85,6 +114,22 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
     }
 
     setup();
+
+    return () => {
+      if (socketManager && socketManager.close) {
+        socketManager.close();
+        // also stop the interval
+        clearInterval(socketManager.interval);
+      }
+      if (reRunManager && reRunManager.close) {
+        reRunManager.close();
+        clearInterval(reRunManager.interval);
+      }
+      if (toolSocketManager && toolSocketManager.close) {
+        toolSocketManager.close();
+        clearInterval(toolSocketManager.interval);
+      }
+    };
   }, []);
 
   const yjsDoc = new Y.Doc();
@@ -94,7 +139,6 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
       api_token: apiToken,
       doc_id: docId,
       username: username,
-      protocol: "ws",
     },
     protocol: "ws",
   });

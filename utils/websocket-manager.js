@@ -69,11 +69,25 @@ export function setupWebsocketManager(
     log = on;
   }
 
+  function addEventListener(event, cb) {
+    if (socket) {
+      socket.addEventListener(event, cb);
+    }
+  }
+
+  function removeEventListener(event, cb) {
+    if (socket) {
+      socket.removeEventListener(event, cb);
+    }
+  }
+
   return connect()
     .then(() => {
       return {
         send,
         reconnect,
+        addEventListener,
+        removeEventListener,
         changeUrlAndReconnect,
         isConnected,
         logging,

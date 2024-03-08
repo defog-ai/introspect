@@ -33,8 +33,6 @@ import {
   getAnalysis,
   getToolRunData,
 } from "../../../../utils/utils";
-import setupBaseUrl from "../../../../utils/setupBaseUrl";
-import { setupWebsocketManager } from "../../../../utils/websocket-manager";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
 
 // the name of the prop where the data is stored for each stage
@@ -55,9 +53,6 @@ export const AnalysisAgent = ({
   editor,
   block,
 }) => {
-  const [socketManager, setSocketManager] = useState(null);
-  const [reRunManager, setReRunManager] = useState(null);
-  const [toolSocketManager, setToolSocketManager] = useState(null);
   const [analysisData, setAnalysisData] = useState(null);
   const [analysisBusy, setAnalysisBusy] = useState(false);
   const [analysisSteps, setAnalysisSteps] = useState([]);
@@ -83,6 +78,9 @@ export const AnalysisAgent = ({
   const [stageDone, setStageDone] = useState(true);
   const searchRef = useRef(null);
   const docContext = useContext(DocContext);
+
+  const { mainManager, reRunManager, toolSocketManager } =
+    docContext.val.socketManagers;
 
   function setActiveNode(node) {
     setActiveNodePrivate(node);
@@ -121,6 +119,7 @@ export const AnalysisAgent = ({
 
     setPendingToolRunUpdates({});
   }
+
   useEffect(() => {
     if (analysisData?.gen_steps?.success && analysisData?.gen_steps?.steps) {
       setAnalysisSteps(
@@ -175,8 +174,8 @@ export const AnalysisAgent = ({
     }
 
     const response = JSON.parse(event.data);
-
-    console.log(response);
+    // if the response's analysis_id isn't this analysisId, ignore
+    if (response?.analysis_id !== analysisId) return;
 
     if (response?.error_message) {
       setStageDone(true);
@@ -274,6 +273,7 @@ export const AnalysisAgent = ({
   }
   async function onReRunMessage(event) {
     const res = JSON.parse(event.data);
+    if (res?.analysis_id !== analysisId) return;
     // re run messages can be of two types:
     // 1. which step is GOING TO BE RUN. this won't just be the step that was asked to be re run by the user.
     // this can also be the step's parents and it's children.
@@ -369,19 +369,8 @@ export const AnalysisAgent = ({
   }, [recipeShowing]);
 
   useEffect(() => {
-    async function setupSocket() {
-      const urlToConnect = setupBaseUrl("ws", "ws");
+    async function initialiseAnalysis() {
       try {
-        const mgr = await setupWebsocketManager(urlToConnect, onMessage);
-        setSocketManager(mgr);
-
-        const rerunMgr = await setupWebsocketManager(
-          urlToConnect.replace("/ws", "/step_rerun"),
-          onReRunMessage
-        );
-
-        setReRunManager(rerunMgr);
-
         // get report data
         let analysisData = null;
         const res = await getAnalysis(analysisId);
@@ -414,30 +403,34 @@ export const AnalysisAgent = ({
           follow_up_analyses: analysisData?.follow_up_analyses || [],
           parent_analyses: analysisData?.parent_analyses || [],
         });
-
-        const toolSocketManager = await setupWebsocketManager(
-          urlToConnect.replace("/ws", "/edit_tool_run"),
-          (d) => console.log(d)
-        );
-        setToolSocketManager(toolSocketManager);
       } catch (e) {
         console.log(e);
       }
     }
-    setupSocket();
+    initialiseAnalysis();
+  }, []);
+
+  useEffect(() => {
+    // add handlers to socket managers using addevent listener
+    if (mainManager && mainManager.addEventListener) {
+      console.log("adding", analysisId);
+      mainManager.addEventListener("message", onMessage);
+    }
+    if (reRunManager && reRunManager.addEventListener) {
+      reRunManager.addEventListener("message", onReRunMessage);
+    }
 
     return () => {
-      if (socketManager && socketManager.close) {
-        socketManager.close();
-        // also stop the interval
-        clearInterval(socketManager.interval);
-      }
+      console.log("removing event listeners");
+      // remove handlers from socket managers using remove event listener
+      mainManager?.removeEventListener("message", onMessage);
+      reRunManager?.removeEventListener("message", onReRunMessage);
     };
-  }, []);
+  }, [mainManager, reRunManager]);
 
   async function handleSubmit(ev, stageInput = {}, submitSourceStage = null) {
     try {
-      if (!socketManager || !socketManager?.isConnected()) {
+      if (!mainManager || !mainManager?.isConnected()) {
         message.error("Not connected to servers. Trying to reconnect.");
         message.error("Please contact us if this persists");
         return;
@@ -464,6 +457,8 @@ export const AnalysisAgent = ({
         });
       }
 
+      console.log("nextStage", nextStage);
+
       const body = {
         ...stageInput,
         request_type: nextStage,
@@ -485,7 +480,7 @@ export const AnalysisAgent = ({
         };
       }
 
-      socketManager.send(body);
+      mainManager.send(body);
 
       setCurrentStage(nextStage);
       setStageDone(false);
@@ -568,7 +563,7 @@ export const AnalysisAgent = ({
         });
       }
     },
-    [reRunManager, analysisId, activeNode, setRerunningSteps]
+    [analysisId, activeNode, setRerunningSteps, reRunManager]
   );
 
   return (

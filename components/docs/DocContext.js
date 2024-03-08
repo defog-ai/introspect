@@ -6,6 +6,11 @@ export const DocContext = createContext({
     toolboxes: [],
     metadata: {},
   },
+  socketManagers: {
+    mainMgr: null,
+    rerunMgr: null,
+    toolMgr: null,
+  },
   dbCreds: {
     dbType: "postgres",
     host: "",

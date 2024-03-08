@@ -201,7 +201,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 resp = {}
                 resp["request_type"] = request_type
-                resp["report_id"] = report_data_manager.report_data["report_id"]
+                resp["analysis_id"] = report_data_manager.report_data["report_id"]
 
                 toolboxes = (
                     data.get("toolboxes")
@@ -258,7 +258,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
                             # send done true
                             await websocket.send_json(
-                                {"done": True, "request_type": request_type}
+                                {
+                                    "done": True,
+                                    "request_type": request_type,
+                                    "analysis_id": report_id,
+                                }
                             )
                         else:
                             # if not a generator agent
@@ -278,6 +282,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                 "done": True,
                                 "success": False,
                                 "error_message": str(e)[:300],
+                                "analysis_id": report_id,
                             }
                         )
 
@@ -292,6 +297,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     {
                         "success": False,
                         "error_message": "Something went wrong. Please try again or contact us if this persists.",
+                        "analysis_id": report_id,
                     }
                 )
     except WebSocketDisconnect as e:
