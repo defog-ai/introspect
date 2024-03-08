@@ -8,7 +8,7 @@ ARG ENDPOINT=""
 ENV ENDPOINT="${ENDPOINT:-localhost:80}"
 
 # copy the build output to replace the default nginx contents
-COPY ./out /var/www/html
+COPY ./frontend/out /var/www/html
 
 # modify every single file in the /var/www/html dir to replace the endpoint
 RUN find /var/www/html -type f -exec sed -i "s/DEFOGHOSTNAME/$ENDPOINT/g" {} \;
