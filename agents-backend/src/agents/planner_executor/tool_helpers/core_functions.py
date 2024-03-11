@@ -82,12 +82,7 @@ async def fetch_query_into_df(sql_query: str) -> pd.DataFrame:
         db_creds = json.loads(db_creds)
 
     colnames, data, new_sql_query = await asyncio.to_thread(
-        execute_query,
-        sql_query,
-        DEFOG_API_KEY,
-        db_type,
-        db_creds,
-        retries=0
+        execute_query, sql_query, DEFOG_API_KEY, db_type, db_creds, retries=0
     )
     df = pd.DataFrame(data, columns=colnames)
 
