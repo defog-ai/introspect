@@ -12,6 +12,12 @@ This contains the self-hosted agents front-end and back-end that we have created
 
 To build the docker containers, make sure you have docker running on your system.
 
+(only needed if you have to export the frontend to static files)
+
+```bash
+cd frontend && npm run export
+```
+
 On Linux/Mac
 
 ```bash
