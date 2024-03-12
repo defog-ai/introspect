@@ -1,11 +1,13 @@
 "use client";
 import {
   BlockNoteView,
-  FormattingToolbarPositioner,
-  HyperlinkToolbarPositioner,
-  SideMenuPositioner,
-  SlashMenuPositioner,
-  useBlockNote,
+  BlockTypeDropdown,
+  FormattingToolbar,
+  FormattingToolbarController,
+  HyperlinkToolbarController,
+  SideMenuController,
+  SuggestionMenuController,
+  useCreateBlockNote,
 } from "@blocknote/react";
 import React, { useState, Fragment, useContext, useEffect } from "react";
 import { createEditorConfig } from "./createEditorConfig";
@@ -28,6 +30,9 @@ import { RelatedAnalysesMiniMap } from "../defog-components/components/agent/Rel
 import ErrorBoundary from "../common/ErrorBoundary";
 import setupBaseUrl from "../../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../../utils/websocket-manager";
+import { customBlockSchema } from "./createCustomBlockSchema";
+import { filterSuggestionItems } from "@blocknote/core";
+import { getCustomSlashMenuItems } from "./createCustomSlashMenuItems";
 
 // remove the last slash from the url
 const partyEndpoint = process.env.NEXT_PUBLIC_AGENTS_ENDPOINT;
@@ -143,8 +148,12 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
     protocol: "ws",
   });
 
-  const editor = useBlockNote({
+  const editor = useCreateBlockNote({
     ...createEditorConfig(null, yjsDoc, yjsProvider, username),
+    placeholders: {
+      default: "Type /analysis to start",
+    },
+    schema: customBlockSchema,
     _tiptapOptions: {
       extensions: [ReactiveVariableNode, ReactiveVariableMention],
     },
@@ -158,7 +167,7 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
   editor.onEditorContentChange(() => {
     try {
       // get first text block
-      const textBlocks = editor.topLevelBlocks.filter((d) =>
+      const textBlocks = editor.document.filter((d) =>
         d?.content?.length ? d?.content[0]?.text : false
       );
 
@@ -197,14 +206,26 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
           ></DocNav>
           <div id="content">
             <div id="editor-container">
-              <BlockNoteView editor={editor} theme={"light"}>
-                <FormattingToolbarPositioner
+              <BlockNoteView
+                editor={editor}
+                theme={"light"}
+                formattingToolbar={false}
+                slashMenu={false}
+              >
+                <FormattingToolbarController
                   editor={editor}
                   formattingToolbar={CustomFormattingToolbar}
                 />
-                <HyperlinkToolbarPositioner editor={editor} />
-                <SlashMenuPositioner editor={editor} />
-                <SideMenuPositioner editor={editor} />
+                <SuggestionMenuController
+                  editor={editor}
+                  triggerCharacter="/"
+                  getItems={async (query) =>
+                    filterSuggestionItems(
+                      getCustomSlashMenuItems(editor),
+                      query
+                    )
+                  }
+                />
               </BlockNoteView>
               <ErrorBoundary>
                 <RelatedAnalysesMiniMap editor={editor} />

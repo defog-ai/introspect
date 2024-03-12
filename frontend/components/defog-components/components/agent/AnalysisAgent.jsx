@@ -413,7 +413,6 @@ export const AnalysisAgent = ({
   useEffect(() => {
     // add handlers to socket managers using addevent listener
     if (mainManager && mainManager.addEventListener) {
-      console.log("adding", analysisId);
       mainManager.addEventListener("message", onMessage);
     }
     if (reRunManager && reRunManager.addEventListener) {
@@ -421,7 +420,6 @@ export const AnalysisAgent = ({
     }
 
     return () => {
-      console.log("removing event listeners");
       // remove handlers from socket managers using remove event listener
       mainManager?.removeEventListener("message", onMessage);
       reRunManager?.removeEventListener("message", onReRunMessage);
