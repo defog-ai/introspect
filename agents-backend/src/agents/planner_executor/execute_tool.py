@@ -86,7 +86,7 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
             )
         else:
             inputs_to_log.append(i)
-    print(f"Tool inputs: {tool_inputs}")
+    print(f"Tool inputs: {inputs_to_log}")
     # print(f"Global dict: {global_dict}")
     result = {}
     for tool in tools:
