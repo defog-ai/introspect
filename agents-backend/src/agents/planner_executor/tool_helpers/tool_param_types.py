@@ -9,6 +9,15 @@ class DBColumn(str):
     pass
 
 
+class ListWithDefault(list):
+    def __init__(self, _list, default_value=None):
+        super().__init__(_list)
+        self.default_value = default_value
+
+    def __repr__(self):
+        return f"{super().__repr__()} (default_value: {self.default_value})"
+
+
 # class DBColumnList(list):
 #     # make constructor as able to pass number of elements in list
 #     def __init__(self, *args):

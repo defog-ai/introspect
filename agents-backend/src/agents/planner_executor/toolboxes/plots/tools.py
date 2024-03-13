@@ -17,6 +17,7 @@ import yaml
 from agents.planner_executor.tool_helpers.tool_param_types import (
     DBColumn,
     DropdownSingleSelect,
+    ListWithDefault,
     db_column_list_type_creator,
 )
 from agents.planner_executor.tool_helpers.sorting_functions import natural_sort
@@ -41,15 +42,20 @@ async def boxplot(
     boxplot_cols: db_column_list_type_creator(1, 2),
     facet: bool = False,
     facet_col: DBColumn = None,
-    color: DropdownSingleSelect = [
-        "#000000",
-        "#009D94",
-        "#0057CF",
-        "#FFBD00",
-        "#FF5C1C",
-        "#691A6B",
-    ],
-    opacity: DropdownSingleSelect = [0.1, 0.2, 0.3, 0.4, 0.5],
+    color: DropdownSingleSelect = ListWithDefault(
+        [
+            "#000000",
+            "#009D94",
+            "#0057CF",
+            "#FFBD00",
+            "#FF5C1C",
+            "#691A6B",
+        ],
+        default_value="#000000",
+    ),
+    opacity: DropdownSingleSelect = ListWithDefault(
+        [0.1, 0.2, 0.3, 0.4, 0.5], default_value=0.4
+    ),
     global_dict: dict = {},
 ):
     """
@@ -164,8 +170,12 @@ async def heatmap(
     y_position_column: DBColumn,
     color_column: DBColumn,
     # can be mean, median, max, min, or sum
-    aggregation_type: DropdownSingleSelect = ["mean", "median", "max", "min", "sum"],
-    color_scale: DropdownSingleSelect = available_colors,
+    aggregation_type: DropdownSingleSelect = ListWithDefault(
+        ["mean", "median", "max", "min", "sum"], default_value="mean"
+    ),
+    color_scale: DropdownSingleSelect = ListWithDefault(
+        available_colors, default_value=None
+    ),
     global_dict: dict = {},
 ):
     """
@@ -217,10 +227,16 @@ async def line_plot(
     y_column: DBColumn,
     hue_column: DBColumn = None,
     facet_col: DBColumn = None,
-    estimator: DropdownSingleSelect = ["mean", "median", "max", "min", "sum", "None"],
+    estimator: DropdownSingleSelect = ListWithDefault(
+        ["mean", "median", "max", "min", "sum", "None"], default_value=None
+    ),
     units: DBColumn = None,
-    plot_average_line: DropdownSingleSelect = ["False", "True"],
-    average_type: DropdownSingleSelect = ["mean", "median", "max", "min", "mode"],
+    plot_average_line: DropdownSingleSelect = ListWithDefault(
+        ["False", "True"], default_value=None
+    ),
+    average_type: DropdownSingleSelect = ListWithDefault(
+        ["mean", "median", "max", "min", "mode"], default_value=None
+    ),
     global_dict: dict = {},
     **kwargs,
 ):

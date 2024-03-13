@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from agents.planner_executor.tool_helpers.tool_param_types import (
     DBColumn,
     DropdownSingleSelect,
+    ListWithDefault,
 )
 
 from agents.planner_executor.tool_helpers.sorting_functions import natural_sort
@@ -33,7 +34,9 @@ async def t_test(
     group_column: DBColumn,
     score_column: DBColumn,
     name_column: DBColumn,
-    t_test_type: DropdownSingleSelect = ["unpaired", "paired"],
+    t_test_type: DropdownSingleSelect = ListWithDefault(
+        ["unpaired", "paired"], default_value="unpaired"
+    ),
     global_dict: dict = {},
     **kwargs,
 ) -> Tuple[str, pd.DataFrame]:

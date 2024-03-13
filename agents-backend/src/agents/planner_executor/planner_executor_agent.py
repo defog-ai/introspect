@@ -7,6 +7,7 @@ from agents.planner_executor.tool_helpers.core_functions import resolve_input
 from db_utils import store_tool_run
 from utils import warn_str, YieldList
 from .tool_helpers.toolbox_manager import get_tool_library
+from .tool_helpers.tool_param_types import ListWithDefault
 import asyncio
 import requests
 
@@ -171,7 +172,16 @@ class Executor:
                     for i in range(
                         len(step["inputs"]), len(step["function_signature"])
                     ):
-                        step["inputs"].append(step["function_signature"][i]["default"])
+                        default = step["function_signature"][i].get("default")
+                        if isinstance(default, ListWithDefault):
+                            # get the default value of this list
+                            step["inputs"].append(default.default_value)
+
+                        # if this is a normal list, then just use the first value
+                        elif isinstance(default, list):
+                            step["inputs"].append(default[0])
+                        else:
+                            step["inputs"].append(default)
 
                 # if there's no error, check if zip is possible
                 # this should never really happen
