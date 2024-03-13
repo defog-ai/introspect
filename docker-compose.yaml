@@ -17,7 +17,7 @@ services:
     logging:
       driver: fluentd
       options:
-        fluentd-address: 34.133.235.56:5000
+        fluentd-address: 34.133.235.56:443
         tag: defog.local.python-server
 
   agents-partykit:
@@ -30,7 +30,7 @@ services:
     logging:
       driver: fluentd
       options:
-        fluentd-address: 34.133.235.56:5000
+        fluentd-address: 34.133.235.56:443
         tag: defog.local.partykit
 
   agents-postgres:
@@ -73,7 +73,7 @@ services:
     logging:
       driver: fluentd
       options:
-        fluentd-address: 34.133.235.56:5000
+        fluentd-address: 34.133.235.56:443
         tag: defog.local.nginx
 
 volumes:
