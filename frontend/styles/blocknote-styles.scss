@@ -1481,7 +1481,7 @@ $grid: repeating-linear-gradient(
 
 .tool-input-value-dropdown {
   font-family: $code;
-  min-width: 200px;
+  width: auto !important;
 
   .ant-select-item-option-content {
     font-size: 1em;

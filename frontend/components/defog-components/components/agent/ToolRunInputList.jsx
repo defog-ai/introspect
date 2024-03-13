@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 import { easyColumnTypes } from "../../../../utils/utils";
+import Search from "antd/es/input/Search";
 
 const inputTypeToUI = {
   list: (toolRunId, inputName, initialValue, onEdit) => {
@@ -79,6 +80,8 @@ const inputTypeToUI = {
     if (!initialValue) initialValue = false;
     return (
       <Select
+        showSearch
+        allowClear
         rootClassName="tool-input-value"
         value={String(initialValue)}
         key={toolRunId + "_" + inputName}
@@ -194,6 +197,7 @@ const inputTypeToUI = {
     // return
     return (
       <Select
+        showSearch
         rootClassName="tool-input-value"
         value={initialValue}
         key={toolRunId + "_" + inputName}
@@ -335,8 +339,11 @@ const inputTypeToUI = {
       config?.functionSignature?.find((sig) => sig.name === inputName)
         ?.default || [];
 
+    console.log(options, initialValue);
+
     return (
       <Select
+        allowClear
         value={initialValue}
         key={toolRunId + "_" + inputName}
         size="small"
@@ -346,7 +353,6 @@ const inputTypeToUI = {
           return { label: opt, value: opt };
         })}
         placeholder="Select a value"
-        allowClear
         showSearch
         onChange={(val) => {
           onEdit(inputName, val);
@@ -437,6 +443,8 @@ export function ToolRunInputList({
   // in case any input is a pd dataframe, and one of the inputs is either DBColumn or list[DBColumn]
   // we need to find all available db columns in that pd dataframe
   // check the cache if we have tool run data available
+
+  console.log(step);
 
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
