@@ -51,7 +51,7 @@ async def boxplot(
             "#FF5C1C",
             "#691A6B",
         ],
-        default_value="#0057CF",
+        default_value="#000000",
     ),
     opacity: DropdownSingleSelect = ListWithDefault(
         [0.1, 0.2, 0.3, 0.4, 0.5], default_value=0.3
@@ -65,14 +65,19 @@ async def boxplot(
     if type(color) == ListWithDefault:
         color = color.default_value
 
-    if not color or type(color) != str:
-        raise ValueError("Color must be a string")
+    if not color:
+        color = "#000000"
+
+    if type(color) != str:
+        # support for versions before we had the ListWithDefault class
+        color = "#000000"
 
     if type(opacity) == ListWithDefault:
         opacity = opacity.default_value
 
     if not opacity or type(opacity) != float:
-        raise ValueError("Opacity must be a float")
+        # support for versions before we had the ListWithDefault class
+        opacity = 0.3
 
     if len(boxplot_cols) == 1:
         if boxplot_cols[0] == "label":

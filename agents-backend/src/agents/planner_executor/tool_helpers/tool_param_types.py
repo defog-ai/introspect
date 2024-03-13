@@ -13,6 +13,10 @@ class ListWithDefault(list):
     def __init__(self, _list, default_value=None):
         super().__init__(_list)
         self.default_value = default_value
+        # go through the list and find the data type
+        d_type = str
+        for i in _list:
+            d_type = DBColumn
 
     def __repr__(self):
         return f"{super().__repr__()} (default_value: {self.default_value})"

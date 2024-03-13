@@ -1111,7 +1111,7 @@ $grid: repeating-linear-gradient(
                 pre,
                 textarea,
                 span {
-                  font-family: $code;
+                  font-family: $code !important;
                   font-size: 13px !important;
                 }
               }
