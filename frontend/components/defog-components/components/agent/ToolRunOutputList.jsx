@@ -45,7 +45,7 @@ export function ToolRunOutputList({
                 // get scroll height of tool-code-ctr inside codeCtrRef
                 if (codeCtrRef.current) {
                   const codeCtr =
-                    codeCtrRef.current.querySelector(".tool-code-ctr");
+                    codeCtrRef.current.querySelector(".cm-editor");
                   if (codeCtr) {
                     codeCtrRef.current.style.maxHeight = codeCollapsed
                       ? `${codeCtr.scrollHeight}px`

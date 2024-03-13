@@ -1,13 +1,9 @@
 import React, { useState } from "react";
 import ErrorBoundary from "./common/ErrorBoundary";
 
-import dynamic from "next/dynamic";
-import "@uiw/react-textarea-code-editor/dist.css";
-
-const Editor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
+import CodeMirror from "@uiw/react-codemirror";
+import { python } from "@codemirror/lang-python";
+import { sql } from "@codemirror/lang-sql";
 
 export function CodeEditor({
   analysisId = null,
@@ -39,13 +35,16 @@ export function CodeEditor({
   return (
     <ErrorBoundary>
       <>
-        <Editor
-          language={language}
+        <CodeMirror
+          // language={language}
+          extensions={[language === "python" ? python() : sql()]}
+          basicSetup={{
+            lineNumbers: false,
+          }}
           className={`language-${language} ` + className}
-          padding={15}
           value={toolCode}
-          onChange={(evn) => {
-            updateCodeAndSql(evn.target.value);
+          onChange={(val) => {
+            updateCodeAndSql(val);
           }}
         />
       </>

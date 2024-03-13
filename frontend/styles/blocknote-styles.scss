@@ -1101,18 +1101,13 @@ $grid: repeating-linear-gradient(
                 margin-bottom: 1em;
                 display: block;
 
-                .w-tc-editor-preview {
-                  user-select: none;
-                }
-                pre {
+                .cm-editor {
                   background: $very-light-gray !important;
-                  user-select: none;
-                }
-                pre,
-                textarea,
-                span {
-                  font-family: $code !important;
-                  font-size: 13px !important;
+                  .cm-line,
+                  .cm-line span {
+                    font-family: $code;
+                    font-size: 13px !important;
+                  }
                 }
               }
             }
