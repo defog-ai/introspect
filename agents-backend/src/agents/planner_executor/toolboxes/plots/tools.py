@@ -51,10 +51,10 @@ async def boxplot(
             "#FF5C1C",
             "#691A6B",
         ],
-        default_value="#000000",
+        default_value="#0057CF",
     ),
     opacity: DropdownSingleSelect = ListWithDefault(
-        [0.1, 0.2, 0.3, 0.4, 0.5], default_value=0.4
+        [0.1, 0.2, 0.3, 0.4, 0.5], default_value=0.3
     ),
     global_dict: dict = {},
 ):
@@ -62,14 +62,14 @@ async def boxplot(
     Generates a boxplot using python's seaborn library. Also accepts faceting columns.
     """
 
-    if type(color) == list:
-        color = color[0]
+    if type(color) == ListWithDefault:
+        color = color.default_value
 
     if not color or type(color) != str:
         raise ValueError("Color must be a string")
 
-    if type(opacity) == list:
-        opacity = opacity[0]
+    if type(opacity) == ListWithDefault:
+        opacity = opacity.default_value
 
     if not opacity or type(opacity) != float:
         raise ValueError("Opacity must be a float")
@@ -174,7 +174,7 @@ async def heatmap(
         ["mean", "median", "max", "min", "sum"], default_value="mean"
     ),
     color_scale: DropdownSingleSelect = ListWithDefault(
-        available_colors, default_value=None
+        available_colors, default_value="viridis"
     ),
     global_dict: dict = {},
 ):
@@ -188,6 +188,9 @@ async def heatmap(
 
     if not aggregation_type or type(aggregation_type) != str:
         raise ValueError("Aggregation type must be a string")
+
+    if type(color_scale) == ListWithDefault:
+        color_scale = color_scale.default_value
 
     sns.heatmap(
         full_data.pivot_table(
@@ -243,13 +246,13 @@ async def line_plot(
     """
     Creates a line plot of the data, using seaborn
     """
-    if type(average_type) == list:
+    if type(average_type) == ListWithDefault:
         average_type = average_type[0]
 
-    if type(plot_average_line) == list:
+    if type(plot_average_line) == ListWithDefault:
         plot_average_line = plot_average_line[0]
 
-    if type(estimator) == list:
+    if type(estimator) == ListWithDefault:
         estimator = estimator[0]
 
     if estimator is None:

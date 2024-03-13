@@ -273,6 +273,7 @@ export const AnalysisAgent = ({
   }
   async function onReRunMessage(event) {
     const res = JSON.parse(event.data);
+    console.log(res);
     if (res?.analysis_id !== analysisId) return;
     // re run messages can be of two types:
     // 1. which step is GOING TO BE RUN. this won't just be the step that was asked to be re run by the user.
