@@ -1007,7 +1007,13 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
     if tool_run_id is None or prop is None or analysis_id is None:
         return "Invalid tool run data"
 
-    print("Updating property: ", prop, " with value: ", new_val)
+    # if new_val is a pandas df, only print the shape and columns
+    if type(new_val) == type(pd.DataFrame()):
+        print(
+            "Updating property: ", prop, " with value: ", new_val.shape, new_val.columns
+        )
+    else:
+        print("Updating property: ", prop, " with value: ", new_val)
 
     try:
         with engine.begin() as conn:
