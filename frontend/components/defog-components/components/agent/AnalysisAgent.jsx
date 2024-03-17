@@ -267,7 +267,7 @@ export const AnalysisAgent = ({
       setStageDone(true);
       setAnalysisBusy(false);
       // if this is clarify, and the length is 0, autosubmit for next stage
-      if (rType === "clarify" && analysisData[rType][prop]?.length === 0) {
+      if (rType === "clarify" && analysisData?.[rType]?.[prop]?.length === 0) {
         handleSubmit(null, { clarification_questions: [] }, "clarify");
       }
     }
