@@ -107,11 +107,6 @@ export default function Clarify({
       );
     }, 100);
   }
-  useEffect(() => {
-    if (stageDone && success && !submitted && isCurrentStage) {
-      onSubmit();
-    }
-  }, [stageDone, success, submitted, isCurrentStage]);
 
   const UIs = {
     "multi select": (q, i, opts) => {

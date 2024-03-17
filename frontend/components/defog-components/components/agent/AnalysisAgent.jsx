@@ -197,12 +197,7 @@ export const AnalysisAgent = ({
     const rType = response.request_type;
     const prop = propNames[rType];
 
-    if (
-      response.output &&
-      response.output.success &&
-      response.output[prop] &&
-      response.output[prop].length > 0
-    ) {
+    if (response.output && response.output.success && response.output[prop]) {
       if (rType === "gen_report") {
         // run the hook
         // a use case for this hook:
@@ -261,14 +256,20 @@ export const AnalysisAgent = ({
         return newAnalysisData;
       });
     } else {
-      // if the response doesn't have any output, set the stage to done
+      // if the response doesn't have any output (note that this does NOT include 0 length output), set the stage to done
       setStageDone(true);
       setAnalysisBusy(false);
     }
 
+    console.log(response);
+
     if (response.done) {
       setStageDone(true);
       setAnalysisBusy(false);
+      // if this is clarify, and the length is 0, autosubmit for next stage
+      if (rType === "clarify" && analysisData[rType][prop]?.length === 0) {
+        handleSubmit(null, { clarification_questions: [] }, "clarify");
+      }
     }
   }
   async function onReRunMessage(event) {
