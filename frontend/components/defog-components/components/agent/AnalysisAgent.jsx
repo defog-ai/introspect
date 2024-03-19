@@ -156,7 +156,7 @@ export const AnalysisAgent = ({
         }
       }
     }
-  }, [analysisData]);
+  }, [analysisData, analysisBusy, stageDone]);
 
   useEffect(() => {
     if (!analysisData || !analysisId) return;
@@ -165,7 +165,7 @@ export const AnalysisAgent = ({
       ...relatedAnalysesContext.val,
       [analysisId]: relatedAnalyses,
     });
-  }, [relatedAnalyses]);
+  }, [relatedAnalyses, analysisData]);
 
   function onMessage(event) {
     if (!event.data) {
