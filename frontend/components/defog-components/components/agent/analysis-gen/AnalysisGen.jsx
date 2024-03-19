@@ -25,7 +25,6 @@ const components = {
 
 export default function AnalysisGen({
   analysisData,
-  user_question = null,
   // if the "current stage" is done or not
   stageDone = true,
   // if any stage is currently loading, disable submits on all stages
@@ -45,6 +44,10 @@ export default function AnalysisGen({
   );
 
   const [questionEdited, setQuestionEdited] = useState(false);
+
+  useEffect(() => {
+    setQuestionEdited(false);
+  }, [analysisData]);
 
   useEffect(() => {
     setActiveTab(currentStage === "clarify" ? "1" : "2");
@@ -145,7 +148,7 @@ export default function AnalysisGen({
           <Search
             onPressEnter={(ev) => handleSubmit(ev)}
             onChange={(ev) => {
-              if (ev.target.value !== user_question) {
+              if (ev.target.value !== analysisData?.user_question) {
                 setQuestionEdited(true);
               } else {
                 setQuestionEdited(false);
@@ -160,7 +163,7 @@ export default function AnalysisGen({
             disabled={globalLoading}
             placeholder="Ask a question"
             enterButton={currentStage === null ? "Start" : "Restart"}
-            defaultValue={user_question}
+            defaultValue={analysisData?.user_question}
           ></Search>
           {questionEdited && currentStage !== null && !globalLoading && (
             <span className="search-info-on-question-change">

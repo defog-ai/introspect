@@ -208,7 +208,7 @@ export default function Clarify({
             </ul>
           </>
         ) : (
-          <>No refinements needed</>
+          !isCurrentStage && <>No refinements needed</>
         ))}
       {stageDone ? (
         <></>
