@@ -153,6 +153,15 @@ export const AnalysisAgent = ({
           setCurrentStage("clarify");
         } else {
           setCurrentStage(lastExistingStage);
+          // if last existing stage is clarify, and it's done, check if clarification questions are empty
+          // if so, submit for the next stage
+          if (
+            lastExistingStage === "clarify" &&
+            stageDone &&
+            analysisData?.clarify?.clarification_questions?.length === 0
+          ) {
+            handleSubmit(null, { clarification_questions: [] }, "clarify");
+          }
         }
       }
     }
@@ -270,18 +279,18 @@ export const AnalysisAgent = ({
       setStageDone(true);
       setAnalysisBusy(false);
 
-      setAnalysisData((prev) => {
-        // hacky. I don't want to change state, just want to do some cleanup here
-        // if this is clarify, and the length is 0, autosubmit for next stage
-        if (
-          rType === "clarify" &&
-          prev?.clarify?.clarification_questions?.length === 0
-        ) {
-          handleSubmit(null, { clarification_questions: [] }, "clarify");
-        }
+      //   setAnalysisData((prev) => {
+      //     // hacky. I don't want to change state, just want to do some cleanup here
+      //     // if this is clarify, and the length is 0, autosubmit for next stage
+      //     if (
+      //       rType === "clarify" &&
+      //       prev?.clarify?.clarification_questions?.length === 0
+      //     ) {
+      //       handleSubmit(null, { clarification_questions: [] }, "clarify");
+      //     }
 
-        return prev;
-      });
+      //     return prev;
+      //   });
     }
   }
 
