@@ -12,6 +12,7 @@ export default function BadModal({
 }) {
   const [dag, setDag] = useState(null);
   const [dagLinks, setDagLinks] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [activeNode, _setActiveNode] = useState(null);
 
@@ -34,11 +35,12 @@ export default function BadModal({
   const handleSubmit = useCallback(async () => {
     // setModalVisible(false);
     console.log(comments);
-
+    setLoading(true);
     await submitFeedback({
       is_correct: false,
       comments: comments,
     });
+    setLoading(false);
   }, [analysisId, comments, submitFeedback, setModalVisible]);
 
   const setComments = (newComments) => {
@@ -88,26 +90,11 @@ export default function BadModal({
       }
 
       newComments["step_wise"][step.tool_run_id] = {
-        description: {
-          heading: "Step description",
-          value: step.description,
-          comments: "",
-          placeholder:
-            "Leave your feedback about this step's description here...",
-        },
-        tool: {
-          heading: "Tool",
-          value: toolDisplayNames[step.tool_name] || "Unknown tool",
-          comments: "",
-          placeholder:
-            "Leave your feedback about the tool used in this step here...",
-        },
-        overall: {
-          heading: "Overall step feedback",
-          comments: "",
-          placeholder: "Leave your overall feedback about this step here...",
-          isOverall: true,
-        },
+        description: step.description,
+        tool: toolDisplayNames[step.tool_name] || "Unknown tool",
+        comments: "",
+        inputs: step.inputs,
+        outputs: step.outputs_storage_keys,
       };
     });
 
@@ -138,6 +125,7 @@ export default function BadModal({
             <textarea
               className="w-full min-h-10 p-2 border border-gray-300 rounded-md"
               placeholder="Leave your feedback here..."
+              disabled={loading}
             />
           </div>
         </div>
@@ -194,48 +182,77 @@ export default function BadModal({
                 {activeNode ? (
                   activeNode.data.isTool ? (
                     <div>
-                      {Object.keys(
-                        comments["step_wise"][activeNode.data.step.tool_run_id]
-                      ).map((key) => {
-                        const comment =
+                      <p className="text-sm font-bold text-gray-900 ">
+                        {
                           comments["step_wise"][
                             activeNode.data.step.tool_run_id
-                          ][key];
-
-                        return (
-                          <div key={key} className="mb-4">
-                            <p className="text-sm font-bold text-gray-900 ">
-                              {comment.heading}
-                            </p>
-                            <p className="text-sm text-gray-900">
-                              {comment.value || comment.isOverall || (
-                                <span className="text-gray-400">
-                                  {comment.heading} not found. This might be a
-                                  user created step.
-                                </span>
-                              )}
-                            </p>
-                            <textarea
-                              className="w-full min-h-10 p-2 border border-gray-300 rounded-md"
-                              value={comment.comments}
-                              placeholder={
-                                comment.placeholder ||
-                                `Leave your feedback about "${comment.heading}" here...`
-                              }
-                              onChange={(ev) => {
-                                const newComments = {
-                                  ...comments,
-                                };
-                                newComments["step_wise"][
-                                  activeNode.data.step.tool_run_id
-                                ][key].comments = ev.target.value;
-
-                                setComments(newComments);
-                              }}
-                            />
+                          ].tool
+                        }
+                      </p>
+                      <p className="text-sm text-gray-900 ">
+                        {
+                          comments["step_wise"][
+                            activeNode.data.step.tool_run_id
+                          ].description
+                        }
+                      </p>
+                      <p
+                        className="text-sm font-bold text-gray-900"
+                        style={{ paddingTop: "1em" }}
+                      >
+                        The model generated these inputs for this step:
+                      </p>
+                      <p className="text-sm text-gray-900 ">
+                        {Object.entries(
+                          comments["step_wise"][
+                            activeNode.data.step.tool_run_id
+                          ].inputs
+                        ).map(([key, value]) => (
+                          <div>
+                            <span className="italic">{key}</span>:{" "}
+                            {/* {JSON.stringify(value)} */}
+                            {/* if value is a number or string, display it. Else, display a JSON stringified version of it */}
+                            {typeof value === "string" ||
+                            typeof value === "number"
+                              ? value
+                              : JSON.stringify(value)}
                           </div>
-                        );
-                      })}
+                        ))}
+                      </p>
+                      <p
+                        className="text-sm font-bold text-gray-900"
+                        style={{ paddingTop: "1em" }}
+                      >
+                        The outputs of this step were stored in the following
+                        variables:
+                      </p>
+                      <p className="text-sm text-gray-900 ">
+                        {comments["step_wise"][
+                          activeNode.data.step.tool_run_id
+                        ].outputs.map((output) => (
+                          <div>{output}</div>
+                        ))}
+                      </p>
+                      <textarea
+                        className="w-full min-h-10 p-2 border border-gray-300 rounded-md"
+                        value={
+                          comments["step_wise"][
+                            activeNode.data.step.tool_run_id
+                          ].comment
+                        }
+                        disabled={loading}
+                        placeholder={`Leave your feedback about "${comments["step_wise"][activeNode.data.step.tool_run_id].tool}" here...`}
+                        onChange={(ev) => {
+                          const newComments = {
+                            ...comments,
+                          };
+                          newComments["step_wise"][
+                            activeNode.data.step.tool_run_id
+                          ].comment = ev.target.value;
+
+                          setComments(newComments);
+                        }}
+                      />
                     </div>
                   ) : (
                     <div></div>
@@ -250,7 +267,12 @@ export default function BadModal({
           </div>
         </div>
       </div>
-      <Button type="primary" onClick={handleSubmit}>
+      <Button
+        type="primary"
+        onClick={handleSubmit}
+        loading={loading}
+        disabled={loading}
+      >
         Submit
       </Button>
     </Modal>
