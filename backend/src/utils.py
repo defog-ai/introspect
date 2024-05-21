@@ -126,7 +126,8 @@ def missing_param_error(param_name):
 
 
 def get_db_type():
-    return
+    defog = Defog()
+    return defog.db_type
 
 
 async def get_metadata():
