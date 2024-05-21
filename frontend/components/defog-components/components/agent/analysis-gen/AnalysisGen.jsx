@@ -165,12 +165,12 @@ export default function AnalysisGen({
             enterButton={currentStage === null ? "Start" : "Restart"}
             defaultValue={analysisData?.user_question}
           ></Search>
-          <span className="search-info-on-question-change">
+          {/* <span className="search-info-on-question-change">
             <InfoCircleOutlined style={{ marginRight: 5, marginLeft: 2 }} />
             If you want to get an exact match for a variable name instead of a
             LIKE query, please put double quotes around the variable that you
             want the exact match for.
-          </span>
+          </span> */}
         </div>
         {currentStage !== null ? (
           <Tabs
