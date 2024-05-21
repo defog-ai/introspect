@@ -14,6 +14,8 @@ openai_api_key = env["openai_api_key"]
 
 openai = OpenAI(api_key=openai_api_key)
 
+model = "gpt-4o"
+
 # tool_library_prompt = """- tool_name: data_fetcher_and_aggregator
 #   description: Converting a natural language question into a SQL query, that then runs on an external database. Fetches, joins, filters, aggregates, and performs arithmetic computations on data. Remember that this tool does not have access to the data returned by the previous steps. It only has access to the data in the database. We should attempt to give this tool very specific questions that pertain to the user question, instead of overly broad or generic ones. However, do not make any mention of which table to query when you give it your question. You can use this exactly once among all steps.
 #   inputs: [natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string]
@@ -102,7 +104,7 @@ async def analyse_data(question: str, data: pd.DataFrame) -> str:
     ]
 
     completion = openai.chat.completions.create(
-        model="gpt-4-0613", messages=messages, temperature=0, seed=42
+        model=model, messages=messages, temperature=0, seed=42
     )
     model_analysis = completion.choices[0].message.content
     return {"model_analysis": model_analysis}
@@ -224,7 +226,7 @@ Only generate the YAML markdown string that starts with ```yaml and ends with ``
             }
         ]
     completion = openai.chat.completions.create(
-        model="gpt-4-0613", messages=messages, temperature=0, seed=42
+        model=model, messages=messages, temperature=0, seed=42
     )
     generated_step = completion.choices[0].message.content.strip()
 
@@ -261,7 +263,7 @@ Do you have any clarifications you need from the user? You are only allowed to a
         },
     ]
     completion = openai.chat.completions.create(
-        model="gpt-4-0613", messages=messages, temperature=0, seed=42, max_tokens=64
+        model=model, messages=messages, temperature=0, seed=42, max_tokens=64
     )
     clarifications = completion.choices[0].message.content
     if "no clarification" not in clarifications.lower():
@@ -291,7 +293,7 @@ def turn_into_statement(clarification_questions):
         {"role": "user", "content": user_prompt},
     ]
     completion = openai.chat.completions.create(
-        model="gpt-4-0613", messages=messages, temperature=0, seed=42
+        model=model, messages=messages, temperature=0, seed=42
     )
     statements = completion.choices[0].message.content
     print(statements)
@@ -319,7 +321,7 @@ Give your answer as just a single string. Your answer must be one of the followi
     ]
 
     completion = openai.chat.completions.create(
-        model="gpt-4-0613",
+        model=model,
         messages=messages,
         max_tokens=16,
         temperature=0,
@@ -437,7 +439,7 @@ Give your response as just a markdown string with just the SQL query, and nothin
     ]
 
     completion = openai.chat.completions.create(
-        model="gpt-4-0613",
+        model=model,
         messages=messages,
         max_tokens=512,
         temperature=0,
