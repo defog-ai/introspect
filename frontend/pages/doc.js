@@ -1,5 +1,7 @@
 import "@blocknote/react/style.css";
 import React, { useContext, useEffect, useRef, useState } from "react";
+import Meta from "../components/common/Meta";
+import Scaffolding from "../components/common/Scaffolding";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import ErrorBoundary from "../components/common/ErrorBoundary";
@@ -78,9 +80,14 @@ export default function DocPage() {
   }, [router, context, setContext]);
 
   return docId.current ? (
-    <ErrorBoundary>
-      <Doc docId={docId.current} username={user} apiToken={apiToken}></Doc>
-    </ErrorBoundary>
+    <>
+      <Meta />
+      <Scaffolding id={"view-notebooks"} userType={"admin"}>
+        <ErrorBoundary>
+          <Doc docId={docId.current} username={user} apiToken={apiToken}></Doc>
+        </ErrorBoundary>
+      </Scaffolding>
+    </>
   ) : (
     <LoadingReport title="Verifying your details..."></LoadingReport>
   );
