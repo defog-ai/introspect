@@ -35,8 +35,6 @@ else:
     openai = AsyncOpenAI(api_key=env.get("OPENAI_API_KEY"))
 
 
-encoding = tiktoken.encoding_for_model("gpt-4-0613")
-
 DEFOG_API_KEY = "genmab-survival-test"
 
 
@@ -197,7 +195,7 @@ async def analyse_data(question: str, data: pd.DataFrame) -> str:
     ]
 
     completion = await openai.chat.completions.create(
-        model="gpt-4-0613", messages=messages, temperature=0, seed=42, stream=True
+        model="gpt-4o", messages=messages, temperature=0, seed=42, stream=True
     )
 
     async for chunk in completion:
