@@ -15,6 +15,7 @@ export default function BadModal({
   const [loading, setLoading] = useState(false);
 
   const [activeNode, _setActiveNode] = useState(null);
+  const [rawFeedback, setRawFeedback] = useState(null);
 
   // which feedback section is the user currently on
   const [activeSection, setActiveSection] = useState("general");
@@ -33,14 +34,19 @@ export default function BadModal({
   });
 
   const handleSubmit = useCallback(async () => {
-    // setModalVisible(false);
     console.log(comments);
     setLoading(true);
-    await submitFeedback({
+    const feedbackResponse = await submitFeedback({
       is_correct: false,
       comments: comments,
     });
     setLoading(false);
+
+    if (feedbackResponse && feedbackResponse.success) {
+      setRawFeedback(feedbackResponse.suggested_improvements);
+      // scroll to the bottom of the modal
+      document.querySelector(".feedback-modal").scrollTo(0, 10000);
+    }
   }, [analysisId, comments, submitFeedback, setModalVisible]);
 
   const setComments = (newComments) => {
@@ -126,6 +132,14 @@ export default function BadModal({
               className="w-full min-h-10 p-2 border border-gray-300 rounded-md"
               placeholder="Leave your feedback here..."
               disabled={loading}
+              value={comments.general}
+              rows={8}
+              onChange={(ev) => {
+                setComments({
+                  ...comments,
+                  general: ev.target.value,
+                });
+              }}
             />
           </div>
         </div>
@@ -275,6 +289,26 @@ export default function BadModal({
       >
         Submit
       </Button>
+
+      <div className="flex flex-row">
+        <div className={`raw-suggestions py-5 px-5 w-12/12`}>
+          {rawFeedback && (
+            <>
+              <p className="text-lg  text-gray-900 font-bold">
+                Raw suggestions from the model
+              </p>
+              <p className="text-sm  text-gray-400">
+                The model suggested the following improvements
+              </p>
+              <div className={`mr-4`}>
+                <pre className="w-full min-h-10 p-2 border border-gray-300 rounded-md">
+                  {rawFeedback}
+                </pre>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </Modal>
   );
 }

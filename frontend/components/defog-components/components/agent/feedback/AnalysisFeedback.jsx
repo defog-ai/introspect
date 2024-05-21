@@ -31,25 +31,18 @@ export function AnalysisFeedback({
         user_question: user_question,
         username: username,
       }),
-    })
-      .then((d) => d.json())
-      .then((d) => {
-        console.log(d);
-        if (d.success) {
-          message.success(
-            `Feedback ${d.did_overwrite ? "updated" : "submitted"} successfully`
-          );
+    });
 
-          setModalVisible(false);
-        } else {
-          message.error(
-            "Failed to submit feedback" + (d["error_message"] || "")
-          );
-        }
-      })
-      .catch((error) => {
-        message.error("Failed to submit feedback" + error);
-      });
+    const d = await res.json();
+    console.log(d);
+    if (d.success) {
+      message.success(
+        `Feedback ${d.did_overwrite ? "updated" : "submitted"} successfully`
+      );
+    } else {
+      message.error("Failed to submit feedback" + (d["error_message"] || ""));
+    }
+    return d;
   };
 
   return (
