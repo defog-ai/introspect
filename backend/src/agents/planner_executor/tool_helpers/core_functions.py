@@ -192,7 +192,7 @@ async def analyse_data(
                 "content": [
                     {
                         "type": "text",
-                        "text": f"An image was generated to answer this question: `{question}`. Please interpret the results of this image for me.",
+                        "text": f"An image was generated to answer this question: `{question}`. Please interpret the results of this image for me. You do not have to repeat the data in the image verbatim. Instead, focus on the key insights and takeaways.",
                     },
                     {
                         "type": "image_url",
@@ -227,7 +227,12 @@ async def analyse_data(
         ]
 
     completion = await openai.chat.completions.create(
-        model="gpt-4o", messages=messages, temperature=0, seed=42, stream=True
+        model="gpt-4o",
+        messages=messages,
+        temperature=0,
+        seed=42,
+        stream=True,
+        max_tokens=200,
     )
 
     async for chunk in completion:
