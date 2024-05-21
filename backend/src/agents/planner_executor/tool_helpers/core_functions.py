@@ -192,7 +192,7 @@ async def analyse_data(
                 "content": [
                     {
                         "type": "text",
-                        "text": f"An image was generated to answer this question: `{question}`. Please interpret the results of this image for me. You do not have to repeat the data in the image verbatim. Instead, focus on the key insights and takeaways.",
+                        "text": f"An image was generated to answer this question: `{question}`. Please interpret the results of this image for me. Do not repeat the data in the image verbatim. Instead, focus on the key insights and takeaways. Assume that your audience is a non-technical stakeholder who is interested in high level insights but do not want the exact numbers in the image to be repeated.",
                     },
                     {
                         "type": "image_url",
@@ -232,7 +232,7 @@ async def analyse_data(
         temperature=0,
         seed=42,
         stream=True,
-        max_tokens=200,
+        max_tokens=400,
     )
 
     async for chunk in completion:
