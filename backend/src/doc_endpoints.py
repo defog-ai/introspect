@@ -566,8 +566,11 @@ async def analyse_data_endpoint(websocket: WebSocket):
 
             # read data from the csv
             df = pd.read_csv(StringIO(data.get("data")))
+            image_path = data.get("image")
 
-            async for chunk in analyse_data(data.get("question"), df):
+            async for chunk in analyse_data(
+                data.get("question"), df, image_path=image_path
+            ):
                 await manager.send_personal_message(chunk, websocket)
 
     except WebSocketDisconnect as e:

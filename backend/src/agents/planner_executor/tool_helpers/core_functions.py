@@ -6,7 +6,8 @@ import pandas as pd
 from defog import Defog
 from defog.query import execute_query
 import asyncio
-
+import base64
+import os
 
 # these are needed for the exec_code function
 from uuid import uuid4
@@ -34,8 +35,18 @@ if (
 else:
     openai = AsyncOpenAI(api_key=env.get("OPENAI_API_KEY"))
 
+report_assets_dir = env["report_assets_dir"]
 
 DEFOG_API_KEY = "genmab-survival-test"
+
+
+def encode_image(image_path):
+    """
+    Encodes an image to base64.
+    """
+    image_path = os.path.join(report_assets_dir, image_path)
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")
 
 
 # make sure the query does not contain any malicious commands like drop, delete, etc.
@@ -151,7 +162,9 @@ def resolve_input(inp, global_dict):
         return inp
 
 
-async def analyse_data(question: str, data: pd.DataFrame) -> str:
+async def analyse_data(
+    question: str, data: pd.DataFrame, image_path: str = None
+) -> str:
     """
     Generate a short summary of the results for the given qn.
     """
@@ -163,7 +176,7 @@ async def analyse_data(question: str, data: pd.DataFrame) -> str:
         yield {"success": False, "model_analysis": "No data found"}
         return
 
-    if data.size > 50:
+    if data.size > 50 and image_path is None:
         yield {"success": False, "model_analysis": "NONE"}
         return
 
@@ -171,28 +184,47 @@ async def analyse_data(question: str, data: pd.DataFrame) -> str:
         yield {"success": False, "model_analysis": "No question provided"}
         return
 
-    df_csv = data.to_csv(float_format="%.3f", header=True)
-    user_analysis_prompt = f"""Generate a short summary of the results for the given qn: `{question}`\n\nand results:
-{df_csv}\n\n```"""
-    analysis_prompt = (
-        f"""Here is the brief summary of how the results answer the given qn:\n\n```"""
-    )
-    # get comma separated list of col names
-    col_names = ",".join(data.columns)
+    if image_path:
+        base64_image = encode_image(image_path)
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"An image was generated to answer this question: `{question}`. Please interpret the results of this image for me.",
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{base64_image}",
+                            "detail": "low",
+                        },
+                    },
+                ],
+            },
+        ]
+    else:
+        df_csv = data.to_csv(float_format="%.3f", header=True)
+        user_analysis_prompt = f"""Generate a short summary of the results for the given qn: `{question}`\n\nand results:
+    {df_csv}\n\n```"""
+        analysis_prompt = f"""Here is the brief summary of how the results answer the given qn:\n\n```"""
+        # get comma separated list of col names
+        col_names = ",".join(data.columns)
 
-    messages = [
-        {
-            "role": "assistant",
-            "content": f"User has the following columns available to them:\n\n"
-            + col_names
-            + "\n\n",
-        },
-        {"role": "user", "content": user_analysis_prompt},
-        {
-            "role": "assistant",
-            "content": analysis_prompt,
-        },
-    ]
+        messages = [
+            {
+                "role": "assistant",
+                "content": f"User has the following columns available to them:\n\n"
+                + col_names
+                + "\n\n",
+            },
+            {"role": "user", "content": user_analysis_prompt},
+            {
+                "role": "assistant",
+                "content": analysis_prompt,
+            },
+        ]
 
     completion = await openai.chat.completions.create(
         model="gpt-4o", messages=messages, temperature=0, seed=42, stream=True

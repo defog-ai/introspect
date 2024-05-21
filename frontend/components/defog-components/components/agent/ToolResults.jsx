@@ -548,6 +548,11 @@ export function ToolResults({
                 <ToolRunAnalysis
                   question={analysisData.user_question}
                   data_csv={toolRunData?.outputs[activeNode.data.id]["data"]}
+                  image={
+                    toolRunData?.parsedOutputs[activeNode.data.id][
+                      "chart_images"
+                    ]
+                  }
                 />
               )}
             </div>

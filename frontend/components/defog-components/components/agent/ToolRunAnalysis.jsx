@@ -4,7 +4,7 @@ import { message } from "antd";
 import setupBaseUrl from "../../../../utils/setupBaseUrl";
 import { LoadingOutlined } from "@ant-design/icons";
 
-export default function ToolRunAnalysis({ question, data_csv }) {
+export default function ToolRunAnalysis({ question, data_csv, image = null }) {
   const [toolRunAnalysis, setToolRunAnalysis] = useState("");
   const [socketManager, setSocketManager] = useState(null);
 
@@ -31,12 +31,14 @@ export default function ToolRunAnalysis({ question, data_csv }) {
   useEffect(() => {
     async function setup() {
       const urlToConnect = setupBaseUrl("ws", "analyse_data");
+      console.log(image);
       try {
         const mgr = await setupWebsocketManager(urlToConnect, onMessage);
         setSocketManager(mgr);
         mgr.send({
           question,
           data: data_csv,
+          image: image ? image[0]?.path : null,
         });
       } catch (error) {
         console.log(error);
