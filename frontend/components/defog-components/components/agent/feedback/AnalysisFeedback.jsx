@@ -26,7 +26,8 @@ export function AnalysisFeedback({
       body: JSON.stringify({
         ...feedback,
         analysis_id: analysisId,
-        api_key: process.env.NEXT_PUBLIC_DEFOG_API_KEY,
+        api_key:
+          process.env.NEXT_PUBLIC_DEFOG_API_KEY || "REPLACE_WITH_DEFOG_API_KEY",
         user_question: user_question,
         username: username,
       }),
