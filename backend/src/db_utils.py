@@ -1221,17 +1221,17 @@ async def store_feedback(
     did_overwrite = False
     try:
         qn_embedding = None
-        # only embed if it's a correct plan
-        if is_correct:
-            print("Embedding question", user_question)
-            # get embedding of question
-            qn_embedding = await embed_string(user_question)
+        # create an embedding of the question
+        # if the feedback provided was positive, we will add this as a golden plan
+        # if the feedback provided was negative, we will remove this plan from the golden plans as well as all related plans
+        print("Embedding question", user_question)
+        # get embedding of question
+        qn_embedding = await embed_string(user_question)
 
-            if qn_embedding is None:
-                raise ValueError("Could not embed the question.")
+        if qn_embedding is None:
+            raise ValueError("Could not embed the question.")
 
-            print("Embedding done")
-
+        print("Embedding done")
         print(qn_embedding)
 
         session = Session(engine)
@@ -1239,6 +1239,19 @@ async def store_feedback(
         with engine.connect() as conn:
             register_vector(conn.connection)
             cursor = conn.connection.cursor()
+
+            # if not is_correct, set embeddings to null for all feedback where the embedding vectors are very similar
+            if not is_correct:
+                cursor.execute(
+                    """
+                    UPDATE defog_plans_feedback
+                    SET embedding = NULL
+                    WHERE api_key = %s AND
+                    (embedding <=> %s) < 0.1
+                    """,
+                    (api_key, qn_embedding),
+                )
+
             # check if entry exists with this analysis_id
             cursor.execute(
                 "SELECT * FROM defog_plans_feedback WHERE analysis_id = %s",
@@ -1384,7 +1397,7 @@ async def get_similar_correct_plans(report_id, api_key):
                 """
                 SELECT user_question, analysis_id, embedding
                 FROM defog_plans_feedback
-                WHERE api_key = %s AND is_correct = TRUE
+                WHERE api_key = %s AND is_correct = TRUE AND embedding IS NOT NULL
                 ORDER BY (embedding <=> %s) LIMIT 10;
                 """,
                 (api_key, user_question_embedding),
