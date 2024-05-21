@@ -31,7 +31,10 @@ async def main():
         )
 
         if err:
-            print(f"Error adding tool {tool_name}: {err}")
+            if "already exists" in err:
+                print(f"Tool {function_name} already exists in the database.")
+            else:
+                print(f"Error adding tool {tool_name}: {err}")
         else:
             print(f"Tool {function_name} added to the database.")
 
