@@ -13,7 +13,7 @@ export default function DocIcon({
   return (
     <DocIconWrap>
       <Link
-        // target="_blank"
+        target="_blank"
         href={{
           pathname: "/doc",
           query: { docId: addDocIcon ? "new" : doc && doc.doc_id },
