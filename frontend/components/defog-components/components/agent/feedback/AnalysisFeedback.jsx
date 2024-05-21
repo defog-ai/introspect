@@ -39,6 +39,8 @@ export function AnalysisFeedback({
           message.success(
             `Feedback ${d.did_overwrite ? "updated" : "submitted"} successfully`
           );
+
+          setModalVisible(false);
         } else {
           message.error(
             "Failed to submit feedback" + (d["error_message"] || "")
