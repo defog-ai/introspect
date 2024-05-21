@@ -39,7 +39,7 @@ The default username is `admin` and the default password is `admin`.
 
 ## Internals
 
-`agents-backend/docker-setup-files` contains the files for the initial setup for the backend + the db: supervisor confs, rabbitmq installation, startup bash script to start supervisor processes, and nginx config to redirect the partykit websocket requests to the right port.
+`backend/docker-setup-files` contains the files for the initial setup for the backend + the db: supervisor confs, rabbitmq installation, startup bash script to start supervisor processes, and nginx config to redirect the partykit websocket requests to the right port.
 
 A note about the partykit server: I couldn't connect to the websocket directly on port `1999`, which is where the partykit server runs.
 

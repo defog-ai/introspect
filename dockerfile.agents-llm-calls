@@ -7,7 +7,7 @@ FROM python
 WORKDIR /agents-llm-calls
 
 # Copy all the files from the local directory into the container
-COPY ./agents-backend/src/llm_calls/ .
+COPY ./backend/src/llm_calls/ .
 
 # Install the Functions Framework
 RUN pip install functions-framework

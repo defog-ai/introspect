@@ -2,4 +2,4 @@ FROM pgvector/pgvector:pg16
 
 EXPOSE 5432
 
-COPY ./agents-backend/docker-setup-files/schema.sql /docker-entrypoint-initdb.d/
+COPY ./backend/docker-setup-files/schema.sql /docker-entrypoint-initdb.d/

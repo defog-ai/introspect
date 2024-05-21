@@ -2,14 +2,14 @@ FROM node:20.11.1
 
 WORKDIR partykit-server
 
-COPY ./agents-backend/src/partykit-server ./
+COPY ./backend/src/partykit-server ./
 
 RUN npm install
 
 RUN apt-get update && apt-get install -y nginx
 
 # copy nginx config
-COPY ./agents-backend/docker-setup-files/nginx.conf /etc/nginx/sites-available/default
+COPY ./backend/docker-setup-files/nginx.conf /etc/nginx/sites-available/default
 
 EXPOSE 1999
 EXPOSE 2000
