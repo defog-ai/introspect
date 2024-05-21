@@ -390,7 +390,6 @@ async def edit_tool_run(websocket: WebSocket):
                 # don't do anything
                 continue
 
-            print(data)
             if data.get("tool_run_id") is None:
                 print("No tool run id ")
                 continue
@@ -436,7 +435,6 @@ async def rerun_step(websocket: WebSocket):
                 # don't do anything
                 continue
 
-            print(data)
             tool_run_id = data.get("tool_run_id")
             analysis_id = data.get("analysis_id")
 
@@ -598,7 +596,6 @@ async def create_new_step(request: Request):
     """
     try:
         data = await request.json()
-        print(data)
         # check if this has analysis_id, tool_name and parent_step, and inputs
         analysis_id = data.get("analysis_id")
         tool_name = data.get("tool_name")
@@ -1050,7 +1047,23 @@ async def submit_feedback(request: Request):
         if err:
             raise Exception(err)
 
-        print(type(comments))
+        generated_plan = analysis_data.get("gen_steps", {}).get("steps", [])
+        cleaned_plan = []
+        for item in generated_plan:
+            cleaned_item = {}
+            for key, value in item.items():
+                if key in [
+                    "tool_name",
+                    "model_generated_inputs",
+                    "outputs_storage_keys",
+                    "done",
+                    "error_message",
+                ]:
+                    cleaned_item[key] = value
+            cleaned_plan.append(cleaned_item)
+
+        generated_plan_yaml = yaml.dump(cleaned_plan)
+
         # store in the defog_plans_feedback table
         err, did_overwrite = await store_feedback(
             api_key,
@@ -1065,10 +1078,63 @@ async def submit_feedback(request: Request):
             db_type,
         )
 
-        if err is not None:
-            raise Exception(err)
+        # send the following to the defog server, and get feedback on how to improve it
+        # - user_question
+        # - comments
+        # - metadata
+        # - glossary
+        # - plan generated
+        if not is_correct:
+            err, tools = get_all_tools()
+            tools = [
+                {
+                    "function_name": tools[tool]["function_name"],
+                    "description": tools[tool]["description"],
+                    "input_metadata": tools[tool]["input_metadata"],
+                    "output_metadata": tools[tool]["output_metadata"],
+                }
+                for tool in tools
+            ]
 
-        return {"success": True, "did_overwrite": did_overwrite}
+            tool_description_yaml = yaml.dump(tools)
+
+            # TODO: implement this on the defog server
+            r = requests.post(
+                "https://api.defog.ai/reflect_on_agent_feedback",
+                json={
+                    "question": user_question,
+                    "comments": comments,
+                    "plan_generated": generated_plan_yaml,
+                    "api_key": DEFOG_API_KEY,
+                    "tool_description": tool_description_yaml,
+                },
+            )
+
+            # we will get back:
+            # - updated metadata
+            # - updated glossary
+            # - updated golden plan
+            raw_response = r.json()["diagnosis"]
+
+            # extract yaml from metadata
+            recommended_plan = raw_response.split("```yaml")[-1].split("```")[0].strip()
+            print(recommended_plan, flush=True)
+            try:
+                recommended_plan = yaml.safe_load(recommended_plan)
+            except:
+                recommended_plan = None
+
+            if err is not None:
+                raise Exception(err)
+
+            return {
+                "success": True,
+                "did_overwrite": did_overwrite,
+                "suggested_improvements": raw_response,
+                "recommended_plan": recommended_plan,
+            }
+        else:
+            return {"success": True, "did_overwrite": did_overwrite}
 
     except Exception as e:
         print(str(e))
