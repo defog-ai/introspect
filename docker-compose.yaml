@@ -7,6 +7,8 @@ services:
       dockerfile: dockerfile.agents-llm-calls
     networks:
       - agents-network
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
 
   agents-partykit:
     build:
@@ -42,6 +44,16 @@ services:
       - DEFOG_GENERATE_URL=${DEFOG_GENERATE_URL:-https://api.defog.ai/generate_query_chat}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REPORT_ASSETS_DIR=${REPORT_ASSETS_DIR}
+      - DBNAME=${DBNAME}
+      - HOST=${HOST}
+      - PORT=${PORT}
+      - DATABASE=${DATABASE}
+      - USER=${USER}
+      - PASSWORD=${PASSWORD}
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+      - LLM_CALLS_URL=${LLM_CALLS_URL}
     build:
       context: .
       dockerfile: dockerfile.agents-python-server
