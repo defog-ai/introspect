@@ -47,11 +47,11 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - REPORT_ASSETS_DIR=${REPORT_ASSETS_DIR}
       - DBNAME=${DBNAME}
-      - HOST=${HOST}
-      - PORT=${PORT}
+      - DBHOST=${DBHOST}
+      - DBPORT=${DBPORT}
       - DATABASE=${DATABASE}
-      - USER=${USER}
-      - PASSWORD=${PASSWORD}
+      - DBUSER=${DBUSER}
+      - DBPASSWORD=${DBPASSWORD}
       - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
       - LLM_CALLS_URL=${LLM_CALLS_URL}
     build:

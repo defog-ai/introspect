@@ -33,10 +33,10 @@ import os
 report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
 db_creds = {
-    "user": os.environ["USER"],
-    "password": os.environ["PASSWORD"],
-    "host": os.environ["HOST"],
-    "port": os.environ["PORT"],
+    "user": os.environ["DBUSER"],
+    "password": os.environ["DBPASSWORD"],
+    "host": os.environ["DBHOST"],
+    "port": os.environ["DBPORT"],
     "database": os.environ["DATABASE"],
 }
 
@@ -1194,11 +1194,11 @@ def get_parent_analyses(parent_analyses=[]):
 
 def get_db_conn():
     conn = psycopg2.connect(
-        host=os.environ["HOST"],
+        host=os.environ["DBHOST"],
         dbname=os.environ["DATABASE"],
-        user=os.environ["USER"],
-        password=os.environ["PASSWORD"],
-        port=os.environ["PORT"],
+        user=os.environ["DBUSER"],
+        password=os.environ["DBPASSWORD"],
+        port=os.environ["DBPORT"],
     )
     return conn
 
