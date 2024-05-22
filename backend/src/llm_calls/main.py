@@ -7,10 +7,7 @@ import json
 from io import StringIO
 import yaml
 
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-openai_api_key = env["openai_api_key"]
+openai_api_key = os.environ["OPENAI_API_KEY"]
 
 openai = OpenAI(api_key=openai_api_key)
 

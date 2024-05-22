@@ -5,6 +5,7 @@ import traceback
 import yaml
 import asyncio
 import requests
+import os
 
 default_values_formatted = {
     "multi select": [],
@@ -20,11 +21,8 @@ default_values = {
 }
 
 
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-dfg_api_key = env["api_key"]
-llm_calls_url = env["llm_calls_url"]
+dfg_api_key = os.environ["DEFOG_API_KEY"]
+llm_calls_url = os.environ["LLM_CALLS_URL"]
 
 
 def parse_q(q):

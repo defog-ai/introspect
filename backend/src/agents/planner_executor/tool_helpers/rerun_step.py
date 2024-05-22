@@ -18,10 +18,7 @@ import traceback
 import os
 
 
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-report_assets_dir = env["report_assets_dir"]
+report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
 
 # rerun_step_and_dependents function runs the step, the step's parents if needed AND all descendants that depend on this step recursively

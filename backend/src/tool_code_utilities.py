@@ -9,11 +9,9 @@ from defog.query import execute_query
 import re
 import json
 import pandas as pd
+import os
 
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-DEFOG_API_KEY = "genmab-survival-test"
+DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
 
 
 import matplotlib.pyplot as plt

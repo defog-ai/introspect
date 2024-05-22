@@ -43,10 +43,7 @@ test_resp = {"test": "test"}
 request_types = ["clarify", "understand", "gen_approaches", "gen_steps", "gen_report"]
 
 
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-report_assets_dir = env["report_assets_dir"]
+report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
 
 @app.get("/ping")

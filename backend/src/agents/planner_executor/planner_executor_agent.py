@@ -17,14 +17,12 @@ import requests
 import yaml
 import re
 import pandas as pd
+import os
 
 
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-dfg_api_key = env["api_key"]
-llm_calls_url = env["llm_calls_url"]
-report_assets_dir = env["report_assets_dir"]
+dfg_api_key = os.environ["DEFOG_API_KEY"]
+llm_calls_url = os.environ["LLM_CALLS_URL"]
+report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
 
 class Executor:

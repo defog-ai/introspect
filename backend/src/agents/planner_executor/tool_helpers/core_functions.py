@@ -23,21 +23,17 @@ from openai import AsyncOpenAI
 
 openai = None
 
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
 if (
-    env.get("OPENAI_API_KEY") is None
-    or env.get("OPENAI_API_KEY") == "None"
-    or env.get("OPENAI_API_KEY") == ""
+    os.environ.get("OPENAI_API_KEY") is None
+    or os.environ.get("OPENAI_API_KEY") == "None"
+    or os.environ.get("OPENAI_API_KEY") == ""
 ):
     print("OPENAI_API_KEY not found in env")
 else:
-    openai = AsyncOpenAI(api_key=env.get("OPENAI_API_KEY"))
+    openai = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-report_assets_dir = env["report_assets_dir"]
-
-DEFOG_API_KEY = "genmab-survival-test"
+report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
+DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
 
 
 def encode_image(image_path):

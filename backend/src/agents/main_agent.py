@@ -3,13 +3,11 @@ from agents.clarifier.clarifier_agent import Clarifier
 from agents.planner_executor.planner_executor_agent import Executor
 import traceback
 import yaml
+import os
 
 # from db_utils import add_report_markdown
 
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-dfg_api_key = env["api_key"]
+dfg_api_key = os.environ["DEFOG_API_KEY"]
 
 
 # each of the agents can return a "postprocess" function

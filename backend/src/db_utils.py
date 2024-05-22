@@ -28,18 +28,16 @@ import psycopg2
 import yaml
 
 from utils import embed_string, warn_str, YieldList
+import os
 
-with open("/agents-python-server/.env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-report_assets_dir = env["report_assets_dir"]
+report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
 db_creds = {
-    "user": env["user"],
-    "password": env["password"],
-    "host": env["host"],
-    "port": env["port"],
-    "database": env["database"],
+    "user": os.environ["USER"],
+    "password": os.environ["PASSWORD"],
+    "host": os.environ["HOST"],
+    "port": os.environ["PORT"],
+    "database": os.environ["DATABASE"],
 }
 
 
@@ -1196,11 +1194,11 @@ def get_parent_analyses(parent_analyses=[]):
 
 def get_db_conn():
     conn = psycopg2.connect(
-        host=env["host"],
-        dbname=env["database"],
-        user=env["user"],
-        password=env["password"],
-        port=env["port"],
+        host=os.environ["HOST"],
+        dbname=os.environ["DATABASE"],
+        user=os.environ["USER"],
+        password=os.environ["PASSWORD"],
+        port=os.environ["PORT"],
     )
     return conn
 

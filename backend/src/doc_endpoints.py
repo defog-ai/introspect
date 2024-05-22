@@ -15,7 +15,7 @@ import pandas as pd
 from io import StringIO
 from utils import get_db_type, log_msg
 
-DEFOG_API_KEY = "genmab-survival-test"
+DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
 
 from connection_manager import ConnectionManager
 from db_utils import (
@@ -48,13 +48,9 @@ manager = ConnectionManager()
 
 import yaml
 
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-dfg_api_key = env["api_key"]
-llm_calls_url = env["llm_calls_url"]
-
-report_assets_dir = env["report_assets_dir"]
+dfg_api_key = os.environ["DEFOG_API_KEY"]
+llm_calls_url = os.environ["LLM_CALLS_URL"]
+report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
 
 @router.post("/get_user_metadata")

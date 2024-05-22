@@ -15,12 +15,7 @@ from typing import Optional
 from generic_utils import make_request, convert_nested_dict_to_list
 import os
 
-env = None
-
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-openai_api_key = env["openai_api_key"]
+openai_api_key = os.environ["OPENAI_API_KEY"]
 
 openai = AsyncOpenAI(api_key=openai_api_key)
 
