@@ -23,6 +23,7 @@ import { HiSparkles } from "react-icons/hi2";
 const { TextArea } = Input;
 
 const addToolEndpoint = setupBaseUrl("http", "add_tool");
+const generateToolCodeEndpoint = setupBaseUrl("http", "generate_tool_code");
 const skipImages = false;
 
 export default function AddTool({ toolbox, onAddTool }) {
@@ -36,6 +37,7 @@ export default function AddTool({ toolbox, onAddTool }) {
 
   const [toolReturnStatement, setToolReturnStatement] = useState("");
 
+  const [generateToolCodeLoading, setGenerateToolCodeLoading] = useState(false);
   const getReadOnlyRanges = useCallback(
     // we want to make the function definition, the function doctstring
     // and the return statement read only inside of codemirror
@@ -44,10 +46,6 @@ export default function AddTool({ toolbox, onAddTool }) {
     // which is used in conjunction with the preventModifyTargetRanges function
     // which checks if a range is read only and prevents modification
     (editorState) => {
-      const defStatementLines = toolDefStatement.split("\n").length;
-      // get lines from the end of the
-      const toolFunctionBodyLines = toolFunctionBody.split("\n").length;
-
       return RangeSet.of([
         new Range(0, toolDefStatement.length, new RangeValue(toolDefStatement)),
         new Range(
@@ -201,17 +199,117 @@ export default function AddTool({ toolbox, onAddTool }) {
     setToolReturnStatement(newReturnStr);
   }, [toolInputs, toolName, toolOutputs, toolDocString]);
 
-  const handleMagic = useMemo(() => {
-    // check tool inputs and outputs
-    // every input should have a descriptoin
-    // every output should have a name
+  const handleGenerateToolCode = useCallback(async () => {
+    if (generateToolCodeLoading) return;
+    try {
+      setGenerateToolCodeLoading(true);
+      // check tool inputs and outputs
+      // empty inputs are fine (maybe they want to use some api)
+      // empty outputs are not fine
+      // every input should have a name
+      // every input should have a type
+      // every input should have a description
+      // every output should have a name
+      // every output should have a description
+      // every output should have a type
+
+      if (!toolName) {
+        message.error("Tool name can't be empty");
+        return false;
+      }
+      if (!toolDocString) {
+        message.error("Tool description can't be empty");
+        return false;
+      }
+      if (!toolOutputs.length) {
+        message.error("Tool must have at least one output");
+        return false;
+      }
+      if (!toolOutputs.every((output) => output.name)) {
+        message.error("Every output must have a name");
+        return false;
+      }
+      if (!toolOutputs.every((output) => output.description)) {
+        message.error("Every output must have a description");
+        return false;
+      }
+      if (!toolOutputs.every((output) => output.type)) {
+        message.error("Every output must have a type");
+        return false;
+      }
+      if (!toolInputs.every((input) => input.name)) {
+        message.error("Every input must have a name");
+        return false;
+      }
+      if (!toolInputs.every((input) => input.description)) {
+        message.error("Every input must have a description");
+        return false;
+      }
+      if (!toolInputs.every((input) => input.type)) {
+        message.error("Every input must have a type");
+        return false;
+      }
+
+      const resp = await fetch(generateToolCodeEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tool_name: toolName,
+          tool_description: toolDocString,
+          function_name: snakeCase(toolName),
+          def_statement: toolDefStatement,
+          return_statement: toolReturnStatement,
+          toolbox: toolbox,
+        }),
+      }).then((response) => response.json());
+
+      if (!resp.success || !resp.generated_code) {
+        message.error(
+          "Failed to generate code. Error: " + resp.error_message ||
+            "Unknown error"
+        );
+      } else {
+        // remove the function definition and return statement
+        // and set the function body to the generated code
+        const generatedFunctionBody = resp.generated_code
+          .replace(toolDefStatement, "")
+          .replace(toolReturnStatement, "");
+        // make sure there's a difference in length = length of def + return
+        // and the length of the generated code
+
+        console.log(resp);
+        console.log(generatedFunctionBody);
+        if (
+          generatedFunctionBody.length +
+            toolDefStatement.length +
+            toolReturnStatement.length !==
+          resp.generated_code.length
+        ) {
+          throw new Error(
+            "Generated code has incorrect def and return statements"
+          );
+        } else {
+          setToolFunctionBody(generatedFunctionBody);
+        }
+      }
+    } catch (e) {
+      message.error("Failed to generate code. Error: " + e);
+    } finally {
+      setGenerateToolCodeLoading(false);
+    }
   }, [
     toolName,
     toolDocString,
     toolInputs,
     toolDefStatement,
     toolReturnStatement,
+    toolOutputs,
+    toolbox,
   ]);
+
+  console.log(toolFunctionBody);
 
   return (
     <>
@@ -505,46 +603,72 @@ export default function AddTool({ toolbox, onAddTool }) {
                     "border border-gray-100 cursor-pointer px-1 rounded-md group shadow-sm text-xl flex items-center",
                     "hover:border-gray-300 hover:border-transparent hover:bg-yellow-400"
                   )}
-                  // onClick={}
+                  onClick={handleGenerateToolCode}
                 >
                   <HiSparkles className="text-yellow-400 group-hover:text-white" />
                 </div>
               </div>
-              <ReactCodeMirror
-                ref={editor}
-                className="*:outline-0 *:focus:outline-0 "
-                // refresh if the toolDefStatement or toolReturnStatement changes
-                key={toolDefStatement + toolReturnStatement}
-                value={
-                  toolDefStatement + toolFunctionBody + toolReturnStatement
-                }
-                extensions={[
-                  python(),
-                  preventModifyTargetRanges(getReadOnlyRanges),
-                  classnameCodeMirrorExtension,
-                  EditorView.lineWrapping,
-                ]}
-                basicSetup={{
-                  lineNumbers: false,
-                  highlightActiveLine: false,
-                }}
-                language="python"
-                onChange={(val) => {
-                  // remove toolDefStatement from the start and
-                  // toolReturnStatement from the end
-                  // and set the funciton body to the tool code
-                  setToolFunctionBody(
-                    val
-                      .replace(toolDefStatement, "")
-                      .replace(toolReturnStatement, "")
-                  );
-                }}
-              />
+              <div className={"relative "}>
+                <ReactCodeMirror
+                  ref={editor}
+                  className={
+                    "*:outline-0 *:focus:outline-0 " +
+                    (generateToolCodeLoading ? "opacity-15" : "")
+                  }
+                  // refresh if the toolDefStatement or toolReturnStatement changes
+                  key={
+                    toolDefStatement +
+                    toolReturnStatement +
+                    "-" +
+                    generateToolCodeLoading
+                  }
+                  value={
+                    toolDefStatement + toolFunctionBody + toolReturnStatement
+                  }
+                  extensions={[
+                    python(),
+                    preventModifyTargetRanges(getReadOnlyRanges),
+                    classnameCodeMirrorExtension,
+                    EditorView.lineWrapping,
+                  ]}
+                  basicSetup={{
+                    lineNumbers: false,
+                    highlightActiveLine: false,
+                  }}
+                  editable={!generateToolCodeLoading}
+                  language="python"
+                  onChange={(val) => {
+                    console.log(val);
+                    // remove toolDefStatement from the start and
+                    // toolReturnStatement from the end
+                    // and set the funciton body to the tool code
+                    setToolFunctionBody(
+                      val
+                        .replace(toolDefStatement, "")
+                        .replace(toolReturnStatement, "")
+                    );
+                  }}
+                />
+                {generateToolCodeLoading && (
+                  <div className="w-full h-full rounded-md absolute left-0 top-0 flex bg-yellow-400 bg-opacity-70 items-center justify-center align-center">
+                    <div className="flex items-center p-2">
+                      <span className="animate-bounce mr-3 inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
+                      <span className="animate-bounce mr-3 inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
+                      <span className="animate-bounce inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
         <div className="text-right mt-10">
-          <Button type="primary" className="font-mono" onClick={handleSubmit}>
+          <Button
+            type="primary"
+            className="font-mono"
+            onClick={handleSubmit}
+            disabled={generateToolCodeLoading}
+          >
             Submit
           </Button>
         </div>
