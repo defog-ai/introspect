@@ -894,6 +894,8 @@ async def delete_tool_endpoint(request: Request):
 
         if err:
             return {"success": False, "error_message": err}
+        
+        print("Deleted tool: ", function_name)
 
         return {"success": True}
     except Exception as e:
@@ -957,7 +959,7 @@ async def add_tool_endpoint(request: Request):
         if code is None or type(code) != str or len(code) == 0:
             return {"success": False, "error_message": "Invalid code."}
 
-        if input_metadata is None or type(input_metadata) != list:
+        if input_metadata is None or type(input_metadata) != dict:
             return {"success": False, "error_message": "Invalid input_metadata."}
 
         if (

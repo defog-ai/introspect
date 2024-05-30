@@ -32,12 +32,14 @@ export default function ManageTools() {
     return null;
   }, [tools]);
 
+  console.log(tools, groupedTools);
+
   const [selectedTool, setSelectedTool] = useState(null);
 
-  const onAddTool = (toolName, toolDict) => {
+  const onAddTool = (toolDict) => {
     setTools({
       ...tools,
-      [toolName]: toolDict,
+      [toolDict.function_name]: toolDict,
     });
   };
 
@@ -104,14 +106,19 @@ export default function ManageTools() {
                     <h2 className="text-xs uppercase font-light mb-4">
                       Inputs
                     </h2>
-                    {tools[selectedTool].input_metadata.map((input) => (
-                      <div className="tool-input mb-4 text-xs">
-                        <span className="rounded-md border-gray-200 font-mono mr-3 text-gray-400 bg-gray-200 px-1 py-1">
-                          {easyToolInputTypes[input["type"]] || input["type"]}
-                        </span>
-                        <span className="">{input["name"]}</span>
-                      </div>
-                    ))}
+                    {Object.values(tools[selectedTool].input_metadata).map(
+                      (input, i) => (
+                        <div
+                          className="tool-input mb-4 text-xs"
+                          key={input.name + "-" + input.type + "-" + i}
+                        >
+                          <span className="rounded-md border-gray-200 font-mono mr-3 text-gray-400 bg-gray-200 px-1 py-1">
+                            {easyToolInputTypes[input["type"]] || input["type"]}
+                          </span>
+                          <span className="">{input["name"]}</span>
+                        </div>
+                      )
+                    )}
                   </div>
                   <div className="tool-actions mt-10">
                     {!tools[selectedTool].cannot_disable && (

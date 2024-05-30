@@ -118,6 +118,7 @@ default_top_level_imports = "\n\n".join(
         "  db_column_list_type_creator,",
         ")",
         "from tool_code_utilities import available_colors",
+        "import pandas",
         "import pandas as pd",
     ]
 )

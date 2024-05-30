@@ -1,10 +1,12 @@
 import setupBaseUrl from "../../utils/setupBaseUrl";
 import { Button, Input, Modal, Select, message } from "antd";
 import {
+  arrayOfObjectsToObject,
   breakLinesPretty,
   createPythonFunctionInputString,
   easyToolInputTypes,
   forcedAnnotation,
+  mergeClassNames,
   preventModifyTargetRanges,
   snakeCase,
   toolboxDisplayNames,
@@ -17,6 +19,7 @@ import { MdDeleteOutline } from "react-icons/md";
 import { Range, RangeSet, RangeValue } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { classname } from "@uiw/codemirror-extensions-classname";
+import { HiSparkles } from "react-icons/hi2";
 const { TextArea } = Input;
 
 const addToolEndpoint = setupBaseUrl("http", "add_tool");
@@ -85,16 +88,16 @@ export default function AddTool({ toolbox, onAddTool }) {
   const [toolDocString, setToolDocString] = useState("This tool does XX");
   const editor = useRef();
 
-  const mandatoryInputs = {
-    global_dict: {
+  const mandatoryInputs = [
+    {
       name: "global_dict",
       description: "Stores all previous outputs from the plan",
       type: "dict",
     },
-    "**kwargs": {
+    {
       name: "**kwargs",
     },
-  };
+  ];
 
   const handleSubmit = useCallback(async () => {
     // function_name = data.get("function_name")
@@ -110,7 +113,7 @@ export default function AddTool({ toolbox, onAddTool }) {
       function_name: snakeCase(toolName),
       description: toolDocString,
       code: toolDefStatement + toolFunctionBody + toolReturnStatement,
-      input_metadata: toolInputs,
+      input_metadata: arrayOfObjectsToObject(toolInputs, "name"),
       output_metadata: toolOutputs,
       toolbox: toolbox,
       no_code: false,
@@ -136,7 +139,7 @@ export default function AddTool({ toolbox, onAddTool }) {
       setToolOutputs([]);
       setToolFunctionBody("\n  #\n  # YOUR FUNCTION BODY HERE\n  #\n  pass\n");
 
-      onAddTool(toolName, data);
+      onAddTool(data);
     } else {
       message.error(
         `Failed to add tool ${toolName}. Error: ${res.error_message}`
@@ -154,15 +157,10 @@ export default function AddTool({ toolbox, onAddTool }) {
     //  p1: p1_type # p1_description,
     //  p2: p2_type # p2_description
     // )
-    const allInputs = toolInputs.concat(mandatoryInputs);
+    const allInputs = [...toolInputs, ...mandatoryInputs];
     allInputs.forEach((input, idx) => {
       if (idx === 0) newDefStr += "\n";
-      newDefStr += createPythonFunctionInputString(input);
-      if (idx != toolInputs.length - 1) {
-        newDefStr += ",\n";
-      } else {
-        newDefStr += "\n";
-      }
+      newDefStr += createPythonFunctionInputString(input) + "\n";
     });
 
     newDefStr += "):";
@@ -202,6 +200,18 @@ export default function AddTool({ toolbox, onAddTool }) {
     setToolDefStatement(newDefStr);
     setToolReturnStatement(newReturnStr);
   }, [toolInputs, toolName, toolOutputs, toolDocString]);
+
+  const handleMagic = useMemo(() => {
+    // check tool inputs and outputs
+    // every input should have a descriptoin
+    // every output should have a name
+  }, [
+    toolName,
+    toolDocString,
+    toolInputs,
+    toolDefStatement,
+    toolReturnStatement,
+  ]);
 
   return (
     <>
@@ -257,7 +267,7 @@ export default function AddTool({ toolbox, onAddTool }) {
               </div>
               <div className="tool-inputs mb-8">
                 <h2 className="text-sm uppercase font-light mb-2">Inputs</h2>
-                {!Object.keys(toolInputs).length ? (
+                {!toolInputs.length ? (
                   <></>
                 ) : (
                   <div className="tool-inputs-headings flex flex-row text-xs text-gray-400 mb-2 font-light">
@@ -266,7 +276,7 @@ export default function AddTool({ toolbox, onAddTool }) {
                     <div className="w-6/12">Description</div>
                   </div>
                 )}
-                {Object.values(toolInputs).map((input, idx) => {
+                {toolInputs.map((input, idx) => {
                   return (
                     <div
                       className="tool-input mb-4 text-xs flex flex-row relative items-start border-b pb-2 border-b-gray-100"
@@ -277,8 +287,8 @@ export default function AddTool({ toolbox, onAddTool }) {
                         rootClassName="mr-3 w-3/12 font-mono text-gray-600"
                         popupClassName="text-gray-600"
                         onChange={(val, option) => {
-                          const newToolInputs = { ...toolInputs };
-                          newToolInputs[input.name].type = option.value;
+                          const newToolInputs = toolInputs.slice();
+                          newToolInputs[idx].type = option.value;
                           setToolInputs(newToolInputs);
                         }}
                         options={Object.keys(easyToolInputTypes).map((type) => {
@@ -303,8 +313,8 @@ export default function AddTool({ toolbox, onAddTool }) {
                         placeholder="Input name can't be empty"
                         value={input.name}
                         onChange={(ev) => {
-                          const newToolInputs = { ...toolInputs };
-                          newToolInputs[input.name].name = ev.target.value;
+                          const newToolInputs = toolInputs.slice();
+                          newToolInputs[idx].name = ev.target.value;
                           setToolInputs(newToolInputs);
                         }}
                       />
@@ -312,12 +322,12 @@ export default function AddTool({ toolbox, onAddTool }) {
                       <TextArea
                         type="text"
                         className="w-6/12 font-mono text-gray-600"
+                        status={input.description ? "success" : "error"}
                         placeholder="A good input description ensures good performance"
                         value={input.description}
                         onChange={(ev) => {
-                          const newToolInputs = { ...toolInputs };
-                          newToolInputs[input.name].description =
-                            ev.target.value;
+                          const newToolInputs = toolInputs.slice();
+                          newToolInputs[idx].description = ev.target.value;
                           setToolInputs(newToolInputs);
                         }}
                       />
@@ -325,9 +335,8 @@ export default function AddTool({ toolbox, onAddTool }) {
                       <p
                         className=" mr-1  flex justify-center items-center rounded-full cursor-pointer w-4 h-4 top-0 -left-5"
                         onClick={() => {
-                          const newToolInputs = { ...toolInputs };
-
-                          delete newToolInputs[input.name];
+                          const newToolInputs = toolInputs.slice();
+                          newToolInputs.splice(idx, 1);
                           setToolInputs(newToolInputs);
                         }}
                       >
@@ -345,15 +354,15 @@ export default function AddTool({ toolbox, onAddTool }) {
                   type="primary"
                   className="bg-gray-100 text-gray-500 hover:bg-blue-400 hover:text-white font-mono"
                   onClick={() => {
-                    const nm = "input_" + Object.keys(toolInputs).length;
-                    setToolInputs({
+                    const nm = "input_" + (toolInputs.length + 1);
+                    setToolInputs([
                       ...toolInputs,
-                      nm: {
+                      {
                         name: nm,
                         type: "str",
                         description: "",
                       },
-                    });
+                    ]);
                   }}
                 >
                   Add input
@@ -488,8 +497,19 @@ export default function AddTool({ toolbox, onAddTool }) {
                 </Button>
               </div>
             </div>
-            <div className="add-code  w-6/12">
-              <h2 className="text-sm uppercase font-light mb-2">Code</h2>
+            <div className="add-code w-6/12">
+              <div className="flex flex-row mb-2">
+                <h2 className="grow text-sm uppercase font-light">Code</h2>
+                <div
+                  className={mergeClassNames(
+                    "border border-gray-100 cursor-pointer px-1 rounded-md group shadow-sm text-xl flex items-center",
+                    "hover:border-gray-300 hover:border-transparent hover:bg-yellow-400"
+                  )}
+                  // onClick={}
+                >
+                  <HiSparkles className="text-yellow-400 group-hover:text-white" />
+                </div>
+              </div>
               <ReactCodeMirror
                 ref={editor}
                 className="*:outline-0 *:focus:outline-0 "

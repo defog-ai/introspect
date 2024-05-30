@@ -380,7 +380,7 @@ export const AnalysisAgent = ({
                       toolIcon={(node) => (
                         <p className="text-sm truncate m-0">
                           {toolShortNames[node?.data?.step?.tool_name] ||
-                            "Unknown tool"}
+                            node?.data?.step?.tool_name}
                         </p>
                       )}
                     />
