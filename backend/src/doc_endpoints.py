@@ -894,7 +894,7 @@ async def delete_tool_endpoint(request: Request):
 
         if err:
             return {"success": False, "error_message": err}
-        
+
         print("Deleted tool: ", function_name)
 
         return {"success": True}
@@ -1232,4 +1232,51 @@ async def update_dashboard_data_endpoint(request: Request):
         return {
             "success": False,
             "error_message": "Unable to add analysis to dashboard: " + str(e)[:300],
+        }
+
+
+@router.post("/generate_tool_code")
+async def generate_tool_code_endpoint(request: Request):
+    try:
+        data = await request.json()
+        tool_name = data.get("tool_name")
+        tool_description = data.get("tool_description")
+        function_name = data.get("function_name")
+        def_statement = data.get("def_statement")
+        return_statement = data.get("return_statement")
+        toolbox = data.get("toolbox")
+
+        if (
+            not tool_name
+            or not function_name
+            or not def_statement
+            or not return_statement
+        ):
+            raise Exception("Invalid parameters.")
+
+        payload = {
+            "request_type": "generate_tool_code",
+            "tool_name": tool_name,
+            "tool_description": tool_description,
+            "function_name": function_name,
+            "def_statement": def_statement,
+            "return_statement": return_statement,
+            "toolbox": toolbox,
+        }
+
+        resp = requests.post(
+            llm_calls_url,
+            json=payload,
+        ).json()
+
+        if resp.get("error_message"):
+            raise Exception(resp.get("error_message"))
+
+        return {"success": True, "generated_code": resp["generated_code"]}
+    except Exception as e:
+        print("Error generating tool code: ", e)
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error_message": "Unable to generate tool code: " + str(e)[:300],
         }

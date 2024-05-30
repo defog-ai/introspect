@@ -309,8 +309,6 @@ export default function AddTool({ toolbox, onAddTool }) {
     toolbox,
   ]);
 
-  console.log(toolFunctionBody);
-
   return (
     <>
       <div
@@ -601,11 +599,20 @@ export default function AddTool({ toolbox, onAddTool }) {
                 <div
                   className={mergeClassNames(
                     "border border-gray-100 cursor-pointer px-1 rounded-md group shadow-sm text-xl flex items-center",
-                    "hover:border-gray-300 hover:border-transparent hover:bg-yellow-400"
+                    "hover:border-gray-300 hover:border-transparent hover:bg-yellow-400 text-yellow-400",
+                    // disable if loading
+                    generateToolCodeLoading &&
+                      "text-gray-200 hover:bg-gray-100 bg-gray-100"
                   )}
                   onClick={handleGenerateToolCode}
                 >
-                  <HiSparkles className="text-yellow-400 group-hover:text-white" />
+                  <HiSparkles
+                    className={mergeClassNames(
+                      "group-hover:text-white",
+                      generateToolCodeLoading &&
+                        "text-gray-200 group-hover:text-gray-200"
+                    )}
+                  />
                 </div>
               </div>
               <div className={"relative "}>
@@ -650,11 +657,11 @@ export default function AddTool({ toolbox, onAddTool }) {
                   }}
                 />
                 {generateToolCodeLoading && (
-                  <div className="w-full h-full rounded-md absolute left-0 top-0 flex bg-yellow-400 bg-opacity-70 items-center justify-center align-center">
-                    <div className="flex items-center p-2">
-                      <span className="animate-bounce mr-3 inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
-                      <span className="animate-bounce mr-3 inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
-                      <span className="animate-bounce inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
+                  <div className=" w-full h-full rounded-md absolute left-0 top-0 flex bg-yellow-400 bg-opacity-70 items-center justify-center align-center">
+                    <div className="flex items-center p-2 animate-ping">
+                      <span className="mr-3 inline-flex h-2 w-2 rounded-full bg-yellow-600"></span>
+                      <span className="mr-3 inline-flex h-2 w-2 rounded-full bg-yellow-600"></span>
+                      <span className="inline-flex h-2 w-2 rounded-full bg-yellow-600"></span>
                     </div>
                   </div>
                 )}

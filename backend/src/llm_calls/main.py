@@ -11,6 +11,8 @@ from prompts import (
     basic_user_prompt,
     tweak_parent_analysis_system_prompt,
     tweak_parent_analysis_user_prompt,
+    generate_tool_code_system_prompt,
+    generate_tool_code_user_prompt,
 )
 
 openai_api_key = os.environ["OPENAI_API_KEY"]
@@ -407,6 +409,47 @@ Give your response as just a markdown string with just the SQL query, and nothin
     return {"query": query}
 
 
+def generate_tool_code(
+    tool_name, tool_description, function_name, def_statement, return_statement
+):
+    system_prompt = generate_tool_code_system_prompt
+    user_prompt = generate_tool_code_user_prompt.format(
+        function_name=function_name,
+        tool_description=tool_description,
+        def_statement=def_statement,
+        return_statement=return_statement,
+    )
+
+    print("\n\n")
+    print(system_prompt, flush=True)
+    print("\n\n")
+    print(user_prompt, flush=True)
+    print("\n\n")
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+
+    completion = openai.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=0,
+        seed=42,
+    )
+
+    generated_code = completion.choices[0].message.content
+    try:
+        # remove ```python
+        # and ending ```
+        generated_code = generated_code.split("```python")[-1].split("```")[0].strip()
+
+        return {"generated_code": generated_code}
+        pass
+    except Exception as e:
+        return {"error_message": str(e)}
+
+
 @functions_framework.http
 def main(request):
     if request.method == "OPTIONS":
@@ -472,6 +515,15 @@ def main(request):
     elif request_type == "analyse_data":
         resp = analyse_data(
             data["question"], pd.read_json(data["data"], orient="split")
+        )
+
+    elif request_type == "generate_tool_code":
+        resp = generate_tool_code(
+            data["tool_name"],
+            data["tool_description"],
+            data["function_name"],
+            data["def_statement"],
+            data["return_statement"],
         )
 
     else:

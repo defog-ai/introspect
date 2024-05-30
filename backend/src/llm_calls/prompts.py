@@ -71,3 +71,22 @@ Only generate the YAML markdown string that starts with ```yaml and ends with ``
 """
 
 tweak_parent_analysis_user_prompt = "This is the request from the user for the new plan: {user_question}. {parent_analyses_prompt} {assignment_understanding_prompt}"
+
+
+generate_tool_code_system_prompt = """You are a data engineer. Your job is to write Python code for a tool requested by the user. The user will provide you the tool's function definition, and the return statement. You are supposed to generate the function body, keeping the definition and return statement the same. All your packages imported should be inside the tool function.
+Give your response code in this format
+```python
+YOUR_CODE
+```"""
+
+generate_tool_code_user_prompt = """Please generate code for this tool:
+Tool function name: {function_name}
+Tool description: {tool_description}
+Function definition: 
+```python
+{def_statement}
+```
+Return statement:
+```python
+{return_statement}
+```"""
