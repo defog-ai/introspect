@@ -111,6 +111,7 @@ export default function AnalysisGen({
   );
   const toolboxes = docContext.val.userItems.toolboxes || [];
 
+  const memoDep = toolboxes.join(",");
   const toolboxDropdown = useMemo(() => {
     const options = toolboxes.map((tb) => ({
       label: tb,
@@ -134,7 +135,7 @@ export default function AnalysisGen({
     ) : (
       <></>
     );
-  }, [toolboxes.join(",")]);
+  }, [memoDep]);
 
   return (
     <AnalysisGenWrap theme={theme}>

@@ -92,7 +92,7 @@ export default function DocNav({ username, currentDocId }) {
       <div id="editor-nav">
         {/* new doc button */}
         <div id="nav-new-doc">
-          <a href={"?docId=new"} target="_blank">
+          <a href={"?docId=new"} target="_blank" rel="noreferrer">
             <div title="Start a new doc">
               <span>New</span>
               <div>
