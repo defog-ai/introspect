@@ -7,7 +7,7 @@ from colorama import Fore, Style
 
 from agents.planner_executor.execute_tool import execute_tool
 from agents.planner_executor.tool_helpers.core_functions import resolve_input
-from db_utils import store_tool_run
+from db_utils import get_analysis_question_context, store_tool_run
 from utils import warn_str, YieldList
 from .tool_helpers.toolbox_manager import get_tool_library_prompt
 from .tool_helpers.tool_param_types import ListWithDefault
@@ -83,8 +83,14 @@ class Executor:
         return post_process
 
     async def execute(self):
+        err, self.user_question_context = await get_analysis_question_context(
+            self.analysis_id
+        )
+        if err:
+            self.user_question_context = None
+
         self.tool_library_prompt = await get_tool_library_prompt(
-            self.toolboxes, self.user_question
+            self.toolboxes, self.user_question_context or self.user_question
         )
 
         async def generator():

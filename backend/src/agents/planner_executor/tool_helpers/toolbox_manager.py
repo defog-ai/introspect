@@ -4,6 +4,7 @@ import yaml
 
 
 async def get_tool_library_prompt(toolboxes=[], user_question=None):
+    print("User question while getting tool library:", user_question)
     toolboxes += ["data_fetching", "stats", "plots"]
     toolboxes = list(set(toolboxes))
     prompt = []

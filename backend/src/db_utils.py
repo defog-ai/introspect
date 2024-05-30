@@ -1639,3 +1639,37 @@ async def get_analysis_versions(root_analysis_id):
         err = str(e)
     finally:
         return err, versions
+
+
+# returns all combined user_questions of root_analysis + max_n direct parents
+# helps embed tools better
+async def get_analysis_question_context(analysis_id, max_n=5):
+    # get this analysis
+    # check direct_parent_id of this analysis
+    # and keep going up the analysis chain till we get an is_root_analysis or we reach max_n
+    # and finally also get the root_analysis_id from this analysis
+    # and merge all the question: root analysis's plus all parents we found
+    err = None
+    question_context = ""
+    try:
+        curr_analysis_id = analysis_id
+
+        count = 0
+        while True:
+            # get this analysis
+            err, analysis_data = get_report_data(curr_analysis_id)
+            if err:
+                raise Exception(err)
+
+            question_context = analysis_data["user_question"] + " " + question_context
+            if analysis_data["direct_parent_id"] and count <= max_n:
+                curr_analysis_id = analysis_data["direct_parent_id"]
+                count += 1
+            else:
+                break
+
+    except Exception as e:
+        err = str(e)[:300]
+        question_context = ""
+    finally:
+        return err, question_context
