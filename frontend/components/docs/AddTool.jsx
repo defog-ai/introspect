@@ -1,4 +1,4 @@
-import setupBaseUrl from "../../utils/setupBaseUrl";
+import setupBaseUrl from "$utils/setupBaseUrl";
 import { Button, Input, Modal, Select, message } from "antd";
 import {
   arrayOfObjectsToObject,
@@ -10,7 +10,7 @@ import {
   preventModifyTargetRanges,
   snakeCase,
   toolboxDisplayNames,
-} from "../../utils/utils";
+} from "$utils/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ReactCodeMirror from "@uiw/react-codemirror";

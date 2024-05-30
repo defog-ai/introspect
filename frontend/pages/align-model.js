@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import Meta from "../components/common/Meta";
-import Scaffolding from "../components/common/Scaffolding";
+import Meta from "$components/common/Meta";
+import Scaffolding from "$components/common/Scaffolding";
 import { Row, Col, Switch, Input, Button, message } from "antd/lib";
-import setupBaseUrl from "../utils/setupBaseUrl";
+import setupBaseUrl from "$utils/setupBaseUrl";
 
 const AlignModel = () => {
   const [devMode, setDevMode] = useState(false);

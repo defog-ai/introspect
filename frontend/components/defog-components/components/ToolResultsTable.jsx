@@ -34,8 +34,8 @@ import "prismjs/components/prism-sql";
 import "prismjs/components/prism-python";
 
 import "prismjs/themes/prism.css";
-import { roundNumber } from "../../../utils/utils";
-import setupBaseUrl from "../../../utils/setupBaseUrl";
+import { roundNumber } from "$utils/utils";
+import setupBaseUrl from "$utils/setupBaseUrl";
 
 const downloadCsvEndpoint = setupBaseUrl("http", "download_csv");
 

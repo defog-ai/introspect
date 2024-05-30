@@ -1,7 +1,7 @@
 import { NodeViewWrapper } from "@tiptap/react";
 import React, { useContext, useEffect, useMemo, useRef } from "react";
 import { ReactiveVariablesContext } from "../ReactiveVariablesContext";
-import { isNullOrUndefined, roundNumber } from "../../../utils/utils";
+import { isNullOrUndefined, roundNumber } from "$utils/utils";
 
 export default function ReactiveVariableNodeView({ node }) {
   const ref = useRef(null);

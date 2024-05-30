@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { HiWrenchScrewdriver } from "react-icons/hi2";
 import { Popover } from "antd";
-import { createDag } from "../../../../utils/draw-dag";
+import { createDag } from "$utils/draw-dag";
 import {
   PlusCircleFilled,
   PlusOutlined,
@@ -9,10 +9,7 @@ import {
   PlusSquareOutlined,
   PlusSquareTwoTone,
 } from "@ant-design/icons";
-import {
-  createInitialToolInputs,
-  toolDisplayNames,
-} from "../../../../utils/utils";
+import { createInitialToolInputs, toolDisplayNames } from "$utils/utils";
 
 const nodeCssSize = 15;
 

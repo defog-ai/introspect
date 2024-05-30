@@ -1,14 +1,14 @@
 import { Button, Modal, message } from "antd";
-import Meta from "../components/common/Meta";
-import Scaffolding from "../components/common/Scaffolding";
+import Meta from "$components/common/Meta";
+import Scaffolding from "$components/common/Scaffolding";
 import {
   easyToolInputTypes,
   toolDisplayNames,
   toolboxDisplayNames,
-} from "../utils/utils";
+} from "$utils/utils";
 import { useEffect, useMemo, useState } from "react";
-import AddTool from "../components/docs/AddTool";
-import setupBaseUrl from "../utils/setupBaseUrl";
+import AddTool from "$components/docs/AddTool";
+import setupBaseUrl from "$utils/setupBaseUrl";
 
 const toggleDisableToolEndpoint = setupBaseUrl("http", "toggle_disable_tool");
 const deleteToolEndpoint = setupBaseUrl("http", "delete_tool");

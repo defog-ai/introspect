@@ -1,7 +1,7 @@
 import { Input, Select, message } from "antd";
 import React, { useCallback, useEffect, useState } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
-import { easyToolInputTypes } from "../../../../utils/utils";
+import { easyToolInputTypes } from "$utils/utils";
 
 const inputTypeToUI = {
   list: (toolRunId, inputName, initialValue, onEdit) => {

@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useContext } from "react";
-import Meta from "../components/common/Meta";
-import Scaffolding from "../components/common/Scaffolding";
+import Meta from "$components/common/Meta";
+import Scaffolding from "$components/common/Scaffolding";
 import dynamic from "next/dynamic";
 import { Switch } from "antd/lib";
-import setupBaseUrl from "../utils/setupBaseUrl";
+import setupBaseUrl from "$utils/setupBaseUrl";
 
 const DefogAnalysisAgentStandalone = dynamic(
   () =>
     import(
-      "../components/defog-components/components/DefogAnalysisAgentStandalone"
+      "$components/defog-components/components/DefogAnalysisAgentStandalone"
     ).then((module) => {
       return module.default;
     }),

@@ -11,12 +11,12 @@ import Lottie from "lottie-react";
 import LoadingLottie from "../svg/loader.json";
 import ErrorBoundary from "../common/ErrorBoundary";
 import { csvParse } from "d3";
-import { getToolRunData, toolDisplayNames } from "../../../../utils/utils";
+import { getToolRunData, toolDisplayNames } from "$utils/utils";
 import ToolRunAnalysis from "./ToolRunAnalysis";
 import { AddStepUI } from "./AddStepUI";
 import { MdDeleteOutline } from "react-icons/md";
 import { Modal } from "antd";
-import setupBaseUrl from "../../../../utils/setupBaseUrl";
+import setupBaseUrl from "$utils/setupBaseUrl";
 
 function parseData(data_csv) {
   const data = csvParse(data_csv);
@@ -77,6 +77,7 @@ export function ToolResults({
   toolRunDataCache = {},
   setToolRunDataCache = () => {},
   setAnalysisData = () => {},
+  tools = {},
 }) {
   const [toolRunId, setToolRunId] = useState(null);
   const [toolRunData, setToolRunData] = useState(null);
@@ -461,6 +462,7 @@ export function ToolResults({
           dag={dag}
           handleReRun={handleReRun}
           parentNodeData={parentNodeData}
+          tools={tools}
         />
       ) : toolRunData?.error_message && !activeNode.data.isTool ? (
         <ToolRunError error_message={toolRunData?.error_message}></ToolRunError>

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useRouter } from "next/router";
-import { Context } from "../components/common/Context";
-import Meta from "../components/common/Meta";
-import Scaffolding from "../components/common/Scaffolding";
+import { Context } from "$components/common/Context";
+import Meta from "$components/common/Meta";
+import Scaffolding from "$components/common/Scaffolding";
 import { Row, Col, Form, Input, Table, Button, Space, message } from "antd";
-import setupBaseUrl from "../utils/setupBaseUrl";
+import setupBaseUrl from "$utils/setupBaseUrl";
 
 const ManageUsers = () => {
   const [loading, setLoading] = useState(false);

@@ -1,12 +1,12 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
-import DocIcon from "../components/docs/DocIcon";
+import DocIcon from "$components/docs/DocIcon";
 import styled from "styled-components";
-import { Context } from "../components/common/Context";
-import Meta from "../components/common/Meta";
+import { Context } from "$components/common/Context";
+import Meta from "$components/common/Meta";
 import { Collapse, message } from "antd";
-import Scaffolding from "../components/common/Scaffolding";
+import Scaffolding from "$components/common/Scaffolding";
 import { useRouter } from "next/router";
-import setupBaseUrl from "../utils/setupBaseUrl";
+import setupBaseUrl from "$utils/setupBaseUrl";
 
 const ViewNotebooks = () => {
   const [loading, setLoading] = useState(false);

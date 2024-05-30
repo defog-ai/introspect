@@ -16,12 +16,15 @@ import { DocContext } from "../../../docs/DocContext";
 import { ToolResults } from "./ToolResults";
 import StepsDag from "../common/StepsDag";
 import ErrorBoundary from "../common/ErrorBoundary";
-import { Context } from "../../../../components/common/Context";
-import { toolShortNames } from "../../../../utils/utils";
+import { Context } from "$components/common/Context";
+import { toolShortNames } from "$utils/utils";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
 import Input from "antd/es/input";
 import Clarify from "./analysis-gen/Clarify";
 import AnalysisManager from "./analysisManager";
+import setupBaseUrl from "$utils/setupBaseUrl";
+
+const getToolsEndpoint = setupBaseUrl("http", "get_user_tools");
 
 export const AnalysisAgent = ({
   analysisId,
@@ -47,6 +50,7 @@ export const AnalysisAgent = ({
   // we will have an independent search bar for each analysis as well
   const independentAnalysisSearchRef = useRef();
   const [toolRunDataCache, setToolRunDataCache] = useState({});
+  const [tools, setTools] = useState({});
 
   const docContext = useContext(DocContext);
 
@@ -180,6 +184,13 @@ export const AnalysisAgent = ({
     async function initialiseAnalysis() {
       try {
         await analysisManager.init();
+
+        const response = await fetch(getToolsEndpoint, {
+          method: "POST",
+        });
+
+        const tools = (await response.json())["tools"];
+        setTools(tools);
 
         if (analysisManager.wasNewAnalysisCreated) {
           // also have to set docContext in this case
@@ -339,6 +350,7 @@ export const AnalysisAgent = ({
                           setPendingToolRunUpdates={setPendingToolRunUpdates}
                           toolRunDataCache={toolRunDataCache}
                           setToolRunDataCache={setToolRunDataCache}
+                          tools={tools}
                         ></ToolResults>
                       ) : (
                         analysisBusy && (

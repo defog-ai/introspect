@@ -1,7 +1,7 @@
-import React, { useState, useContext } from 'react';
-import { Context } from './Context';
-import { useRouter } from 'next/router';
-import setupBaseUrl from '../../utils/setupBaseUrl';
+import React, { useState, useContext } from "react";
+import { Context } from "./Context";
+import { useRouter } from "next/router";
+import setupBaseUrl from "$utils/setupBaseUrl";
 
 const SSOButton = ({ msalInstance }) => {
   const [isLoginInProgress, setIsLoginInProgress] = useState(false);
@@ -17,7 +17,7 @@ const SSOButton = ({ msalInstance }) => {
     try {
       // Login via a popup
       const loginResponse = await msalInstance.loginPopup({
-        scopes: ["user.read"] // Replace with the scopes you need
+        scopes: ["user.read"], // Replace with the scopes you need
       });
 
       const idToken = loginResponse?.idToken;
@@ -53,16 +53,13 @@ const SSOButton = ({ msalInstance }) => {
         // redirect to home page
         router.push("/");
       }
-
     } catch (error) {
       console.error(error);
     }
     setIsLoginInProgress(false);
   };
 
-  return (
-    <button onClick={handleLogin}>Sign In with Microsoft</button>
-  );
+  return <button onClick={handleLogin}>Sign In with Microsoft</button>;
 };
 
 export default SSOButton;

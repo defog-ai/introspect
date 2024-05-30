@@ -12,7 +12,7 @@ import {
   useEditorSelectionChange,
 } from "@blocknote/react";
 import "@blocknote/core/style.css";
-import { aiBlocks } from "../../utils/utils";
+import { aiBlocks } from "$utils/utils";
 
 export const CustomFormattingToolbar = () => {
   const [showToolBar, setShowToolBar] = useState(true);

@@ -1,9 +1,9 @@
 import React, { useContext } from "react";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
-import { message } from "antd";
+import { Alert, message } from "antd";
 import { Context } from "./Context";
 import { useRouter } from "next/router";
-import setupBaseUrl from "../../utils/setupBaseUrl";
+import setupBaseUrl from "$utils/setupBaseUrl";
 
 const clientId =
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "REPLACE_WITH_GOOGLE_CLIENT_ID";

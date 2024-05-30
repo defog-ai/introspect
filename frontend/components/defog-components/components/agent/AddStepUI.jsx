@@ -1,15 +1,10 @@
 import { Select, message } from "antd";
-import { toolsMetadata } from "../../../../utils/tools_metadata";
 import { useEffect, useMemo, useState } from "react";
 import { AddStepInputList } from "./AddStepInputList";
 import { ToolReRun } from "./ToolReRun";
-import setupBaseUrl from "../../../../utils/setupBaseUrl";
+import setupBaseUrl from "$utils/setupBaseUrl";
 import { v4 } from "uuid";
-import { createInitialToolInputs } from "../../../../utils/utils";
-
-const toolOptions = Object.keys(toolsMetadata).map((tool) => {
-  return { value: tool, label: toolsMetadata[tool]?.tool_name };
-});
+import { createInitialToolInputs } from "$utils/utils";
 
 const createNewStepEndpoint = setupBaseUrl("http", "create_new_step");
 
@@ -19,7 +14,12 @@ export function AddStepUI({
   dag,
   handleReRun = () => {},
   parentNodeData = {},
+  tools = {},
 }) {
+  const toolOptions = Object.keys(tools).map((tool) => {
+    return { value: tool, label: tools[tool]?.tool_name };
+  });
+
   const [selectedTool, setSelectedTool] = useState(
     activeNode?.data?.step?.tool_name
   );
@@ -147,7 +147,7 @@ export function AddStepUI({
           <h1 className="inputs-header">INPUTS</h1>
           <AddStepInputList
             toolRunId={activeNode.data.id}
-            toolMetadata={toolsMetadata[selectedTool]}
+            toolMetadata={tools[selectedTool]}
             analysisId={analysisId}
             inputs={inputs}
             onEdit={(prop, newVal) => {

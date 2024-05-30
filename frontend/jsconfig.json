@@ -2,6 +2,11 @@
   "compilerOptions": {
     "baseUrl": ".",
     "checkJs": true,
+    "paths": {
+      // utils folder ./utils/
+      "$utils/*": ["./utils/*"],
+      "$components/*": ["./components/*"]
+    },
     "jsx": "react-jsx"
   }
 }

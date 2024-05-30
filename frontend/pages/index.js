@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useContext } from 'react'
-import { useRouter } from 'next/router'
-import Meta from '../components/common/Meta'
-import Scaffolding from '../components/common/Scaffolding'
-import { Spin } from 'antd/lib';
-import { Context } from '../components/common/Context';
+import React, { useState, useEffect, useContext } from "react";
+import { useRouter } from "next/router";
+import Meta from "$components/common/Meta";
+import Scaffolding from "$components/common/Scaffolding";
+import { Spin } from "antd/lib";
+import { Context } from "$components/common/Context";
 
 const QueryDatabase = () => {
   const [userType, setUserType] = useState("");
@@ -33,10 +33,10 @@ const QueryDatabase = () => {
     setUserType(userType);
     setLoading(false);
     if (userType === "admin") {
-      console.log("redirecting to extract metadata..")
+      console.log("redirecting to extract metadata..");
       router.push("/extract-metadata");
     } else {
-      console.log("redirecting to view notebooks..")
+      console.log("redirecting to view notebooks..");
       router.push("/view-notebooks");
     }
   }, []);
@@ -45,13 +45,14 @@ const QueryDatabase = () => {
     <>
       <Meta />
       <Scaffolding userType={userType}>
-        <h1 style={{paddingBottom: "1em"}}>Welcome to Defog!</h1>
+        <h1 style={{ paddingBottom: "1em" }}>Welcome to Defog!</h1>
         <h3>
-          Please wait while we log you in and redirect you to the right page... <Spin/>
+          Please wait while we log you in and redirect you to the right page...{" "}
+          <Spin />
         </h3>
       </Scaffolding>
     </>
-  )
-}
+  );
+};
 
 export default QueryDatabase;

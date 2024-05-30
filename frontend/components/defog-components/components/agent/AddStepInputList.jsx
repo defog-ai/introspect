@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
-import { easyToolInputTypes } from "../../../../utils/utils";
+import { easyToolInputTypes } from "$utils/utils";
 
 const onHover = (ev, label, analysisId) => {
   // get the closest .analysis-content to the mouseovered element

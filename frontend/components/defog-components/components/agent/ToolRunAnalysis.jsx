@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { setupWebsocketManager } from "../../../../utils/websocket-manager";
+import { setupWebsocketManager } from "$utils/websocket-manager";
 import { message } from "antd";
-import setupBaseUrl from "../../../../utils/setupBaseUrl";
+import setupBaseUrl from "$utils/setupBaseUrl";
 import { LoadingOutlined } from "@ant-design/icons";
 
 export default function ToolRunAnalysis({ question, data_csv, image = null }) {

@@ -13,11 +13,11 @@ import {
   getAllAnalyses,
   getAllDashboards,
   getUserMetadata,
-} from "../../../utils/utils";
+} from "$utils/utils";
 import styled, { createGlobalStyle } from "styled-components";
 import ErrorBoundary from "./common/ErrorBoundary";
-import setupBaseUrl from "../../../utils/setupBaseUrl";
-import { setupWebsocketManager } from "../../../utils/websocket-manager";
+import setupBaseUrl from "$utils/setupBaseUrl";
+import { setupWebsocketManager } from "$utils/websocket-manager";
 import AnalysisVersionViewer from "./agent/AnalysisVersionViewer";
 
 export default function DefogAnalysisAgentStandalone({ analysisId, username }) {

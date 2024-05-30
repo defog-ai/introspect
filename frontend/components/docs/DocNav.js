@@ -3,7 +3,7 @@ import OtherDocs from "./OtherDocs";
 import { GrNewWindow } from "react-icons/gr";
 import { MdDeleteOutline } from "react-icons/md";
 import { Modal, message } from "antd";
-import { deleteDoc } from "../../utils/utils";
+import { deleteDoc } from "$utils/utils";
 import { useRouter } from "next/router";
 
 const sidebarWidth = 170;

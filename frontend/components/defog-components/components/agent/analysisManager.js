@@ -1,8 +1,4 @@
-import {
-  createAnalysis,
-  getAnalysis,
-  getToolRunData,
-} from "../../../../utils/utils";
+import { createAnalysis, getAnalysis, getToolRunData } from "$utils/utils";
 
 // the name of the prop where the data is stored for each stage
 const propNames = {

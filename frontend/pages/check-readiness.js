@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import Meta from "../components/common/Meta";
-import Scaffolding from "../components/common/Scaffolding";
-import CustomTooltip from "../components/common/Tooltip";
+import Meta from "$components/common/Meta";
+import Scaffolding from "$components/common/Scaffolding";
+import CustomTooltip from "$components/common/Tooltip";
 import { Row, Col, Space, Button, message } from "antd";
-import setupBaseUrl from "../utils/setupBaseUrl";
+import setupBaseUrl from "$utils/setupBaseUrl";
 
 const CheckReadiness = () => {
   const [loading, setLoading] = useState(false);

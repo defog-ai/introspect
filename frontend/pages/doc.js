@@ -1,15 +1,15 @@
 import "@blocknote/react/style.css";
 import React, { useContext, useEffect, useRef, useState } from "react";
-import Meta from "../components/common/Meta";
-import Scaffolding from "../components/common/Scaffolding";
+import Meta from "$components/common/Meta";
+import Scaffolding from "$components/common/Scaffolding";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
-import ErrorBoundary from "../components/common/ErrorBoundary";
-import LoadingReport from "../components/reports/ReportLoading";
+import ErrorBoundary from "$components/common/ErrorBoundary";
+import LoadingReport from "$components/reports/ReportLoading";
 import { v4 } from "uuid";
-import { Context } from "../components/common/Context";
+import { Context } from "$components/common/Context";
 
-const Doc = dynamic(() => import("../components/docs/Doc"), {
+const Doc = dynamic(() => import("$components/docs/Doc"), {
   ssr: false,
 });
 

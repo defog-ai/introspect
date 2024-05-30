@@ -1,5 +1,5 @@
 import { contrast, random } from "chroma-js";
-import setupBaseUrl from "../utils/setupBaseUrl";
+import setupBaseUrl from "$utils/setupBaseUrl";
 import { Annotation, EditorState, Transaction } from "@codemirror/state";
 import { Doc, XmlElement, applyUpdate, encodeStateAsUpdate } from "yjs";
 import { v4 } from "uuid";

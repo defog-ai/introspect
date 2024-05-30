@@ -1,7 +1,7 @@
 import { Button, Modal } from "antd";
 import StepsDag from "../../common/StepsDag";
 import { useCallback, useContext, useEffect, useState } from "react";
-import { toolDisplayNames, toolShortNames } from "../../../../../utils/utils";
+import { toolDisplayNames, toolShortNames } from "$utils/utils";
 import { tempSuggestion } from "./temp";
 import Context from "../../common/Context";
 import { AnalysisAgent } from "../AnalysisAgent";

@@ -1,10 +1,10 @@
 import React, { useContext } from "react";
 import { useRouter } from "next/router";
-import Meta from "../components/common/Meta";
-import Scaffolding from "../components/common/Scaffolding";
-import { Context } from "../components/common/Context";
+import Meta from "$components/common/Meta";
+import Scaffolding from "$components/common/Scaffolding";
+import { Context } from "$components/common/Context";
 import { Input, Form, Button, message } from "antd";
-import GoogleLoginButton from "../components/common/GoogleLogin";
+import GoogleLoginButton from "$components/common/GoogleLogin";
 
 const LogIn = () => {
   const [context, setContext] = useContext(Context);

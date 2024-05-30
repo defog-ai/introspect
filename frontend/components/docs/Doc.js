@@ -13,17 +13,13 @@ import { CustomFormattingToolbar } from "./CustomFormattingToolbar";
 import LoadingReport from "../reports/ReportLoading";
 import DocNav from "./DocNav";
 import { DocContext, RelatedAnalysesContext } from "./DocContext";
-import {
-  getAllAnalyses,
-  getToolboxes,
-  getUserMetadata,
-} from "../../utils/utils";
+import { getAllAnalyses, getToolboxes, getUserMetadata } from "$utils/utils";
 import { DocSidebars } from "./DocSidebars";
 import { ReactiveVariablesContext } from "./ReactiveVariablesContext";
 import { ReactiveVariableNode } from "./customTiptap/ReactiveVariableNode";
 import { ReactiveVariableMention } from "./customTiptap/ReactiveVariableMention";
-import setupBaseUrl from "../../utils/setupBaseUrl";
-import { setupWebsocketManager } from "../../utils/websocket-manager";
+import setupBaseUrl from "$utils/setupBaseUrl";
+import { setupWebsocketManager } from "$utils/websocket-manager";
 import { customBlockSchema } from "./createCustomBlockSchema";
 import { filterSuggestionItems } from "@blocknote/core";
 import { getCustomSlashMenuItems } from "./createCustomSlashMenuItems";
