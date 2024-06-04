@@ -211,7 +211,7 @@ export default function Clarify({
         <></>
       ) : (
         <AgentLoader
-          message={"Loading"}
+          message={"Thinking about whether I need to clarify the question..."}
           lottie={<Lottie animationData={LoadingLottie} loop={true} />}
         />
       )}

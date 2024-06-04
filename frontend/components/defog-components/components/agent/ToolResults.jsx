@@ -451,7 +451,9 @@ export function ToolResults({
       {toolRunDataLoading || isStepReRunning ? (
         <div className="tool-run-loading">
           <AgentLoader
-            message={toolRunDataLoading ? "Loading..." : "Running..."}
+            message={
+              toolRunDataLoading ? "Loading data..." : "Running analysis..."
+            }
             lottie={<Lottie animationData={LoadingLottie} loop={true} />}
           />
         </div>

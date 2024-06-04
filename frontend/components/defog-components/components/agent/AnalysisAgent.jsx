@@ -355,7 +355,11 @@ export const AnalysisAgent = ({
                       ) : (
                         analysisBusy && (
                           <AgentLoader
-                            message={"Running analysis..."}
+                            message={
+                              analysisData.currentStage === "gen_steps"
+                                ? "Creating plan..."
+                                : "Executing plan..."
+                            }
                             lottie={
                               <Lottie
                                 animationData={LoadingLottie}
