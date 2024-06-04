@@ -351,6 +351,7 @@ export const AnalysisAgent = ({
                           toolRunDataCache={toolRunDataCache}
                           setToolRunDataCache={setToolRunDataCache}
                           tools={tools}
+                          analysisBusy={analysisBusy}
                         ></ToolResults>
                       ) : (
                         analysisBusy && (

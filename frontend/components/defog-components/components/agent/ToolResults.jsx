@@ -78,6 +78,7 @@ export function ToolResults({
   setToolRunDataCache = () => {},
   setAnalysisData = () => {},
   tools = {},
+  analysisBusy = false,
 }) {
   const [toolRunId, setToolRunId] = useState(null);
   const [toolRunData, setToolRunData] = useState(null);
@@ -437,6 +438,18 @@ export function ToolResults({
     }
   }, [activeNode, reRunningSteps]);
 
+  const [displayLoadingOverlay, setDisplayLoadingOverlay] = useState(false);
+
+  useEffect(() => {
+    if (analysisBusy) {
+      setDisplayLoadingOverlay(true);
+    } else {
+      setDisplayLoadingOverlay(false);
+    }
+  }, [analysisBusy]);
+
+  console.log("toolRunData", toolRunData);
+
   // rerunningstepsis array of object: {tool_run_id: res.pre_tool_run_message,
   // timeout: funciton
   // clearTimeout: function}
@@ -448,6 +461,32 @@ export function ToolResults({
     <></>
   ) : (
     <div className="tool-results-ctr" data-is-tool={activeNode.data.isTool}>
+      {/* create a translucent overlay if displayLoadingOverlay is true */}
+      {displayLoadingOverlay && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: 600,
+            maxHeight: "100%",
+            backgroundColor: "rgba(255, 255, 255, 0.6)",
+            zIndex: 100,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontSize: 24,
+            color: "#000",
+          }}
+        >
+          Continuing to execute the analysis and moving on to the next step...
+          <br />
+          Last executed step: {toolRunData?.step?.tool_name}
+        </div>
+      )}
+
+      {/* if analysis is busy */}
       {toolRunDataLoading || isStepReRunning ? (
         <div className="tool-run-loading">
           <AgentLoader
