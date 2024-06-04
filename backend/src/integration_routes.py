@@ -194,6 +194,10 @@ async def update_metadata(request: Request):
         },
     )
 
+    # write to local file
+    with open(os.path.join(defog_path, "metadata.json"), "w") as f:
+        json.dump(table_metadata, f)
+
     return r
 
 

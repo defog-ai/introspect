@@ -126,22 +126,38 @@ def get_db_type():
 
 
 async def get_metadata():
-    table_metadata_csv = ""
-    try:
-        # with open(os.path.join(defog_path, "metadata.json"), "r") as f:
-        #     table_metadata = json.load(f)
-        md = await make_request(
-            f"{os.environ.get('DEFOG_BASE_URL')}/get_metadata",
-            {"api_key": os.environ.get("DEFOG_API_KEY")},
-        )
-        table_metadata = md["table_metadata"]
-        metadata = convert_nested_dict_to_list(table_metadata)
+    # check if metadata is stored in ~/.defog/metadata.json
+    # if it is, load it
+    # if not, make a request to the defog api to get it
+    home_dir = os.path.expanduser("~")
+    defog_path = os.path.join(home_dir, ".defog")
+    if os.path.exists(os.path.join(defog_path, "metadata.json")):
+        with open(os.path.join(defog_path, "metadata.json"), "r") as f:
+            metadata = json.load(f)
+        metadata = convert_nested_dict_to_list(metadata)
         table_metadata_csv = pd.DataFrame(metadata).to_csv(index=False)
-        glossary = md["glossary"]
-    except Exception as e:
-        print(e)
+    else:
         table_metadata_csv = ""
-        glossary = ""
+        try:
+            # with open(os.path.join(defog_path, "metadata.json"), "r") as f:
+            #     table_metadata = json.load(f)
+            md = await make_request(
+                f"{os.environ.get('DEFOG_BASE_URL')}/get_metadata",
+                {"api_key": os.environ.get("DEFOG_API_KEY")},
+            )
+            table_metadata = md["table_metadata"]
+
+            # write metadata to file
+            with open(os.path.join(defog_path, "metadata.json"), "w") as f:
+                json.dump(table_metadata, f)
+
+            metadata = convert_nested_dict_to_list(table_metadata)
+            table_metadata_csv = pd.DataFrame(metadata).to_csv(index=False)
+            glossary = md["glossary"]
+        except Exception as e:
+            print(e)
+            table_metadata_csv = ""
+            glossary = ""
 
     client_description = "In this assignment, assume that you are a data analyst."
 
