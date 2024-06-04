@@ -136,6 +136,7 @@ async def get_metadata():
             metadata = json.load(f)
         metadata = convert_nested_dict_to_list(metadata)
         table_metadata_csv = pd.DataFrame(metadata).to_csv(index=False)
+        glossary = ""
     else:
         table_metadata_csv = ""
         try:
