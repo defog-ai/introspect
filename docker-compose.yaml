@@ -17,11 +17,6 @@ services:
     networks:
       - agents-network
     restart: always
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: 34.133.235.56:443
-        tag: defog.local.partykit
 
   agents-postgres:
     build:
@@ -94,12 +89,6 @@ services:
       - agents-python-server
     networks:
       - agents-network
-
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: 34.133.235.56:443
-        tag: defog.local.nginx
 
 volumes:
   agents-postgres:
