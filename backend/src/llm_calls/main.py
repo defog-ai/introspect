@@ -197,15 +197,14 @@ def get_clarification(
 ):
     system_prompt = f"""You are a data analyst who has been asked a question about a dataset.
 
-Your job is to determine if a question is clear, and ask clarifying questions (if any) to the client.
-{client_description}
+Your job is to determine if a question is clear. If and only if the question is not clear, you can ask clarifying questions (if any) to the client.
 
-If the user's question does not involve one of these scenarios, just respond with "No clarification is needed"
+If no clarification is required, just respond with "No clarification is needed"
 """
 
     user_prompt = f"""Here is the user's question: {user_question}
 
-Do you have any clarifications you need from the user? You are only allowed to ask a single clarification. Return just the clarifying question as a short sentence, nothing else."""
+Do you have any clarifications you need from the user? If you think a clarification is needed, you can ask exactly one question. Return just the clarifying question as a short sentence, nothing else."""
 
     messages = [
         {
