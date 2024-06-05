@@ -15,6 +15,9 @@ COPY ./backend/src/requirements.txt ./requirements.txt
 # install requirements
 RUN pip install -r requirements.txt
 
+# download the SentenceTransformers all-MiniLM-L6-v2 model
+RUN python -c 'from sentence_transformers import SentenceTransformer; SentenceTransformer("all-MiniLM-L6-v2")'
+
 # copy deletion cron
 COPY ./backend/docker-setup-files/delete-cron /etc/cron.d/delete-cron
 
@@ -48,9 +51,6 @@ RUN touch /agent-logs-out
 RUN crontab /etc/cron.d/delete-cron
 
 ENV PYTHONUNBUFFERED=true
-
-# download the SentenceTransformers all-MiniLM-L6-v2 model
-RUN python -c 'from sentence_transformers import SentenceTransformer; SentenceTransformer("all-MiniLM-L6-v2")'
 
 # start startup script
 CMD /bin/bash /startup.sh $OPENAI_API_KEY
