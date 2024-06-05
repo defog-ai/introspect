@@ -21,6 +21,7 @@ redshift_connector
 requests
 scipy
 seaborn
+sentence_transformers
 slack_sdk
 snowflake-connector-python
 sqlalchemy

@@ -49,5 +49,8 @@ RUN crontab /etc/cron.d/delete-cron
 
 ENV PYTHONUNBUFFERED=true
 
+# download the SentenceTransformers all-MiniLM-L6-v2 model
+RUN python -c 'from sentence_transformers import SentenceTransformer; SentenceTransformer("all-MiniLM-L6-v2")'
+
 # start startup script
 CMD /bin/bash /startup.sh $OPENAI_API_KEY
