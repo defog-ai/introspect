@@ -195,14 +195,10 @@ def get_clarification(
     parent_questions=None,
     direct_parent_analysis=None,
 ):
-    system_prompt = f"""You are a data analyst who has been asked a question about a dataset that contains data about biological assays.
+    system_prompt = f"""You are a data analyst who has been asked a question about a dataset.
 
 Your job is to determine if a question is clear, and ask clarifying questions (if any) to the client.
 {client_description}
-
-You should ONLY ask clarifying questions in the following scenarios:
-1. If a user asks for data involving genes, assays, or cell types without specifying a unit, then ask them if which unit they want data for. The units typically available are percent_parent and median
-2. If a user uses a word like "proliferating" in their question, ask them what specific genes are they referring to
 
 If the user's question does not involve one of these scenarios, just respond with "No clarification is needed"
 """
