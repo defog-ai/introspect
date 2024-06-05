@@ -6,14 +6,23 @@ from starlette.websockets import WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
 from report_data_manager import ReportDataManager
+from agents.planner_executor.execute_tool import execute_tool
 import doc_endpoints
 import yaml
+import pickle
+from sentence_transformers import SentenceTransformer
+from uuid import uuid4
+
+model = SentenceTransformer("all-MiniLM-L6-v2")
+with open("./agent_vs_sqlcoder_classifier.pkl", "rb") as f:
+    classifier = pickle.load(f)
 
 from db_utils import (
     get_all_reports,
     get_report_data,
     initialise_report,
     update_report_data,
+    store_tool_run,
 )
 from utils import get_metadata
 import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes
@@ -57,6 +66,16 @@ edit_request_types_and_prop_names = {
     "edit_report_md": {"table_column": "gen_report", "prop_name": "report_sections"},
     "edit_approaches": {"table_column": "gen_approaches", "prop_name": "approaches"},
 }
+
+
+def get_classification(question, debug=False):
+    embeddings = model.encode(question)
+    if not debug:
+        answer = classifier.predict([embeddings])[0]
+        return {"prediction": "sqlcoder" if answer == 1 else "agent"}
+    else:
+        answer = classifier.predict_proba([embeddings])[0]
+    return {"prediction": "sqlcoder" if answer[0] < 0.5 else "agent", "probs": answer}
 
 
 @app.post("/edit_report")
@@ -203,92 +222,148 @@ async def websocket_endpoint(websocket: WebSocket):
                 resp["request_type"] = request_type
                 resp["analysis_id"] = report_data_manager.report_data["report_id"]
 
-                toolboxes = (
-                    data.get("toolboxes")
-                    if data.get("toolboxes") and type(data.get("toolboxes")) == list
-                    else []
-                )
-                metadata_dets = await get_metadata()
-                glossary = metadata_dets["glossary"]
-                client_description = metadata_dets["client_description"]
-                table_metadata_csv = metadata_dets["table_metadata_csv"]
-                # run the agent as per the request_type
-                err, agent_output = await report_data_manager.run_agent(
-                    report_id=report_id,
-                    request_type=request_type,
-                    user_question=data["user_question"],
-                    client_description=client_description,
-                    table_metadata_csv=table_metadata_csv,
-                    post_process_data=data,
-                    glossary=glossary,
-                    # user_email is used to figure out which tools to give to the user
-                    user_email=data.get("user_email"),
-                    extra_approaches=[],
-                    db_creds=data.get("db_creds"),
-                    toolboxes=toolboxes,
-                )
+                # check if the user question needs agents, or just sqlcoder is fine
+                classification = get_classification(data["user_question"])
+                print(classification, flush=True)
+                if classification["prediction"] == "sqlcoder":
+                    # first, send the clarifier result as done
+                    if request_type == "clarify":
+                        resp["output"] = {
+                            "success": True,
+                            "clarification_questions": [],
+                        }
+                        await websocket.send_json(resp)
+                        del resp["output"]
+                        resp["done"] = True
 
-                # if the agent output is a generator, run it
-                if err is None:
-                    try:
-                        if "generator" in agent_output:
-                            g = agent_output["generator"]
-                            async for out in g():
-                                # allow our generators to yield None
-                                if out is not None:
-                                    resp["output"] = {
-                                        "success": True,
-                                        agent_output["prop_name"]: out,
+                    if request_type == "gen_steps":
+                        # get the sqlcoder response
+                        inputs = {"question": data["user_question"]}
+                        result, tool_input_metadata = await execute_tool(
+                            "data_fetcher_and_aggregator", inputs, {}
+                        )
+                        tool_run_id = str(uuid4())
+                        step = {
+                            "description": data["user_question"],
+                            "tool_name": "data_fetcher_and_aggregator",
+                            "inputs": inputs,
+                            "outputs_storage_keys": ["answer"],
+                            "done": True,
+                            "tool_run_id": tool_run_id,
+                            "error_message": None,
+                            "input_metadata": {
+                                "question": {
+                                    "name": "question",
+                                    "type": "str",
+                                    "default": None,
+                                    "description": "natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string",
+                                }
+                            },
+                            "model_generated_inputs": inputs,
+                        }
+
+                        store_result = await store_tool_run(
+                            resp["analysis_id"], step, result, skip_step_update=True
+                        )
+                        resp["output"] = {
+                            "success": True,
+                            "steps": [step],
+                        }
+                        await websocket.send_json(resp)
+
+                        del resp["output"]
+                        resp["done"] = True
+                        await websocket.send_json(resp)
+                else:
+                    # if the user question is for the agent
+                    toolboxes = (
+                        data.get("toolboxes")
+                        if data.get("toolboxes") and type(data.get("toolboxes")) == list
+                        else []
+                    )
+                    metadata_dets = await get_metadata()
+                    glossary = metadata_dets["glossary"]
+                    client_description = metadata_dets["client_description"]
+                    table_metadata_csv = metadata_dets["table_metadata_csv"]
+                    # run the agent as per the request_type
+                    err, agent_output = await report_data_manager.run_agent(
+                        report_id=report_id,
+                        request_type=request_type,
+                        user_question=data["user_question"],
+                        client_description=client_description,
+                        table_metadata_csv=table_metadata_csv,
+                        post_process_data=data,
+                        glossary=glossary,
+                        # user_email is used to figure out which tools to give to the user
+                        user_email=data.get("user_email"),
+                        extra_approaches=[],
+                        db_creds=data.get("db_creds"),
+                        toolboxes=toolboxes,
+                    )
+
+                    # if the agent output is a generator, run it
+                    if err is None:
+                        try:
+                            if "generator" in agent_output:
+                                g = agent_output["generator"]
+                                async for out in g():
+                                    # allow our generators to yield None
+                                    if out is not None:
+                                        resp["output"] = {
+                                            "success": True,
+                                            agent_output["prop_name"]: out,
+                                        }
+
+                                        overwrite_key = getattr(
+                                            out, "overwrite_key", None
+                                        )
+                                        # if the out has an overwrite_key
+                                        # update report data in db
+                                        await report_data_manager.update(
+                                            request_type,
+                                            out,
+                                            False,
+                                            overwrite_key,
+                                        )
+
+                                        if overwrite_key:
+                                            resp["overwrite_key"] = overwrite_key
+
+                                        await websocket.send_json(resp)
+
+                                # send done true
+                                await websocket.send_json(
+                                    {
+                                        "done": True,
+                                        "request_type": request_type,
+                                        "analysis_id": report_id,
                                     }
-
-                                    overwrite_key = getattr(out, "overwrite_key", None)
-                                    # if the out has an overwrite_key
-                                    # update report data in db
-                                    await report_data_manager.update(
-                                        request_type,
-                                        out,
-                                        False,
-                                        overwrite_key,
-                                    )
-
-                                    if overwrite_key:
-                                        resp["overwrite_key"] = overwrite_key
-
-                                    await websocket.send_json(resp)
-
-                            # send done true
+                                )
+                            else:
+                                # if not a generator agent
+                                resp["output"] = agent_output
+                                resp["done"] = True
+                                await websocket.send_json(resp)
+                                await report_data_manager.update(
+                                    request_type,
+                                    agent_output,
+                                    replace=request_type == "gen_report",
+                                )
+                        except Exception as e:
+                            traceback.print_exc()
+                            print(e)
                             await websocket.send_json(
                                 {
                                     "done": True,
-                                    "request_type": request_type,
+                                    "success": False,
+                                    "error_message": str(e)[:300],
                                     "analysis_id": report_id,
                                 }
                             )
-                        else:
-                            # if not a generator agent
-                            resp["output"] = agent_output
-                            resp["done"] = True
-                            await websocket.send_json(resp)
-                            await report_data_manager.update(
-                                request_type,
-                                agent_output,
-                                replace=request_type == "gen_report",
-                            )
-                    except Exception as e:
-                        traceback.print_exc()
-                        print(e)
-                        await websocket.send_json(
-                            {
-                                "done": True,
-                                "success": False,
-                                "error_message": str(e)[:300],
-                                "analysis_id": report_id,
-                            }
-                        )
 
-                else:
-                    resp["error_message"] = err
-                    await websocket.send_json(resp)
+                    else:
+                        resp["error_message"] = err
+                        await websocket.send_json(resp)
 
             except Exception as e:
                 traceback.print_exc()
