@@ -438,6 +438,7 @@ async def rerun_step(websocket: WebSocket):
 
             tool_run_id = data.get("tool_run_id")
             analysis_id = data.get("analysis_id")
+            dev = data.get("dev")
 
             if tool_run_id is None or type(tool_run_id) != str:
                 return {"success": False, "error_message": "Invalid tool run id."}
@@ -467,6 +468,7 @@ async def rerun_step(websocket: WebSocket):
                 "glossary": glossary,
                 "llm_calls_url": llm_calls_url,
                 "report_assets_dir": report_assets_dir,
+                "dev": dev,
             }
 
             if err:
