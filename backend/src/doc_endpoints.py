@@ -125,7 +125,7 @@ async def doc_websocket_endpoint(websocket: WebSocket):
             )
 
             logging.info(data.get("api_key"))
-            logging.info(data.get("username"))
+            logging.info(data.get("token"))
             logging.info(data.get("doc_id"))
 
             await manager.send_personal_message(data, websocket)
@@ -149,18 +149,18 @@ async def add_to_recently_viewed_docs_endpoint(request: Request):
     """
     try:
         data = await request.json()
-        username = data.get("username")
+        token = data.get("token")
         api_key = DEFOG_API_KEY
         doc_id = data.get("doc_id")
 
-        if username is None or type(username) != str:
-            return {"success": False, "error_message": "Invalid username."}
+        if token is None or type(token) != str:
+            return {"success": False, "error_message": "Invalid token."}
 
         if doc_id is None or type(doc_id) != str:
             return {"success": False, "error_message": "Invalid document id."}
 
         await add_to_recently_viewed_docs(
-            username=username,
+            token=token,
             doc_id=doc_id,
             timestamp=str(datetime.datetime.now()),
         )
@@ -198,7 +198,7 @@ async def get_document(request: Request):
     data = await request.json()
     api_key = DEFOG_API_KEY
     doc_id = data.get("doc_id")
-    username = data.get("username")
+    token = data.get("token")
     col_name = data.get("col_name") or "doc_blocks"
 
     if api_key is None or type(api_key) != str:
@@ -207,7 +207,7 @@ async def get_document(request: Request):
     if doc_id is None or type(doc_id) != str:
         return {"success": False, "error_message": "Invalid document id."}
 
-    err, doc_data = await get_doc_data(doc_id, username, col_name)
+    err, doc_data = await get_doc_data(doc_id, token, col_name)
 
     if err:
         return {"success": False, "error_message": err}
@@ -222,12 +222,12 @@ async def get_toolboxes_endpoint(request: Request):
     """
     try:
         data = await request.json()
-        username = data.get("username")
+        token = data.get("token")
 
-        if username is None or type(username) != str:
-            return {"success": False, "error_message": "Invalid username."}
+        if token is None or type(token) != str:
+            return {"success": False, "error_message": "Invalid token."}
 
-        err, toolboxes = await get_toolboxes(username)
+        err, toolboxes = await get_toolboxes(token)
         if err:
             return {"success": False, "error_message": err}
 
@@ -245,12 +245,12 @@ async def get_docs(request: Request):
     """
     try:
         data = await request.json()
-        username = data.get("username")
+        token = data.get("token")
 
-        if username is None or type(username) != str:
-            return {"success": False, "error_message": "Invalid username."}
+        if token is None or type(token) != str:
+            return {"success": False, "error_message": "Invalid token."}
 
-        err, own_docs, recently_viewed_docs = await get_all_docs(username)
+        err, own_docs, recently_viewed_docs = await get_all_docs(token)
         if err:
             return {"success": False, "error_message": err}
 
@@ -1026,7 +1026,7 @@ async def submit_feedback(request: Request):
         is_correct = data.get("is_correct", False)
         user_question = data.get("user_question")
         analysis_id = data.get("analysis_id")
-        username = data.get("username")
+        token = data.get("token")
         api_key = DEFOG_API_KEY
 
         # get metadata
@@ -1056,7 +1056,7 @@ async def submit_feedback(request: Request):
 
         # store in the defog_plans_feedback table
         err, did_overwrite = await store_feedback(
-            username,
+            token,
             user_question,
             analysis_id,
             is_correct,
@@ -1123,7 +1123,7 @@ async def submit_feedback(request: Request):
                 # create a new analysis with these as steps
                 err, new_analysis_data = await initialise_report(
                     user_question,
-                    username,
+                    token,
                     new_analysis_id,
                     {"gen_steps": [], "clarify": []},
                 )
