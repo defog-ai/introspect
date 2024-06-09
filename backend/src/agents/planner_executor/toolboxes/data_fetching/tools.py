@@ -1,6 +1,4 @@
 import pandas as pd
-import asyncio
-import requests
 from pandasql import sqldf
 from defog import Defog
 
@@ -13,7 +11,6 @@ async def data_fetcher_and_aggregator(
     """
     This function generates a SQL query and runs it to get the answer.
     """
-    import requests
     import asyncio
     import pandas as pd
     from tool_code_utilities import safe_sql, fetch_query_into_df
@@ -76,7 +73,6 @@ async def global_dict_data_fetcher_and_aggregator(
     import pandas as pd
     from pandasql import sqldf
     from tool_code_utilities import safe_sql
-    from defog import Defog
 
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")
