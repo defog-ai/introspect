@@ -150,12 +150,12 @@ async def one_report(request: Request):
 async def create_report(request: Request):
     try:
         params = await request.json()
-        username = params.get("username")
+        token = params.get("token")
 
         print("create_report", params)
 
         err, report_data = await initialise_report(
-            "", username, params.get("custom_id"), params.get("other_data")
+            "", token, params.get("custom_id"), params.get("other_data")
         )
 
         if err is not None:
@@ -294,8 +294,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         table_metadata_csv=table_metadata_csv,
                         post_process_data=data,
                         glossary=glossary,
-                        # user_email is used to figure out which tools to give to the user
-                        user_email=data.get("user_email"),
+                        # token is used to figure out which tools to give to the user
+                        token=data.get("token"),
                         extra_approaches=[],
                         db_creds=data.get("db_creds"),
                         toolboxes=toolboxes,
