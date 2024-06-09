@@ -127,7 +127,7 @@ def get_db_type():
     return defog.db_type
 
 
-async def get_metadata():
+async def get_metadata(dev=False):
     # check if metadata is stored in ~/.defog/metadata.json
     # if it is, load it
     # if not, make a request to the defog api to get it
@@ -146,7 +146,10 @@ async def get_metadata():
             #     table_metadata = json.load(f)
             md = await make_request(
                 f"{os.environ.get('DEFOG_BASE_URL')}/get_metadata",
-                {"api_key": os.environ.get("DEFOG_API_KEY")},
+                {
+                    "api_key": os.environ.get("DEFOG_API_KEY"),
+                    "dev": dev,
+                },
             )
             table_metadata = md["table_metadata"]
 
