@@ -817,7 +817,6 @@ $grid: repeating-linear-gradient(
       .analysis-results {
         @include table-chart;
         // somehow just giving it a width, any width (not max/min width) fixes the sidebars. ¯\_(ツ)_/¯
-        width: 400px;
         // border: 1px solid $light-gray;
         border-radius: 4px;
         box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
