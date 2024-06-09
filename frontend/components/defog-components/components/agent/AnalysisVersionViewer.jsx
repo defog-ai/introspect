@@ -9,6 +9,7 @@ import { Doc, applyUpdate, encodeStateAsUpdate } from "yjs";
 import YPartyKitProvider from "y-partykit/provider";
 import { AnalysisHistoryItem } from "./AnalysisHistoryItem";
 import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
+import { ArrowRightEndOnRectangleIcon } from "@heroicons/react/20/solid";
 
 const partyEndpoint = process.env.NEXT_PUBLIC_AGENTS_ENDPOINT;
 
@@ -75,10 +76,9 @@ function AnalysisVersionViewer({
   useEffect(() => {
     if (!searchRef.current) return;
     const placeholderQuestions = [
-      "Show me 5 rows",
       "A boxplot of ...",
       "Show me the average of ...",
-      "A chart showing ...",
+      "What is the highest ...",
     ];
 
     let idx = 0;
@@ -89,10 +89,7 @@ function AnalysisVersionViewer({
       let c = 0;
       interval = setInterval(() => {
         if (!searchRef.current) return;
-        searchRef.current.input.placeholder = placeholderQuestions[idx].slice(
-          0,
-          c
-        );
+        searchRef.current.placeholder = placeholderQuestions[idx].slice(0, c);
         c++;
         if (c > placeholderQuestions[idx].length) {
           clearInterval(interval);
@@ -122,7 +119,7 @@ function AnalysisVersionViewer({
           analysisId: newId,
           isRoot: isRoot,
           rootAnalysisId: isRoot ? newId : rootAnalysisId,
-          user_question: searchRef.current.input.value,
+          user_question: searchRef.current.value,
         };
 
         newAnalysis.directParentId = directParentId;
@@ -130,7 +127,7 @@ function AnalysisVersionViewer({
         // this is extra stuff we will send to the backend when creating an entry
         // in the db
         let createAnalysisRequestExtraParams = {
-          user_question: searchRef.current.input.value,
+          user_question: searchRef.current.value,
           is_root_analysis: isRoot,
           root_analysis_id: rootAnalysisId,
           direct_parent_id: directParentId,
@@ -192,7 +189,7 @@ function AnalysisVersionViewer({
         setSessionAnalyses(newSessionAnalyses);
         setActiveAnalysisId(newAnalysis.analysisId);
         setActiveRootAnalysisId(newAnalysis.rootAnalysisId);
-        searchRef.current.input.value = "";
+        searchRef.current.value = "";
         setAllAnalyses({
           ...allAnalyses,
           [newAnalysis.analysisId]: newAnalysis,
@@ -218,10 +215,10 @@ function AnalysisVersionViewer({
   return (
     <>
       <div
-        className="flex flex-col bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300"
+        className="flex flex-col bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300 w-full"
         id="analysis-version-viewer"
       >
-        <div className="flex grow">
+        <div className="flex">
           <div className="basis-3/4 rounded-tr-lg pb-14 pt-5 pl-5 relative">
             {activeAnalysisId &&
               !last10Analysis.some(
@@ -360,23 +357,40 @@ function AnalysisVersionViewer({
             </div>
           }
         </div>
-        <div className="sticky bottom-14 z-10">
-          <Input
+        <div className="sticky bottom-14 z-10 bg-white ml-8 right-0 border-2 border-gray-400 p-2 rounded-lg w-fit sm:w-8/12 h-16 shadow-custom hover:border-blue-500 focus:border-blue-500 flex">
+          <input
+            className="block w-full rounded-none rounded-l-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 sm:text-lg sm:leading-6"
             type="text"
             ref={searchRef}
-            onPressEnter={(ev) => {
-              // whenever we submit, we either start a new analysis or append to the current one
-              // based on where the user is currently in the UI
+            onKeyDown={(ev) => {
+              if (ev.key === "Enter") {
+                handleSubmit(
+                  activeRootAnalysisId,
+                  !activeRootAnalysisId,
+                  activeAnalysisId
+                );
+              }
+            }}
+            placeholder="Show me 5 rows"
+            disabled={loading}
+          />
+          <button
+            type="button"
+            className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
+            onClick={() => {
               handleSubmit(
                 activeRootAnalysisId,
                 !activeRootAnalysisId,
                 activeAnalysisId
               );
             }}
-            placeholder="Show me 5 rows"
-            disabled={loading}
-            rootClassName="bg-white absolute mx-auto -left-1/4 right-0 border-2 border-gray-400 -bottom-8 p-2 rounded-lg w-full lg:w-6/12 mx-auto h-16 shadow-custom hover:border-blue-500 focus:border-blue-500"
-          />
+          >
+            <ArrowRightEndOnRectangleIcon
+              className="-ml-0.5 h-5 w-5 text-gray-400"
+              aria-hidden="true"
+            />
+            Ask
+          </button>
         </div>
       </div>
       <Modal
