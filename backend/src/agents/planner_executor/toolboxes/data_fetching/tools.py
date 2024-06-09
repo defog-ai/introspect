@@ -22,14 +22,13 @@ async def data_fetcher_and_aggregator(
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")
 
-    glossary = global_dict.get("glossary", "")
-    metadata = global_dict.get("table_metadata_csv", "")
+    dev = global_dict.get("dev", False)
 
     print(f"Global dict currently has keys: {list(global_dict.keys())}")
 
     # send the data to the Defog, and get a response from it
     defog = Defog()
-    res = await asyncio.to_thread(defog.get_query, question)
+    res = await asyncio.to_thread(defog.get_query, question, dev=dev)
 
     # make async request to the url, using the appropriate library
     try:
