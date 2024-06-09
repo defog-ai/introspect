@@ -356,7 +356,7 @@ export const AnalysisAgent = ({
                           <AgentLoader
                             message={
                               analysisData.currentStage === "gen_steps"
-                                ? "Creating plan..."
+                                ? "Generating SQL..."
                                 : "Executing plan..."
                             }
                             lottie={
