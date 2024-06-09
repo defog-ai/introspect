@@ -12,6 +12,7 @@ import yaml
 import pickle
 from sentence_transformers import SentenceTransformer
 from uuid import uuid4
+from auth_utils import validate_user
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 with open("./agent_vs_sqlcoder_classifier.pkl", "rb") as f:
@@ -202,6 +203,13 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 report_id = data.get("report_id")
+                token = data.get("token")
+                if validate_user(token) is False:
+                    await websocket.send_json(
+                        {"success": False, "error_message": "Invalid token"}
+                    )
+                    continue
+                dev = data.get("dev")
 
                 # start a report data manager
                 # this fetches currently existing report data for this report
@@ -238,9 +246,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     if request_type == "gen_steps":
                         # get the sqlcoder response
-                        inputs = {"question": data["user_question"]}
+                        inputs = {
+                            "question": data["user_question"],
+                        }
                         result, tool_input_metadata = await execute_tool(
-                            "data_fetcher_and_aggregator", inputs, {}
+                            "data_fetcher_and_aggregator", inputs, {"dev": dev}
                         )
                         tool_run_id = str(uuid4())
                         step = {
@@ -281,7 +291,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         if data.get("toolboxes") and type(data.get("toolboxes")) == list
                         else []
                     )
-                    metadata_dets = await get_metadata()
+                    metadata_dets = await get_metadata(dev=dev)
                     glossary = metadata_dets["glossary"]
                     client_description = metadata_dets["client_description"]
                     table_metadata_csv = metadata_dets["table_metadata_csv"]
@@ -295,10 +305,11 @@ async def websocket_endpoint(websocket: WebSocket):
                         post_process_data=data,
                         glossary=glossary,
                         # token is used to figure out which tools to give to the user
-                        token=data.get("token"),
+                        token=token,
                         extra_approaches=[],
                         db_creds=data.get("db_creds"),
                         toolboxes=toolboxes,
+                        dev=dev,
                     )
 
                     # if the agent output is a generator, run it
