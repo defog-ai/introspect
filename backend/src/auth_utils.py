@@ -1,25 +1,44 @@
 import hashlib
-from db_utils import get_db_conn
+import psycopg2
+import os
 
 SALT = "TOMMARVOLORIDDLE"
 
 
-def validate_user(token, user_type=None):
+def get_db_conn():
+    conn = psycopg2.connect(
+        host=os.environ["DBHOST"],
+        dbname=os.environ["DATABASE"],
+        user=os.environ["DBUSER"],
+        password=os.environ["DBPASSWORD"],
+        port=os.environ["DBPORT"],
+    )
+    return conn
+
+
+def validate_user(token, user_type=None, get_username=False):
     conn = get_db_conn()
     cur = conn.cursor()
     cur.execute(
-        "SELECT user_type FROM defog_users WHERE hashed_password = %s", (token,)
+        "SELECT user_type, username FROM defog_users WHERE hashed_password = %s",
+        (token,),
     )
     user = cur.fetchone()
     conn.close()
     if user:
         if user_type == "admin":
             if user[0] == "admin":
-                return True
+                if get_username:
+                    return user[1]
+                else:
+                    return True
             else:
                 return False
         else:
-            return True
+            if get_username:
+                return user[1]
+            else:
+                return True
     else:
         return False
 
