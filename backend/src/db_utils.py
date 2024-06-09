@@ -26,6 +26,7 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import Session
 import psycopg2
 import yaml
+from auth_utils import validate_user
 
 from utils import embed_string, warn_str, YieldList
 import os
@@ -66,7 +67,11 @@ Feedback = Base.classes.defog_plans_feedback
 free_tier_quota = 100
 
 
-async def initialise_report(user_question, username, custom_id=None, other_data={}):
+async def initialise_report(user_question, token, custom_id=None, other_data={}):
+    username = validate_user(token, get_username=True)
+    if not username:
+        return {"success": False, "error_message": "Invalid token."}
+
     err = None
     timestamp = str(datetime.datetime.now())
     new_report_data = None
@@ -154,35 +159,6 @@ def add_report_markdown(report_markdown, report_id):
             "success": False,
             "error_message": "Server error. Could not save report.",
         }
-
-
-def validate_user():
-    """Validate user's API key + checks if they have quota left"""
-    # check if it exists in defog users
-    err = None
-    try:
-        with engine.begin() as conn:
-            rows = conn.execute(
-                select(Users).where(Users.token == DEFOG_API_KEY).limit(1)
-            )
-
-            if rows is None or rows.rowcount == 0:
-                err = "Your API key seems to be invalid"
-
-            row = rows.fetchone()
-
-            if row is None or row.is_premium is None or not row.is_premium:
-                err = "You need to be a paid user to use the agents feature."
-
-            elif row.is_premium:
-                err = None
-
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        err = "Error validating your API key."
-    finally:
-        return err
 
 
 def get_report_data(report_id):
@@ -416,7 +392,10 @@ def get_all_reports():
         return err, reports
 
 
-async def add_to_recently_viewed_docs(username, doc_id, timestamp):
+async def add_to_recently_viewed_docs(token, doc_id, timestamp):
+    username = validate_user(token, get_username=True)
+    if not username:
+        return {"success": False, "error_message": "Invalid token."}
     try:
         print("Adding to recently viewed docs for user: ", username)
         with engine.begin() as conn:
@@ -472,7 +451,10 @@ async def add_to_recently_viewed_docs(username, doc_id, timestamp):
         print("Could not add to recently viewed docs\n")
 
 
-async def get_doc_data(doc_id, username, col_name="doc_blocks"):
+async def get_doc_data(doc_id, token, col_name="doc_blocks"):
+    username = validate_user(token, get_username=True)
+    if not username:
+        return {"success": False, "error_message": "Invalid token."}
     err = None
     timestamp = str(datetime.datetime.now())
     doc_data = None
@@ -706,7 +688,10 @@ async def get_table_data(table_id):
         return err, table_data
 
 
-async def get_all_docs(username):
+async def get_all_docs(token):
+    username = validate_user(token, get_username=True)
+    if not username:
+        return {"success": False, "error_message": "Invalid token."}
     # get reports from the reports table
     err = None
     own_docs = []
@@ -823,7 +808,10 @@ async def get_all_analyses():
         return err, analyses
 
 
-async def get_toolboxes(username):
+async def get_toolboxes(token):
+    username = validate_user(token, get_username=True)
+    if not username:
+        return {"success": False, "error_message": "Invalid token."}
     # table is defog_agent_toolboxes
     # get all toolboxes available to a user using the username
     err = None
@@ -1215,7 +1203,7 @@ def get_db_conn():
 
 
 async def store_feedback(
-    username,
+    token,
     user_question,
     analysis_id,
     is_correct,
@@ -1227,6 +1215,9 @@ async def store_feedback(
 ):
     error = None
     did_overwrite = False
+    username = validate_user(token, get_username=True)
+    if not username:
+        return {"success": False, "error_message": "Invalid token."}
     try:
         qn_embedding = None
         # create an embedding of the question
