@@ -438,7 +438,7 @@ async def rerun_step(websocket: WebSocket):
 
             tool_run_id = data.get("tool_run_id")
             analysis_id = data.get("analysis_id")
-            dev = data.get("dev")
+            dev = data.get("dev", False)
 
             if tool_run_id is None or type(tool_run_id) != str:
                 return {"success": False, "error_message": "Invalid tool run id."}
@@ -456,7 +456,7 @@ async def rerun_step(websocket: WebSocket):
                     "analysis_id": analysis_id,
                 }
 
-            metadata_dets = await get_metadata()
+            metadata_dets = await get_metadata(dev=dev)
             glossary = metadata_dets["glossary"]
             client_description = metadata_dets["client_description"]
             table_metadata_csv = metadata_dets["table_metadata_csv"]

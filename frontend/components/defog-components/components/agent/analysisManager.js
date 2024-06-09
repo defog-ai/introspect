@@ -265,6 +265,7 @@ function AnalysisManager({
       rerunSocket.send({
         tool_run_id: toolRunId,
         analysis_id: analysisId,
+        dev: devMode,
       });
     }
   }
