@@ -86,8 +86,7 @@ const ViewNotebooks = () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        api_key: context.token,
-        username: context.user,
+        token: context.token,
       }),
     });
     res = await res.json();

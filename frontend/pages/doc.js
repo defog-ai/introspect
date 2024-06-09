@@ -18,7 +18,7 @@ export default function DocPage() {
   const [context, setContext] = useContext(Context);
 
   const [user, setUser] = useState(context.user);
-
+  const token = context.token;
   const docId = useRef(null);
 
   useEffect(() => {
@@ -83,7 +83,7 @@ export default function DocPage() {
       <Meta />
       <Scaffolding id={"view-notebooks"} userType={"admin"}>
         <ErrorBoundary>
-          <Doc docId={docId.current} username={user}></Doc>
+          <Doc docId={docId.current} token={token}></Doc>
         </ErrorBoundary>
       </Scaffolding>
     </>

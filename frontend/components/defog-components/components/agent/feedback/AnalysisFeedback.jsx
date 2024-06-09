@@ -13,7 +13,7 @@ export function AnalysisFeedback({
   analysisId,
   analysisSteps,
   user_question,
-  username,
+  token,
 }) {
   const [modalVisible, setModalVisible] = useState(null);
 
@@ -27,7 +27,7 @@ export function AnalysisFeedback({
         ...feedback,
         analysis_id: analysisId,
         user_question: user_question,
-        username: username,
+        token: token,
       }),
     });
 

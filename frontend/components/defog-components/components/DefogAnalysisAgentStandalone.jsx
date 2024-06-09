@@ -9,18 +9,18 @@ import Context from "./common/Context";
 import { v4 } from "uuid";
 import { DocContext, RelatedAnalysesContext } from "../../docs/DocContext";
 import { ReactiveVariablesContext } from "../../docs/ReactiveVariablesContext";
-import {
-  getAllAnalyses,
-  getAllDashboards,
-  getUserMetadata,
-} from "$utils/utils";
+import { getAllAnalyses, getAllDashboards } from "$utils/utils";
 import styled, { createGlobalStyle } from "styled-components";
 import ErrorBoundary from "./common/ErrorBoundary";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { setupWebsocketManager } from "$utils/websocket-manager";
 import AnalysisVersionViewer from "./agent/AnalysisVersionViewer";
 
-export default function DefogAnalysisAgentStandalone({ analysisId, username }) {
+export default function DefogAnalysisAgentStandalone({
+  analysisId,
+  token,
+  devMode,
+}) {
   const [context, setContext] = useState({});
   const [id, setId] = useState(analysisId || "analysis-" + v4());
   const [docContext, setDocContext] = useState(useContext(DocContext));
@@ -45,24 +45,13 @@ export default function DefogAnalysisAgentStandalone({ analysisId, username }) {
       // setup user items
       const items = docContext.userItems;
       const analyses = await getAllAnalyses();
-      const dashboards = await getAllDashboards(username);
+      const dashboards = await getAllDashboards(token);
       if (dashboards?.success) {
         setDashboards(dashboards.docs);
       }
 
       if (analyses && analyses.success) {
         items.analyses = analyses.analyses;
-      }
-      // const toolboxes = await getToolboxes(username);
-      // if (toolboxes && toolboxes.success) {
-      //   items.toolboxes = toolboxes.toolboxes;
-      // }
-
-      // also get user's metadata
-      const metadata = await getUserMetadata();
-
-      if (metadata && metadata.success) {
-        items.metadata = metadata.metadata;
       }
 
       const urlToConnect = setupBaseUrl("ws", "ws");
@@ -138,7 +127,7 @@ export default function DefogAnalysisAgentStandalone({ analysisId, username }) {
                         data-analysis-id={analysisId}
                       >
                         <AnalysisVersionViewer
-                          username={username}
+                          token={token}
                           dashboards={dashboards}
                         />
                       </div>

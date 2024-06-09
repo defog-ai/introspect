@@ -29,11 +29,7 @@ export const getAnalysis = async (reportId) => {
 
 export const getReport = getAnalysis;
 
-export const createAnalysis = async (
-  username,
-  customId = null,
-  bodyData = {}
-) => {
+export const createAnalysis = async (token, customId = null, bodyData = {}) => {
   const urlToConnect = setupBaseUrl("http", "create_analysis");
   let response;
   try {
@@ -44,7 +40,7 @@ export const createAnalysis = async (
       },
       body: JSON.stringify({
         custom_id: customId,
-        username: username,
+        token: token,
         ...bodyData,
       }),
     });
@@ -57,7 +53,7 @@ export const createAnalysis = async (
 
 export const createReport = createAnalysis;
 
-export const getAllDocs = async (username) => {
+export const getAllDocs = async (token) => {
   const urlToConnect = setupBaseUrl("http", "get_docs");
   let response;
   try {
@@ -67,7 +63,7 @@ export const getAllDocs = async (username) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        username: username,
+        token: token,
       }),
     });
     return response.json();
@@ -113,7 +109,7 @@ export const getAllAnalyses = async () => {
   }
 };
 
-export const getToolboxes = async (username) => {
+export const getToolboxes = async (token) => {
   const urlToConnect = setupBaseUrl("http", "get_toolboxes");
   let response;
   try {
@@ -123,7 +119,7 @@ export const getToolboxes = async (username) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        username: username,
+        token: token,
       }),
     });
     return response.json();
@@ -200,22 +196,6 @@ export const deleteDoc = async (docId) => {
       body: JSON.stringify({
         doc_id: docId,
       }),
-    });
-    return response.json();
-  } catch (e) {
-    return { success: false, error_message: e };
-  }
-};
-
-export const getUserMetadata = async () => {
-  const url = setupBaseUrl("http", "get_user_metadata");
-  let response;
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
     });
     return response.json();
   } catch (e) {

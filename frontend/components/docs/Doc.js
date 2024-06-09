@@ -13,7 +13,7 @@ import { CustomFormattingToolbar } from "./CustomFormattingToolbar";
 import LoadingReport from "../reports/ReportLoading";
 import DocNav from "./DocNav";
 import { DocContext, RelatedAnalysesContext } from "./DocContext";
-import { getAllAnalyses, getToolboxes, getUserMetadata } from "$utils/utils";
+import { getAllAnalyses, getToolboxes } from "$utils/utils";
 import { DocSidebars } from "./DocSidebars";
 import { ReactiveVariablesContext } from "./ReactiveVariablesContext";
 import { ReactiveVariableNode } from "./customTiptap/ReactiveVariableNode";
@@ -31,7 +31,7 @@ const recentlyViewedEndpoint = setupBaseUrl(
   "add_to_recently_viewed_docs"
 );
 
-export function Editor({ docId = null, username = null }) {
+export function Editor({ docId = null, token = null }) {
   const [loading, setLoading] = useState(true);
   const [docContext, setDocContext] = useState(useContext(DocContext));
 
@@ -59,16 +59,9 @@ export function Editor({ docId = null, username = null }) {
       if (analyses && analyses.success) {
         items.analyses = analyses.analyses;
       }
-      const toolboxes = await getToolboxes(username);
+      const toolboxes = await getToolboxes(token);
       if (toolboxes && toolboxes.success) {
         items.toolboxes = toolboxes.toolboxes;
-      }
-
-      // also get user's metadata
-      const metadata = await getUserMetadata();
-
-      if (metadata && metadata.success) {
-        items.metadata = metadata.metadata;
       }
 
       const urlToConnect = setupBaseUrl("ws", "ws");
@@ -102,7 +95,7 @@ export function Editor({ docId = null, username = null }) {
         method: "POST",
         body: JSON.stringify({
           doc_id: docId,
-          username: username,
+          token: token,
         }),
       });
     }
@@ -131,13 +124,13 @@ export function Editor({ docId = null, username = null }) {
   const yjsProvider = new YPartyKitProvider(partyEndpoint, docId, yjsDoc, {
     params: {
       doc_id: docId,
-      username: username,
+      token: token,
     },
     protocol: "ws",
   });
 
   const editor = useCreateBlockNote({
-    ...createEditorConfig(null, yjsDoc, yjsProvider, username),
+    ...createEditorConfig(null, yjsDoc, yjsProvider, token),
     placeholders: {
       default: "Type /analysis to start",
     },
@@ -148,7 +141,7 @@ export function Editor({ docId = null, username = null }) {
   });
 
   window.editor = editor;
-  editor.username = username;
+  editor.token = token;
   window.reactiveContext = reactiveContext;
 
   editor.onEditorContentChange(() => {
@@ -186,7 +179,7 @@ export function Editor({ docId = null, username = null }) {
         value={{ val: reactiveContext, update: setReactiveContext }}
       >
         <DocContext.Provider value={{ val: docContext, update: setDocContext }}>
-          <DocNav username={username} currentDocId={docId}></DocNav>
+          <DocNav token={token} currentDocId={docId}></DocNav>
           <div className="content">
             <div className="editor-container">
               <BlockNoteView

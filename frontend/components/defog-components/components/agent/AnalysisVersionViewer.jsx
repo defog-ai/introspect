@@ -14,7 +14,7 @@ const partyEndpoint = process.env.NEXT_PUBLIC_AGENTS_ENDPOINT;
 
 function AnalysisVersionViewer({
   dashboards,
-  username,
+  token,
   // this isn't always reinforced
   // we check for this only when we're creating a new analysis
   // but not otherwise
@@ -241,7 +241,7 @@ function AnalysisVersionViewer({
                             (item) => item.analysisId === activeAnalysisId
                           ).createAnalysisRequestBody
                     }
-                    username={username}
+                    token={token}
                     initiateAutoSubmit={true}
                     searchRef={searchRef}
                     setGlobalLoading={setLoading}
@@ -264,7 +264,7 @@ function AnalysisVersionViewer({
                     createAnalysisRequestBody={
                       analysis.createAnalysisRequestBody
                     }
-                    username={username}
+                    token={token}
                     initiateAutoSubmit={true}
                     searchRef={searchRef}
                     setGlobalLoading={setLoading}
@@ -382,55 +382,6 @@ function AnalysisVersionViewer({
         onOk={() => {
           console.log(selectedDashboards);
           return;
-          selectedDashboards.forEach((dashboardId) => {
-            const dashboard = dashboards.find(
-              (dashboard) => dashboard.doc_id === dashboardId
-            );
-
-            if (!dashboard) return;
-
-            const analysisId = analysisVersionList[activeAnalysisId].analysisId;
-            const docId = dashboard.doc_id;
-            const docTitle = dashboard.doc_title;
-
-            try {
-              const newDoc = new Doc();
-              // connect to partykit to flush updates to all connected editors + the backend
-              const yjsProvider = new YPartyKitProvider(
-                partyEndpoint,
-                docId,
-                newDoc,
-                {
-                  params: {
-                    doc_id: docId,
-                    username: v4(),
-                  },
-                  protocol: "ws",
-                }
-              );
-
-              yjsProvider.on("sync", () => {
-                // appendAnalysisToYjsDoc(yjsProvider.doc, analysisId);
-              });
-
-              // yjsProvider.doc.on("update", () => {
-              //   console.log(
-              //     "update: ",
-              //     yjsProvider.doc
-              //       .getXmlFragment("document-store")
-              //       .firstChild.toJSON()
-              //   );
-              // });
-              // console.log("synced", docId);
-              // console.log(yjsProvider.doc.toJSON());
-              // // appendAnalysisToYjsDoc(newDoc, docTitle, analysisId);
-              // console.log("Adding analysis to dashboard", dashboardId);
-              // });
-            } catch (e) {
-              message.error("Failed to add analysis to dashboard " + e);
-            }
-          });
-          setAddToDashboardSelection(false);
         }}
         onCancel={() => {
           setAddToDashboardSelection(false);

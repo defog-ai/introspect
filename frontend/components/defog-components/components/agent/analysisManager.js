@@ -16,7 +16,7 @@ function AnalysisManager({
   rerunSocket,
   onNewData = () => {},
   onReRunData = () => {},
-  username,
+  token,
   userEmail,
   createAnalysisRequestBody = {},
 }) {
@@ -50,7 +50,7 @@ function AnalysisManager({
     if (!res.success) {
       // create a new analysis
       fetchedAnalysisData = await createAnalysis(
-        username,
+        token,
         analysisId,
         createAnalysisRequestBody
       );
@@ -126,7 +126,7 @@ function AnalysisManager({
       max_approaches: 1,
       skip_extra_approaches: true,
       skip_text_gen: true,
-      user_email: userEmail,
+      token: token,
       db_creds: null,
     };
 

@@ -33,16 +33,9 @@ const QueryDatabase = () => {
   const [user, setUser] = useState();
   const [userType, setUserType] = useState();
   const [devMode, setDevMode] = useState(false);
-  const [ignoreCache, setIgnoreCache] = useState(false);
-  const [allowCaching, setAllowCaching] = useState("YES");
-  const [queryMode, setQueryMode] = useState("agents");
+  // const [queryMode, setQueryMode] = useState("agents");
 
   useEffect(() => {
-    // check if exists
-    setAllowCaching(
-      process.env.NEXT_PUBLIC_ALLOW_CACHING || "REPLACE_WITH_ALLOW_CACHING"
-    );
-
     const token = localStorage.getItem("defogToken");
     const userType = localStorage.getItem("defogUserType");
     const user = localStorage.getItem("defogUser");
@@ -64,12 +57,6 @@ const QueryDatabase = () => {
       });
   }, []);
 
-  useEffect(() => {
-    if (allowCaching !== "YES") {
-      setIgnoreCache(true);
-    }
-  }, [allowCaching]);
-
   return (
     <>
       <Meta />
@@ -89,54 +76,20 @@ const QueryDatabase = () => {
             }}
           />
         ) : null}
-        {userType === "admin" && allowCaching === "YES" ? (
-          <Switch
-            checkedChildren="Use Cache"
-            unCheckedChildren="Ignore Cache"
-            checked={!ignoreCache}
-            onChange={(e) => {
-              setIgnoreCache(!e);
-            }}
-          />
-        ) : null}
-        <Switch
+        {/* <Switch
           checkedChildren="SQL"
           unCheckedChildren="Agents"
           checked={queryMode === "sql"}
           onChange={(e) => {
             setQueryMode(e ? "sql" : "agents");
           }}
-        />
+        /> */}
         {token ? (
-          queryMode === "sql" ? (
-            <AskDefogChat
-              maxWidth={"100%"}
-              height={"80vh"}
-              apiEndpoint={setupBaseUrl("http", "query")}
-              apiKey={
-                process.env.NEXT_PUBLIC_DEFOG_API_KEY ||
-                "REPLACE_WITH_DEFOG_API_KEY"
-              }
-              buttonText={
-                process.env.NEXT_PUBLIC_BUTTON_TEXT ||
-                "REPLACE_WITH_BUTTON_TEXT"
-              }
-              placeholderText={"Ask your data questions here"}
-              darkMode={false}
-              debugMode={userType === "admin" ? true : false}
-              additionalParams={{
-                token: token,
-                dev: devMode,
-                ignore_cache: ignoreCache,
-              }}
-              clearOnAnswer={true}
-              guidedTeaching={userType === "admin" ? true : false}
-              dev={devMode}
-              chartTypeEndpoint="/get_chart_types"
-            />
-          ) : (
-            <DefogAnalysisAgentStandalone analysisId={null} username={user} />
-          )
+          <DefogAnalysisAgentStandalone
+            analysisId={null}
+            token={token}
+            devMode={devMode}
+          />
         ) : null}
       </Scaffolding>
     </>

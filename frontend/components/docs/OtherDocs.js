@@ -2,13 +2,13 @@ import React, { Fragment, useEffect, useMemo, useState } from "react";
 import { Dropdown } from "antd";
 import { getAllDocs } from "$utils/utils";
 
-export default function OtherDocs({ username, currentDocId }) {
+export default function OtherDocs({ token, currentDocId }) {
   const [otherDocs, setOtherDocs] = useState([]);
 
   useEffect(() => {
     async function getDocs() {
       try {
-        const json = await getAllDocs(username);
+        const json = await getAllDocs(token);
         if (json.success) {
           setOtherDocs(json.docs);
         }

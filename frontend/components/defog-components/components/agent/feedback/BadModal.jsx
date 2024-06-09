@@ -315,7 +315,7 @@ export default function BadModal({
                     <AnalysisAgent
                       key={rawFeedback.new_analysis_id}
                       analysisId={rawFeedback.new_analysis_id}
-                      username={context.username}
+                      token={context.token}
                       disableFeedback={true}
                     />
                   </div>
