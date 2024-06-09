@@ -17,16 +17,6 @@ const DefogAnalysisAgentStandalone = dynamic(
   }
 );
 
-const AskDefogChat = dynamic(
-  () =>
-    import("defog-components").then((module) => {
-      return module.AskDefogChat;
-    }),
-  {
-    ssr: false,
-  }
-);
-
 const QueryDatabase = () => {
   const [selectedTables, setSelectedTables] = useState([]);
   const [token, setToken] = useState();
