@@ -352,8 +352,11 @@ export default function ChartContainer({
 
 const ChartContainerWrap = styled.div`
   .chart-container {
+    max-width: 100%;
     .chart-container-controls {
       display: flex;
+      flex-wrap: wrap;
+
       .chart-container-select {
         margin: 10px 15px;
         width: 300px;
@@ -365,6 +368,7 @@ const ChartContainerWrap = styled.div`
             background: #efefef;
           }
         }
+
         h4 {
           color: ${(props) =>
             props.theme ? props.theme.primaryText : "#606060"};

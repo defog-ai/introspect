@@ -27,12 +27,12 @@ const ColumnChart = React.memo(
   ({ chartConfig, title, height, xAxisIsDate, theme }) => {
     const { chartLabels, chartData } = chartConfig;
     setChartJSDefaults(ChartJS, title, xAxisIsDate, theme);
-    
+
     return (
       <ErrorBoundary>
         <Row justify={"center"}>
           <Col md={{ span: 24 }} lg={12}>
-            <div className="column-chart-ctr" style={{ height: height + "px" }}>
+            <div className="column-chart-ctr" style={{ height: height }}>
               <Bar
                 data={{
                   labels: chartLabels,
