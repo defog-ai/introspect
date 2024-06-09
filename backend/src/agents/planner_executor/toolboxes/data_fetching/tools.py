@@ -20,7 +20,7 @@ async def data_fetcher_and_aggregator(
         raise ValueError("Question cannot be empty")
 
     dev = global_dict.get("dev", False)
-
+    print(f"Dev: {dev}")
     print(f"Global dict currently has keys: {list(global_dict.keys())}")
 
     # send the data to the Defog, and get a response from it
@@ -30,6 +30,7 @@ async def data_fetcher_and_aggregator(
     # make async request to the url, using the appropriate library
     try:
         query = res["query_generated"]
+        print(query)
     except:
         return {
             "error": "There was an error in generating the query. Please try again."
