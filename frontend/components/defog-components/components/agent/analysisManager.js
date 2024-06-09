@@ -128,6 +128,7 @@ function AnalysisManager({
       skip_text_gen: true,
       token: token,
       db_creds: null,
+      dev: devMode,
     };
 
     console.groupCollapsed("Analysis Manager submitting");
