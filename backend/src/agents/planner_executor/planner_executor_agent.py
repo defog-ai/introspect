@@ -42,6 +42,7 @@ class Executor:
         toolboxes=[],
         parent_analyses=[],
         similar_plans=[],
+        dev=False,
         predefined_steps=None,
         direct_parent_analysis=None,
     ):
@@ -58,6 +59,7 @@ class Executor:
         self.similar_plans = similar_plans
         self.predefined_steps = predefined_steps
         self.direct_parent_analysis = direct_parent_analysis
+        self.dev = dev
 
         self.global_dict = {
             "user_question": user_question,
@@ -70,6 +72,7 @@ class Executor:
             "dfg": None,
             "llm_calls_url": llm_calls_url,
             "report_assets_dir": report_assets_dir,
+            "dev": dev,
         }
 
         # keep storing store column names of each step's generated data
