@@ -129,6 +129,7 @@ export default function DefogAnalysisAgentStandalone({
                         <AnalysisVersionViewer
                           token={token}
                           dashboards={dashboards}
+                          devMode={devMode}
                         />
                       </div>
                     </div>

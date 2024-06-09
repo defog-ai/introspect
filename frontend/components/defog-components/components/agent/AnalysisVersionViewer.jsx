@@ -15,6 +15,7 @@ const partyEndpoint = process.env.NEXT_PUBLIC_AGENTS_ENDPOINT;
 function AnalysisVersionViewer({
   dashboards,
   token,
+  devMode,
   // this isn't always reinforced
   // we check for this only when we're creating a new analysis
   // but not otherwise
@@ -246,6 +247,7 @@ function AnalysisVersionViewer({
                     searchRef={searchRef}
                     setGlobalLoading={setLoading}
                     managerCreatedHook={managerCreatedHook}
+                    devMode={devMode}
                   />
                 </div>
               )}
@@ -269,6 +271,7 @@ function AnalysisVersionViewer({
                     searchRef={searchRef}
                     setGlobalLoading={setLoading}
                     managerCreatedHook={managerCreatedHook}
+                    devMode={devMode}
                   />
                 </div>
               );

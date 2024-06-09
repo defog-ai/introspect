@@ -29,6 +29,7 @@ const getToolsEndpoint = setupBaseUrl("http", "get_user_tools");
 export const AnalysisAgent = ({
   analysisId,
   token,
+  devMode,
   editor,
   block,
   createAnalysisRequestBody = {},
@@ -130,6 +131,7 @@ export const AnalysisAgent = ({
       onNewData: onMainSocketMessage,
       onReRunData: onReRunMessage,
       token,
+      devMode,
       userEmail: user,
       createAnalysisRequestBody,
     });

@@ -17,7 +17,7 @@ function AnalysisManager({
   onNewData = () => {},
   onReRunData = () => {},
   token,
-  userEmail,
+  devMode,
   createAnalysisRequestBody = {},
 }) {
   let analysisData = null;
