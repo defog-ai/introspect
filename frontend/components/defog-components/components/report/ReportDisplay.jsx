@@ -162,7 +162,6 @@ const ReportWrap = styled.div`
   margin: 4em auto;
   .csv-table {
     width: 100%;
-    min-width: 400px;
     margin: 0 0 4em;
   }
 
