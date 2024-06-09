@@ -12,10 +12,10 @@ export default {
     const params = new URLSearchParams(ws.uri.split("?").pop());
     const docId = params.get("doc_id");
     const apiToken = params.get("api_token");
-    const username = params.get("username");
+    const token = params.get("token");
     const docsBackend = await setupWebsocketManager(docsEndpoint);
 
-    console.log("onConnect", docId, apiToken, username);
+    console.log("onConnect", docId, apiToken, token);
 
     return await onConnect(ws, room, {
       load() {
@@ -25,7 +25,7 @@ export default {
             api_key: apiToken,
             doc_id: docId,
             col_name: "doc_uint8",
-            username: username,
+            token: token,
           }),
         })
           .then((d) => d.json())
@@ -63,7 +63,7 @@ export default {
               doc_uint8: JSON.stringify({ bytes: Array.from(yjsState) }),
               doc_id: docId,
               doc_title: title,
-              username: username,
+              token: token,
               api_key: apiToken,
             });
           } catch (e) {
