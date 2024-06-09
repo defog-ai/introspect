@@ -552,10 +552,6 @@ def main(request):
     elif request_type == "clarify_task":
         resp = get_clarification(
             data["question"],
-            data["client_description"],
-            data["metadata"],
-            data.get("parent_questions", []),
-            data.get("direct_parent_analysis", None),
         )
         logging.info(resp)
     elif request_type == "create_plan":
