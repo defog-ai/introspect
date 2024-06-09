@@ -334,7 +334,7 @@ export const AnalysisAgent = ({
               )}
 
               {analysisData.currentStage === "gen_steps" ? (
-                <div className="analysis-content">
+                <div className="analysis-content flex">
                   <div className="analysis-results">
                     <ErrorBoundary>
                       {analysisData?.gen_steps?.steps.length ? (

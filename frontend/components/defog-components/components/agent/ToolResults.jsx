@@ -567,7 +567,7 @@ export function ToolResults({
             nodeId={activeNode.data.id}
             analysisId={analysisId}
           />
-          <div className="tool-run-analysis h-80  overflow-scroll">
+          <div className="tool-run-analysis h-80 overflow-scroll w-full">
             <div className="bg-gray-50 p-2 rounded-md border">
               {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"] ? (
                 <p style={{ whiteSpace: "pre-wrap" }} className="small code">

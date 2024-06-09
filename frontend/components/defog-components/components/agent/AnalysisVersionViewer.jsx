@@ -1,12 +1,8 @@
-import { Input, Modal, message } from "antd";
+import { Modal, message } from "antd";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 } from "uuid";
 import { AnalysisAgent } from "./AnalysisAgent";
-import { PlusOutlined, StarOutlined } from "@ant-design/icons";
-import { appendAnalysisToYjsDoc } from "$utils/utils";
-import setupBaseUrl from "$utils/setupBaseUrl";
-import { Doc, applyUpdate, encodeStateAsUpdate } from "yjs";
-import YPartyKitProvider from "y-partykit/provider";
+import { PlusOutlined } from "@ant-design/icons";
 import { AnalysisHistoryItem } from "./AnalysisHistoryItem";
 import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
 import { ArrowRightEndOnRectangleIcon } from "@heroicons/react/20/solid";
@@ -219,7 +215,7 @@ function AnalysisVersionViewer({
         id="analysis-version-viewer"
       >
         <div className="flex">
-          <div className="basis-3/4 rounded-tr-lg pb-14 pt-5 pl-5 relative">
+          <div className="sm:basis-3/4 rounded-tr-lg pb-14 pt-5 pl-5 relative">
             {activeAnalysisId &&
               !last10Analysis.some(
                 (analysis) => analysis.analysisId === activeAnalysisId
@@ -283,7 +279,7 @@ function AnalysisVersionViewer({
           </div>
 
           {
-            <div className="flex flex-col basis-1/4 mr-0 px-2 pt-5 pb-14 bg-gray-100 rounded-tl-lg relative">
+            <div className="flex flex-col basis-1/4 mr-0 px-2 pt-5 pb-14 bg-gray-100 rounded-tl-lg relative hidden sm:block">
               <h2 className="px-2 mb-3">History</h2>
               <div className="flex flex-col px-2 relative history-list">
                 <AnalysisVersionViewerLinks
@@ -304,7 +300,6 @@ function AnalysisVersionViewer({
                         setActiveRootAnalysisId={setActiveRootAnalysisId}
                         setActiveAnalysisId={setActiveAnalysisId}
                         setAddToDashboardSelection={setAddToDashboardSelection}
-                        extraClasses={"mt-2"}
                       />
                       {analysisVersionList.map((version, i) => {
                         return (
@@ -330,7 +325,6 @@ function AnalysisVersionViewer({
                     setActiveRootAnalysisId={setActiveRootAnalysisId}
                     setActiveAnalysisId={setActiveAnalysisId}
                     isActive={!activeRootAnalysisId}
-                    extraClasses={"mt-2"}
                   />
                 ) : (
                   <div className="w-full mt-5 sticky bottom-5">

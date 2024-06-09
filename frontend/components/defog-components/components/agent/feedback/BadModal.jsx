@@ -157,7 +157,7 @@ export default function BadModal({
             You can leave detailed comments for specific steps here
           </p>
           <div
-            className={`p-5 flex-grow border transition-all rounded-md`}
+            className={`p-5 flex border transition-all rounded-md`}
             onMouseOver={() => setActiveSection("step")}
             onMouseOut={() => {
               setActiveSection("general");

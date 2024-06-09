@@ -57,7 +57,10 @@ export default function ToolRunAnalysis({ question, data_csv, image = null }) {
 
   return (
     toolRunAnalysis.slice(0, 4) !== "NONE" && (
-      <p style={{ whiteSpace: "pre-wrap" }} className="small code">
+      <p
+        style={{ whiteSpace: "pre-wrap" }}
+        className="small code max-w-2xl w-full"
+      >
         {!toolRunAnalysis || toolRunAnalysis === "" ? (
           <>
             <LoadingOutlined /> Loading analysis...

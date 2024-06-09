@@ -120,7 +120,7 @@ export default function DefogAnalysisAgentStandalone({
               <GlobalStyle />
               <FontLoadCss>
                 <div className="content md:w-11/12">
-                  <div className="editor-container mt-4 mb-8">
+                  <div className="editor-container mt-4 mb-8 max-w-screen-xl w-full">
                     <div className="defog-analysis-container">
                       <div
                         data-content-type="analysis"
