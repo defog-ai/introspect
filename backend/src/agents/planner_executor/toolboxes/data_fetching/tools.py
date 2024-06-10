@@ -1,6 +1,3 @@
-import os
-
-
 async def data_fetcher_and_aggregator(
     question: str,
     global_dict: dict = {},
@@ -9,6 +6,7 @@ async def data_fetcher_and_aggregator(
     """
     This function generates a SQL query and runs it to get the answer.
     """
+    import os
     import asyncio
     import pandas as pd
     from tool_code_utilities import safe_sql, fetch_query_into_df
