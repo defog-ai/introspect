@@ -1,6 +1,4 @@
-import pandas as pd
-from pandasql import sqldf
-from defog import Defog
+import os
 
 
 async def data_fetcher_and_aggregator(
@@ -25,10 +23,15 @@ async def data_fetcher_and_aggregator(
 
     # send the data to the Defog, and get a response from it
     defog = Defog()
-    res = await asyncio.to_thread(defog.get_query, question, dev=dev)
+    defog.base_url = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
+    defog.generate_query_url = os.environ.get(
+        "DEFOG_GENERATE_URL", defog.base_url + "/generate_query_chat"
+    )
+    print(defog.__dict__, flush=True)
 
     # make async request to the url, using the appropriate library
     try:
+        res = await asyncio.to_thread(defog.get_query, question, dev=dev)
         query = res["query_generated"]
         print(query)
     except:
