@@ -25,8 +25,6 @@ async def data_fetcher_and_aggregator(
     defog.generate_query_url = os.environ.get(
         "DEFOG_GENERATE_URL", defog.base_url + "/generate_query_chat"
     )
-    print(defog.__dict__, flush=True)
-
     # make async request to the url, using the appropriate library
     try:
         res = await asyncio.to_thread(defog.get_query, question, dev=dev)

@@ -56,15 +56,11 @@ class Clarifier:
         self,
         user_question,
         client_description,
-        glossary,
-        table_metadata_csv,
         parent_analyses=[],
         direct_parent_analysis=None,
     ):
         self.user_question = user_question
         self.client_description = client_description
-        self.glossary = glossary
-        self.table_metadata_csv = table_metadata_csv
         self.parent_analyses = parent_analyses
         self.direct_parent_analysis = direct_parent_analysis
 
@@ -106,8 +102,6 @@ class Clarifier:
                 "request_type": "clarify_task",
                 "question": self.user_question,
                 "client_description": self.client_description,
-                "glossary": self.glossary,
-                "metadata": self.table_metadata_csv,
                 "parent_questions": [
                     i["user_question"]
                     for i in self.parent_analyses

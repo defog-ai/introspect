@@ -9,18 +9,6 @@ from agents.planner_executor.tool_helpers.tool_param_types import (
 from agents.planner_executor.toolboxes.plots.tools import line_plot
 
 
-async def dataset_metadata_describer(global_dict={}, **kwargs):
-    from io import StringIO
-
-    print(global_dict.get("table_metadata_csv"))
-    temp_df = pd.read_csv(StringIO(global_dict.get("table_metadata_csv"), ""))
-    temp_df = temp_df[["column_name", "data_type", "column_description"]]
-    print(temp_df)
-    return {
-        "outputs": [{"data": temp_df}],
-    }
-
-
 async def t_test(
     full_data: pd.DataFrame,
     group_column: DBColumn,

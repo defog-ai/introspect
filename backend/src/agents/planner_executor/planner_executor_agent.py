@@ -118,7 +118,6 @@ class Executor:
                         payload = {
                             "request_type": "fix_error",
                             "question": self.user_question,
-                            "metadata": self.table_metadata_csv,
                             "tool_library_prompt": self.tool_library_prompt,
                             "assignment_understanding": self.assignment_understanding,
                             "parent_questions": [
@@ -130,6 +129,7 @@ class Executor:
                             "erroreous_response": ans,
                             "similar_plans": self.similar_plans[:2],
                             "direct_parent_analysis": self.direct_parent_analysis,
+                            "api_key": self.dfg_api_key,
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
                     else:
@@ -137,6 +137,7 @@ class Executor:
                             "request_type": "create_plan",
                             "question": self.user_question,
                             "tool_library_prompt": self.tool_library_prompt,
+                            "assignment_understanding": self.assignment_understanding,
                             "parent_questions": [
                                 p["user_question"] for p in self.parent_analyses
                             ],

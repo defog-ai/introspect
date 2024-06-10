@@ -61,23 +61,6 @@ tool_name_dict = tools = {
             }
         ],
     },
-    "dataset_metadata_describer": {
-        "function_name": "dataset_metadata_describer",
-        "fn": dataset_metadata_describer,
-        "code": inspect.getsource(dataset_metadata_describer),
-        "toolbox": "stats",
-        "tool_name": "Dataset Metadata Describer",
-        "description": "Describes the columns available inside a dataset",
-        "input_metadata": {},
-        "toolbox": "stats",
-        "output_metadata": [
-            {
-                "name": "output_df",
-                "description": "pandas df",
-                "type": "pandas.core.frame.DataFrame",
-            }
-        ],
-    },
     "t_test": {
         "function_name": "t_test",
         "fn": t_test,

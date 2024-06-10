@@ -15,12 +15,7 @@ toolbox_prompts = {
   description: Converting a natural language question into a SQL query, that then runs on a database that is stored in global_dict. Fetches, filters, aggregates, and performs arithmetic computations on data. This tool has access to all of global_dict. This will only run on the data that is stored in global_dict. For external databases, use the data_fetcher_and_aggregator tool.
   inputs: [natural language description of the data required as a string, "global_dict.<input_df_name>"]
   outputs: pandas df""",
-    "stats": """- tool_name: dataset_metadata_describer
-  description: Describes the columns available inside a dataset
-  inputs: [None]
-  outputs: pandas df
-
-- tool_name: line_plot
+    "stats": """- tool_name: line_plot
   description: This function generates a line plot using python's seaborn library. It should be used when the user wants to see how a variable changes over time, and should be used immediately after the data_fetcher tool.
   inputs: ["global_dict.<input_df_name>", xaxis column (exactly a single column - often a datetime or string), yaxis column (exactly a single column - always a numerical value), hue column or None, facet column or None, estimator ("mean" if data must be aggregated, "None" if it is not aggregated), individual_id_column or None - refers to the column that contains individual data points, often some kind of id), plot_average_line or None - True if the user wants to plot an average or median line, average_line_type or None - the kind of value for the average line to have. Can be mean, median, max, min, or mode]
   outputs: pandas df

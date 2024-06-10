@@ -67,10 +67,9 @@ async def execute(
     print("Evaling approaches")
 
     executor = Executor(
-        report_id,
-        user_question,
-        client_description,
-        assignment_understanding,
+        report_id=report_id,
+        user_question=user_question,
+        assignment_understanding=assignment_understanding,
         toolboxes=toolboxes,
         parent_analyses=parent_analyses,
         similar_plans=similar_plans,

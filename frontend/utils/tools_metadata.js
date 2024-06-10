@@ -52,20 +52,6 @@ export const toolsMetadata = {
       },
     ],
   },
-  dataset_metadata_describer: {
-    name: "dataset_metadata_describer",
-    function_name: "Dataset Metadata Describer",
-    description: "Describes the columns available inside a dataset",
-    input_metadata: {},
-    toolbox: "stats",
-    output_metadata: [
-      {
-        name: "output_df",
-        description: "pandas dataframe",
-        type: "pandas.core.frame.DataFrame",
-      },
-    ],
-  },
   t_test: {
     name: "t_test",
     function_name: "T Test",
