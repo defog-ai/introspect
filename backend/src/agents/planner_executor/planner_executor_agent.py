@@ -35,9 +35,6 @@ class Executor:
         self,
         report_id,
         user_question,
-        client_description,
-        glossary,
-        table_metadata_csv,
         assignment_understanding,
         toolboxes=[],
         parent_analyses=[],
@@ -47,9 +44,6 @@ class Executor:
         direct_parent_analysis=None,
     ):
         self.user_question = user_question
-        self.client_description = client_description
-        self.glossary = glossary
-        self.table_metadata_csv = table_metadata_csv
         self.dfg_api_key = dfg_api_key
         self.toolboxes = toolboxes
         self.assignment_understanding = assignment_understanding
@@ -63,9 +57,6 @@ class Executor:
 
         self.global_dict = {
             "user_question": user_question,
-            "client_description": client_description,
-            "glossary": glossary,
-            "table_metadata_csv": table_metadata_csv,
             "dfg_api_key": dfg_api_key,
             "toolboxes": toolboxes,
             "assignment_understanding": assignment_understanding,
@@ -145,9 +136,7 @@ class Executor:
                         payload = {
                             "request_type": "create_plan",
                             "question": self.user_question,
-                            "metadata": self.table_metadata_csv,
                             "tool_library_prompt": self.tool_library_prompt,
-                            "assignment_understanding": self.assignment_understanding,
                             "parent_questions": [
                                 p["user_question"] for p in self.parent_analyses
                             ],
@@ -155,6 +144,7 @@ class Executor:
                             "next_step_data_description": next_step_data_description,
                             "similar_plans": self.similar_plans[:2],
                             "direct_parent_analysis": self.direct_parent_analysis,
+                            "api_key": self.dfg_api_key,
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
                     ans = ans.json()["generated_step"]
