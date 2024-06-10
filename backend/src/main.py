@@ -311,19 +311,12 @@ async def websocket_endpoint(websocket: WebSocket):
                         if data.get("toolboxes") and type(data.get("toolboxes")) == list
                         else []
                     )
-                    metadata_dets = await get_metadata(dev=dev)
-                    glossary = metadata_dets["glossary"]
-                    client_description = metadata_dets["client_description"]
-                    table_metadata_csv = metadata_dets["table_metadata_csv"]
                     # run the agent as per the request_type
                     err, agent_output = await report_data_manager.run_agent(
                         report_id=report_id,
                         request_type=request_type,
                         user_question=data["user_question"],
-                        client_description=client_description,
-                        table_metadata_csv=table_metadata_csv,
                         post_process_data=data,
-                        glossary=glossary,
                         # token is used to figure out which tools to give to the user
                         token=token,
                         extra_approaches=[],

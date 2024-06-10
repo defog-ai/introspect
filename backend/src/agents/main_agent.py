@@ -8,8 +8,6 @@ import traceback
 async def get_clarification(
     user_question="",
     client_description="",
-    table_metadata_csv="",
-    glossary="",
     parent_analyses=[],
     direct_parent_analysis=None,
     **kwargs,
@@ -23,8 +21,6 @@ async def get_clarification(
         clarifier = Clarifier(
             user_question,
             client_description,
-            glossary,
-            table_metadata_csv,
             parent_analyses,
             direct_parent_analysis,
         )
@@ -52,7 +48,6 @@ async def execute(
     report_id="",
     user_question="",
     client_description="",
-    table_metadata_csv="",
     assignment_understanding="",
     glossary="",
     toolboxes=[],
@@ -75,8 +70,6 @@ async def execute(
         report_id,
         user_question,
         client_description,
-        glossary,
-        table_metadata_csv,
         assignment_understanding,
         toolboxes=toolboxes,
         parent_analyses=parent_analyses,

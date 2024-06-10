@@ -63,31 +63,6 @@ llm_calls_url = os.environ["LLM_CALLS_URL"]
 report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
 
-@router.post("/get_user_metadata")
-async def get_user_metadata(request: Request):
-    """
-    Send the metadata, glossary, etc to the front end.
-    """
-    try:
-        metadata_dets = await get_metadata()
-        glossary = metadata_dets["glossary"]
-        client_description = metadata_dets["client_description"]
-        table_metadata_csv = metadata_dets["table_metadata_csv"]
-
-        return {
-            "success": True,
-            "metadata": {
-                "glossary": glossary,
-                "client_description": client_description,
-                "table_metadata_csv": table_metadata_csv,
-            },
-        }
-    except Exception as e:
-        logging.info("Error getting metadata: " + str(e))
-        traceback.print_exc()
-        return {"success": False, "error_message": "Unable to parse your request."}
-
-
 @router.websocket("/docs")
 async def doc_websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
@@ -1014,13 +989,6 @@ async def submit_feedback(request: Request):
         analysis_id = data.get("analysis_id")
         token = data.get("token")
         api_key = DEFOG_API_KEY
-
-        # get metadata
-        m = await get_metadata()
-        metadata = m["table_metadata_csv"]
-        client_description = m["client_description"]
-        glossary = m["glossary"]
-
         db_type = get_db_type()
 
         if analysis_id is None or type(analysis_id) != str:
@@ -1047,9 +1015,6 @@ async def submit_feedback(request: Request):
             analysis_id,
             is_correct,
             comments,
-            metadata,
-            client_description,
-            glossary,
             db_type,
         )
 
@@ -1116,19 +1081,10 @@ async def submit_feedback(request: Request):
                 if err:
                     raise Exception(err)
 
-                # run the steps
-                metadata_dets = await get_metadata()
-                glossary = metadata_dets["glossary"]
-                client_description = metadata_dets["client_description"]
-                table_metadata_csv = metadata_dets["table_metadata_csv"]
-
                 setup, post_process = await execute(
                     report_id=new_analysis_id,
                     user_question=user_question,
                     client_description=client_description,
-                    table_metadata_csv=table_metadata_csv,
-                    assignment_understanding="",
-                    glossary=glossary,
                     toolboxes=[],
                     parent_analyses=[],
                     similar_plans=[],

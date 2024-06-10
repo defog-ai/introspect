@@ -1208,9 +1208,6 @@ async def store_feedback(
     analysis_id,
     is_correct,
     comments,
-    metadata,
-    client_description,
-    glossary,
     db_type,
 ):
     error = None
@@ -1263,7 +1260,7 @@ async def store_feedback(
                 cursor.execute(
                     """
                     UPDATE defog_plans_feedback
-                    SET api_key = %s, username = %s, user_question = %s, embedding = %s, is_correct = %s, comments = %s, metadata = %s, client_description = %s, glossary = %s, db_type = %s
+                    SET api_key = %s, username = %s, user_question = %s, embedding = %s, is_correct = %s, comments = %s, db_type = %s
                     WHERE analysis_id = %s
                     """,
                     (
@@ -1274,9 +1271,6 @@ async def store_feedback(
                         is_correct,
                         # comments is a dict
                         json.dumps(comments),
-                        metadata,
-                        client_description,
-                        glossary,
                         db_type,
                         analysis_id,
                     ),
@@ -1286,8 +1280,8 @@ async def store_feedback(
                 print("Feedback does not exist for this analysis_id. Inserting...")
                 cursor.execute(
                     """
-                    INSERT INTO defog_plans_feedback (api_key, username, analysis_id, user_question, embedding, is_correct, comments, metadata, db_type, client_description, glossary)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO defog_plans_feedback (api_key, username, analysis_id, user_question, embedding, is_correct, comments, db_type)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         DEFOG_API_KEY,
@@ -1298,10 +1292,7 @@ async def store_feedback(
                         is_correct,
                         # comments is a dict
                         json.dumps(comments),
-                        metadata,
                         db_type,
-                        client_description,
-                        glossary,
                     ),
                 )
             conn.connection.commit()
