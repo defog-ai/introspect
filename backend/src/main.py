@@ -230,8 +230,21 @@ async def websocket_endpoint(websocket: WebSocket):
                 resp["request_type"] = request_type
                 resp["analysis_id"] = report_data_manager.report_data["report_id"]
 
-                # check if the user question needs agents, or just sqlcoder is fine
-                classification = get_classification(data["user_question"])
+                classification = "agent"
+
+                # if the question has "sqlcoder" in it, we can skip the agent
+                # and change the classification to sqlcoder
+                if "sqlcoder" in data["user_question"]:
+                    print("sqlcoder word found in question")
+                    classification = {"prediction": "sqlcoder"}
+
+                elif "agent" in data["user_question"]:
+                    print("agent word found in question")
+                    classification = {"prediction": "agent"}
+                else:
+                    # check if the user question needs agents, or just sqlcoder is fine
+                    classification = get_classification(data["user_question"])
+
                 print(classification, flush=True)
                 if classification["prediction"] == "sqlcoder":
                     # first, send the clarifier result as done
