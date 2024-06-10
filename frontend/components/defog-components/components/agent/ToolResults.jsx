@@ -434,8 +434,6 @@ export function ToolResults({
     }
   }, [analysisBusy]);
 
-  console.log("toolRunData", toolRunData);
-
   // rerunningstepsis array of object: {tool_run_id: res.pre_tool_run_message,
   // timeout: funciton
   // clearTimeout: function}

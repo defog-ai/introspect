@@ -53,20 +53,6 @@ function AnalysisVersionViewer({
   const [addToDashboardSelection, setAddToDashboardSelection] = useState(false);
   const [selectedDashboards, setSelectedDashboards] = useState([]);
 
-  const managerCreatedHook = (manager, analysisId) => {
-    // add manager to analysisVersionList
-    // let newAnalysisVersionList = analysisVersionList.map((item) => {
-    //   if (item.analysisId === analysisId) {
-    //     return {
-    //       ...item,
-    //       manager,
-    //     };
-    //   }
-    //   return item;
-    // });
-    // setAnalysisVersionList(newAnalysisVersionList);
-  };
-
   useEffect(() => {
     if (!searchRef.current) return;
     const placeholderQuestions = [
@@ -237,7 +223,6 @@ function AnalysisVersionViewer({
                     initiateAutoSubmit={true}
                     searchRef={searchRef}
                     setGlobalLoading={setLoading}
-                    managerCreatedHook={managerCreatedHook}
                     devMode={devMode}
                   />
                 </div>
@@ -261,7 +246,6 @@ function AnalysisVersionViewer({
                     initiateAutoSubmit={true}
                     searchRef={searchRef}
                     setGlobalLoading={setLoading}
-                    managerCreatedHook={managerCreatedHook}
                     devMode={devMode}
                   />
                 </div>

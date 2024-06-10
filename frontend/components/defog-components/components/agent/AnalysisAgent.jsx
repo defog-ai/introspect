@@ -59,7 +59,12 @@ export const AnalysisAgent = ({
     docContext.val.socketManagers;
 
   function onMainSocketMessage(response, newAnalysisData) {
+    if (response && response.pong) return;
+
     try {
+      if (response.error_message) {
+        throw new Error(response.error_message);
+      }
       setToolRunDataCache(analysisManager.toolRunDataCache);
 
       if (response && response?.done) {
@@ -67,19 +72,20 @@ export const AnalysisAgent = ({
         setGlobalLoading(false);
       }
 
-      if (!newAnalysisData) return;
-      // if current stage is clarify
-      // but clarification steps length is 0
-      // submit again
-      if (
-        newAnalysisData.currentStage === "clarify" &&
-        !newAnalysisData?.clarify?.clarification_questions?.length
-      ) {
-        handleSubmit(
-          newAnalysisData.user_question,
-          { clarification_questions: [] },
-          null
-        );
+      if (newAnalysisData) {
+        // if current stage is clarify
+        // but clarification steps length is 0
+        // submit again
+        if (
+          newAnalysisData.currentStage === "clarify" &&
+          !newAnalysisData?.clarify?.clarification_questions?.length
+        ) {
+          handleSubmit(
+            newAnalysisData.user_question,
+            { clarification_questions: [] },
+            null
+          );
+        }
       }
     } catch (e) {
       // messageApi.error(e);
@@ -119,6 +125,7 @@ export const AnalysisAgent = ({
     } catch (e) {
       // messageApi.error(e);
       console.log(e);
+      console.log(e.stack);
     } finally {
       setAnalysisBusy(false);
       setGlobalLoading(false);
@@ -204,6 +211,8 @@ export const AnalysisAgent = ({
             },
           });
         }
+
+        console.log(initiateAutoSubmit, analysisManager?.analysisData);
         if (
           initiateAutoSubmit &&
           !analysisManager?.analysisData?.currentStage
@@ -214,6 +223,7 @@ export const AnalysisAgent = ({
         }
       } catch (e) {
         console.log(e);
+        console.log(e.stack);
       }
     }
     initialiseAnalysis();
@@ -245,6 +255,7 @@ export const AnalysisAgent = ({
       } catch (err) {
         // messageApi.error(err);
         console.log(err);
+        console.log(err.stack);
         setAnalysisBusy(false);
         setGlobalLoading(false);
       }
@@ -269,9 +280,9 @@ export const AnalysisAgent = ({
       try {
         analysisManager.initiateReRun(toolRunId, preRunActions);
       } catch (e) {
-        console.log(e);
         // messageApi.error(err);
-        console.log(err);
+        console.log(e);
+        console.log(e.stack);
       }
     },
     [analysisId, activeNode, reRunManager, dag, analysisManager]

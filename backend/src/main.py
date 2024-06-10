@@ -240,6 +240,9 @@ async def websocket_endpoint(websocket: WebSocket):
                             "success": True,
                             "clarification_questions": [],
                         }
+                        # save blank clarifying step to the report data
+                        await report_data_manager.update("clarify", [], replace=True)
+
                         await websocket.send_json(resp)
                         del resp["output"]
                         resp["done"] = True
@@ -272,8 +275,14 @@ async def websocket_endpoint(websocket: WebSocket):
                             "model_generated_inputs": inputs,
                         }
 
+                        # save the above step to the report data
+                        await report_data_manager.update(
+                            "gen_steps", [step], replace=True
+                        )
+
+                        # store the tool run of the step
                         store_result = await store_tool_run(
-                            resp["analysis_id"], step, result, skip_step_update=True
+                            resp["analysis_id"], step, result
                         )
                         resp["output"] = {
                             "success": True,

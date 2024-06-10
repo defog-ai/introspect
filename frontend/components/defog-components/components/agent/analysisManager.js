@@ -156,6 +156,8 @@ function AnalysisManager({
   }
 
   function onMainSocketMessage(event) {
+    let response;
+    let newAnalysisData = null;
     try {
       if (!event.data) {
         throw new Error(
@@ -163,7 +165,7 @@ function AnalysisManager({
         );
       }
 
-      const response = JSON.parse(event.data);
+      response = JSON.parse(event.data);
 
       // if the response's analysis_id isn't this analysisId, ignore
       if (response?.analysis_id !== analysisId) return;
@@ -177,7 +179,7 @@ function AnalysisManager({
 
       const nextStage = agentRequestTypes[agentRequestTypes.indexOf(rType) + 1];
 
-      let newAnalysisData = { ...analysisData };
+      newAnalysisData = { ...analysisData };
 
       if (nextStage) {
         // if any of the stages including and after nextStage exists
@@ -232,14 +234,14 @@ function AnalysisManager({
       }
 
       setAnalysisData(newAnalysisData);
-
-      console.log(newAnalysisData);
-
+    } catch (e) {
+      console.log(e);
+      response = { error_message: e };
+      newAnalysisData = null;
+    } finally {
       if (onNewData && typeof onNewData === "function") {
         onNewData(response, newAnalysisData);
       }
-    } catch (e) {
-      throw new Error(e);
     }
   }
 
