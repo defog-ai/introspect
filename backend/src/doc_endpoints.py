@@ -456,16 +456,8 @@ async def rerun_step(websocket: WebSocket):
                     "analysis_id": analysis_id,
                 }
 
-            metadata_dets = await get_metadata(dev=dev)
-            glossary = metadata_dets["glossary"]
-            client_description = metadata_dets["client_description"]
-            table_metadata_csv = metadata_dets["table_metadata_csv"]
-
             global_dict = {
                 "user_question": analysis_data["user_question"],
-                "table_metadata_csv": table_metadata_csv,
-                "client_description": client_description,
-                "glossary": glossary,
                 "llm_calls_url": llm_calls_url,
                 "report_assets_dir": report_assets_dir,
                 "dev": dev,
@@ -769,16 +761,8 @@ async def download_csv(request: Request):
             if err:
                 return {"success": False, "error_message": err}
 
-            metadata_dets = await get_metadata()
-            glossary = metadata_dets["glossary"]
-            client_description = metadata_dets["client_description"]
-            table_metadata_csv = metadata_dets["table_metadata_csv"]
-
             global_dict = {
                 "user_question": analysis_data["user_question"],
-                "table_metadata_csv": table_metadata_csv,
-                "client_description": client_description,
-                "glossary": glossary,
                 "llm_calls_url": llm_calls_url,
                 "report_assets_dir": report_assets_dir,
             }
