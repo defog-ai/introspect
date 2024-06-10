@@ -1,15 +1,5 @@
 version: "3"
 services:
-  # run the cloud function in the docker for easier testing
-  agents-llm-calls:
-    build:
-      context: .
-      dockerfile: dockerfile.agents-llm-calls
-    networks:
-      - agents-network
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-
   agents-partykit:
     build:
       context: .
