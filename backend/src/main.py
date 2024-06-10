@@ -230,8 +230,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 resp["request_type"] = request_type
                 resp["analysis_id"] = report_data_manager.report_data["report_id"]
 
-                classification = "agent"
-
                 # if the question has "sqlcoder" in it, we can skip the agent
                 # and change the classification to sqlcoder
                 if "sqlcoder" in data["user_question"]:
