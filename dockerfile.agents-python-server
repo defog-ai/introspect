@@ -11,6 +11,9 @@ ENV OPENAI_API_KEY=$OPENAI_API_KEY
 # need cmake for scikit
 RUN apt-get update && apt-get install -y python3-pip cmake supervisor cron
 
+# if your are struggling with docker aggressively caching everything and not updating your latest files, just uncomment the line below. this will delete all files in the directory and ensure that you can run without running into caching issue
+# RUN rm -rf agents && rm -rf scripts
+
 COPY ./backend/src/requirements.txt ./requirements.txt
 # install requirements
 RUN pip install -r requirements.txt
