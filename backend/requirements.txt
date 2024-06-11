@@ -6,6 +6,7 @@ fastapi
 google-auth
 google-cloud-bigquery
 google-cloud-storage
+httpx
 hypercorn
 matplotlib
 mysql-connector-python
@@ -22,7 +23,6 @@ requests
 scikit-learn
 scipy
 seaborn
-sentence_transformers
 slack_sdk
 snowflake-connector-python
 sqlalchemy

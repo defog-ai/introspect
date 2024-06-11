@@ -8,15 +8,9 @@ from connection_manager import ConnectionManager
 from report_data_manager import ReportDataManager
 from agents.planner_executor.execute_tool import execute_tool
 import doc_endpoints
-import yaml
-import pickle
-from sentence_transformers import SentenceTransformer
 from uuid import uuid4
 from auth_utils import validate_user
-
-model = SentenceTransformer("all-MiniLM-L6-v2")
-with open("./agent_vs_sqlcoder_classifier.pkl", "rb") as f:
-    classifier = pickle.load(f)
+import httpx
 
 from db_utils import (
     get_all_reports,
@@ -25,7 +19,6 @@ from db_utils import (
     update_report_data,
     store_tool_run,
 )
-from utils import get_metadata
 import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes
 
 manager = ConnectionManager()
@@ -69,14 +62,18 @@ edit_request_types_and_prop_names = {
 }
 
 
-def get_classification(question, debug=False):
-    embeddings = model.encode(question)
-    if not debug:
-        answer = classifier.predict([embeddings])[0]
-        return {"prediction": "sqlcoder" if answer == 1 else "agent"}
+async def get_classification(question, debug=False):
+    async with httpx.AsyncClient() as client:
+        r = await client.post(
+            f"{os.environ['DEFOG_BASE_URL']}/classify_question",
+            json={"question": question, "api_key": DEFOG_API_KEY},
+        )
+
+    if r.status_code == 200:
+        return r.json()
     else:
-        answer = classifier.predict_proba([embeddings])[0]
-    return {"prediction": "sqlcoder" if answer[0] < 0.5 else "agent", "probs": answer}
+        print(f"Error getting question classification: {r.status_code}")
+        print(r.text)
 
 
 @app.post("/edit_report")
