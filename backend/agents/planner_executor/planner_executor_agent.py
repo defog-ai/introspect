@@ -130,6 +130,7 @@ class Executor:
                             "similar_plans": self.similar_plans[:2],
                             "direct_parent_analysis": self.direct_parent_analysis,
                             "api_key": self.dfg_api_key,
+                            "plan_id": self.analysis_id,
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
                     else:
@@ -146,6 +147,7 @@ class Executor:
                             "similar_plans": self.similar_plans[:2],
                             "direct_parent_analysis": self.direct_parent_analysis,
                             "api_key": self.dfg_api_key,
+                            "plan_id": self.analysis_id,
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
 
