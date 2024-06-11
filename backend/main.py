@@ -238,7 +238,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     classification = {"prediction": "agent"}
                 else:
                     # check if the user question needs agents, or just sqlcoder is fine
-                    classification = get_classification(data["user_question"])
+                    classification = await get_classification(data["user_question"])
 
                 print(classification, flush=True)
                 if classification["prediction"] == "sqlcoder":

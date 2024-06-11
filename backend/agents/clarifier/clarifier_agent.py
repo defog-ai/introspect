@@ -84,6 +84,7 @@ class Clarifier:
             payload = {
                 "request_type": "turn_into_statement",
                 "clarification_questions": clarification_questions,
+                "api_key": os.environ["DEFOG_API_KEY"],
             }
             r = await asyncio.to_thread(requests.post, url, json=payload)
             statements = r.json()["statements"]
@@ -108,9 +109,11 @@ class Clarifier:
                     if i["user_question"] is not None and i["user_question"] != ""
                 ],
                 "direct_parent_analysis": self.direct_parent_analysis,
+                "api_key": os.environ["DEFOG_API_KEY"],
             }
             r = await asyncio.to_thread(requests.post, url, json=payload)
             res = r.json()
+            print(res, flush=True)
             clarifying_questions = res["clarifications"]
             try:
                 cleaned_clarifying_questions = parse_q(clarifying_questions)
