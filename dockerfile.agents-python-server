@@ -15,9 +15,6 @@ COPY ./backend/requirements.txt ./requirements.txt
 
 RUN pip install -r ./requirements.txt
 
-# download the SentenceTransformers all-MiniLM-L6-v2 model
-RUN python -c 'from sentence_transformers import SentenceTransformer; SentenceTransformer("all-MiniLM-L6-v2")'
-
 # expose python server port
 EXPOSE 1235
 
