@@ -67,7 +67,6 @@ services:
       context: .
       dockerfile: dockerfile.agents-nginx
       args:
-        ENDPOINT: "${ENDPOINT}"
         DEFOG_API_KEY: "${DEFOG_API_KEY}"
         GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
         PORT: "${PORT:-80}"
