@@ -6,7 +6,6 @@ from utils import get_clean_plan
 from db_utils import (
     get_multiple_reports,
     get_report_data,
-    get_similar_correct_plans,
     update_report_data,
 )
 from agents.main_agent import (
@@ -99,13 +98,11 @@ class ReportDataManager:
             err = await update_report_data(
                 self.report_id, "user_question", self.user_question, True
             )
-            # get similar plans for this report_id and api_key
-            err, similar_plans = await get_similar_correct_plans(self.report_id)
 
             if err is not None:
                 print(err)
-                similar_plans = []
-                return
+
+            similar_plans = []
 
             # only get model_generate_inputs, description, done and outputs_storage_keys from the plans
             for i, p in enumerate(similar_plans):
