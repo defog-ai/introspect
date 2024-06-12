@@ -24,7 +24,6 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 SET search_path TO public;
-CREATE EXTENSION IF NOT EXISTS vector;
 
 --
 -- Name: defog_docs; Type: TABLE; Schema: public; Owner: postgres
@@ -89,8 +88,6 @@ CREATE TABLE public.defog_reports (
     understand jsonb,
     gen_approaches jsonb,
     user_question text,
-    -- embedding of the question
-    embedding vector,
     gen_report jsonb,
     report_id text NOT NULL,
     gen_steps jsonb,
@@ -174,8 +171,6 @@ CREATE TABLE public.defog_tools (
     code TEXT NOT NULL,
     input_metadata jsonb,
     output_metadata jsonb,
-    -- embedding for tool pruning later
-    embedding vector,
     toolbox TEXT,
     disabled BOOLEAN NOT NULL DEFAULT FALSE,
     cannot_delete BOOLEAN NOT NULL DEFAULT FALSE,
@@ -215,7 +210,6 @@ CREATE TABLE public.defog_plans_feedback (
     api_key text NOT NULL,
     username text NOT NULL,
     user_question text NOT NULL,
-    embedding vector, -- The embedding of the question
     comments jsonb,
     is_correct boolean NOT NULL,
     -- join on this with the defog_reports.report_id table to get the actual plan data
