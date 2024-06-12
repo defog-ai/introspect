@@ -1,4 +1,9 @@
-import { createAnalysis, getAnalysis, getToolRunData } from "$utils/utils";
+import {
+  createAnalysis,
+  deleteToolRunIds,
+  getAnalysis,
+  getToolRunData,
+} from "$utils/utils";
 
 // the name of the prop where the data is stored for each stage
 const propNames = {
@@ -106,6 +111,32 @@ function AnalysisManager({
     const nextStageIndex = agentRequestTypes.indexOf(currentStage) + 1;
 
     return agentRequestTypes[nextStageIndex];
+  }
+
+  async function deleteSteps(toolRunIds) {
+    const res = await deleteToolRunIds(analysisId, toolRunIds);
+    if (res.success && res.new_steps) {
+      let newAnalysisData = { ...analysisData };
+      // if new steps are empty, delete the gen_steps key
+      // else update the steps
+      if (res.new_steps.length === 0) {
+        delete newAnalysisData.gen_steps;
+      } else {
+        newAnalysisData = {
+          ...newAnalysisData,
+          gen_steps: {
+            ...newAnalysisData.gen_steps,
+            steps: res.new_steps,
+          },
+        };
+      }
+      console.log(res, newAnalysisData);
+      setAnalysisData(newAnalysisData);
+    } else {
+      throw new Error(
+        res.error_message || "Something went wrong while deleting steps."
+      );
+    }
   }
 
   function submit(query, stageInput = {}, submitSourceStage = null) {
@@ -432,6 +463,7 @@ function AnalysisManager({
     initiateReRun,
     setMainSocket,
     setReRunSocket,
+    deleteSteps,
   };
 }
 

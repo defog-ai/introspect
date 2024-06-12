@@ -59,10 +59,10 @@ export function ToolResults({
   setActiveNode = () => {},
   handleReRun = () => {},
   reRunningSteps = [],
-  setPendingToolRunUpdates = () => {},
+  setPendingToolRunUpdates = (...args) => {},
   toolRunDataCache = {},
-  setToolRunDataCache = () => {},
-  setAnalysisData = () => {},
+  setToolRunDataCache = (...args) => {},
+  handleDeleteSteps = async (...args) => {},
   tools = {},
   analysisBusy = false,
 }) {
@@ -91,36 +91,7 @@ export function ToolResults({
         .filter((d) => d?.data?.isTool)
         .map((d) => d?.data?.step?.tool_run_id);
 
-      const res = await fetch(deleteStepsEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          analysis_id: analysisId,
-          tool_run_ids: deleteToolRunIds,
-        }),
-      }).then((r) => r.json());
-
-      if (res.success && res.new_steps) {
-        setAnalysisData((prev) => {
-          // if new steps are empty, delete the gen_steps key
-          // else update the steps
-          if (res.new_steps.length === 0) {
-            const newData = { ...prev };
-            delete newData.gen_steps;
-            return newData;
-          } else {
-            return {
-              ...prev,
-              gen_steps: {
-                ...prev.gen_steps,
-                steps: res.new_steps,
-              },
-            };
-          }
-        });
-      }
+      await handleDeleteSteps(deleteToolRunIds);
     } catch (e) {
       console.log(e);
     } finally {
@@ -137,7 +108,7 @@ export function ToolResults({
 
     [...activeNode.descendants()].forEach((d) => {
       const id = d.data.id;
-      const node = document.querySelector(`.graph-node.${id}`);
+      const node = document.querySelector(`.graph-node.tool-run-${id}`);
       if (!node) return;
 
       // add a class highlighted
@@ -159,7 +130,7 @@ export function ToolResults({
         const closest = ev.target.closest(".analysis-content");
         if (!closest) return;
         // now get the closest .graph-node with the class name output
-        const node = closest.querySelector(`.graph-node.${id}`);
+        const node = closest.querySelector(`.graph-node.tool-run-${id}`);
         if (!node) return;
         // add a class highlighted
         node.classList.add("to-be-deleted");

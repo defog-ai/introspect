@@ -1,12 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SingleSelect from "./SingleSelect";
-import {
-  ArrowLeftStartOnRectangleIcon,
-  ArrowRightStartOnRectangleIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from "@heroicons/react/20/solid";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 
 const people = [
   {
@@ -19,6 +14,10 @@ const people = [
 ];
 
 const allowedPageSizes = [10, 20, 50, 100];
+
+const defaultSorter = (a, b) => {
+  return String(a).localeCompare(String(b));
+};
 
 export default function Table({
   columns,
@@ -35,8 +34,36 @@ export default function Table({
     [columns, skipColumns]
   );
 
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortOrder, setSortOrder] = useState(null);
+  const [sortedRows, setSortedRows] = useState(rows);
+
   const dataIndexes = columnsToDisplay.map((d) => d.dataIndex);
   const maxPage = Math.ceil(rows.length / pageSize);
+
+  function toggleSort(newColumn, newOrder) {
+    // if everything the same, set null
+    if (sortColumn?.title === newColumn?.title && sortOrder === newOrder) {
+      setSortColumn(null);
+      setSortOrder(null);
+    } else {
+      setSortColumn(newColumn);
+      setSortOrder(newOrder);
+    }
+  }
+
+  useEffect(() => {
+    if (sortColumn && sortOrder) {
+      // each column has a sorter function defined
+      const sorter = sortColumn.sorter || defaultSorter;
+      const sortedRows = rows.slice().sort((a, b) => {
+        return sortOrder === "asc" ? sorter(a, b) : sorter(b, a);
+      });
+      setSortedRows(sortedRows);
+    } else {
+      setSortedRows(rows);
+    }
+  }, [sortColumn, rows, sortOrder]);
 
   return (
     <div className={twMerge("overflow-auto", rootClassName)}>
@@ -57,13 +84,47 @@ export default function Table({
                         : ""
                     )}
                   >
-                    {column.title}
+                    <div className="flex flex-row items-center">
+                      <p className="grow">{column.title}</p>
+                      <div className="sorter-arrows ml-5 flex flex-col items-center w-4 overflow-hidden">
+                        <button className="h-3">
+                          <div
+                            onClick={() => {
+                              toggleSort(column, "asc");
+                            }}
+                            className={twMerge(
+                              "arrow-up cursor-pointer",
+                              "border-b-[5px] border-b-gray-300 hover:border-b-gray-500",
+                              sortOrder === "asc" &&
+                                sortColumn.title === column.title
+                                ? "border-b-gray-500"
+                                : ""
+                            )}
+                          />
+                        </button>
+                        <button className="h-3">
+                          <div
+                            onClick={() => {
+                              toggleSort(column, "desc");
+                            }}
+                            className={twMerge(
+                              "arrow-down cursor-pointer",
+                              "border-t-[5px] border-t-gray-300 hover:border-t-gray-500",
+                              sortOrder === "desc" &&
+                                sortColumn.title === column.title
+                                ? "border-t-gray-500"
+                                : ""
+                            )}
+                          />
+                        </button>
+                      </div>
+                    </div>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {rows
+              {sortedRows
                 .slice((currentPage - 1) * pageSize, currentPage * pageSize)
                 .map((row) => (
                   <tr key={row.key}>

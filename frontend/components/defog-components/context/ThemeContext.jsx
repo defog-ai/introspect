@@ -1,6 +1,6 @@
 import React, { createContext, useEffect, useState } from "react";
 
-export const ThemeContext = createContext();
+export const ThemeContext = createContext({});
 
 export const lightThemeColor = {
   primaryText: "#0D0D0D",

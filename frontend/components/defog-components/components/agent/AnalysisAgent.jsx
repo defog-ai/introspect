@@ -23,6 +23,7 @@ import Input from "antd/es/input";
 import Clarify from "./analysis-gen/Clarify";
 import AnalysisManager from "./analysisManager";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
 
 const getToolsEndpoint = setupBaseUrl("http", "get_user_tools");
 
@@ -209,8 +210,6 @@ export const AnalysisAgent = ({
             },
           });
         }
-
-        console.log(initiateAutoSubmit, analysisManager?.analysisData);
         if (
           initiateAutoSubmit &&
           !analysisManager?.analysisData?.currentStage
@@ -320,7 +319,7 @@ export const AnalysisAgent = ({
                 <></>
               )}
               {analysisData.currentStage === "clarify" ? (
-                <div className="analysis-recipe">
+                <div className="analysis-recipe w-full">
                   <Clarify
                     data={analysisData.clarify}
                     handleSubmit={(stageInput, submitStage) => {
@@ -344,8 +343,8 @@ export const AnalysisAgent = ({
               )}
 
               {analysisData.currentStage === "gen_steps" ? (
-                <div className="analysis-content flex">
-                  <div className="analysis-results">
+                <div className="analysis-content flex flex-row max-w-full overflow-auto">
+                  <div className="analysis-results grow overflow-scroll relative">
                     <ErrorBoundary>
                       {analysisData?.gen_steps?.steps.length ? (
                         <ToolResults
@@ -362,6 +361,14 @@ export const AnalysisAgent = ({
                           setToolRunDataCache={setToolRunDataCache}
                           tools={tools}
                           analysisBusy={analysisBusy}
+                          handleDeleteSteps={async (toolRunIds) => {
+                            try {
+                              await analysisManager.deleteSteps(toolRunIds);
+                            } catch (e) {
+                              console.log(e);
+                              console.log(e.stack);
+                            }
+                          }}
                         ></ToolResults>
                       ) : (
                         analysisBusy && (
@@ -381,8 +388,16 @@ export const AnalysisAgent = ({
                         )
                       )}
                     </ErrorBoundary>
+                    <div className="absolute top-8 right-12">
+                      <AnalysisFeedback
+                        analysisSteps={analysisData?.gen_steps?.steps || []}
+                        analysisId={analysisId}
+                        user_question={analysisData?.user_question}
+                        token={token}
+                      />
+                    </div>
                   </div>
-                  <div className="analysis-steps">
+                  <div className="analysis-steps overflow-auto">
                     <StepsDag
                       steps={analysisData?.gen_steps?.steps || []}
                       nodeSize={[40, 10]}

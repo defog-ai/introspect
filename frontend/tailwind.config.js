@@ -85,6 +85,18 @@ module.exports = {
           "writing-mode": "tb lr",
           transform: "rotate(-180deg)",
         },
+        ".arrow-up": {
+          width: "0",
+          height: "0",
+          borderLeft: "5px solid transparent",
+          borderRight: "5px solid transparent",
+        },
+        ".arrow-down": {
+          width: "0",
+          height: "0",
+          borderLeft: "5px solid transparent",
+          borderRight: "5px solid transparent",
+        },
       });
     }),
   ],
