@@ -207,21 +207,6 @@ def log_warn(msg=""):
     print(f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
 
 
-async def embed_string(
-    text: str, model: str = "text-embedding-3-large"
-) -> Optional[np.array]:
-    """
-    Use OpenAI to generate embeddings for the text
-    """
-    try:
-        text_embedding = await openai.embeddings.create(input=text, model=model)
-        text_embedding = text_embedding.data[0].embedding
-        return np.array(text_embedding)
-    except Exception as e:
-        print(e)
-        return None
-
-
 simple_tool_types = {
     "DBColumn": "Column name",
     "DBColumnList": "List of column names",
