@@ -1312,7 +1312,7 @@ async def add_tool(
             make_request(
                 url=f"{os.environ['DEFOG_BASE_URL']}/update_tool",
                 payload={
-                    "api_key": os.environ["DEFOG_API_KEY"],
+                    "api_key": DEFOG_API_KEY,
                     "tool_name": tool_name,
                     "function_name": function_name,
                     "description": description,
