@@ -1205,6 +1205,7 @@ async def store_feedback(
         make_request(
             f"{os.environ['DEFOG_BASE_URL']}/update_agent_feedback",
             {
+                "api_key": DEFOG_API_KEY,
                 "user_question": user_question,
                 "analysis_id": analysis_id,
                 "is_correct": is_correct,
