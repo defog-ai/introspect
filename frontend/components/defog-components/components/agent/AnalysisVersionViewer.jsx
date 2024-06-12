@@ -6,6 +6,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import { AnalysisHistoryItem } from "./AnalysisHistoryItem";
 import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
 import { ArrowRightEndOnRectangleIcon } from "@heroicons/react/20/solid";
+import Sidebar from "$components/tailwind/Sidebar";
 
 function AnalysisVersionViewer({
   dashboards,
@@ -194,18 +195,21 @@ function AnalysisVersionViewer({
   // w-0
   return (
     <>
-      <div
-        className="flex flex-col bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300 w-full"
-        id="analysis-version-viewer"
-      >
-        <div className="flex">
-          <div className="sm:basis-3/4 rounded-tr-lg pb-14 pt-5 pl-5 relative">
+      <div className="relative">
+        <div
+          className="max-w-full flex flex-col-reverse lg:flex-row bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300 w-full"
+          id="analysis-version-viewer"
+        >
+          <div className="grow rounded-tr-lg pb-14 pt-5 pl-5 relative min-w-0">
             {activeAnalysisId &&
               !last10Analysis.some(
                 (analysis) => analysis.analysisId === activeAnalysisId
               ) && (
                 // make sure we render the active analysis if clicked
-                <div key={activeAnalysisId} className={"relative z-2"}>
+                <div
+                  key={activeAnalysisId}
+                  className={"relative z-2 overflow-auto"}
+                >
                   <AnalysisAgent
                     analysisId={activeAnalysisId}
                     createAnalysisRequestBody={
@@ -233,7 +237,7 @@ function AnalysisVersionViewer({
                   key={analysis.analysisId}
                   className={
                     activeAnalysisId === analysis.analysisId
-                      ? "relative z-2"
+                      ? "relative z-2 w-full overflow-auto"
                       : "absolute opacity-0"
                   }
                 >
@@ -258,115 +262,125 @@ function AnalysisVersionViewer({
                 </p>
               </div>
             )}
+
+            <div className="w-10/12 m-auto lg:w-3/4 sticky bottom-14 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg h-16 shadow-custom hover:border-blue-500 focus:border-blue-500 flex">
+              <input
+                className="block w-full rounded-none rounded-l-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 sm:text-lg sm:leading-6"
+                type="text"
+                ref={searchRef}
+                onKeyDown={(ev) => {
+                  if (ev.key === "Enter") {
+                    handleSubmit(
+                      activeRootAnalysisId,
+                      !activeRootAnalysisId,
+                      activeAnalysisId
+                    );
+                  }
+                }}
+                placeholder="Show me 5 rows"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
+                onClick={() => {
+                  handleSubmit(
+                    activeRootAnalysisId,
+                    !activeRootAnalysisId,
+                    activeAnalysisId
+                  );
+                }}
+              >
+                <ArrowRightEndOnRectangleIcon
+                  className="-ml-0.5 h-5 w-5 text-gray-400"
+                  aria-hidden="true"
+                />
+                Ask
+              </button>
+            </div>
           </div>
 
           {
-            <div className="flex flex-col basis-1/4 mr-0 px-2 pt-5 pb-14 bg-gray-100 rounded-tl-lg relative hidden sm:block">
-              <h2 className="px-2 mb-3">History</h2>
-              <div className="flex flex-col px-2 relative history-list">
-                <AnalysisVersionViewerLinks
-                  analyses={allAnalyses}
-                  activeAnalysisId={activeAnalysisId}
-                />
-                {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
-                  const root = sessionAnalyses[rootAnalysisId].root;
-                  const analysisVersionList =
-                    sessionAnalyses[rootAnalysisId].versionList;
-
-                  return (
-                    <>
-                      <AnalysisHistoryItem
-                        key={root.analysisId}
-                        analysis={root}
-                        isActive={activeAnalysisId === root.analysisId}
-                        setActiveRootAnalysisId={setActiveRootAnalysisId}
-                        setActiveAnalysisId={setActiveAnalysisId}
-                        setAddToDashboardSelection={setAddToDashboardSelection}
-                      />
-                      {analysisVersionList.map((version, i) => {
-                        return (
-                          <AnalysisHistoryItem
-                            key={version.analysisId}
-                            analysis={version}
-                            isActive={activeAnalysisId === version.analysisId}
-                            setActiveRootAnalysisId={setActiveRootAnalysisId}
-                            setActiveAnalysisId={setActiveAnalysisId}
-                            setAddToDashboardSelection={
-                              setAddToDashboardSelection
-                            }
-                            extraClasses="ml-2 border-l-2"
-                          />
-                        );
-                      })}
-                    </>
-                  );
-                })}
-                {!activeRootAnalysisId ? (
-                  <AnalysisHistoryItem
-                    isDummy={true}
-                    setActiveRootAnalysisId={setActiveRootAnalysisId}
-                    setActiveAnalysisId={setActiveAnalysisId}
-                    isActive={!activeRootAnalysisId}
+            <div className="flex flex-col mr-0">
+              <Sidebar
+                title="History"
+                rootClassNames="z-20 rounded-md lg:rounded-none lg:rounded-tr-md bg-gray-100"
+                contentClassNames={
+                  "px-2 pt-5 pb-14 rounded-tl-lg relative sm:block"
+                }
+              >
+                <div className="flex flex-col px-2 relative history-list">
+                  <AnalysisVersionViewerLinks
+                    analyses={allAnalyses}
+                    activeAnalysisId={activeAnalysisId}
                   />
-                ) : (
-                  <div className="w-full mt-5 sticky bottom-5">
-                    <div
-                      data-enabled={!loading}
-                      className={
-                        "cursor-pointer z-20 relative " +
-                        "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom " +
-                        "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
-                      }
-                      onClick={() => {
-                        if (loading) return;
-                        // start a new root analysis
-                        setActiveRootAnalysisId(null);
-                        setActiveAnalysisId(null);
-                      }}
-                    >
-                      New <PlusOutlined />
+                  {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
+                    const root = sessionAnalyses[rootAnalysisId].root;
+                    const analysisVersionList =
+                      sessionAnalyses[rootAnalysisId].versionList;
+
+                    return (
+                      <>
+                        <AnalysisHistoryItem
+                          key={root.analysisId}
+                          analysis={root}
+                          isActive={activeAnalysisId === root.analysisId}
+                          setActiveRootAnalysisId={setActiveRootAnalysisId}
+                          setActiveAnalysisId={setActiveAnalysisId}
+                          setAddToDashboardSelection={
+                            setAddToDashboardSelection
+                          }
+                        />
+                        {analysisVersionList.map((version, i) => {
+                          return (
+                            <AnalysisHistoryItem
+                              key={version.analysisId}
+                              analysis={version}
+                              isActive={activeAnalysisId === version.analysisId}
+                              setActiveRootAnalysisId={setActiveRootAnalysisId}
+                              setActiveAnalysisId={setActiveAnalysisId}
+                              setAddToDashboardSelection={
+                                setAddToDashboardSelection
+                              }
+                              extraClasses="ml-2 border-l-2"
+                            />
+                          );
+                        })}
+                      </>
+                    );
+                  })}
+                  {!activeRootAnalysisId ? (
+                    <AnalysisHistoryItem
+                      isDummy={true}
+                      setActiveRootAnalysisId={setActiveRootAnalysisId}
+                      setActiveAnalysisId={setActiveAnalysisId}
+                      isActive={!activeRootAnalysisId}
+                    />
+                  ) : (
+                    <div className="w-full mt-5 sticky bottom-5">
+                      <div
+                        data-enabled={!loading}
+                        className={
+                          "cursor-pointer z-20 relative " +
+                          "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom " +
+                          "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
+                        }
+                        onClick={() => {
+                          if (loading) return;
+                          // start a new root analysis
+                          setActiveRootAnalysisId(null);
+                          setActiveAnalysisId(null);
+                        }}
+                      >
+                        New <PlusOutlined />
+                      </div>
+                      <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
                     </div>
-                    <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </Sidebar>
             </div>
           }
-        </div>
-        <div className="sticky bottom-14 z-10 bg-white ml-8 right-0 border-2 border-gray-400 p-2 rounded-lg w-fit sm:w-8/12 h-16 shadow-custom hover:border-blue-500 focus:border-blue-500 flex">
-          <input
-            className="block w-full rounded-none rounded-l-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 sm:text-lg sm:leading-6"
-            type="text"
-            ref={searchRef}
-            onKeyDown={(ev) => {
-              if (ev.key === "Enter") {
-                handleSubmit(
-                  activeRootAnalysisId,
-                  !activeRootAnalysisId,
-                  activeAnalysisId
-                );
-              }
-            }}
-            placeholder="Show me 5 rows"
-            disabled={loading}
-          />
-          <button
-            type="button"
-            className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
-            onClick={() => {
-              handleSubmit(
-                activeRootAnalysisId,
-                !activeRootAnalysisId,
-                activeAnalysisId
-              );
-            }}
-          >
-            <ArrowRightEndOnRectangleIcon
-              className="-ml-0.5 h-5 w-5 text-gray-400"
-              aria-hidden="true"
-            />
-            Ask
-          </button>
         </div>
       </div>
       <Modal

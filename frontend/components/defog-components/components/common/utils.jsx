@@ -3,42 +3,15 @@ import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat.js";
 import weekOfYear from "dayjs/plugin/weekOfYear.js";
 import advancedFormat from "dayjs/plugin/advancedFormat.js";
+import isoWeek from "dayjs/plugin/isoWeek";
 dayjs.extend(advancedFormat);
 dayjs.extend(weekOfYear);
 dayjs.extend(customParseFormat);
+dayjs.extend(isoWeek);
 
 import { chartColors } from "../../context/ThemeContext";
-import { Popover } from "antd";
-import { mean } from "d3";
+import { mean } from "d3-array";
 
-export const questionModes = [
-  [
-    "Create a report",
-    "What would you like a report on? Best for big picture, future-oriented questions from your data.",
-    "Useful for asking broad questions from your data.",
-  ],
-  [
-    "Query my data",
-    "Ask a question to gather insights from your data",
-    "Useful for asking specific, query-able questions from your data.",
-  ],
-].map((d) => ({
-  value: d[0],
-  label: (
-    <Popover
-      overlayClassName="agent-popover"
-      overlayInnerStyle={{
-        backgroundColor: "black",
-      }}
-      align={{ offset: [15, 0] }}
-      content={<div style={{ width: "200px", color: "white" }}>{d[2]}</div>}
-      placement="right"
-    >
-      <div className="agent-tool-option">{d[0]}</div>
-    </Popover>
-  ),
-  placeholder: d[1],
-}));
 const dateFormats = [
   "YYYY-MM-DD HH:mm:ss",
   "YYYY-MM-DDTHH:mm:ss",
@@ -367,6 +340,10 @@ export function setChartJSDefaults(
   }
 }
 
+// converts a Map into an Object.
+// recursive function that can handle nested Maps as well.
+// processValue is a function that can be used to process the value of each value in the resulting object
+// hook is a function that can be used to do extra computation before we process a key, value pair
 export const mapToObject = (
   map = new Map(),
   parentNestLocation = [],
@@ -413,12 +390,12 @@ export function processData(data, columns) {
   const dateColumns = columns?.filter((d) => d.colType === "date");
   // date comes in as categorical column, but we use that for the x axis, so filter that out also
   const categoricalColumns = columns?.filter(
-    (d) => d.variableType[0] === "c" && d.colType !== "date"
+    (d) => d?.variableType?.[0] === "c" && d.colType !== "date"
   );
 
   // y axis columns are only numeric non date columns
   const yAxisColumns = columns?.filter(
-    (d) => d.variableType[0] !== "c" && d.colType !== "date"
+    (d) => d?.variableType?.[0] !== "c" && d.colType !== "date"
   );
 
   const xAxisColumns = columns?.slice();
@@ -430,12 +407,15 @@ export function processData(data, columns) {
     xAxisColumnValues[c.key] = getColValues(data, [c.key]);
   });
 
+  const cleanedData = sanitiseData(data, true);
+
   return {
     xAxisColumns: xAxisColumns ? xAxisColumns : [],
     categoricalColumns: categoricalColumns ? categoricalColumns : [],
     yAxisColumns: yAxisColumns ? yAxisColumns : [],
     dateColumns: dateColumns ? dateColumns : [],
     xAxisColumnValues,
+    data: cleanedData,
   };
 }
 
@@ -459,16 +439,31 @@ export function sanitiseColumns(columns) {
   return cleanColumns;
 }
 
-export function sanitiseData(data) {
+export function sanitiseData(data, chart = false) {
   // check if it's not an array or undefined
   if (!Array.isArray(data) || !data) {
     return [];
   }
+
   // filter out null elements from data array
   // for the remaining rows, check if the whole row is null
-  const cleanData = data
-    .filter((d) => d)
-    .filter((d) => !d.every((val) => val === null));
+  let cleanData;
+  if (!chart) {
+    cleanData = data
+      .filter((d) => d)
+      .filter((d) => !d.every((val) => val === null));
+  } else {
+    cleanData = data;
+
+    // remove percentage signs from data
+    cleanData.forEach((d) => {
+      Object.entries(d).forEach(([key, value]) => {
+        if (typeof value === "string" && value.endsWith("%")) {
+          d[key] = +value.slice(0, -1);
+        }
+      });
+    });
+  }
   return cleanData;
 }
 
@@ -534,6 +529,12 @@ export function createChartConfig(
         filteredData[b][yAxisColumns[0].label] -
         filteredData[a][yAxisColumns[0].label]
     );
+  } else {
+    const colDetails = xAxisColumns[0].__data__;
+
+    const dateToUnix = colDetails?.dateToUnix || ((d) => d);
+    // if we do, then run the dateToUnix function on each label
+    chartLabels.sort((a, b) => dateToUnix(a) - dateToUnix(b));
   }
 
   // convert filteredData to an array of objects
@@ -545,6 +546,17 @@ export function createChartConfig(
     });
     return obj;
   });
+
+  if (xAxisIsDate) {
+    // sort filtered data according to the labels
+    filteredData.sort((a, b) => {
+      if (xAxisIsDate) {
+        return (
+          chartLabels.indexOf(a.__xLab__) - chartLabels.indexOf(b.__xLab__)
+        );
+      }
+    });
+  }
 
   // use chartjs parsing to create chartData
   // for each yAxisColumn, there is a chartjs "dataset"
@@ -559,6 +571,7 @@ export function createChartConfig(
       key: col.label,
     },
   }));
+
   return { chartData, chartLabels };
 }
 
@@ -621,11 +634,11 @@ export const reFormatData = (data, columns) => {
   // so coerce them to a number
   // store the indexes of such columns
   const numericAsString = [];
-  // deal with columns like "username" etc coming in as numbers.
+  // deal with columns like "user_id" etc coming in as numbers.
   // if inferred type is numeric but variable Type is "categorical"
   const stringAsNumeric = [];
 
-  let validData = sanitiseData(data);
+  let validData = sanitiseData(data, false);
   let validColumns = sanitiseColumns(columns);
 
   if (validColumns.length && validData.length) {
@@ -634,23 +647,35 @@ export const reFormatData = (data, columns) => {
     newCols = [];
     newRows = [];
     for (let i = 0; i < cols.length; i++) {
-      newCols.push(
-        Object.assign(
-          {
-            title: cols[i],
-            dataIndex: cols[i],
-            key: cols[i],
-            // simple typeof. if a number is coming in as string, this will be string.
-            simpleTypeOf: typeof rows[0][i],
-            sorter:
-              rows.length > 0 && typeof rows[0][i] === "number"
-                ? (a, b) => a[cols[i]] - b[cols[i]]
-                : (a, b) =>
-                    String(a[cols[i]]).localeCompare(String(b[cols[i]])),
-          },
-          inferColumnType(rows, i, cols[i])
-        )
-      );
+      let inferredColumnType = inferColumnType(rows, i, cols[i]);
+      let newCol = Object.assign({
+        title: cols[i],
+        dataIndex: cols[i],
+        key: cols[i],
+        // simple typeof. if a number is coming in as string, this will be string.
+        simpleTypeOf: typeof rows[0][i],
+        sorter:
+          rows.length > 0 && typeof rows[0][i] === "number"
+            ? (a, b) => a[cols[i]] - b[cols[i]]
+            : rows.length > 0 && !isNaN(rows[0][i])
+              ? (a, b) => Number(a[cols[i]]) - Number(b[cols[i]])
+              : (a, b) => String(a[cols[i]]).localeCompare(String(b[cols[i]])),
+        render: (value) => {
+          if (typeof value === "number" || !isNaN(value)) {
+            // don't add commas in dates (years can be 2020, 2021 etc.)
+            if (inferredColumnType.isDate) {
+              return value;
+            } else {
+              return Number(value).toLocaleString();
+            }
+          } else {
+            return value;
+          }
+        },
+        ...inferredColumnType,
+      });
+
+      newCols.push(newCol);
       if (newCols[i].numeric && newCols[i].simpleTypeOf === "string") {
         numericAsString.push(i);
       }
@@ -669,7 +694,11 @@ export const reFormatData = (data, columns) => {
       row["index"] = i;
 
       for (let j = 0; j < cols.length; j++) {
-        row[cols[j]] = rows[i][j];
+        if (numericAsString.indexOf(j) >= 0) {
+          row[cols[j]] = rows[i][j];
+        } else if (stringAsNumeric.indexOf(j) >= 0) {
+          row[cols[j]] = "" + rows[i][j];
+        } else row[cols[j]] = rows[i][j];
       }
       newRows.push(row);
     }
@@ -684,6 +713,7 @@ export const reFormatData = (data, columns) => {
       variableType: "integer",
       numeric: true,
       simpleTypeOf: "number",
+      mean: (newRows?.length + 1) / 2 || null,
     });
   } else {
     newCols = [];
@@ -691,6 +721,11 @@ export const reFormatData = (data, columns) => {
   }
 
   return { newCols, newRows };
+};
+
+export const sentenceCase = (str) => {
+  if (!str) return "";
+  return str[0].toUpperCase() + str.slice(1);
 };
 
 export const chartNames = {

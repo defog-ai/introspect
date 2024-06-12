@@ -274,7 +274,7 @@ export default function StepsDag({
                         : "") +
                       (d.data.isError ? "graph-node-error" : "") +
                       " " +
-                      d.data.id +
+                      `tool-run-${d.data.id}` +
                       " " +
                       (d.data.isAddStepNode ? "graph-node-add" : "") +
                       " " +

@@ -1,10 +1,7 @@
 import { Button, Modal } from "antd";
 import StepsDag from "../../common/StepsDag";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toolDisplayNames, toolShortNames } from "$utils/utils";
-import { tempSuggestion } from "./temp";
-import Context from "../../common/Context";
-import { AnalysisAgent } from "../AnalysisAgent";
 
 export default function BadModal({
   open,
@@ -18,20 +15,14 @@ export default function BadModal({
   const [loading, setLoading] = useState(false);
 
   const [activeNode, _setActiveNode] = useState(null);
-  const [rawFeedback, setRawFeedback] = useState(null);
-
-  const [context, _] = useContext(Context);
-
-  // which feedback section is the user currently on
-  const [activeSection, setActiveSection] = useState("general");
 
   // extend setActiveNode to prevent changing node when we click an "output" node
   // only change the node when we click a tool node
-  const setActiveNode = useCallback((node) => {
+  const setActiveNode = (node) => {
     if (node.data.isTool) {
       _setActiveNode(node);
     }
-  });
+  };
 
   const [comments, _setComments] = useState({
     general: "",
@@ -46,15 +37,6 @@ export default function BadModal({
     });
 
     setLoading(false);
-    console.log(Date.now().toLocaleString(), "feedback response");
-    console.log(feedbackResponse);
-    // setRawFeedback(tempSuggestion);
-
-    if (feedbackResponse && feedbackResponse.success) {
-      setRawFeedback(feedbackResponse);
-      // scroll to the bottom of the modal
-      document.querySelector(".feedback-modal").scrollTo(0, 10000);
-    }
   }, [analysisId, comments, submitFeedback, setModalVisible]);
 
   const setComments = (newComments) => {
@@ -156,13 +138,7 @@ export default function BadModal({
           <p className="text-sm  text-gray-400">
             You can leave detailed comments for specific steps here
           </p>
-          <div
-            className={`p-5 flex border transition-all rounded-md`}
-            onMouseOver={() => setActiveSection("step")}
-            onMouseOut={() => {
-              setActiveSection("general");
-            }}
-          >
+          <div className={`p-5 flex border transition-all rounded-md`}>
             <div className="flex flex-row my-4">
               <div className="relative">
                 <StepsDag
@@ -298,33 +274,6 @@ export default function BadModal({
       >
         Submit
       </Button>
-
-      <div className={`raw-suggestions py-5 px-5 w-12/12`}>
-        {rawFeedback?.new_analysis_id && (
-          <>
-            <p className="text-lg  text-gray-900 font-bold">
-              Based on your feedback, here is the new plan from the model
-            </p>
-            <div className="content">
-              <div className="editor-container py-2 px-4 mt-4 bg-white rounded-md mb-8">
-                <div className="defog-analysis-container">
-                  <div
-                    data-content-type="analysis"
-                    data-analysis-id={analysisId}
-                  >
-                    <AnalysisAgent
-                      key={rawFeedback.new_analysis_id}
-                      analysisId={rawFeedback.new_analysis_id}
-                      token={context.token}
-                      disableFeedback={true}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
     </Modal>
   );
 }

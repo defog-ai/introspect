@@ -8,7 +8,7 @@ import React, {
   useRef,
   useCallback,
 } from "react";
-import { Tabs, Table, Button, message, Popover } from "antd";
+import { Tabs, Button, message, Popover } from "antd";
 import ChartContainer from "./ChartContainer";
 import {
   chartNames,
@@ -36,6 +36,7 @@ import "prismjs/components/prism-python";
 import "prismjs/themes/prism.css";
 import { roundNumber } from "$utils/utils";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import Table from "$components/tailwind/Table";
 
 const downloadCsvEndpoint = setupBaseUrl("http", "download_csv");
 
@@ -199,8 +200,7 @@ export function ToolResultsTable({
         component: (
           <Table
             key="0"
-            size="small"
-            dataSource={roundedData}
+            rows={roundedData}
             // don't show index column in table
             columns={tableData.columns
               .filter((d) => d.title !== "index")

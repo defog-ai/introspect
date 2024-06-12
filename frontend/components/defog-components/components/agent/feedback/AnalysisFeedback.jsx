@@ -46,7 +46,7 @@ export function AnalysisFeedback({
   return (
     <ErrorBoundary>
       <div className="analysis-feedback flex flex-row flex-wrap content-center">
-        <p className="text-sm m-0 mr-4 text-gray-400">
+        <p className="text-sm m-0 mr-4 text-gray-400 hidden lg:block">
           Was this your desired result?
         </p>
 

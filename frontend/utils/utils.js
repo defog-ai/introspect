@@ -502,3 +502,24 @@ export const addTool = async ({
     return { success: false, error_message: e };
   }
 };
+
+export const deleteToolRunIds = async (analysisId, toolRunIds) => {
+  const deleteStepsEndpoint = setupBaseUrl("http", "delete_steps");
+  try {
+    const res = await fetch(deleteStepsEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        analysis_id: analysisId,
+        tool_run_ids: toolRunIds,
+      }),
+    }).then((r) => r.json());
+
+    return res;
+  } catch (e) {
+    console.error(e);
+    return { success: false, error_message: e };
+  }
+};

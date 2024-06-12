@@ -1001,12 +1001,6 @@ async def submit_feedback(request: Request):
             raise Exception("Invalid user question.")
 
         err, analysis_data = get_report_data(analysis_id)
-        if err:
-            raise Exception(err)
-
-        cleaned_plan = get_clean_plan(analysis_data)
-
-        generated_plan_yaml = yaml.dump(cleaned_plan)
 
         # store in the defog_plans_feedback table
         err, did_overwrite = await store_feedback(
@@ -1017,115 +1011,122 @@ async def submit_feedback(request: Request):
             db_type,
         )
 
+        if err:
+            raise Exception(err)
+
+        return {"success": True, "did_overwrite": did_overwrite}
+
+        # cleaned_plan = get_clean_plan(analysis_data)
+        # generated_plan_yaml = yaml.dump(cleaned_plan)
         # send the following to the defog server, and get feedback on how to improve it
         # - user_question
         # - comments
         # - metadata
         # - glossary
         # - plan generated
-        if not is_correct:
-            err, tools = get_all_tools()
-            tools = [
-                {
-                    "function_name": tools[tool]["function_name"],
-                    "description": tools[tool]["description"],
-                    "input_metadata": tools[tool]["input_metadata"],
-                    "output_metadata": tools[tool]["output_metadata"],
-                }
-                for tool in tools
-            ]
+        # if not is_correct:
+        #     err, tools = get_all_tools()
+        #     tools = [
+        #         {
+        #             "function_name": tools[tool]["function_name"],
+        #             "description": tools[tool]["description"],
+        #             "input_metadata": tools[tool]["input_metadata"],
+        #             "output_metadata": tools[tool]["output_metadata"],
+        #         }
+        #         for tool in tools
+        #     ]
 
-            tool_description_yaml = yaml.dump(tools)
+        # tool_description_yaml = yaml.dump(tools)
 
-            # TODO: implement this on the defog server
-            r = requests.post(
-                "https://api.defog.ai/reflect_on_agent_feedback",
-                json={
-                    "question": user_question,
-                    "comments": comments,
-                    "plan_generated": generated_plan_yaml,
-                    "api_key": DEFOG_API_KEY,
-                    "tool_description": tool_description_yaml,
-                },
-            )
+        # TODO: implement this on the defog server
+        # r = requests.post(
+        #     "https://api.defog.ai/reflect_on_agent_feedback",
+        #     json={
+        #         "question": user_question,
+        #         "comments": comments,
+        #         "plan_generated": generated_plan_yaml,
+        #         "api_key": DEFOG_API_KEY,
+        #         "tool_description": tool_description_yaml,
+        #     },
+        # )
 
-            # we will get back:
-            # - updated metadata
-            # - updated glossary
-            # - updated golden plan
-            raw_response = r.json()["diagnosis"]
+        # we will get back:
+        # - updated metadata
+        # - updated glossary
+        # - updated golden plan
+        # raw_response = r.json()["diagnosis"]
 
-            # extract yaml from metadata
-            initial_recommended_plan = (
-                raw_response.split("```yaml")[-1].split("```")[0].strip()
-            )
-            logging.info(initial_recommended_plan)
-            new_analysis_id = str(uuid4())
-            new_analysis_data = None
-            try:
-                initial_recommended_plan = yaml.safe_load(initial_recommended_plan)
-                # give each tool a tool_run_id
-                # duplicate model_generated_inputs to inputs
-                for i, item in enumerate(initial_recommended_plan):
-                    item["tool_run_id"] = str(uuid4())
-                    item["inputs"] = item["model_generated_inputs"].copy()
+        # # extract yaml from metadata
+        # initial_recommended_plan = (
+        #     raw_response.split("```yaml")[-1].split("```")[0].strip()
+        # )
+        # logging.info(initial_recommended_plan)
+        # new_analysis_id = str(uuid4())
+        # new_analysis_data = None
+        # try:
+        #     initial_recommended_plan = yaml.safe_load(initial_recommended_plan)
+        #     # give each tool a tool_run_id
+        #     # duplicate model_generated_inputs to inputs
+        #     for i, item in enumerate(initial_recommended_plan):
+        #         item["tool_run_id"] = str(uuid4())
+        #         item["inputs"] = item["model_generated_inputs"].copy()
 
-                # create a new analysis with these as steps
-                err, new_analysis_data = await initialise_report(
-                    user_question,
-                    token,
-                    new_analysis_id,
-                    {"gen_steps": [], "clarify": []},
-                )
-                if err:
-                    raise Exception(err)
+        #     # create a new analysis with these as steps
+        #     err, new_analysis_data = await initialise_report(
+        #         user_question,
+        #         token,
+        #         new_analysis_id,
+        #         {"gen_steps": [], "clarify": []},
+        #     )
+        #     if err:
+        #         raise Exception(err)
 
-                setup, post_process = await execute(
-                    report_id=new_analysis_id,
-                    user_question=user_question,
-                    client_description=client_description,
-                    toolboxes=[],
-                    parent_analyses=[],
-                    similar_plans=[],
-                    predefined_steps=initial_recommended_plan,
-                )
+        #     setup, post_process = await execute(
+        #         report_id=new_analysis_id,
+        #         user_question=user_question,
+        #         client_description=client_description,
+        #         toolboxes=[],
+        #         parent_analyses=[],
+        #         similar_plans=[],
+        #         predefined_steps=initial_recommended_plan,
+        #     )
 
-                if not setup.get("success"):
-                    raise Exception(setup.get("error_message", ""))
+        #     if not setup.get("success"):
+        #         raise Exception(setup.get("error_message", ""))
 
-                final_executed_plan = []
-                # run the generator
-                if "generator" in setup:
-                    g = setup["generator"]
-                    async for step in g():
-                        # step comes in as a list of 1 step
-                        final_executed_plan += step
-                        err = await update_report_data(
-                            new_analysis_id, "gen_steps", step
-                        )
-                        if err:
-                            raise Exception(err)
+        #     final_executed_plan = []
+        #     # run the generator
+        #     if "generator" in setup:
+        #         g = setup["generator"]
+        #         async for step in g():
+        #             # step comes in as a list of 1 step
+        #             final_executed_plan += step
+        #             err = await update_report_data(
+        #                 new_analysis_id, "gen_steps", step
+        #             )
+        #             if err:
+        #                 raise Exception(err)
 
-                recommended_plan = final_executed_plan
-            except Exception as e:
-                logging.info(e)
-                traceback.print_exc()
-                recommended_plan = None
-                new_analysis_data = None
+        #     recommended_plan = final_executed_plan
+        # except Exception as e:
+        #     logging.info(e)
+        #     traceback.print_exc()
+        #     recommended_plan = None
+        #     new_analysis_data = None
 
-            if err is not None:
-                raise Exception(err)
+        # if err is not None:
+        #     raise Exception(err)
 
-            return {
-                "success": True,
-                "did_overwrite": did_overwrite,
-                "suggested_improvements": raw_response,
-                "recommended_plan": recommended_plan,
-                "new_analysis_id": new_analysis_id,
-                "new_analysis_data": new_analysis_data,
-            }
-        else:
-            return {"success": True, "did_overwrite": did_overwrite}
+        # return {
+        #     "success": True,
+        #     "did_overwrite": did_overwrite,
+        #     "suggested_improvements": raw_response,
+        #     "recommended_plan": recommended_plan,
+        #     "new_analysis_id": new_analysis_id,
+        #     "new_analysis_data": new_analysis_data,
+        # }
+        # else:
+        #     return {"success": True, "did_overwrite": did_overwrite}
 
     except Exception as e:
         logging.info(str(e))
