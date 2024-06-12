@@ -388,14 +388,16 @@ export const AnalysisAgent = ({
                         )
                       )}
                     </ErrorBoundary>
-                    <div className="absolute top-8 right-12">
-                      <AnalysisFeedback
-                        analysisSteps={analysisData?.gen_steps?.steps || []}
-                        analysisId={analysisId}
-                        user_question={analysisData?.user_question}
-                        token={token}
-                      />
-                    </div>
+                    {!analysisBusy && (
+                      <div className="absolute top-8 right-12">
+                        <AnalysisFeedback
+                          analysisSteps={analysisData?.gen_steps?.steps || []}
+                          analysisId={analysisId}
+                          user_question={analysisData?.user_question}
+                          token={token}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="analysis-steps overflow-auto">
                     <StepsDag
