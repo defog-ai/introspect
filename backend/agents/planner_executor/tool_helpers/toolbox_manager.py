@@ -1,5 +1,5 @@
 from db_utils import get_all_tools
-from utils import create_simple_tool_types, embed_string
+from utils import create_simple_tool_types
 import yaml
 
 
@@ -9,11 +9,9 @@ async def get_tool_library_prompt(toolboxes=[], user_question=None):
     toolboxes = list(set(toolboxes))
     prompt = []
 
-    user_question_embedding = await embed_string(user_question)
-
     # get pruned tools based on user question
     err, tools = get_all_tools(
-        user_question_embedding,
+        user_question_embedding=None,
         mandatory_tools=[
             "data_fetcher_and_aggregator",
             "global_dict_data_fetcher_and_aggregator",
