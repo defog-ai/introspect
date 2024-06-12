@@ -2,7 +2,6 @@ from fastapi import APIRouter, Request, HTTPException
 from auth_utils import login_user, reset_password, validate_user, get_hashed_password
 from google.oauth2 import id_token
 from google.auth.transport import requests
-from db_utils import get_db_conn
 import asyncio
 import os
 
