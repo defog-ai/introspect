@@ -272,7 +272,7 @@ async def update_report_data(
                         print(new_data)
                         cursor = conn.connection.cursor()
                         cursor.execute(
-                            "UPDATE defog_reports SET user_question = %s, WHERE report_id = %s",
+                            "UPDATE defog_reports SET user_question = %s WHERE report_id = %s",
                             (new_data, report_id),
                         )
                     else:

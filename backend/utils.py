@@ -299,6 +299,6 @@ async def make_request(url, payload):
     async with httpx.AsyncClient() as client:
         r = await client.post(
             url,
-            json={payload},
+            json=payload,
         )
     return r

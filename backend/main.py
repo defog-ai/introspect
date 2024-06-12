@@ -63,7 +63,7 @@ edit_request_types_and_prop_names = {
 
 
 async def get_classification(question, debug=False):
-    r = make_request(
+    r = await make_request(
         url=f"{os.environ['DEFOG_BASE_URL']}/classify_question",
         payload={"question": question, "api_key": DEFOG_API_KEY},
     )
