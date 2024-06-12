@@ -24,7 +24,7 @@ import psycopg2
 from auth_utils import validate_user
 
 import asyncio
-from utils import embed_string, warn_str, YieldList, make_request
+from utils import warn_str, YieldList, make_request
 import os
 
 report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
