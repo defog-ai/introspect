@@ -1198,7 +1198,6 @@ def get_db_conn():
 
 
 async def store_feedback(
-    token,
     user_question,
     analysis_id,
     is_correct,
@@ -1207,97 +1206,21 @@ async def store_feedback(
 ):
     error = None
     did_overwrite = False
-    username = validate_user(token, get_username=True)
-    if not username:
-        return {"success": False, "error_message": "Invalid token."}
-    try:
-        qn_embedding = None
-        # create an embedding of the question
-        # if the feedback provided was positive, we will add this as a golden plan
-        # if the feedback provided was negative, we will remove this plan from the golden plans as well as all related plans
-        print("Embedding question", user_question)
-        # get embedding of question
-        qn_embedding = await embed_string(user_question)
 
-        if qn_embedding is None:
-            raise ValueError("Could not embed the question.")
+    asyncio.create_task(
+        make_request(
+            f"{os.environ['DEFOG_BASE_URL']}/update_agent_feedback",
+            {
+                "user_question": user_question,
+                "analysis_id": analysis_id,
+                "is_correct": is_correct,
+                "comments": comments,
+                "db_type": db_type,
+            },
+        )
+    )
 
-        print("Embedding done")
-        print(qn_embedding)
-
-        session = Session(engine)
-        session.connection()
-        with engine.connect() as conn:
-            register_vector(conn.connection)
-            cursor = conn.connection.cursor()
-
-            # if not is_correct, set embeddings to null for all feedback where the embedding vectors are very similar
-            if not is_correct:
-                cursor.execute(
-                    """
-                    UPDATE defog_plans_feedback
-                    SET embedding = NULL
-                    WHERE api_key = %s AND
-                    (embedding <=> %s) < 0.1
-                    """,
-                    (DEFOG_API_KEY, qn_embedding),
-                )
-
-            # check if entry exists with this analysis_id
-            cursor.execute(
-                "SELECT * FROM defog_plans_feedback WHERE analysis_id = %s",
-                (analysis_id,),
-            )
-            rows = cursor.fetchall()
-            if len(rows) != 0:
-                print("Feedback exists for this analysis_id. Updating...")
-                # update the row
-                cursor.execute(
-                    """
-                    UPDATE defog_plans_feedback
-                    SET api_key = %s, username = %s, user_question = %s, embedding = %s, is_correct = %s, comments = %s, db_type = %s
-                    WHERE analysis_id = %s
-                    """,
-                    (
-                        DEFOG_API_KEY,
-                        username,
-                        user_question,
-                        qn_embedding,
-                        is_correct,
-                        # comments is a dict
-                        json.dumps(comments),
-                        db_type,
-                        analysis_id,
-                    ),
-                )
-                did_overwrite = True
-            else:
-                print("Feedback does not exist for this analysis_id. Inserting...")
-                cursor.execute(
-                    """
-                    INSERT INTO defog_plans_feedback (api_key, username, analysis_id, user_question, embedding, is_correct, comments, db_type)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    (
-                        DEFOG_API_KEY,
-                        username,
-                        analysis_id,
-                        user_question,
-                        qn_embedding,
-                        is_correct,
-                        # comments is a dict
-                        json.dumps(comments),
-                        db_type,
-                    ),
-                )
-            conn.connection.commit()
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        error = str(e)
-        did_overwrite = False
-    finally:
-        return error, did_overwrite
+    return error, did_overwrite
 
 
 def get_distinct_closest_user_questions(
