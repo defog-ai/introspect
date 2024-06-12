@@ -8,13 +8,9 @@ from regex import R
 from sqlalchemy import (
     create_engine,
     select,
-    text,
     update,
     insert,
     delete,
-    Text,
-    Boolean,
-    JSON,
 )
 from sqlalchemy.ext.automap import automap_base
 from agents.planner_executor.tool_helpers.core_functions import (
@@ -25,10 +21,10 @@ from pgvector.psycopg2 import register_vector
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import Session
 import psycopg2
-import yaml
 from auth_utils import validate_user
 
-from utils import embed_string, warn_str, YieldList
+import asyncio
+from utils import embed_string, warn_str, YieldList, make_request
 import os
 
 report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
@@ -281,10 +277,9 @@ async def update_report_data(
                     if request_type == "user_question":
                         print(new_data)
                         cursor = conn.connection.cursor()
-                        new_embedding = await embed_string(new_data)
                         cursor.execute(
-                            "UPDATE defog_reports SET user_question = %s, embedding = %s WHERE report_id = %s",
-                            (new_data, new_embedding, report_id),
+                            "UPDATE defog_reports SET user_question = %s, WHERE report_id = %s",
+                            (new_data, report_id),
                         )
                     else:
                         conn.execute(
@@ -1501,6 +1496,7 @@ async def add_tool(
 ):
     err = None
     try:
+        embedding = None
         # insert into the tools table
         with engine.begin() as conn:
             register_vector(conn.connection)
@@ -1522,14 +1518,13 @@ async def add_tool(
                     conn.execute(delete(Tools).where(Tools.tool_name == tool_name))
 
                 # update with latest
-                embedding = await embed_string(tool_name + "-" + description)
                 cursor = conn.connection.cursor()
                 query = """
                     INSERT INTO defog_tools (
-                        tool_name, function_name, code, description, embedding, toolbox, 
+                        tool_name, function_name, code, description, toolbox, 
                         input_metadata, output_metadata, cannot_delete, cannot_disable, disabled
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                 """
                 values = (
@@ -1537,7 +1532,6 @@ async def add_tool(
                     function_name,
                     code,
                     description,
-                    embedding,
                     toolbox,
                     json.dumps(input_metadata),
                     json.dumps(output_metadata),
@@ -1547,6 +1541,25 @@ async def add_tool(
                 )
                 cursor.execute(query, values)
 
+        asyncio.create_task(
+            make_request(
+                url=f"{os.environ['DEFOG_BASE_URL']}/update_tool",
+                json={
+                    "api_key": os.environ["DEFOG_API_KEY"],
+                    "tool_name": tool_name,
+                    "function_name": function_name,
+                    "description": description,
+                    "code": code,
+                    "embedding": embedding.tolist(),
+                    "input_metadata": input_metadata,
+                    "output_metadata": output_metadata,
+                    "toolbox": toolbox,
+                    "disabled": False,
+                    "cannot_delete": cannot_delete,
+                    "cannot_disable": cannot_disable,
+                },
+            )
+        )
     except ValueError as e:
         err = str(e)
     except Exception as e:
