@@ -10,7 +10,7 @@ from agents.planner_executor.execute_tool import execute_tool
 import doc_endpoints
 from uuid import uuid4
 from auth_utils import validate_user
-import httpx
+from utils import make_request
 
 from db_utils import (
     get_all_reports,
@@ -63,12 +63,10 @@ edit_request_types_and_prop_names = {
 
 
 async def get_classification(question, debug=False):
-    async with httpx.AsyncClient() as client:
-        r = await client.post(
-            f"{os.environ['DEFOG_BASE_URL']}/classify_question",
-            json={"question": question, "api_key": DEFOG_API_KEY},
-        )
-
+    r = make_request(
+        url=f"{os.environ['DEFOG_BASE_URL']}/classify_question",
+        payload={"question": question, "api_key": DEFOG_API_KEY},
+    )
     if r.status_code == 200:
         return r.json()
     else:
