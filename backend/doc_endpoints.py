@@ -1010,7 +1010,6 @@ async def submit_feedback(request: Request):
 
         # store in the defog_plans_feedback table
         err, did_overwrite = await store_feedback(
-            token,
             user_question,
             analysis_id,
             is_correct,
