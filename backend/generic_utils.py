@@ -1,9 +1,12 @@
-import asyncio
-import requests
+import httpx
 
 
 async def make_request(url, json):
-    r = await asyncio.to_thread(requests.post, url, json=json)
+    async with httpx.AsyncClient() as client:
+        r = await client.post(
+            url,
+            json=json,
+        )
     return r.json()
 
 
