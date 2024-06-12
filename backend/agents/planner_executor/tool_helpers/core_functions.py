@@ -10,12 +10,7 @@ import base64
 import os
 
 # these are needed for the exec_code function
-from uuid import uuid4
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import json
-import yaml
 
 from openai import AsyncOpenAI
 
