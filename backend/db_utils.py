@@ -1325,6 +1325,7 @@ async def add_tool(
                     "cannot_delete": cannot_delete,
                     "cannot_disable": cannot_disable,
                 },
+                verbose=True,
             )
         )
     except ValueError as e:
