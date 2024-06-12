@@ -11,6 +11,7 @@ import yaml
 from colorama import Fore, Style
 
 from openai import AsyncOpenAI
+import httpx
 
 import numpy as np
 from typing import Optional
@@ -307,3 +308,12 @@ class SqlExecutionError(Exception):
 
         # Now for your custom code...
         self.sql = sql
+
+
+async def make_request(url, payload):
+    async with httpx.AsyncClient() as client:
+        r = await client.post(
+            url,
+            json={payload},
+        )
+    return r
