@@ -1277,9 +1277,7 @@ async def add_tool(
                 no_changes = rows.fetchone().code == code
 
             if no_changes:
-                raise ValueError(
-                    f"Tool {tool_name} already exists and no code changes detected."
-                )
+                print(f"Tool {tool_name} already exists and no code changes detected.")
             else:
                 # delete if exists
                 if rows.rowcount != 0:
@@ -1309,10 +1307,11 @@ async def add_tool(
                 )
                 cursor.execute(query, values)
 
+        print("Adding tool to the defog API server", tool_name)
         asyncio.create_task(
             make_request(
                 url=f"{os.environ['DEFOG_BASE_URL']}/update_tool",
-                json={
+                payload={
                     "api_key": os.environ["DEFOG_API_KEY"],
                     "tool_name": tool_name,
                     "function_name": function_name,
