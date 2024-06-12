@@ -17,9 +17,6 @@ from agents.planner_executor.tool_helpers.core_functions import (
     execute_code,
 )
 
-from pgvector.psycopg2 import register_vector
-from pgvector.sqlalchemy import Vector
-from sqlalchemy.orm import Session
 import psycopg2
 from auth_utils import validate_user
 
@@ -219,7 +216,6 @@ async def update_report_data(
 
         else:
             with engine.begin() as conn:
-                register_vector(conn.connection)
                 # first get the data
                 rows = conn.execute(
                     select(Reports.__table__.columns[request_type]).where(
@@ -1223,137 +1219,11 @@ async def store_feedback(
     return error, did_overwrite
 
 
-def get_distinct_closest_user_questions(
-    user_question_embedding, n_closest_questions, threshold=0.2, max_n=2
-):
-    # calculate all numpy tensors to torch tensors
-    user_question_embedding = torch.tensor(user_question_embedding.reshape(1, -1))
-
-    # n_closest_questions is sqlalchemy rows
-    n_closest_questions = [
-        {
-            "user_question": x["user_question"],
-            "embedding": torch.tensor(x["embedding"]),
-            "analysis_id": x["analysis_id"],
-        }
-        for x in n_closest_questions
-    ]
-
-    # Initialize selected user_questions and their embeddings
-    selected_user_questions = []
-    selected_user_question_embeddings = []
-
-    # Iterate through sorted user_questions
-    for q in n_closest_questions:
-        emb = q["embedding"]
-
-        # Check if the example is distinct from previously selected user_questions
-        if len(selected_user_question_embeddings) == 0:
-            selected_user_questions.append(q)
-            selected_user_question_embeddings.append(emb)
-        else:
-            # Calculate cosine distances between the example and all selected user_questions
-            distances = 1 - torch.nn.functional.cosine_similarity(
-                emb,
-                torch.stack(selected_user_question_embeddings, dim=0),
-            )
-            print(distances, flush=True)
-            # Check if the example is distinct from all selected user_questions
-            if torch.all(distances > threshold):
-                selected_user_questions.append(q)
-                selected_user_question_embeddings.append(emb)
-
-        print(
-            "Currently number of selected user_questions:",
-            len(selected_user_questions),
-            flush=True,
-        )
-
-        # Stop if the desired number of user_questions is reached
-        if len(selected_user_questions) == max_n:
-            break
-
-    return selected_user_questions
-
-
-# get correct plans
-async def get_similar_correct_plans(report_id):
-    err = None
-    similar_plans = []
-    try:
-        # use the feedback table to get similar correct plans
-        # filter to where feedback is_correct is true
-        # get the embedding column from the report_id
-        # run the cosine distance function directly in the ORDER BY clause, as it cannot be stored as an alias
-        # as a reminder, `<=>` is cosine distance, `<->` is L2 distance, and `<#>` is inner product
-        with engine.connect() as conn:
-            cur = conn.connection.cursor()
-            user_question_embedding = None
-            cur.execute(
-                """
-                SELECT embedding FROM defog_reports WHERE report_id = %s
-                """,
-                (report_id,),
-            )
-            rows = cur.fetchall()
-            if len(rows) == 0:
-                raise ValueError("Report not found.")
-
-            user_question_embedding = rows[0][0]
-
-            cur.execute(
-                """
-                SELECT user_question, analysis_id, embedding
-                FROM defog_plans_feedback
-                WHERE api_key = %s AND is_correct = TRUE AND embedding IS NOT NULL
-                ORDER BY (embedding <=> %s) LIMIT 10;
-                """,
-                (DEFOG_API_KEY, user_question_embedding),
-            )
-
-            rows = cur.fetchall()
-
-            # convert rows to a list of dictionaries
-            rows = [
-                {"user_question": i[0], "analysis_id": i[1], "embedding": i[2]}
-                for i in rows
-            ]
-
-            print("All close rows", [x["user_question"] for x in rows])
-
-            # now get distinct
-            results = get_distinct_closest_user_questions(user_question_embedding, rows)
-
-            print("Distinct close rows", [x["user_question"] for x in results])
-
-            # get all data for these analyses
-            for plan in results:
-                row = conn.execute(
-                    select(Reports).where(Reports.report_id == plan["analysis_id"])
-                ).fetchone()
-
-                if row is not None:
-                    similar_plans.append(
-                        {
-                            "user_question": row.user_question,
-                            "plan": row.gen_steps,
-                        }
-                    )
-
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        err = str(e)
-    finally:
-        return err, similar_plans
-
-
-def get_all_tools(user_question_embedding=None, max_n=10, mandatory_tools=[]):
+def get_all_tools():
     err = None
     tools = {}
     try:
         with engine.connect() as conn:
-            register_vector(conn.connection)
             all_tools = conn.execute(select(Tools)).fetchall()
             # convert this to a dictionary without embedding
             all_tools = {
@@ -1372,30 +1242,8 @@ def get_all_tools(user_question_embedding=None, max_n=10, mandatory_tools=[]):
                 for tool in all_tools
             }
 
-            if user_question_embedding is None:
-                # if user_question_embedding is None, return all tools
-                tools = all_tools
-            else:
-                # if user_question_embedding is not None, return max_n closest tools
-                cursor = conn.connection.cursor()
-                cursor.execute(
-                    """
-                    SELECT function_name
-                    FROM defog_tools
-                    ORDER BY (embedding <=> %s) LIMIT %s;
-                    """,
-                    (user_question_embedding, max_n),
-                )
-
-                pruned = cursor.fetchall()
-
-                # make sure we have mandatory_tools
-                for mando_tool in mandatory_tools:
-                    tools[mando_tool] = all_tools[mando_tool]
-
-                for selected_tool in pruned:
-                    if selected_tool[0] not in tools:
-                        tools[selected_tool[0]] = all_tools[selected_tool[0]]
+            # if user_question_embedding is None, return all tools
+            tools = all_tools
 
     except Exception as e:
         print(e)
@@ -1422,7 +1270,6 @@ async def add_tool(
         embedding = None
         # insert into the tools table
         with engine.begin() as conn:
-            register_vector(conn.connection)
             # first check if it exists
             rows = conn.execute(select(Tools).where(Tools.tool_name == tool_name))
 
@@ -1473,7 +1320,7 @@ async def add_tool(
                     "function_name": function_name,
                     "description": description,
                     "code": code,
-                    "embedding": embedding.tolist(),
+                    "embedding": embedding,
                     "input_metadata": input_metadata,
                     "output_metadata": output_metadata,
                     "toolbox": toolbox,

@@ -10,13 +10,7 @@ async def get_tool_library_prompt(toolboxes=[], user_question=None):
     prompt = []
 
     # get pruned tools based on user question
-    err, tools = get_all_tools(
-        user_question_embedding=None,
-        mandatory_tools=[
-            "data_fetcher_and_aggregator",
-            "global_dict_data_fetcher_and_aggregator",
-        ],
-    )
+    err, tools = get_all_tools()
 
     if err:
         return ""
