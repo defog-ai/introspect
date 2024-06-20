@@ -440,5 +440,5 @@ async def plan_and_execute(request: Request):
         assignment_understanding=assignment_understanding,
         dev=dev,
     )
-    steps = await executor.execute()
-    return {"steps": steps}
+    steps, success = await executor.execute()
+    return {"steps": steps, "success": success}

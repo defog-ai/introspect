@@ -62,6 +62,7 @@ class RESTExecutor:
 
         is_done = False
         steps = []
+        success = True
 
         while not is_done:
             next_step_data_description = ""
@@ -107,34 +108,37 @@ class RESTExecutor:
             )
 
             step["error_message"] = result.get("error_message")
-            step["input_metadata"] = tool_input_metadata
-            step["result"] = deepcopy(result)
-            for idx, item in enumerate(step["result"]["outputs"]):
-                if "data" in item:
-                    if isinstance(item["data"], pd.DataFrame):
-                        step["result"]["outputs"][idx]["data"] = item["data"].to_csv(
-                            index=False
-                        )
+            if not step["error_message"]:
+                step["input_metadata"] = tool_input_metadata
+                step["result"] = deepcopy(result)
+                for idx, item in enumerate(step["result"]["outputs"]):
+                    if "data" in item:
+                        if isinstance(item["data"], pd.DataFrame):
+                            step["result"]["outputs"][idx]["data"] = item[
+                                "data"
+                            ].to_csv(index=False)
 
-            for key, output in zip(step["outputs_storage_keys"], result["outputs"]):
-                data = output.get("data")
-                # if output data exists and data type is a pandas dataframe
-                # store the column names in the tool_outputs_column_descriptions
-                if data is not None and isinstance(data, pd.DataFrame):
-                    # if there's an overwrite key, check if there's a line that already exists
-                    self.tool_outputs_column_descriptions += f"\n{key}: pd.DataFrame with {len(data)} rows and columns: {list(data.columns)[:20]}\n"
+                for key, output in zip(step["outputs_storage_keys"], result["outputs"]):
+                    data = output.get("data")
+                    # if output data exists and data type is a pandas dataframe
+                    # store the column names in the tool_outputs_column_descriptions
+                    if data is not None and isinstance(data, pd.DataFrame):
+                        # if there's an overwrite key, check if there's a line that already exists
+                        self.tool_outputs_column_descriptions += f"\n{key}: pd.DataFrame with {len(data)} rows and columns: {list(data.columns)[:20]}\n"
 
-                    self.global_dict[key] = data
-                    # name the df too
-                    self.global_dict[key].df_name = key
+                        self.global_dict[key] = data
+                        # name the df too
+                        self.global_dict[key].df_name = key
+
+                is_done = step.get("done")
+            else:
+                # if there's an error, we should stop executing the steps
+                # and return the error message
+                success = False
+                is_done = True
 
             steps.append(step)
 
             if self.tool_outputs_column_descriptions:
                 next_step_data_description = f"The global_dict contains the following keys with data and columns:\n```{self.tool_outputs_column_descriptions}```\n"
-
-            print(next_step_data_description)
-
-            is_done = step.get("done")
-
-        return steps
+        return steps, success
