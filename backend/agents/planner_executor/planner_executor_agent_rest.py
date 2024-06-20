@@ -135,6 +135,6 @@ class RESTExecutor:
 
             print(next_step_data_description)
 
-            is_done = step.get("done", True)
+            is_done = step.get("done")
 
         return steps
