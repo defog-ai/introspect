@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
 from report_data_manager import ReportDataManager
 from agents.planner_executor.execute_tool import execute_tool
+from agents.planner_executor.planner_executor_agent_rest import RESTExecutor
 import doc_endpoints
 from uuid import uuid4
 from utils import make_request
@@ -426,3 +427,18 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.post("/plan_and_execute")
+async def plan_and_execute(request: Request):
+    data = await request.json()
+    question = data.get("question")
+    dev = data.get("dev")
+    assignment_understanding = data.get("assignment_understanding", "")
+    executor = RESTExecutor(
+        user_question=question,
+        assignment_understanding=assignment_understanding,
+        dev=dev,
+    )
+    steps = await executor.execute()
+    return {"steps": steps}
