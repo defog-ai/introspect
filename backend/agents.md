@@ -22,7 +22,8 @@
 When we are making calls to the agent, we will do the following
 
 [optional]
-We can optionally call the Clarifier and Summarizer APIs if needed. This can be done directly by making calls to the api.defog.ai server, so no REST implementations are implemented here. In practice, if an Oracle is making calls to an agent, it is unlikely to ask vague questions. So we should be able to "just" implement this!
+We can optionally call the Clarifier and Summarizer APIs if needed. This can be done directly by making calls to the api.defog.ai server, so no REST implementations are implemented here. In practice, if an Oracle is making calls to an agent, it is unlikely to ask vague questions. So we should be able to avoid implementing this!
+
 - Clarifier API (easy => make a request to the api.defog.ai server)
 - Summarizer API (easy => make a request to the api.defog.ai server)
 
