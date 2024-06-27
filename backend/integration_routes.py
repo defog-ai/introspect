@@ -123,9 +123,36 @@ async def generate_metadata(request: Request):
 
     defog = Defog()
     defog.base_url = DEFOG_BASE_URL
-    table_metadata = await asyncio.to_thread(
-        defog.generate_db_schema, tables=tables, upload=False, scan=False
-    )
+
+    # ugly hack here for now
+    # need to fix in defog-python later
+    schemas = []
+    for table in tables:
+        if "." in table:
+            if table.split(".")[0] not in schemas:
+                schemas.append(table.split(".")[0])
+        else:
+            if "public" not in schemas:
+                schemas.append("public")
+
+    print(schemas)
+    print(tables)
+
+    if schemas != ["public"] and defog.db_type == "postgres":
+        table_metadata = await asyncio.to_thread(
+            defog.generate_postgres_schema,
+            tables=tables,
+            schemas=schemas,
+            upload=False,
+            scan=False,
+        )
+    else:
+        table_metadata = await asyncio.to_thread(
+            defog.generate_db_schema,
+            tables=tables,
+            upload=False,
+            scan=False,
+        )
 
     md = await make_request(
         f"{DEFOG_BASE_URL}/get_metadata", {"api_key": DEFOG_API_KEY, "dev": dev}
