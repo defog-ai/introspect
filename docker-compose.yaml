@@ -44,6 +44,8 @@ services:
       - RESEND_API_KEY=${RESEND_API_KEY}
       - LLM_SERVER_ENDPOINT=${LLM_SERVER_ENDPOINT}
       - LLM_MODEL_NAME=${LLM_MODEL_NAME}
+      - STRIPE_ACCOUNT_ID=${STRIPE_ACCOUNT_ID}
+      - STRIPE_CLIENT_SECRET=${STRIPE_CLIENT_SECRET}
     build:
       context: .
       dockerfile: dockerfile.agents-python-server
