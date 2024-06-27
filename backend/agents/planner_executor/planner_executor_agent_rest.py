@@ -68,6 +68,12 @@ class RESTExecutor:
             next_step_data_description = ""
 
             # make calls to the LLM to get the next step
+            llm_server_url = os.environ.get("LLM_SERVER_ENDPOINT", None)
+            if not llm_server_url:
+                llm_server_url = None
+                print("LLM_SERVER_ENDPOINT not set, using None", flush=True)
+            else:
+                print(f"LLM_SERVER_ENDPOINT set to {llm_server_url}", flush=True)
             payload = {
                 "request_type": "create_plan",
                 "question": self.user_question,
