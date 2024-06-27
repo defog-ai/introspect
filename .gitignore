@@ -55,3 +55,9 @@ __pycache__/
 
 # notebooks for experimentation
 notebooks/
+
+# cache
+.cache/
+
+# venv
+.venv*/
