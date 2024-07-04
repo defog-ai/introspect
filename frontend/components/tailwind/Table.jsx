@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge";
 import SingleSelect from "./SingleSelect";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 
-const allowedPageSizes = [10, 20, 50, 100];
+const allowedPageSizes = [5, 10, 20, 50, 100];
 
 const defaultColumnHeaderRender = ({
   column,
@@ -147,7 +147,7 @@ export default function Table({
 
   return (
     <div className={twMerge("overflow-auto", rootClassName)}>
-      <div className="overflow-auto">
+      <div className="overflow-auto max-w-6xl">
         <div className="py-2">
           <table className="divide-y w-full divide-gray-300">
             <thead className="bg-gray-50">

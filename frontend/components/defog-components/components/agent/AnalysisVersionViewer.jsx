@@ -8,7 +8,9 @@ import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
 import { ArrowRightEndOnRectangleIcon } from "@heroicons/react/20/solid";
 import Sidebar from "$components/tailwind/Sidebar";
 import { MessageManagerContext } from "$components/tailwind/Message";
+import Papa from "papaparse";
 import { sentenceCase } from "$utils/utils";
+import Table from "$components/tailwind/Table";
 
 function AnalysisVersionViewer({
   dashboards,
@@ -61,6 +63,8 @@ function AnalysisVersionViewer({
   const searchRef = useRef(null);
   const [addToDashboardSelection, setAddToDashboardSelection] = useState(false);
   const [selectedDashboards, setSelectedDashboards] = useState([]);
+  const [tableData, setTableData] = useState([]);
+  const [tableColumns, setTableColumns] = useState([]);
 
   // useEffect(() => {
   //   if (!searchRef.current) return;
@@ -308,6 +312,60 @@ function AnalysisVersionViewer({
                       </li>
                     ))}
                   </ul>
+                </div>
+
+                <div className="mt-5 m-auto">
+                  <label
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    for="file_input"
+                  >
+                    Upload file
+                  </label>
+                  <input
+                    className="block w-52 text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                    id="file_input"
+                    type="file"
+                    onChange={(ev) => {
+                      const file = ev.target.files[0];
+                      if (!file) return;
+
+                      // read file as CSV
+                      const config = {
+                        dynamicTyping: true,
+                        skipEmptyLines: true,
+                      };
+                      let parsedData = null;
+                      Papa.parse(file, {
+                        config: config,
+                        complete: (results) => {
+                          parsedData = results.data;
+                          let columns = parsedData[0];
+                          // convert headers from a list of strings to a list of objects, where each object has a title and a dataIndex
+                          columns = columns.map((title, i) => ({
+                            title: title,
+                            dataIndex: i,
+                            key: title,
+                          }));
+                          let data = parsedData.slice(1);
+                          data = data.map((row, i) => ({
+                            key: i,
+                            ...Object.fromEntries(
+                              columns.map((col, j) => [col.dataIndex, row[j]])
+                            ),
+                          }));
+                          setTableColumns(columns);
+                          setTableData(data);
+                          console.log(columns);
+                          console.log(data);
+                        },
+                      });
+                    }}
+                  />
+                  <Table
+                    rows={tableData}
+                    columns={tableColumns}
+                    style={{ maxWidth: "100%", overflow: "scroll" }}
+                  />
                 </div>
               </div>
             )}
