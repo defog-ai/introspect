@@ -3,7 +3,12 @@ import json
 import os
 from defog import Defog
 
-from db_utils import validate_user, get_db_type_creds, update_db_type_creds
+from db_utils import (
+    validate_user,
+    get_db_type_creds,
+    update_db_type_creds,
+    save_csv_to_db,
+)
 import asyncio
 from generic_utils import (
     make_request,
@@ -369,3 +374,53 @@ async def update_golden_queries(request: Request):
         defog.update_golden_queries, golden_queries, dev=dev, scrub=False
     )
     return r
+
+
+@router.post("/integration/upload_csv")
+async def upload_csv(request: Request):
+    params = await request.json()
+    token = params.get("token")
+    if not validate_user(token, user_type="admin"):
+        return {"error": "unauthorized"}
+
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    res = get_db_type_creds(api_key)
+    if res:
+        db_type, db_creds = res
+    else:
+        return {"error": "no db creds found"}
+
+    data = params.get("data", [])
+
+    defog = Defog(
+        api_key=api_key,
+        db_type=db_type,
+        db_creds={
+            "host": "agents-postgres",
+            "port": 5432,
+            "database": "postgres",
+            "user": "postgres",
+            "password": "postgres",
+        },
+    )
+    defog.base_url = DEFOG_BASE_URL
+
+    # save the csv file as a table to the local database
+    save_csv_to_db(
+        table_name="temp_table",
+        data=data,
+    )
+
+    await asyncio.to_thread(
+        defog.generate_db_schema, tables=["temp_table"], upload=True, scan=False
+    )
+
+    resp = await asyncio.to_thread(
+        defog.update_db_schema,
+        path_to_csv="defog_metadata.csv",
+        temp=True,
+    )
+
+    print("reached the upload_csv route", flush=True)
+    return resp

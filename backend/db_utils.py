@@ -54,6 +54,19 @@ Feedback = Base.classes.defog_plans_feedback
 DbCreds = Base.classes.defog_db_creds
 
 
+def save_csv_to_db(table_name, data):
+    df = pd.DataFrame(data[1:], columns=data[0])
+    if "" in df.columns:
+        del df[""]
+    print(df)
+    try:
+        df.to_sql(table_name, engine, if_exists="replace", index=False)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+
 def get_db_type_creds(api_key):
     with engine.begin() as conn:
         row = conn.execute(
