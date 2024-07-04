@@ -117,8 +117,8 @@ export default function Table({
     acc[column.dataIndex] = column;
     return acc;
   }, {});
-  dataIndexes.sort();
 
+  console.log(dataIndexToColumnMap);
   const maxPage = Math.ceil(rows.length / pageSize);
 
   function toggleSort(newColumn, newOrder) {
