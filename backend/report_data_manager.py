@@ -29,10 +29,12 @@ import os
 
 
 class ReportDataManager:
-    def __init__(self, dfg_api_key, user_question, report_id):
+    def __init__(self, dfg_api_key, user_question, report_id, dev=False, temp=False):
         self.report_id = report_id
         self.report_data = None
         self.api_key = dfg_api_key
+        self.dev = dev
+        self.temp = temp
         self.user_question = user_question
         self.invalid = False
         self.similar_plans = []
@@ -80,13 +82,23 @@ class ReportDataManager:
             self.report_id = report_data.get("report_id")
 
             self.agents = {
-                "clarify": partial(get_clarification, dfg_api_key=self.api_key),
-                "gen_steps": partial(execute, dfg_api_key=self.api_key),
+                "clarify": partial(
+                    get_clarification,
+                    dfg_api_key=self.api_key,
+                    dev=self.dev,
+                    temp=self.temp,
+                ),
+                "gen_steps": partial(
+                    execute, dfg_api_key=self.api_key, dev=self.dev, temp=self.temp
+                ),
             }
 
             self.post_processes = {
                 "clarify": partial(
-                    Clarifier.clarifier_post_process, dfg_api_key=self.api_key
+                    Clarifier.clarifier_post_process,
+                    dfg_api_key=self.api_key,
+                    dev=self.dev,
+                    temp=self.temp,
                 ),
             }
 

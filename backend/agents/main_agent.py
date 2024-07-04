@@ -11,6 +11,8 @@ async def get_clarification(
     client_description="",
     parent_analyses=[],
     direct_parent_analysis=None,
+    dev=False,
+    temp=False,
     **kwargs,
 ):
     """
@@ -25,6 +27,8 @@ async def get_clarification(
             client_description=client_description,
             parent_analyses=parent_analyses,
             direct_parent_analysis=direct_parent_analysis,
+            dev=dev,
+            temp=temp,
         )
 
         (
@@ -59,6 +63,7 @@ async def execute(
     similar_plans=[],
     predefined_steps=None,
     dev=False,
+    temp=False,
     **kwargs,
 ):
     """
@@ -81,6 +86,7 @@ async def execute(
         predefined_steps=predefined_steps,
         direct_parent_analysis=direct_parent_analysis,
         dev=dev,
+        temp=temp,
     )
     try:
         execute, post_process = await executor.execute()

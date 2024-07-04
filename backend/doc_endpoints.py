@@ -247,7 +247,6 @@ async def get_analyses(request: Request):
     """
     params = await request.json()
     key_name = params.get("key_name")
-    print("TRYING TO DO THIS", flush=True)
     api_key = get_api_key_from_key_name(key_name)
     print(api_key, flush=True)
     try:

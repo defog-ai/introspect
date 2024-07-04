@@ -2,7 +2,7 @@ aiohttp
 airbyte
 colorama
 databricks-sql-connector
-defog==0.65.1
+defog==0.65.4
 fastapi
 google-auth
 google-cloud-bigquery

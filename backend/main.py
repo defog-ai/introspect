@@ -218,6 +218,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     )
                     continue
                 dev = data.get("dev")
+                temp = data.get("temp")
 
                 # start a report data manager
                 # this fetches currently existing report data for this report
@@ -225,6 +226,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     dfg_api_key=api_key,
                     user_question=data["user_question"],
                     report_id=report_id,
+                    dev=dev,
+                    temp=temp,
                 )
 
                 await report_data_manager.async_init()
@@ -278,7 +281,11 @@ async def websocket_endpoint(websocket: WebSocket):
                         result, tool_input_metadata = await execute_tool(
                             function_name="data_fetcher_and_aggregator",
                             tool_function_inputs=inputs,
-                            global_dict={"dfg_api_key": api_key, "dev": dev},
+                            global_dict={
+                                "dfg_api_key": api_key,
+                                "dev": dev,
+                                "temp": temp,
+                            },
                         )
                         tool_run_id = str(uuid4())
                         step = {
@@ -338,6 +345,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         db_creds=data.get("db_creds"),
                         toolboxes=toolboxes,
                         dev=dev,
+                        temp=temp,
                     )
 
                     # if the agent output is a generator, run it

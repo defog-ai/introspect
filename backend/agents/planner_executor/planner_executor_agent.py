@@ -40,6 +40,7 @@ class Executor:
         parent_analyses=[],
         similar_plans=[],
         dev=False,
+        temp=False,
         predefined_steps=None,
         direct_parent_analysis=None,
     ):
@@ -54,6 +55,7 @@ class Executor:
         self.predefined_steps = predefined_steps
         self.direct_parent_analysis = direct_parent_analysis
         self.dev = dev
+        self.temp = temp
 
         self.global_dict = {
             "user_question": user_question,
@@ -64,6 +66,7 @@ class Executor:
             "llm_calls_url": llm_calls_url,
             "report_assets_dir": report_assets_dir,
             "dev": dev,
+            "temp": temp,
         }
 
         # keep storing store column names of each step's generated data
@@ -135,6 +138,8 @@ class Executor:
                             "llm_server_url": os.environ.get(
                                 "LLM_SERVER_ENDPOINT", None
                             ),
+                            "dev": self.dev,
+                            "temp": self.temp,
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
                     else:
@@ -164,6 +169,8 @@ class Executor:
                             "plan_id": self.analysis_id,
                             "llm_server_url": llm_server_url,
                             "model_name": os.environ.get("LLM_MODEL_NAME", None),
+                            "dev": self.dev,
+                            "temp": self.temp,
                         }
                         print(payload)
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
