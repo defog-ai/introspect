@@ -42,6 +42,7 @@
     "js-base64": "^3.7.7",
     "next": "^13.1.2",
     "next-remove-imports": "^1.0.12",
+    "papaparse": "^5.4.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-fast-marquee": "^1.6.2",
