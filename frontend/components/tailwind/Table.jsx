@@ -118,7 +118,6 @@ export default function Table({
     return acc;
   }, {});
 
-  console.log(dataIndexToColumnMap);
   const maxPage = Math.ceil(rows.length / pageSize);
 
   function toggleSort(newColumn, newOrder) {

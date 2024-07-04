@@ -355,17 +355,11 @@ function AnalysisVersionViewer({
                           }));
                           setTableColumns(columns);
                           setTableData(data);
-                          console.log(columns);
-                          console.log(data);
                         },
                       });
                     }}
                   />
-                  <Table
-                    rows={tableData}
-                    columns={tableColumns}
-                    style={{ maxWidth: "100%", overflow: "scroll" }}
-                  />
+                  <Table rows={tableData} columns={tableColumns} />
                 </div>
               </div>
             )}
