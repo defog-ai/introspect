@@ -396,7 +396,9 @@ export function AddStepInputList({
   return (
     <div className="" key={toolRunId} ref={ctr}>
       {Object.keys(inputs).map((input_name, i) => {
-        const sanitizedType = sanitizeInputType(inputMetadata[input_name].type);
+        const sanitizedType = sanitizeInputType(
+          inputMetadata[input_name]?.type
+        );
         const input = inputs[input_name];
 
         return (
@@ -414,7 +416,7 @@ export function AddStepInputList({
             </span>
             {inputTypeToUI[sanitizedType] &&
               inputTypeToUI[sanitizedType](
-                inputMetadata[input_name].name,
+                inputMetadata[input_name]?.name,
                 input,
                 function (prop, newVal) {
                   onEdit(prop, newVal);

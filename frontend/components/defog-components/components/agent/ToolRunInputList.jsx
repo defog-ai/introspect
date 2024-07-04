@@ -440,7 +440,9 @@ export function ToolRunInputList({
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
       {Object.keys(inputs).map((input_name, i) => {
-        const sanitizedType = sanitizeInputType(inputMetadata[input_name].type);
+        const sanitizedType = sanitizeInputType(
+          inputMetadata[input_name]?.type
+        );
         const input = inputs[input_name];
 
         return (

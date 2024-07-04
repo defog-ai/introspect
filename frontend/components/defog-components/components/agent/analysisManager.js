@@ -24,6 +24,7 @@ function AnalysisManager({
   token,
   keyName,
   devMode,
+  didUploadFile,
   createAnalysisRequestBody = {},
 }) {
   let analysisData = null;
@@ -171,6 +172,7 @@ function AnalysisManager({
       skip_extra_approaches: true,
       skip_text_gen: true,
       token: token,
+      temp: didUploadFile,
       key_name: keyName,
       db_creds: null,
       dev: devMode,

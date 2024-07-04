@@ -33,6 +33,7 @@ export const AnalysisAgent = ({
   token,
   keyName,
   devMode,
+  didUploadFile,
   editor,
   block,
   createAnalysisRequestBody = {},
@@ -43,6 +44,8 @@ export const AnalysisAgent = ({
   onManagerDestroyed = (...args) => {},
 }) => {
   // const [messageApi, contextHolder] = message.useMessage();
+  console.log("Key name", keyName);
+  console.log("Did upload file", didUploadFile);
   const [pendingToolRunUpdates, setPendingToolRunUpdates] = useState({});
   const [reRunningSteps, setRerunningSteps] = useState([]);
   const reactiveContext = useContext(ReactiveVariablesContext);
@@ -160,6 +163,7 @@ export const AnalysisAgent = ({
       onNewData: onMainSocketMessage,
       onReRunData: onReRunMessage,
       token,
+      didUploadFile,
       keyName,
       devMode,
       userEmail: user,
