@@ -61,3 +61,6 @@ notebooks/
 
 # venv
 .venv*/
+
+# defog-metadata
+defog_metadata.csv
