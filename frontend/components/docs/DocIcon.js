@@ -1,7 +1,6 @@
 import React from "react";
-
-import { TbArchive, TbArchiveOff } from "react-icons/tb";
 import Link from "next/link";
+import { ArchiveBoxIcon, ArchiveBoxXMarkIcon } from "@heroicons/react/20/solid";
 
 export default function DocIcon({
   doc,
@@ -67,7 +66,7 @@ export default function DocIcon({
             onClick(doc);
           }}
         >
-          {doc.archived ? <TbArchiveOff /> : <TbArchive />}
+          {doc.archived ? <ArchiveBoxXMarkIcon /> : <ArchiveBoxIcon />}
         </div>
       ) : (
         <></>

@@ -1,8 +1,6 @@
 import React, { useState, useContext, Fragment } from "react";
 import { Button, message, Modal, Input, ConfigProvider } from "antd";
 
-import { CloseOutlined } from "@ant-design/icons";
-
 import { download_csv, isEmpty, transformToCSV } from "./common/utils";
 
 import styled from "styled-components";
@@ -11,6 +9,7 @@ import ThumbsDown from "./svg/ThumbsDown";
 import { ThemeContext } from "../context/ThemeContext";
 // import AgentMain from "./agent/ReportGen";
 import { TableChart } from "./TableChart";
+import { XCircleIcon } from "@heroicons/react/20/solid";
 
 const errorMessages = {
   noReponse:
@@ -171,7 +170,10 @@ const DefogDynamicViz = ({
           onCancel={() => setModalVisible(false)}
           centered
           closeIcon={
-            <CloseOutlined style={{ color: theme.config.brandColor }} />
+            <XCircleIcon
+              className="w-3 h-3"
+              style={{ color: theme.config.brandColor }}
+            />
           }
         >
           <FeedbackModalWrap theme={theme.config}>

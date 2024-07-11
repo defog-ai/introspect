@@ -78,6 +78,8 @@ export default function DocPage() {
     validate();
   }, [router, context, setContext]);
 
+  console.log(docId.current, token);
+
   return docId.current ? (
     <>
       <Meta />

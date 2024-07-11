@@ -31,6 +31,7 @@ const getToolsEndpoint = setupBaseUrl("http", "get_user_tools");
 
 export const AnalysisAgent = ({
   analysisId,
+  user,
   token,
   keyName,
   devMode,
@@ -51,8 +52,6 @@ export const AnalysisAgent = ({
   const [pendingToolRunUpdates, setPendingToolRunUpdates] = useState({});
   const [reRunningSteps, setRerunningSteps] = useState([]);
   const reactiveContext = useContext(ReactiveVariablesContext);
-  const [context, setContext] = useContext(Context);
-  const { user } = context;
   const [activeNode, setActiveNodePrivate] = useState(null);
   const [dag, setDag] = useState(null);
   const [dagLinks, setDagLinks] = useState([]);

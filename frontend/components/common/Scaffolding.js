@@ -4,6 +4,7 @@ import { Layout } from "antd/lib";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { NavBar } from "$ui-components";
+import { usePathname } from "next/navigation";
 
 const Scaffolding = ({ id, userType, children }) => {
   const { Content, Sider } = Layout;
@@ -29,6 +30,8 @@ const Scaffolding = ({ id, userType, children }) => {
     redirect("/log-in");
   };
 
+  const pathname = usePathname();
+
   useEffect(() => {
     let items = [];
     if (userType == "admin") {
@@ -36,48 +39,44 @@ const Scaffolding = ({ id, userType, children }) => {
         {
           key: "manage-database",
           title: "Manage Database",
-          icon: (
-            <a onClick={() => redirect("/extract-metadata")}>💾 Manage DB</a>
-          ),
+          href: "/extract-metadata",
         },
         {
           key: "manage-users",
           title: "Manage Users",
-          icon: (
-            <a onClick={() => redirect("/manage-users")}>🔐 Manage Users</a>
-          ),
+          href: "/manage-users",
         },
         {
           key: "view-notebooks",
           title: "View your notebook",
-          icon: (
-            <a onClick={() => redirect("/view-notebooks")}>📒 Your Notebooks</a>
-          ),
+          href: "/view-notebooks",
         },
         {
           key: "manage-tools",
           title: "Manage tools",
-          icon: <a onClick={() => redirect("/manage-tools")}>Manage tools</a>,
+          href: "/manage-tools",
         },
         {
           key: "check-readiness",
           title: "Check Readiness",
-          icon: <Link href="/check-readiness">✅ Check Readiness</Link>,
+          href: "/check-readiness",
         },
         {
           key: "align-model",
           title: "Align Model",
-          icon: <Link href="/align-model">⚙️ Align Model</Link>,
+          href: "/align-model",
         },
         {
           key: "query-data",
           title: "Query Data",
-          icon: <Link href="/query-data">🔍 Query Data</Link>,
+          href: "/query-data",
         },
         {
           key: "logout",
+          classNames: "self-end",
           title: "Logout",
-          icon: <a onClick={logout}>↪ Logout</a>,
+          href: "#",
+          onClick: logout,
         },
       ];
     } else if (!userType) {
@@ -87,54 +86,36 @@ const Scaffolding = ({ id, userType, children }) => {
         {
           key: "view-notebooks",
           title: "View your notebook",
-          icon: (
-            <a onClick={() => redirect("/view-notebooks")}>Your Notebooks</a>
-          ),
+          href: "/view-notebooks",
         },
         {
           key: "query-data",
           title: "Query Data",
-          icon: <Link href="/query-data">🔍 Query Data</Link>,
+          href: "/query-data",
         },
         {
           key: "logout",
+          classNames: "self-end",
           title: "Logout",
-          icon: <a onClick={() => redirect("/manage-tools")}>Logout</a>,
+          href: "#",
+          onClick: logout,
         },
       ];
     }
+
+    // set the item's current to true if it matches pathname
+    items = items.map((item) => {
+      item.current = item.href == pathname;
+      return item;
+    });
+
     setItems(items);
   }, [userType]);
-
-  const logoutItem = items.find((item) => item.key === "logout");
-  const navItemClasses =
-    "text-sm text-gray-500 py-2 m-2 rounded-md flex items-center cursor-pointer hover:bg-gray-300 hover:text-gray-600 px-2";
 
   return (
     <div className="flex flex-col md:min-h-screen relative">
       {items.length ? (
-        <NavBar rootClassNames="bg-gray-100">
-          <div className="flex flex-row px-4 border-b">
-            <div className="grow self-start flex flex-row">
-              {items
-                .filter((d) => d.key !== "logout")
-                .map((item) => {
-                  return (
-                    <div key={item.key} className={navItemClasses}>
-                      {item.icon}
-                    </div>
-                  );
-                })}
-            </div>
-            {logoutItem && (
-              <div className="self-end">
-                <div key="logout" className={navItemClasses}>
-                  {logoutItem.icon}
-                </div>
-              </div>
-            )}
-          </div>
-        </NavBar>
+        <NavBar rootClassNames="border-b" items={items}></NavBar>
       ) : (
         <></>
       )}

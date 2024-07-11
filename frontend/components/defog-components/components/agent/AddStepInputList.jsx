@@ -1,8 +1,13 @@
-import { message } from "antd";
-import React, { useCallback, useMemo } from "react";
-import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
+import React, { useCallback, useContext, useMemo } from "react";
 import { easyToolInputTypes } from "$utils/utils";
-import { TextArea, SingleSelect, Input } from "$ui-components";
+import {
+  TextArea,
+  SingleSelect,
+  Input,
+  MessageManagerContext,
+} from "$ui-components";
+import TrashIcon from "$components/icons/TrashIcon";
+import { PlusCircleIcon } from "@heroicons/react/20/solid";
 
 const onHover = (ev, label, analysisId) => {
   // get the closest .analysis-content to the mouseovered element
@@ -34,7 +39,7 @@ export const inputTypeToUI = {
     inputName,
     initialValue,
     onEdit,
-    config = { newListValueDefault: "New Value" }
+    config = { messageManager: null, newListValueDefault: "New Value" }
   ) => {
     if (!initialValue || !Array.isArray(initialValue)) initialValue = [];
 
@@ -70,7 +75,7 @@ export const inputTypeToUI = {
       </span>
     );
   },
-  str: (inputName, initialValue, onEdit, config = {}) => {
+  str: (inputName, initialValue, onEdit, config = { messageManager: null }) => {
     if (!initialValue) initialValue = "";
     return (
       <TextArea
@@ -84,7 +89,12 @@ export const inputTypeToUI = {
       />
     );
   },
-  bool: (inputName, initialValue, onEdit, config = {}) => {
+  bool: (
+    inputName,
+    initialValue,
+    onEdit,
+    config = { messageManager: null }
+  ) => {
     return (
       <SingleSelect
         placeholder="Select a value"
@@ -101,7 +111,7 @@ export const inputTypeToUI = {
       />
     );
   },
-  int: (inputName, initialValue, onEdit, config = {}) => (
+  int: (inputName, initialValue, onEdit, config = { messageManager: null }) => (
     <TextArea
       rootClassNames="tool-input-value md:w-80"
       textAreaClassNames="resize-none"
@@ -112,7 +122,12 @@ export const inputTypeToUI = {
       }}
     />
   ),
-  float: (inputName, initialValue, onEdit, config = {}) => (
+  float: (
+    inputName,
+    initialValue,
+    onEdit,
+    config = { messageManager: null }
+  ) => (
     <TextArea
       rootClassNames="tool-input-value md:w-80"
       textAreaClassNames="resize-none"
@@ -213,6 +228,7 @@ export const inputTypeToUI = {
     initialValue,
     onEdit,
     config = {
+      messageManager: null,
       availableParentColumns: [],
       toolRunId: "",
       type: "",
@@ -263,11 +279,11 @@ export const inputTypeToUI = {
                 }}
               />
               <div className="list-remove">
-                <MdDeleteOutline
+                <TrashIcon
                   onClick={() => {
                     // if the length is already at min, don't remove
                     if (initialValue.length <= min) {
-                      message.error(
+                      config.messageManager?.error(
                         `${inputName} requires at least ${min} column(s)`
                       );
                       return;
@@ -289,18 +305,19 @@ export const inputTypeToUI = {
           );
         })}
         <div className="list-add">
-          <MdOutlineAddBox
+          <PlusCircleIcon
+            className="w-3 h-3"
             onClick={() => {
               // if the length is already at max, don't add
               if (initialValue.length >= max) {
-                message.error(
+                messageManager?.error(
                   `Maximum number of columns (${max}) reached for ${inputName}`
                 );
                 return;
               }
               onEdit(inputName, [...initialValue, ""]);
             }}
-          ></MdOutlineAddBox>
+          ></PlusCircleIcon>
         </div>
         <span className="list-bracket">]</span>
       </span>
@@ -311,6 +328,7 @@ export const inputTypeToUI = {
     initialValue,
     onEdit,
     config = {
+      messageManager: null,
       availableParentColumns: [],
       toolRunId: "",
       inputMetadata: {},
@@ -352,6 +370,8 @@ export function AddStepInputList({
   parentNodeData = {},
   autoFocus = true,
 }) {
+  const messageManager = useContext(MessageManagerContext);
+
   const inputMetadata = toolMetadata?.input_metadata || {};
   const ctr = useCallback(
     (node) => {
@@ -433,6 +453,7 @@ export function AddStepInputList({
                   toolRunId,
                   inputMetadata,
                   type: inputMetadata[input_name].type,
+                  messageManager,
                 }
               )}
           </div>

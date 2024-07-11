@@ -16,9 +16,7 @@ import {
   reFormatData,
   roundColumns,
 } from "./common/utils";
-import { FaRegCopy } from "react-icons/fa";
 
-import { TableOutlined, BarChartOutlined } from "@ant-design/icons";
 import ErrorBoundary from "./common/ErrorBoundary";
 import ChartImage from "./ChartImage";
 
@@ -39,6 +37,11 @@ import { ReactiveVariablesContext } from "../../docs/ReactiveVariablesContext";
 import { setupWebsocketManager } from "$utils/websocket-manager";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { getTableData, roundNumber } from "$utils/utils";
+import {
+  ChartBarIcon,
+  DocumentDuplicateIcon,
+  TableCellsIcon,
+} from "@heroicons/react/20/solid";
 
 // tabBarLeftContent: extra content for the tab bar on the left side
 export function TableChart({
@@ -221,7 +224,7 @@ export function TableChart({
           />
         ),
         tabLabel: "Table",
-        icon: <TableOutlined />,
+        icon: <TableCellsIcon />,
       },
     ];
 
@@ -252,7 +255,7 @@ export function TableChart({
           </ErrorBoundary>
         ),
         tabLabel: "Chart",
-        icon: <BarChartOutlined />,
+        icon: <ChartBarIcon />,
       });
     } else {
       // if chartImagePath is present, load the image of the chart instead
@@ -419,8 +422,8 @@ export function TableChart({
               >
                 {roundNumber(obj[key])}
               </span>
-              <FaRegCopy
-                className="reactive-var-copy-icon"
+              <DocumentDuplicateIcon
+                className="reactive-var-copy-icon w-3 h-3"
                 title="Copy"
                 onClick={() => {
                   let clipboardItem = new ClipboardItem({

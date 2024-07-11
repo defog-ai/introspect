@@ -14,12 +14,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ReactCodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
-import { MdDeleteOutline } from "react-icons/md";
 import { Range, RangeSet, RangeValue } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { classname } from "@uiw/codemirror-extensions-classname";
-import { HiSparkles } from "react-icons/hi2";
 import { twMerge } from "tailwind-merge";
+import TrashIcon from "$components/icons/TrashIcon";
+import { SparklesIcon } from "@heroicons/react/20/solid";
 const { TextArea } = Input;
 
 const addToolEndpoint = setupBaseUrl("http", "add_tool");
@@ -447,9 +447,8 @@ export default function ManualToolCreator({ tool, onAddTool, handleChange }) {
                           setToolInputs(newToolInputs);
                         }}
                       >
-                        <MdDeleteOutline
+                        <TrashIcon
                           className="fill-gray-400 hover:fill-rose-400"
-                          size={40}
                           // strokeWidth={1}
                           stroke="red"
                         />
@@ -615,7 +614,7 @@ export default function ManualToolCreator({ tool, onAddTool, handleChange }) {
                   )}
                   onClick={handleGenerateToolCode}
                 >
-                  <HiSparkles
+                  <SparklesIcon
                     className={twMerge(
                       "group-hover:text-white",
                       generateToolCodeLoading &&

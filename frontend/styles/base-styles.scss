@@ -80,45 +80,6 @@ p {
   }
 }
 
-.table-tag {
-  font-size: 13px;
-  color: #000000e0;
-  margin: 3px;
-  padding: 2px 5px;
-  &.table-missing {
-    margin-right: 3px;
-    &::before {
-      // display: inline-block;
-      height: 100%;
-      content: "!";
-      font-weight: bold;
-      margin: 3px;
-      color: $dark-red;
-      border-radius: 4px;
-    }
-  }
-}
-.table-missing-popover {
-  border-radius: 4px;
-  --antd-arrow-background-color: #949494;
-
-  .ant-popover-inner {
-    box-shadow: none;
-    cursor: pointer;
-  }
-  font-family: $code;
-  .ant-popover-inner-content {
-    color: $text-medium;
-    box-shadow: 0px 0px 2px white;
-    font-size: 0.9em;
-  }
-
-  border-left: 8px solid $medium-red;
-  .ant-popover-inner-content {
-    box-shadow: none;
-  }
-}
-
 .manage-database-tabs {
   .ant-tabs-nav {
     margin-bottom: 0;

@@ -1,4 +1,4 @@
-import { PlusOutlined } from "@ant-design/icons";
+import { PlusCircleIcon } from "@heroicons/react/20/solid";
 import { twMerge } from "tailwind-merge";
 
 export function AnalysisHistoryItem({
@@ -37,7 +37,7 @@ export function AnalysisHistoryItem({
             setAddToDashboardSelection(analysis);
           }}
         >
-          <PlusOutlined />
+          <PlusCircleIcon className="w-3 h-3" />
         </div>
       )}
     </div>

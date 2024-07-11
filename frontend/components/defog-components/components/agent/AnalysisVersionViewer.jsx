@@ -1,14 +1,14 @@
-import { Modal, Spin } from "antd";
+import { Modal } from "antd";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { v4 } from "uuid";
 import { AnalysisAgent } from "./AnalysisAgent";
-import { PlusOutlined } from "@ant-design/icons";
 import { AnalysisHistoryItem } from "./AnalysisHistoryItem";
 import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
 import {
   ArrowRightEndOnRectangleIcon,
   ArrowsPointingOutIcon,
   ArrowsRightLeftIcon,
+  PlusIcon,
 } from "@heroicons/react/20/solid";
 import Papa from "papaparse";
 import { sentenceCase, useGhostImage } from "$utils/utils";
@@ -292,7 +292,7 @@ function AnalysisVersionViewer({
                     <div
                       data-enabled={!loading}
                       className={twMerge(
-                        "cursor-pointer z-20 relative",
+                        "flex items-center cursor-pointer z-20 relative",
                         "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom ",
                         "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
                       )}
@@ -303,7 +303,7 @@ function AnalysisVersionViewer({
                         setActiveAnalysisId(null);
                       }}
                     >
-                      New <PlusOutlined />
+                      New <PlusIcon className="ml-2 w-4 h-4 inline" />
                     </div>
                     <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
                   </div>

@@ -1,6 +1,6 @@
 import { twMerge } from "tailwind-merge";
 
-export default function TrashIcon({ className, onClick = () => {} }) {
+export default function TrashIcon({ className = "", onClick = () => {} }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

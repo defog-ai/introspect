@@ -4,25 +4,13 @@ import React, {
   useEffect,
   useState,
   useMemo,
-  useContext,
   useRef,
-  useCallback,
+  useContext,
 } from "react";
 import { Tabs, Button, message, Popover } from "antd";
 import ChartJSContainer from "./Charts/chartjs/ChartJSContainer";
-import {
-  chartNames,
-  processData,
-  reFormatData,
-  roundColumns,
-} from "./common/utils";
-import { FaRegCopy } from "react-icons/fa";
+import { chartNames, processData, roundColumns } from "./common/utils";
 
-import {
-  TableOutlined,
-  BarChartOutlined,
-  DownloadOutlined,
-} from "@ant-design/icons";
 import ErrorBoundary from "./common/ErrorBoundary";
 import ChartImage from "./ChartImage";
 
@@ -36,11 +24,17 @@ import "prismjs/components/prism-python";
 import "prismjs/themes/prism.css";
 import { roundNumber } from "$utils/utils";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { Table } from "$ui-components";
+import { MessageManagerContext, Table } from "$ui-components";
 import Heatmap from "./Charts/Heatmap";
-import LinePlot from "./Charts/LinePlot";
+// import LinePlot from "./Charts/LinePlot";
 import Boxplot from "./Charts/Boxplot";
 import { ChartContainer } from "./Charts/ChartContainer";
+import {
+  ArrowDownTrayIcon,
+  ChartBarIcon,
+  DocumentDuplicateIcon,
+  TableCellsIcon,
+} from "@heroicons/react/20/solid";
 
 const downloadCsvEndpoint = setupBaseUrl("http", "download_csv");
 
@@ -61,6 +55,7 @@ export function ToolResultsTable({
   const [sqlQuery, setSqlQuery] = useState(sql);
   const [toolCode, setToolCode] = useState(codeStr);
   const [csvLoading, setCsvLoading] = useState(false);
+  const messageManager = useContext(MessageManagerContext);
 
   async function saveCsv() {
     if (csvLoading) return;
@@ -90,7 +85,7 @@ export function ToolResultsTable({
         }).then((r) => r.json());
 
         if (!res?.success) {
-          message.error(res?.error_message || "Error saving CSV.");
+          messageManager.error(res?.error_message || "Error saving CSV.");
           return;
         } else if (res?.success && res?.csv) {
           csv = res.csv;
@@ -123,10 +118,10 @@ export function ToolResultsTable({
       URL.revokeObjectURL(url);
       // delete a tag
       a.remove();
-      message.success("CSV saved.");
+      messageManager.success("CSV saved.");
     } catch (e) {
       console.error(e);
-      message.error("Error saving CSV.");
+      messageManager.error("Error saving CSV.");
     } finally {
       setCsvLoading(false);
     }
@@ -223,11 +218,11 @@ export function ToolResultsTable({
                             e.stopPropagation();
                             e.preventDefault();
                             navigator.clipboard.writeText(text).then(() => {
-                              message.success("Copied to clipboard.");
+                              messageManager.success("Copied to clipboard.");
                             });
                           }}
                         >
-                          <FaRegCopy className="table-chart-cell-copy-icon" />
+                          <DocumentDuplicateIcon className="w-3 h-3 table-chart-cell-copy-icon" />
                         </div>
                       )}
                       arrow={false}
@@ -244,11 +239,7 @@ export function ToolResultsTable({
           />
         ),
         tabLabel: "Table",
-        icon: (
-          <div className="mr-1 inline">
-            <TableOutlined />
-          </div>
-        ),
+        icon: <TableCellsIcon className="w-4 h-4 mb-0.5 mr-1 inline" />,
       });
     }
 
@@ -273,14 +264,16 @@ export function ToolResultsTable({
       });
     }
 
-    tabs.push({
-      component: (
-        <ErrorBoundary>
-          <ChartContainer rows={tableData.data} columns={tableData.columns} />
-        </ErrorBoundary>
-      ),
-      tabLabel: "Line Chart",
-    });
+    if (tableData) {
+      tabs.push({
+        component: (
+          <ErrorBoundary>
+            <ChartContainer rows={tableData.data} columns={tableData.columns} />
+          </ErrorBoundary>
+        ),
+        tabLabel: "Line Chart",
+      });
+    }
 
     if (toolRunData.tool_name === "boxplot") {
       tabs.push({
@@ -329,11 +322,7 @@ export function ToolResultsTable({
             </ErrorBoundary>
           ),
           tabLabel: "Chart",
-          icon: (
-            <div className="mr-1 inline">
-              <BarChartOutlined />
-            </div>
-          ),
+          icon: <ChartBarIcon className="w-4 h-4 mb-0.5 mr-1 inline" />,
         });
       }
     } else {
@@ -410,7 +399,7 @@ export function ToolResultsTable({
               loading={csvLoading}
               disabled={csvLoading}
             >
-              <DownloadOutlined />
+              <ArrowDownTrayIcon className="w-4 h-4" />
             </Button>
           ),
         }}
@@ -504,7 +493,7 @@ export function ToolResultsTable({
                   });
 
                   navigator.clipboard.write([clipboardItem]).then(() => {
-                    message.success("Copied to clipboard.");
+                    messageManager.success("Copied to clipboard.");
                   });
                 }}
               >
@@ -530,7 +519,7 @@ export function ToolResultsTable({
                   });
 
                   navigator.clipboard.write([clipboardItem]).then(() => {
-                    message.success("Copied to clipboard.");
+                    messageManager.success("Copied to clipboard.");
                   });
                 }}
               />

@@ -1,8 +1,9 @@
 import { message } from "antd";
 import React, { useCallback, useEffect, useState } from "react";
-import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 import { easyToolInputTypes } from "$utils/utils";
 import { Input, SingleSelect, TextArea } from "$ui-components";
+import TrashIcon from "$components/icons/TrashIcon";
+import { PlusCircleIcon } from "@heroicons/react/20/solid";
 
 const inputTypeToUI = {
   list: (toolRunId, inputName, initialValue, onEdit) => {
@@ -17,7 +18,7 @@ const inputTypeToUI = {
                 value={val}
                 size="small"
                 suffix={
-                  <MdDeleteOutline
+                  <TrashIcon
                     onClick={() =>
                       onEdit(
                         inputName,
@@ -46,11 +47,12 @@ const inputTypeToUI = {
           );
         })}
         <div className="list-add">
-          <MdOutlineAddBox
+          <PlusCircleIcon
+            className="w-3 h-3"
             onClick={() => {
               onEdit(inputName, [...initialValue, "New Value"]);
             }}
-          ></MdOutlineAddBox>
+          ></PlusCircleIcon>
         </div>
         <span className="list-bracket">]</span>
       </span>
@@ -297,7 +299,7 @@ const inputTypeToUI = {
           );
         })}
         <div className="list-add">
-          <MdOutlineAddBox
+          <PlusCircleIcon
             onClick={() => {
               // if the length is already at max, don't add
               if (initialValue.length >= max) {
@@ -309,7 +311,7 @@ const inputTypeToUI = {
 
               onEdit(inputName, [...initialValue, ""]);
             }}
-          ></MdOutlineAddBox>
+          ></PlusCircleIcon>
         </div>
         <span className="list-bracket">]</span>
       </span>
