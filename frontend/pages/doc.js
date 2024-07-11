@@ -1,21 +1,27 @@
 import "@blocknote/react/style.css";
 import React, { useContext, useEffect, useRef, useState } from "react";
-import Meta from "$components/common/Meta";
-import Scaffolding from "$components/common/Scaffolding";
+import Meta from "$components/layout/Meta";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
-import ErrorBoundary from "$components/common/ErrorBoundary";
-import LoadingReport from "$components/reports/ReportLoading";
+import ErrorBoundary from "$components/layout/ErrorBoundary";
 import { v4 } from "uuid";
-import { Context } from "$components/common/Context";
+import { UserContext } from "$components/context/UserContext";
+import Scaffolding from "$components/layout/Scaffolding";
+// import { Doc } from "$agents-ui-components";
 
-const Doc = dynamic(() => import("$components/docs/Doc"), {
-  ssr: false,
-});
+const Doc = dynamic(
+  () =>
+    import("$agents-ui-components").then((module) => {
+      return module.Doc;
+    }),
+  {
+    ssr: false,
+  }
+);
 
 export default function DocPage() {
   const router = useRouter();
-  const [context, setContext] = useContext(Context);
+  const [context, setContext] = useContext(UserContext);
 
   const [user, setUser] = useState(context.user);
   const token = context.token;
@@ -85,11 +91,11 @@ export default function DocPage() {
       <Meta />
       <Scaffolding id={"view-notebooks"} userType={"admin"}>
         <ErrorBoundary>
-          <Doc docId={docId.current} token={token}></Doc>
+          <Doc docId={docId.current} user={user} token={token}></Doc>
         </ErrorBoundary>
       </Scaffolding>
     </>
   ) : (
-    <LoadingReport title="Verifying your details..."></LoadingReport>
+    <h5>Verifying your details...</h5>
   );
 }

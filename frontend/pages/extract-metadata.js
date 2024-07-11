@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import Meta from "$components/common/Meta";
-import Scaffolding from "$components/common/Scaffolding";
+import Meta from "$components/layout/Meta";
+
 import {
   Input,
   Select,
@@ -13,6 +13,7 @@ import {
 } from "antd/lib";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { FloatButton, Tabs } from "antd";
+import Scaffolding from "$components/layout/Scaffolding";
 
 const ExtractMetadata = () => {
   const { Option } = Select;

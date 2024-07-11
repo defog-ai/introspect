@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { Context } from "./Context";
+import { UserContext } from "../context/UserContext";
 import { Layout } from "antd/lib";
 import { useRouter } from "next/router";
 import Link from "next/link";
@@ -9,7 +9,7 @@ import { usePathname } from "next/navigation";
 const Scaffolding = ({ id, userType, children }) => {
   const { Content, Sider } = Layout;
   const [items, setItems] = useState([]);
-  const [context, setContext] = useContext(Context);
+  const [context, setContext] = useContext(UserContext);
 
   const router = useRouter();
 

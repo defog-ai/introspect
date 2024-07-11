@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import Meta from "$components/common/Meta";
+import Meta from "$components/layout/Meta";
 import dynamic from "next/dynamic";
 import { Switch } from "antd/lib";
 import setupBaseUrl from "$utils/setupBaseUrl";

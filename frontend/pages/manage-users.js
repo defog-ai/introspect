@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useRouter } from "next/router";
-import { Context } from "$components/common/Context";
-import Meta from "$components/common/Meta";
-import Scaffolding from "$components/common/Scaffolding";
+
+import Meta from "$components/layout/Meta";
 import { Row, Col, Form, Input, Table, Button, Space, message } from "antd";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import Scaffolding from "$components/layout/Scaffolding";
+import { UserContext } from "$components/context/UserContext";
 
 const ManageUsers = () => {
   const [loading, setLoading] = useState(false);
   const [userDets, setUserDets] = useState([]);
-  const [context, setContext] = useContext(Context);
+  const [context, setContext] = useContext(UserContext);
 
   const router = useRouter();
 

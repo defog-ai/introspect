@@ -1,13 +1,20 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
+    "baseUrl": "./",
     "checkJs": true,
     "paths": {
       "$utils/*": ["./utils/*"],
-      "$ui-components": ["./components/ui-components/lib/main.js"],
+      "$ui-components": [
+        "./components/agents-ui-components/lib/ui-components/lib/main.js"
+      ],
+      "$agents-ui-components": [
+        "./components/agents-ui-components/lib/main.jsx"
+      ],
+      "$agents-ui-styles": [
+        "./components/agents-ui-components/lib/styles/index.scss"
+      ],
       "$components/*": ["./components/*"]
     },
-
     "jsx": "react-jsx"
   }
 }

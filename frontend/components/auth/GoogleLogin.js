@@ -1,15 +1,15 @@
 import React, { useContext } from "react";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { Alert, message } from "antd";
-import { Context } from "./Context";
 import { useRouter } from "next/router";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import { UserContext } from "$components/context/UserContext";
 
 const clientId =
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "REPLACE_WITH_GOOGLE_CLIENT_ID";
 
 const GoogleLoginButton = () => {
-  const [context, setContext] = useContext(Context);
+  const [context, setContext] = useContext(UserContext);
   const router = useRouter();
   const onSuccess = async (response) => {
     console.log("Login Success: ", response); // Handle successful login

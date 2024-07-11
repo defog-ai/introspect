@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useRouter } from "next/router";
-import Meta from "$components/common/Meta";
-import Scaffolding from "$components/common/Scaffolding";
+import Meta from "$components/layout/Meta";
 import { Spin } from "antd/lib";
-import { Context } from "$components/common/Context";
+import { UserContext } from "$components/context/UserContext";
+import Scaffolding from "$components/layout/Scaffolding";
 
 const QueryDatabase = () => {
   const [userType, setUserType] = useState("");
-  const [context, setContext] = useContext(Context);
+  const [context, setContext] = useContext(UserContext);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 

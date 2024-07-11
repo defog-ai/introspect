@@ -1,15 +1,15 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
-import DocIcon from "$components/docs/DocIcon";
-import { Context } from "$components/common/Context";
-import Meta from "$components/common/Meta";
+import { DocIcon } from "$agents-ui-components";
+import Meta from "$components/layout/Meta";
 import { Collapse, message } from "antd";
-import Scaffolding from "$components/common/Scaffolding";
 import { useRouter } from "next/router";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import Scaffolding from "$components/layout/Scaffolding";
+import { UserContext } from "$components/context/UserContext";
 
 const ViewNotebooks = () => {
   const [loading, setLoading] = useState(false);
-  const [context, setContext] = useContext(Context);
+  const [context, setContext] = useContext(UserContext);
   const [ownDocs, setOwnDocs] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [archivedDocs, setArchivedDocs] = useState([]);
