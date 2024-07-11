@@ -1,11 +1,22 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
-import { DocIcon } from "$agents-ui-components";
+
 import Meta from "$components/layout/Meta";
 import { Collapse, message } from "antd";
 import { useRouter } from "next/router";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Scaffolding from "$components/layout/Scaffolding";
 import { UserContext } from "$components/context/UserContext";
+import dynamic from "next/dynamic";
+
+const DocIcon = dynamic(
+  () =>
+    import("$agents-ui-components").then((module) => {
+      return module.DocIcon;
+    }),
+  {
+    ssr: false,
+  }
+);
 
 const ViewNotebooks = () => {
   const [loading, setLoading] = useState(false);

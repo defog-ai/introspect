@@ -8,6 +8,7 @@ import { v4 } from "uuid";
 import { UserContext } from "$components/context/UserContext";
 import Scaffolding from "$components/layout/Scaffolding";
 // import { Doc } from "$agents-ui-components";
+import "@blocknote/mantine/style.css";
 
 const Doc = dynamic(
   () =>
