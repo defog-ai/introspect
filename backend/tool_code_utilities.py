@@ -65,7 +65,7 @@ async def fetch_query_into_df(
         }
 
     colnames, data, new_sql_query = await asyncio.to_thread(
-        execute_query, sql_query, api_key, db_type, db_creds, retries=0, temp=temp
+        execute_query, sql_query, api_key, db_type, db_creds, retries=2, temp=temp
     )
     df = pd.DataFrame(data, columns=colnames)
 
