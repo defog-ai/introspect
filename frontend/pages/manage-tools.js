@@ -11,8 +11,7 @@ import {
 } from "react";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { MessageManagerContext, Button, Modal } from "$ui-components";
-import DefineTool from "$agents-ui-components";
-import AddTool from "$agents-ui-components";
+import { DefineTool, AddTool } from "$agents-ui-components";
 
 const toggleDisableToolEndpoint = setupBaseUrl("http", "toggle_disable_tool");
 const deleteToolEndpoint = setupBaseUrl("http", "delete_tool");

@@ -4,8 +4,8 @@ import { Annotation, EditorState, Transaction } from "@codemirror/state";
 import { Doc, XmlElement, applyUpdate, encodeStateAsUpdate } from "yjs";
 import { v4 } from "uuid";
 import { csvParse } from "d3";
-import { reFormatData } from "$components/defog-components/components/common/utils";
 import { useEffect, useState } from "react";
+import { reFormatData } from "$agents-ui-components";
 
 export const getAnalysis = async (reportId) => {
   const urlToConnect = setupBaseUrl("http", "get_report");
