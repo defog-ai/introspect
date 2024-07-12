@@ -253,14 +253,14 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif sql_only:
                     print("sql_only flag passed")
                     classification = {"prediction": "sqlcoder"}
-                elif "agent" in data["user_question"]:
+                else:
                     print("agent word found in question")
                     classification = {"prediction": "agent"}
-                else:
-                    # check if the user question needs agents, or just sqlcoder is fine
-                    classification = await get_classification(
-                        question=data["user_question"], api_key=api_key
-                    )
+                # else:
+                #     # check if the user question needs agents, or just sqlcoder is fine
+                #     classification = await get_classification(
+                #         question=data["user_question"], api_key=api_key
+                #     )
 
                 print(classification, flush=True)
                 if classification["prediction"] == "sqlcoder":
