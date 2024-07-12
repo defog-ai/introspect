@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import dynamic from "next/dynamic";
+import { SingleSelect, Toggle } from "$ui-components";
 // import { DefogAnalysisAgentStandalone } from "$agents-ui-components";
 
 const DefogAnalysisAgentStandalone = dynamic(
@@ -39,33 +40,34 @@ const QueryDatabase = () => {
     <>
       <Meta />
       <Scaffolding id={"query-data"} userType={userType}>
-        {/* {apiKeyNames.length > 1 ? (
-          <Row type={"flex"} height={"100vh"}>
-            <Col span={24} style={{ paddingBottom: "1em" }}>
-              <Select
-                style={{ width: "100%" }}
-                onChange={(e) => {
-                  setApiKeyName(e);
-                }}
-                options={apiKeyNames.map((item) => {
-                  return { value: item, key: item, label: item };
-                })}
-                defaultValue={apiKeyName}
-              />
-            </Col>
-          </Row>
-        ) : null}
-        <h1>Query your database</h1>
-        {userType === "admin" ? (
-          <Switch
-            checkedChildren="Production"
-            unCheckedChildren="Development"
-            checked={!devMode}
-            onChange={(e) => {
-              setDevMode(!e);
-            }}
-          />
-        ) : null} */}
+        <div className="flex flex-row gap-4 items-start justify-center border-b p-2">
+          {apiKeyNames.length > 1 ? (
+            <SingleSelect
+              label={"Database"}
+              rootClassNames="w-48"
+              onChange={(e) => {
+                setApiKeyName(e);
+              }}
+              options={apiKeyNames.map((item) => {
+                return { value: item, key: item, label: item };
+              })}
+              defaultValue={apiKeyName}
+              allowClear={false}
+            />
+          ) : null}
+          {userType === "admin" ? (
+            <Toggle
+              rootClassNames="w-32"
+              title={"Environment"}
+              onLabel="Production"
+              offLabel="Development"
+              defaultOn={!devMode}
+              onToggle={(e) => {
+                setDevMode(!e);
+              }}
+            />
+          ) : null}
+        </div>
         {/* <Switch
           checkedChildren="SQL"
           unCheckedChildren="Agents"
@@ -78,6 +80,7 @@ const QueryDatabase = () => {
           <DefogAnalysisAgentStandalone
             analysisId={null}
             token={token}
+            user={user}
             devMode={devMode}
             keyName={apiKeyName}
           />
