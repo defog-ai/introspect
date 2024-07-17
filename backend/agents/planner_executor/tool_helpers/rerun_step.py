@@ -216,9 +216,10 @@ async def rerun_step_and_parents(
 
             err = None
             result = None
+            final_sql_query = None
             new_data = None
             try:
-                result, _ = await fetch_query_into_df(
+                result, final_sql_query = await fetch_query_into_df(
                     api_key=dfg_api_key,
                     sql_query=tool_run_details["sql"],
                     temp=global_dict.get("temp", False),
@@ -232,30 +233,51 @@ async def rerun_step_and_parents(
                 # save the result in the global_dict
                 global_dict[output_nm] = result
                 global_dict[output_nm].df_name = output_nm
-                # first remove any errors
-                update_res = await update_tool_run_data(
-                    analysis_id,
-                    tool_run_id,
-                    "error_message",
-                    None,
-                )
-                # update with this new result
-                update_res = await update_tool_run_data(
-                    analysis_id,
-                    tool_run_id,
-                    "outputs",
-                    {output_nm: {"data": result}},
-                )
-                if not update_res["success"]:
-                    log_error(
-                        f"Error saving the outputs of re running step: {update_res['error_message']}"
+
+                try:
+                    # first remove any errors
+                    update_res = await update_tool_run_data(
+                        analysis_id,
+                        tool_run_id,
+                        "error_message",
+                        None,
                     )
 
-                    new_data = None
-                    err = update_res["error_message"]
-                else:
+                    if not update_res["success"]:
+                        raise ValueError(
+                            f"Error saving the outputs of re running step: {update_res['error_message']}"
+                        )
+
+                    # update with this new result
+                    update_res = await update_tool_run_data(
+                        analysis_id,
+                        tool_run_id,
+                        "outputs",
+                        {output_nm: {"data": result}},
+                    )
+                    if not update_res["success"]:
+                        raise ValueError(
+                            f"Error saving the outputs of re running step: {update_res['error_message']}"
+                        )
+
+                    # also update the final sql query
+                    update_res = await update_tool_run_data(
+                        analysis_id, tool_run_id, "sql", final_sql_query
+                    )
+
+                    if not update_res["success"]:
+                        raise ValueError(
+                            f"Error saving the outputs of re running step: {update_res['error_message']}"
+                        )
+
                     new_data = update_res["tool_run_data"]
                     log_success(f"Successfully saved output of running tool:" + f_nm)
+
+                except Exception as e:
+                    log_error(e)
+                    traceback.print_exc()
+                    new_data = None
+                    err = str(e)
             else:
                 # if there was an error, store new tool result with that error
                 update_res = await update_tool_run_data(

@@ -86,11 +86,15 @@ async def get_tables_db_creds(request: Request):
 async def get_metadata(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    is_temp = params.get("temp", False)
+    if not validate_user(token):
         return {"error": "unauthorized"}
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
+
+    if is_temp:
+        api_key = f"{api_key}-temp"
 
     try:
         md = await make_request(f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key})

@@ -130,18 +130,21 @@ async def add_to_recently_viewed_docs_endpoint(request: Request):
         if doc_id is None or type(doc_id) != str:
             return {"success": False, "error_message": "Invalid document id."}
 
-        await add_to_recently_viewed_docs(
+        err = await add_to_recently_viewed_docs(
             token=token,
             doc_id=doc_id,
             api_key=api_key,
             timestamp=str(datetime.datetime.now()),
         )
 
+        if err:
+            raise Exception(err)
+
         return {"success": True}
     except Exception as e:
         logging.info("Error getting analyses: " + str(e))
         traceback.print_exc()
-        return {"success": False, "error_message": "Unable to parse your request."}
+        return {"success": False, "error_message": e}
 
 
 @router.post("/toggle_archive_status")

@@ -151,7 +151,7 @@ async def initialise_report(
 ):
     username = validate_user(token, get_username=True)
     if not username:
-        return {"success": False, "error_message": "Invalid token."}
+        return "Invalid token.", None
 
     err = None
     timestamp = str(datetime.datetime.now())
@@ -446,7 +446,7 @@ def get_all_reports(api_key: str):
 async def add_to_recently_viewed_docs(token, doc_id, timestamp, api_key):
     username = validate_user(token, get_username=True)
     if not username:
-        return {"success": False, "error_message": "Invalid token."}
+        return "Invalid token."
     try:
         print("Adding to recently viewed docs for user: ", username)
         with engine.begin() as conn:
@@ -504,7 +504,7 @@ async def add_to_recently_viewed_docs(token, doc_id, timestamp, api_key):
 async def get_doc_data(api_key, doc_id, token, col_name="doc_blocks"):
     username = validate_user(token, get_username=True)
     if not username:
-        return {"success": False, "error_message": "Invalid token."}
+        return "Invalid token.", None
     err = None
     timestamp = str(datetime.datetime.now())
     doc_data = None
@@ -735,7 +735,7 @@ async def get_table_data(table_id):
 async def get_all_docs(token):
     username = validate_user(token, get_username=True)
     if not username:
-        return {"success": False, "error_message": "Invalid token."}, None, None
+        return "Invalid token.", None, None
     # get reports from the reports table
     err = None
     own_docs = []
@@ -839,7 +839,7 @@ async def get_all_analyses(api_key: str):
 async def get_toolboxes(token):
     username = validate_user(token, get_username=True)
     if not username:
-        return {"success": False, "error_message": "Invalid token."}
+        return "Invalid token.", None
     # table is defog_agent_toolboxes
     # get all toolboxes available to a user using the username
     err = None
@@ -1035,7 +1035,7 @@ async def get_tool_run(tool_run_id):
             ).fetchall()
 
             if len(rows) == 0:
-                return {"success": False, "error_message": "Tool run not found"}
+                return "Tool run not found", None
 
             row = rows[0]
             tool_run_data = row._mapping
