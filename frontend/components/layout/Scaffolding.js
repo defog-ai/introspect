@@ -5,8 +5,15 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { NavBar } from "$ui-components";
 import { usePathname } from "next/navigation";
+import { twMerge } from "tailwind-merge";
 
-const Scaffolding = ({ id, userType, children }) => {
+const Scaffolding = ({
+  id,
+  userType,
+  children,
+  rootClassNames = "",
+  contentClassNames = "",
+}) => {
   const { Content, Sider } = Layout;
   const [items, setItems] = useState([]);
   const [context, setContext] = useContext(UserContext);
@@ -113,13 +120,18 @@ const Scaffolding = ({ id, userType, children }) => {
   }, [userType]);
 
   return (
-    <div className="flex flex-col md:min-h-screen relative">
+    <div
+      className={twMerge(
+        "flex flex-col md:min-h-screen relative",
+        rootClassNames
+      )}
+    >
       {items.length ? (
         <NavBar rootClassNames="border-b" items={items}></NavBar>
       ) : (
         <></>
       )}
-      <div className="grow">{children}</div>
+      <div className={twMerge("grow", contentClassNames)}>{children}</div>
     </div>
   );
 };
