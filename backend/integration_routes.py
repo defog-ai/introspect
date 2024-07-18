@@ -94,9 +94,11 @@ async def get_metadata(request: Request):
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
-    
+
     try:
-        md = await make_request(f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key, "temp": is_temp})
+        md = await make_request(
+            f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key, "temp": is_temp}
+        )
         table_metadata = md["table_metadata"]
 
         metadata = convert_nested_dict_to_list(table_metadata)
@@ -421,7 +423,7 @@ async def upload_csv(request: Request):
 
     resp = await asyncio.to_thread(
         defog.update_db_schema,
-        path_to_csv="defog_metadata.csv",
+        path_to_csv="./defog_metadata.csv",
         temp=True,
     )
 
