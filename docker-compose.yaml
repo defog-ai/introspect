@@ -14,6 +14,8 @@ services:
       dockerfile: dockerfile.agents-postgres
     networks:
       - agents-network
+    # ports:
+    #   - 5432:5432
     environment:
       POSTGRES_DB: postgres
       POSTGRES_NAME: postgres
