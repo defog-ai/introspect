@@ -2,8 +2,10 @@ from fastapi import APIRouter, Request
 import json
 import os
 from defog import Defog
+from io import StringIO
 from defog.query import execute_query
 import re
+import pandas as pd
 
 from db_utils import (
     validate_user,
@@ -417,14 +419,30 @@ async def upload_csv(request: Request):
         data=data,
     )
 
-    await asyncio.to_thread(
-        defog.generate_db_schema, tables=["temp_table"], upload=True, scan=False
+    csv = await asyncio.to_thread(
+        defog.generate_db_schema,
+        tables=["temp_table"],
+        upload=True,
+        scan=False,
+        return_format="other",
     )
 
-    resp = await asyncio.to_thread(
-        defog.update_db_schema,
-        path_to_csv="./defog_metadata.csv",
-        temp=True,
+    schema_df = pd.read_csv(StringIO(csv))
+    schema = {}
+    for table_name in schema_df["table_name"].unique():
+        schema[table_name] = schema_df[schema_df["table_name"] == table_name][
+            ["column_name", "data_type", "column_description"]
+        ].to_dict(orient="records")
+
+    resp = await make_request(
+        DEFOG_BASE_URL + "/update_metadata",
+        json={
+            "api_key": api_key,
+            "table_metadata": schema,
+            "db_type": db_type,
+            "temp": True,
+            "dev": False,
+        },
     )
 
     print("reached the upload_csv route", flush=True)
