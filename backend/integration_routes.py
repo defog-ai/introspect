@@ -390,7 +390,10 @@ async def upload_csv(request: Request):
     if not validate_user(token):
         return {"error": "unauthorized"}
 
-    key_name = params.get("key_name")
+    key_name = params.get("key_name", params.get("keyName"))
+    if not key_name:
+        print("No key name found", flush=True)
+        print("Defaulting to first key name", flush=True)
     api_key = get_api_key_from_key_name(key_name)
     res = get_db_type_creds(api_key)
     if res:
