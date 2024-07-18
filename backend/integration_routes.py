@@ -431,6 +431,7 @@ async def upload_csv(request: Request):
     )
 
     schema_df = pd.read_csv(StringIO(csv))
+    schema_df.dropna(subset=["column_name"], inplace=True).fillna("", inplace=True)
     schema = {}
     for table_name in schema_df["table_name"].unique():
         schema[table_name] = schema_df[schema_df["table_name"] == table_name][
