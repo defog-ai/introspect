@@ -42,7 +42,7 @@ async def data_fetcher_and_aggregator(
         print(query)
     except:
         return {
-            "error": "There was an error in generating the query. Please try again."
+            "error_message": "There was an error in generating the query. Please try again."
         }
 
     if not safe_sql(query):
