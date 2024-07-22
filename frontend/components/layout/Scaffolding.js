@@ -53,11 +53,11 @@ const Scaffolding = ({
           title: "Manage Users",
           href: "/manage-users",
         },
-        {
-          key: "view-notebooks",
-          title: "View your notebook",
-          href: "/view-notebooks",
-        },
+        // {
+        //   key: "view-notebooks",
+        //   title: "View your notebook",
+        //   href: "/view-notebooks",
+        // },
         {
           key: "manage-tools",
           title: "Manage tools",
@@ -119,13 +119,18 @@ const Scaffolding = ({
     setItems(items);
   }, [userType]);
 
+  // if current path is not /query-data, redirect to /query-data
+  const [containerClassNames, setContainerClassNames] = useState(
+    "flex flex-col md:min-h-screen relative container mx-auto"
+  );
+  useEffect(() => {
+    if (pathname === "/query-data") {
+      setContainerClassNames("flex flex-col md:min-h-screen relative");
+    }
+  }, [pathname]);
+
   return (
-    <div
-      className={twMerge(
-        "flex flex-col md:min-h-screen relative",
-        rootClassNames
-      )}
-    >
+    <div className={twMerge(containerClassNames, rootClassNames)}>
       {items.length ? (
         <NavBar rootClassNames="border-b" items={items}></NavBar>
       ) : (
