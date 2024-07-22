@@ -125,6 +125,56 @@ const ManageUsers = () => {
                 </Button>
               </Form.Item>
             </Form>
+            <p>
+              Alternatively, paste in the user details as a CSV string with the
+              following headers: `username,password,user_type`
+            </p>
+            <Form
+              name="add-users-csv"
+              disabled={loading}
+              onFinish={async (values) => {
+                setLoading(true);
+                const res = await fetch(
+                  (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") +
+                    `/admin/add_users_csv`,
+                  {
+                    method: "POST",
+                    body: JSON.stringify({
+                      ...values,
+                      token: context.token,
+                    }),
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                  }
+                );
+                const data = await res.json();
+                if (data.status === "success") {
+                  message.success(
+                    "Users added successfully! Refreshing the user data..."
+                  );
+                } else {
+                  message.error(
+                    "There was an error adding the users. Please try again."
+                  );
+                }
+                await getUserDets();
+                setLoading(false);
+              }}
+            >
+              <Form.Item label="User Details CSV String" name="users_csv">
+                <Input.TextArea
+                  placeholder="username,password,user_type"
+                  autoSize={{ minRows: 4, maxRows: 10 }}
+                  defaultValue={`username,password,user_type\n`}
+                />
+              </Form.Item>
+              <Form.Item>
+                <Button type="primary" htmlType="submit">
+                  Add Users
+                </Button>
+              </Form.Item>
+            </Form>
           </Col>
           <Col span={{ xs: 24, md: 12 }}>
             <h2>Users</h2>

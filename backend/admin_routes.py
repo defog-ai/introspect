@@ -88,6 +88,65 @@ async def add_user(request: Request):
     return {"status": "success"}
 
 
+@router.post("/admin/add_users_csv")
+async def add_users_csv(request: Request):
+    params = await request.json()
+    token = params.get("token")
+    users_csv = params.get("users_csv")
+    if not validate_user(token, user_type="admin"):
+        return {"error": "unauthorized"}
+
+    if not users_csv:
+        return {"error": "no users provided"}
+
+    users = pd.read_csv(StringIO(users_csv)).to_dict(orient="records")
+
+    # create a password for each user
+    userdets = []
+    for user in users:
+        dets = {
+            "username": user.get("username", user.get("user_email")).lower(),
+            "password": user.get("password", user.get("user_password")),
+            "user_type": user.get("user_type", user.get("user_role")).lower(),
+        }
+        userdets.append(dets)
+
+    # save the users to postgres
+    # save the users to postgres
+    with engine.begin() as conn:
+        cur = conn.connection.cursor()
+        for dets in userdets:
+            hashed_password = hashlib.sha256(
+                (dets["username"] + SALT + dets["password"]).encode()
+            ).hexdigest()
+
+            # check if user already exists
+            user_exists = conn.execute(
+                select(Users).where(Users.username == dets["username"])
+            ).fetchone()
+
+            if user_exists:
+                conn.execute(
+                    update(Users)
+                    .where(Users.username == dets["username"])
+                    .values(
+                        hashed_password=hashed_password, user_type=dets["user_type"]
+                    )
+                )
+            else:
+                conn.execute(
+                    insert(Users).values(
+                        username=dets["username"],
+                        hashed_password=hashed_password,
+                        token=INTERNAL_API_KEY,
+                        user_type=dets["user_type"],
+                        is_premium=True,
+                    )
+                )
+
+        return {"status": "success"}
+
+
 @router.post("/admin/get_users")
 async def get_users(request: Request):
     params = await request.json()
