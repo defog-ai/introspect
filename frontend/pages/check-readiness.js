@@ -6,10 +6,10 @@ import {
   QuestionCircleOutlined,
   AuditOutlined,
 } from "@ant-design/icons";
-import BasicStatus from "../components/check-readiness/BasicStatus";
-import GoldenQueriesValidity from "../components/check-readiness/GoldenQueriesValidity";
-import InstructionConsistency from "../components/check-readiness/InstructionConsistency";
-import GoldenQueryCoverage from "../components/check-readiness/GoldenQueryCoverage";
+import BasicStatus from "$components/check-readiness/BasicStatus";
+import GoldenQueriesValidity from "$components/check-readiness/GoldenQueriesValidity";
+import InstructionConsistency from "$components/check-readiness/InstructionConsistency";
+import GoldenQueryCoverage from "$components/check-readiness/GoldenQueryCoverage";
 
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Scaffolding from "$components/layout/Scaffolding";
