@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Meta from "$components/layout/Meta";
-import { Row, Col, Switch, Input, Button, message } from "antd/lib";
+import { Row, Col, Switch, Input, Select, Button, message } from "antd";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Scaffolding from "$components/layout/Scaffolding";
 
@@ -11,6 +11,10 @@ const AlignModel = () => {
   const [token, setToken] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hoverIndex, setHoverIndex] = useState(-1);
+  const apiKeyNames = (
+    process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
+  ).split(",");
+  const [apiKeyName, setApiKeyName] = useState(apiKeyNames[0]);
 
   useEffect(() => {
     // get token
@@ -19,7 +23,7 @@ const AlignModel = () => {
 
     // after 100ms, get the glossary and golden queries
     getGlossaryGoldenQueries(devMode);
-  }, [devMode]);
+  }, [devMode, apiKeyName]);
 
   const getGlossaryGoldenQueries = async (dev) => {
     setIsLoading(true);
@@ -36,6 +40,7 @@ const AlignModel = () => {
           body: JSON.stringify({
             token,
             dev: dev,
+            key_name: apiKeyName,
           }),
         }
       );
@@ -65,6 +70,7 @@ const AlignModel = () => {
           glossary,
           token,
           dev: devMode,
+          key_name: apiKeyName,
         }),
       }
     );
@@ -85,6 +91,7 @@ const AlignModel = () => {
           token,
           golden_queries: goldenQueries,
           dev: devMode,
+          key_name: apiKeyName,
         }),
       }
     );
@@ -96,6 +103,22 @@ const AlignModel = () => {
     <>
       <Meta />
       <Scaffolding id={"align-model"} userType={"admin"}>
+        {apiKeyNames.length > 1 ? (
+          <Row type={"flex"} height={"100vh"}>
+            <Col span={24} style={{ paddingBottom: "1em" }}>
+              <Select
+                style={{ width: "100%" }}
+                onChange={(e) => {
+                  setApiKeyName(e);
+                }}
+                options={apiKeyNames.map((item) => {
+                  return { value: item, key: item, label: item };
+                })}
+                defaultValue={apiKeyName}
+              />
+            </Col>
+          </Row>
+        ) : null}
         <div style={{ paddingBottom: "1em" }}>
           <h1>Align Model</h1>
           <p>
