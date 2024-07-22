@@ -14,6 +14,7 @@ import {
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { FloatButton, Tabs } from "antd";
 import Scaffolding from "$components/layout/Scaffolding";
+import { useRouter } from "next/router";
 
 const ExtractMetadata = () => {
   const { Option } = Select;
@@ -36,6 +37,8 @@ const ExtractMetadata = () => {
     process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
   ).split(",");
   const [apiKeyName, setApiKeyName] = useState(apiKeyNames[0]);
+
+  const router = useRouter();
 
   const getTables = async () => {
     // load from local storage and

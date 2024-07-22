@@ -9,7 +9,6 @@ import GoogleLoginButton from "$components/auth/GoogleLogin";
 const LogIn = () => {
   const [context, setContext] = useContext(UserContext);
   const router = useRouter();
-  console.log("test");
 
   const handleLogin = async (values) => {
     console.log("test");
