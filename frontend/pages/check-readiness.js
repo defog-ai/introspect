@@ -1,12 +1,29 @@
 import React, { useEffect, useState } from "react";
 import Meta from "$components/layout/Meta";
-import { Row, Col, Space, Button, message } from "antd";
+import { Row, Col, Select, Tooltip, message } from "antd";
+import {
+  SafetyCertificateOutlined,
+  QuestionCircleOutlined,
+  AuditOutlined,
+} from "@ant-design/icons";
+import BasicStatus from "../components/check-readiness/BasicStatus";
+import GoldenQueriesValidity from "../components/check-readiness/GoldenQueriesValidity";
+import InstructionConsistency from "../components/check-readiness/InstructionConsistency";
+import GoldenQueryCoverage from "../components/check-readiness/GoldenQueryCoverage";
+
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Scaffolding from "$components/layout/Scaffolding";
 import CustomTooltip from "$components/layout/Tooltip";
 
 const CheckReadiness = () => {
-  const [loading, setLoading] = useState(false);
+  // Loading states for each check
+  const [loadingBasicStatus, setloadingBasicStatus] = useState(false);
+  const [loadingGoldenQueries, setLoadingGoldenQueries] = useState(false);
+  const [loadingInstructionConsistency, setLoadingInstructionConsistency] =
+    useState(false);
+  const [loadingGoldenQueryCoverage, setLoadingGoldenQueryCoverage] =
+    useState(false);
+
   const [token, setToken] = useState("");
 
   // Basic readiness
@@ -32,6 +49,12 @@ const CheckReadiness = () => {
   const [coveredTables, setCoveredTables] = useState(0);
   const [coveredColumns, setCoveredColumns] = useState(0);
   const [missingTables, setMissingTables] = useState([]);
+
+  const apiKeyNames = (
+    process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
+  ).split(",");
+  const [apiKeyName, setApiKeyName] = useState(null);
+
   const checkBasicReadiness = async () => {
     let token;
     if (localStorage.getItem("defogToken")) {
@@ -41,34 +64,9 @@ const CheckReadiness = () => {
       return;
     }
 
-    setLoading(true);
-    const res = await fetch(setupBaseUrl("http", `readiness/basic`), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        token: token,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      setLoading(false);
-      setMetadataUploaded(data.metadata);
-      setGoldenQueriesUploaded(data.golden_queries);
-      setGlossaryUploaded(data.glossary);
-    } else {
-      setLoading(false);
-      message.error(
-        "An error occurred while checking if your metadata was adequately added."
-      );
-    }
-  };
-
-  const checkGoldenQueriesValidity = async () => {
-    setLoading(true);
+    setloadingBasicStatus(true);
     const res = await fetch(
-      setupBaseUrl("http", `readiness/check_golden_queries_validity`),
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + `/readiness/basic`,
       {
         method: "POST",
         headers: {
@@ -76,11 +74,42 @@ const CheckReadiness = () => {
         },
         body: JSON.stringify({
           token: token,
+          key_name: apiKeyName,
         }),
       }
     );
     const data = await res.json();
-    setLoading(false);
+    if (data.success) {
+      setloadingBasicStatus(false);
+      setMetadataUploaded(data.metadata);
+      setGoldenQueriesUploaded(data.golden_queries);
+      setGlossaryUploaded(data.glossary);
+    } else {
+      setloadingBasicStatus(false);
+      message.error(
+        "An error occurred while checking if your metadata was adequately added."
+      );
+    }
+  };
+
+  const checkGoldenQueriesValidity = async () => {
+    setLoadingGoldenQueries(true);
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") +
+        `/readiness/check_golden_queries_validity`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+          key_name: apiKeyName,
+        }),
+      }
+    );
+    const data = await res.json();
+    setLoadingGoldenQueries(false);
     setTotalGoldenQueries(data.total_golden_queries);
     setTotalGoldenQueriesInvalid(data.invalid_golden_queries_count);
     setTotalGoldenQueriesValid(
@@ -91,9 +120,10 @@ const CheckReadiness = () => {
   };
 
   const checkInstructionConsistency = async () => {
-    setLoading(true);
+    setLoadingInstructionConsistency(true);
     const res = await fetch(
-      setupBaseUrl("http", `readiness/check_instruction_consistency`),
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") +
+        `/readiness/check_instruction_consistency`,
       {
         method: "POST",
         headers: {
@@ -101,6 +131,7 @@ const CheckReadiness = () => {
         },
         body: JSON.stringify({
           token: token,
+          key_name: apiKeyName,
         }),
       }
     );
@@ -108,14 +139,15 @@ const CheckReadiness = () => {
     setInstructionConsistencyRating(data.message);
     setInconsistentInstructions([...data.inconsistent_glossary_lines]);
     setInconsistentReason([...data.reasons_for_inconsistency]);
-    setLoading(false);
+    setLoadingInstructionConsistency(false);
     console.log(data);
   };
 
   const checkGoldenQueryCoverage = async () => {
-    setLoading(true);
+    setLoadingGoldenQueryCoverage(true);
     const res = await fetch(
-      setupBaseUrl("http", `readiness/check_golden_query_coverage`),
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") +
+        `/readiness/check_golden_query_coverage`,
       {
         method: "POST",
         headers: {
@@ -123,6 +155,7 @@ const CheckReadiness = () => {
         },
         body: JSON.stringify({
           token: token,
+          key_name: apiKeyName,
         }),
       }
     );
@@ -132,25 +165,88 @@ const CheckReadiness = () => {
     setCoveredTables(data.num_total_tables - data.num_missing_tables);
     setCoveredColumns(data.num_total_cols - data.num_missing_cols);
     setMissingTables([...data.missing_tables]);
-    setLoading(false);
+    setLoadingGoldenQueryCoverage(false);
     console.log(data);
   };
 
   useEffect(() => {
+    const apiKeyName = localStorage.getItem("defogDbSelected");
+    if (apiKeyName) {
+      setApiKeyName(apiKeyName);
+    } else {
+      setApiKeyName(apiKeyNames[0]);
+    }
+  }, []);
+
+  useEffect(() => {
     const token = localStorage.getItem("defogToken");
+    if (!apiKeyName) {
+      return;
+    }
+    if (apiKeyName) {
+      localStorage.setItem("defogDbSelected", apiKeyName);
+    }
     setToken(token);
-    setLoading(true);
+    setloadingBasicStatus(true);
     setTimeout(() => {
       checkBasicReadiness();
     }, 100);
-  }, []);
+  }, [apiKeyName]);
 
   return (
     <>
       <Meta />
       <Scaffolding id={"check-readiness"} userType={"admin"}>
-        <h1>Check readiness</h1>
-        <p>Check if you have added aligned your Defog instance sufficiently</p>
+        {apiKeyNames.length > 1 ? (
+          <Row type={"flex"} height={"100vh"}>
+            <Col span={24} style={{ paddingBottom: "1em" }}>
+              <Select
+                style={{ width: "100%" }}
+                onChange={(e) => {
+                  setApiKeyName(e);
+                }}
+                options={apiKeyNames.map((item) => {
+                  return { value: item, key: item, label: item };
+                })}
+                value={apiKeyName}
+              />
+            </Col>
+          </Row>
+        ) : null}
+        <h1
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            paddingTop: "1em",
+            paddingBottom: "0em",
+          }}
+        >
+          <SafetyCertificateOutlined
+            style={{ marginRight: "0.5em", fontSize: "3em", color: "#52c41a" }}
+          />
+        </h1>
+        <h1
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            paddingTop: "0.5em",
+            paddingBottom: "1em",
+          }}
+        >
+          System Readiness Check
+          <Tooltip title="Check if you have added aligned your Defog instance sufficiently">
+            <QuestionCircleOutlined
+              style={{
+                marginLeft: "0.5em",
+                fontSize: "1em",
+                color: "#1890ff",
+                cursor: "pointer",
+              }}
+            />
+          </Tooltip>
+        </h1>
         <Row
           gutter={{
             xs: 8,
@@ -159,142 +255,54 @@ const CheckReadiness = () => {
             lg: 32,
           }}
         >
-          <Col span={24} style={{ paddingTop: "1em" }}>
-            <h2>The Basics</h2>
-            <ul>
-              <li>
-                <CustomTooltip
-                  tooltipText={
-                    "Metadata (table names, columns names, column descriptions) updated on Defog?"
-                  }
-                  mainText={"Metadata Updated:"}
-                />{" "}
-                <Space /> {loading ? "⏳" : metadataUploaded ? "✅" : "❌"}
-              </li>
-              <li>
-                <CustomTooltip
-                  tooltipText={
-                    "Explicit instructions to guide generation added to Defog?"
-                  }
-                  mainText={"Instruction Set Updated:"}
-                />{" "}
-                <Space /> {loading ? "⏳" : glossaryUploaded ? "✅" : "❌"}
-              </li>
-              <li>
-                <CustomTooltip
-                  tooltipText={
-                    "Golden queries to ground the model's generation added to Defog?"
-                  }
-                  mainText={"Golden Queries Updated:"}
-                />{" "}
-                <Space /> {loading ? "⏳" : goldenQueriesUploaded ? "✅" : "❌"}
-              </li>
-            </ul>
-          </Col>
+          <BasicStatus
+            loading={loadingBasicStatus}
+            metadataUploaded={metadataUploaded}
+            glossaryUploaded={glossaryUploaded}
+            goldenQueriesUploaded={goldenQueriesUploaded}
+          />
 
           <Col span={24} style={{ paddingTop: "1em" }}>
-            <h2>Quality Checks</h2>
+            <h2 style={{ display: "flex", alignItems: "center" }}>
+              <Tooltip title="Do regular quality checks to keep defog fully customised for databse">
+                <AuditOutlined
+                  style={{
+                    marginRight: "0.5em",
+                    fontSize: "1.2em",
+                    color: "#1890ff",
+                    cursor: "pointer",
+                  }}
+                />
+              </Tooltip>
+              Quality Checks
+            </h2>
 
-            <h3>Check Golden Queries Validity</h3>
-            <p>
-              See if your golden queires can be executed against an empty
-              database with your schema
-            </p>
-            <Button
-              type="primary"
-              onClick={() => {
-                checkGoldenQueriesValidity();
-              }}
-              loading={loading}
-              ghost
-            >
-              Check Golden Queries
-            </Button>
-            <p>Total Golden Queries: {totalGoldenQueries}</p>
-            <p>Valid Golden Queries: {totalGoldenQueriesValid}</p>
-            <p>Invalid Golden Queries: {totalGoldenQueriesInvalid}</p>
-            <p>The following is a list of invalid golden queries:</p>
-            {/* invalidGoldenQueries is an array of objects in the form {'question': ..., 'query': ..., 'valid_error': ...} */}
-            {/* render each of those */}
-            <p style={{ paddingTop: "1em" }}>
-              {invalidGoldenQueries.map((query, index) => (
-                <>
-                  <p>
-                    Question {index + 1}: {query.question}
-                  </p>
-                  <p>SQL</p>
-                  <pre>{query.sql}</pre>
-                  <p>Error</p>
-                  <pre>{query.valid_error}</pre>
-                </>
-              ))}
-            </p>
+            <GoldenQueriesValidity
+              loadingGoldenQueries={loadingGoldenQueries}
+              totalGoldenQueries={totalGoldenQueries}
+              totalGoldenQueriesValid={totalGoldenQueriesValid}
+              totalGoldenQueriesInvalid={totalGoldenQueriesInvalid}
+              invalidGoldenQueries={invalidGoldenQueries}
+              checkGoldenQueriesValidity={checkGoldenQueriesValidity}
+            />
 
-            <h3>Check Instruction Consistency</h3>
-            <p>
-              See if your instructions are consistent and do not contradict each
-              other
-            </p>
-            <Button
-              type="primary"
-              onClick={() => {
-                checkInstructionConsistency();
-              }}
-              loading={loading}
-              ghost
-            >
-              Check Instructions Consistency
-            </Button>
-            <p>{instructionConsistencyRating}</p>
-            {instructionConsistencyRating &&
-            instructionConsistencyRating.indexOf("Excellent") === -1 ? (
-              <>
-                <p>Inconsistent Instructions:</p>
-                <ul>
-                  {inconsistentInstructions.map((instruction, index) => (
-                    <li key={"inconsistent-instruction" + index}>
-                      {instruction}
-                    </li>
-                  ))}
-                </ul>
-                <p>Reasons for inconsistency:</p>
-                <ul>
-                  {inconsistentReason.map((reason, index) => (
-                    <li key={"inconsistent-reason-" + index}>{reason}</li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
+            <InstructionConsistency
+              loadingInstructionConsistency={loadingInstructionConsistency}
+              instructionConsistencyRating={instructionConsistencyRating}
+              inconsistentInstructions={inconsistentInstructions}
+              inconsistentReason={inconsistentReason}
+              checkInstructionConsistency={checkInstructionConsistency}
+            />
 
-            <h3>Check Golden Query Coverage</h3>
-            <p>
-              See if your golden queries cover a significant portion of your
-              schema
-            </p>
-            <Button
-              type="primary"
-              onClick={() => {
-                checkGoldenQueryCoverage();
-              }}
-              loading={loading}
-              ghost
-            >
-              Check Golden Query Coverage
-            </Button>
-            <p>
-              {coveredTables} out of {totalTables} tables in your database are
-              mentioned in golden queries.
-            </p>
-            <p>
-              {coveredColumns} out of {totalColumns} total columns in your
-              database are mentioned in golden queries.
-            </p>
-            <p>The following tables are missing from the golden queries:</p>
-            <ul>
-              {missingTables.map((table, index) => (
-                <li key={"missing-table-" + index}>{table}</li>
-              ))}
-            </ul>
+            <GoldenQueryCoverage
+              loadingGoldenQueryCoverage={loadingGoldenQueryCoverage}
+              totalTables={totalTables}
+              totalColumns={totalColumns}
+              coveredTables={coveredTables}
+              coveredColumns={coveredColumns}
+              missingTables={missingTables}
+              checkGoldenQueryCoverage={checkGoldenQueryCoverage}
+            />
           </Col>
         </Row>
       </Scaffolding>
