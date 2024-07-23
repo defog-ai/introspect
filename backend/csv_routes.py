@@ -6,8 +6,8 @@ from io import StringIO
 router = APIRouter()
 
 
-@router.post("/generate_metadata_csv")
-async def generate_metadata_csv(request: Request):
+@router.post("/generate_column_descriptions_for_csv")
+async def generate_column_descriptions_for_csv(request: Request):
     """
     Adds column descriptions to the metadata of a CSV file
     Expects a list of dictionaries with keys 'column_name' and 'data_type'
@@ -55,7 +55,7 @@ async def generate_metadata_csv(request: Request):
             "schemas": schemas,
         },
     )
-    metadata_csv_string = r.json()["csv"]
+    metadata_csv_string = r["csv"]
     metadata_json = pd.read_csv(StringIO(metadata_csv_string))[
         [
             "column_name",
@@ -135,4 +135,4 @@ async def generate_query_csv(request: Request):
             "db_type": "sqlite",
         },
     )
-    return r.json()
+    return r
