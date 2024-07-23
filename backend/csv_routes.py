@@ -23,6 +23,8 @@ async def generate_column_descriptions_for_csv(request: Request):
         return {"error": "no key name provided"}
     if not metadata:
         return {"error": "no metadata provided"}
+    if not table_name:
+        return {"error": "no table name provided"}
 
     api_key = get_api_key_from_key_name(key_name)
 
