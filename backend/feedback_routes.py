@@ -5,7 +5,7 @@ from generic_utils import (
     format_sql,
     format_date_string,
 )
-from auth_utils import validate_user
+from db_utils import validate_user
 import os
 import pandas as pd
 
