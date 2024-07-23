@@ -50,59 +50,6 @@ def fix_JSON(json_message=None):
     return result
 
 
-def get_table_metadata_nested_dict(api_key):
-    import requests
-
-    try:
-        r = requests.post(
-            "https://api.defog.ai/get_metadata", json={"api_key": api_key}
-        )
-
-        metadata = r.json()["table_metadata"]
-        return {"success": True, "metadata_dict": metadata}
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        return {
-            "success": False,
-            "error_message": "Error getting table metadata. Is your api key correct?",
-        }
-
-
-def get_table_metadata_as_sql_creates_from_json(metadata):
-    metadata_sql = ""
-    for table_name in metadata:
-        metadata_sql += f"CREATE TABLE {table_name} (\n"
-        for item in metadata[table_name]:
-            metadata_sql += f"\t{item['column_name']} {item['data_type']},"
-            if item["column_description"]:
-                metadata_sql += f" -- {item['column_description']}"
-            metadata_sql += "\n"
-
-        metadata_sql += ");\n\n"
-    return metadata_sql
-
-
-def get_table_metadata_as_sql_creates_from_api_key(api_key):
-    import requests
-
-    try:
-        r = requests.post(
-            "https://api.defog.ai/get_metadata", json={"api_key": api_key}
-        )
-
-        metadata = r.json()["table_metadata"]
-        metadata_sql = get_table_metadata_as_sql_creates_from_json(metadata)
-        return {"success": True, "metadata_sql": metadata_sql}
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        return {
-            "success": False,
-            "error_message": "Error getting table metadata. Is your api key correct?",
-        }
-
-
 def api_response(ran_successfully=False, **extra):
     """Returns a JSON object with the ran_successfully key and any extra keys passed in."""
     return {"ran_successfully": ran_successfully, **extra}
