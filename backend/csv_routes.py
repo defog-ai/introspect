@@ -58,7 +58,9 @@ async def generate_column_descriptions_for_csv(request: Request):
         },
     )
     metadata_csv_string = r["csv"]
-    metadata_json = pd.read_csv(StringIO(metadata_csv_string)).to_dict(orient="records")
+    metadata_json = (
+        pd.read_csv(StringIO(metadata_csv_string)).fillna("").to_dict(orient="records")
+    )
     return metadata_json
 
 
