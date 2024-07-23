@@ -21,7 +21,7 @@ from db_utils import (
     validate_user,
 )
 from generic_utils import get_api_key_from_key_name
-import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes
+import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes
 
 manager = ConnectionManager()
 
@@ -33,6 +33,7 @@ app.include_router(auth_routes.router)
 app.include_router(readiness_routes.router)
 app.include_router(doc_endpoints.router)
 app.include_router(csv_routes.router)
+app.include_router(feedback_routes.router)
 
 origins = ["*"]
 app.add_middleware(

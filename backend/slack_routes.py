@@ -2,7 +2,11 @@ from fastapi import APIRouter, Request
 import os
 from slack_sdk.web.async_client import AsyncWebClient
 from auth_utils import validate_user_email
+from generic_utils import get_api_key_from_key_name
+from db_utils import get_db_type_creds
+from feedback_routes import send_feedback
 import re
+import json
 
 slack_client = AsyncWebClient(token=os.environ["SLACK_BOT_TOKEN"])
 router = APIRouter()
@@ -10,56 +14,128 @@ router = APIRouter()
 from defog import Defog
 import pandas as pd
 import asyncio
-from db_utils import get_db_type_creds
 
 
 @router.post("/slack/events")
 async def slack_events(request: Request):
+    """Responds to events from the Slack app in the background."""
     data = await request.json()
     if "challenge" in data:
         return {"challenge": data["challenge"]}
 
     event = data["event"]
 
-    # process event in background
+    # process event in background to avoid slack timeout (limit: 3 seconds)
     asyncio.create_task(process_event(event))
     return {"status": "ok"}
 
 
+@router.post("/slack/interactions")
+async def handle_interactions(request: Request):
+    """Responds to interactions from the Slack app like button clicks and form submissions in the background."""
+    # request data comes in as form data fir interactions in Slack
+    form_data = await request.form()
+    payload = form_data.get("payload")
+    if not payload:
+        return {"error": "No payload found"}
+
+    data = json.loads(payload)
+    interaction_type = data.get("type")
+    # process interaction in background to avoid slack timeout (limit: 3 seconds)
+    asyncio.create_task(process_interaction(data, interaction_type))
+    if interaction_type == "block_actions":
+        # if the interaction is a block action, return a response to acknowledge receipt
+        return {"status": "received"}
+    elif interaction_type == "view_submission":
+        # IMPORTANT
+        # if the interaction is a view submission, return a response_action: clear to close the modal
+        return {"response_action": "clear"}
+
+
 async def process_event(event):
+    """
+    Process events like a message from the user to generate query.
+    This is used to respond to the user's query – both in a threaded and non-threaded context.
+    """
     if "text" in event and "bot_id" not in event:
         try:
             channel_id = event["channel"]
-            user_query = event["text"]
-            user_query = re.sub(r"<@(\w+)>", "", user_query).strip()
+            user_query_id = event["client_msg_id"]
 
             user_id = event["user"]
             user_dets = await slack_client.users_info(user=user_id)
             user_email = user_dets["user"]["profile"]["email"]
 
             if not validate_user_email(user_email):
+                # if the user is not authorized, send a message to the user and end the function
                 await slack_client.chat_postMessage(
                     channel=channel_id,
                     text=f"You are not authorized to use this app. Please contact the administrator if you would like access, and ask for the email `{user_email}` to be added to the system.",
                 )
-            else:
-                api_key = os.environ["DEFOG_API_KEY"].split(",")[0]
-                res = get_db_type_creds(api_key)
-                db_type, db_creds = res
-                defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
-                res = await asyncio.to_thread(defog.run_query, user_query)
-                df = pd.DataFrame(res["data"], columns=res["columns"])
+                return
 
-                # convert df into markdown table
-                table = df.to_csv(index=False)
+            user_query = event["text"]
+            # remove the user mention from the query as well as anything inside <> tags
+            user_query = re.sub(r"<@(\w+)>", "", user_query).strip()
 
-                await slack_client.files_upload_v2(
-                    channel=channel_id,
-                    title=f"Result for question {user_query}",
-                    filename=f"result_{user_query}.csv",
-                    content=table,
-                    initial_comment=f"This is a table that answers the question `{user_query}`.\nThe SQL query used to answer this is below:\n\n```\n{res['query_generated']}\n```",
+            # thread_ts is present only if the message is in a thread (i.e., a follow on question)
+            thread_ts = event.get("thread_ts")
+
+            # fetch the previous messages in the thread to get the context
+            if thread_ts:
+                prev_context = await fetch_previous_thread_messages(
+                    channel_id=channel_id, thread_ts=thread_ts
                 )
+            else:
+                prev_context = []
+
+            # add a message for user to let the user know that they can reply to the thread for follow up questions
+            if thread_ts:
+                initial_comment = ""
+            else:
+                initial_comment = (
+                    "_You may reply to this thread for follow up questions._\n"
+                )
+
+            # first, get the default API key
+            defog_api_key = get_api_key_from_key_name(None)
+
+            # then, get the db type and db creds associated with the API key
+            res = get_db_type_creds(defog_api_key)
+
+            # lastly, instantiate defog
+            defog = Defog(api_key=defog_api_key, db_type=res[0], db_creds=res[1])
+
+            # run the query
+            res = await asyncio.to_thread(
+                defog.run_query, user_query, previous_context=prev_context
+            )
+            df = pd.DataFrame(res["data"], columns=res["columns"])
+
+            # convert df into CSV string
+            table = df.to_csv(index=False)
+
+            # get the SQL query generated by Defog
+            generated_sql = res["query_generated"]
+
+            # send the table as a file to the user
+            await slack_client.files_upload_v2(
+                channel=channel_id,
+                title=f"Result for question {user_query}",
+                filename=f"result_{user_query}.csv",
+                content=table,
+                initial_comment=f"{initial_comment}This is a table that answers the question `{user_query}`.\nThe SQL query used to answer this is below:\n\n```\n{generated_sql}\n```",
+                thread_ts=thread_ts,
+            )
+            # ask for feedback
+            await show_feedback_prompt(
+                channel_id=channel_id,
+                user_query_id=user_query_id,
+                user_query=user_query,
+                generated_sql=generated_sql,
+                thread_ts=thread_ts,
+            )
+
         except Exception as e:
             print(e, flush=True)
             await slack_client.chat_postMessage(
@@ -70,3 +146,249 @@ async def process_event(event):
             )
     else:
         print("Ignoring event", flush=True)
+
+
+async def process_interaction(data, interaction_type):
+    """Process interactions i.e. button clicks and form submissions."""
+    if interaction_type == "block_actions":
+        # if the user clicks on the thumbsup or thumbsdown button
+        channel_id = data["channel"]["id"]
+        message_ts = data["container"][
+            "message_ts"
+        ]  # Timestamp of the original message
+        trigger_id = data["trigger_id"]  # triggers the modal
+
+        action = data.get("actions", [{}])[0]
+        action_id = action.get("action_id")
+
+        if action_id is None:
+            # if there is no action, we return and do not proceed further
+            return
+
+        feedback_response = json.loads(
+            action.get("value", "{}")
+        )  # response object with question, questionId, generatedSql keys
+        if action_id == "feedback_positive":
+            # send feedback and update the original message to indicate positive feedback was received
+            slack_message = "Glad to hear that! Thank you for your feedback :smile:"
+
+            # we send a message to the user to indicate that the feedback was received
+            # we do this before sending the feedback to the server to ensure that the user gets a response quickly, and with as little delay as possible
+            await slack_client.chat_update(
+                channel=channel_id,
+                ts=message_ts,
+                text=f"_{slack_message}_",  # italicize the message
+                blocks=[],
+            )
+
+            # send the feedback to the Defog server
+            await submit_feedback_to_defog_server(
+                feedback_type="Good",
+                feedback_text="",
+                feedback_response_obj=feedback_response,
+            )
+        elif action_id == "feedback_negative":
+            # if the user clicks on the thumbsdown button, we open a modal for the user to provide more detailed feedback
+            metadata = {
+                "feedback_response": feedback_response,
+                "channel_id": channel_id,
+                "message_ts": message_ts,
+            }
+
+            # Open a modal for detailed negative feedback
+            modal = {
+                "type": "modal",
+                "callback_id": "negative_feedback_modal",
+                "private_metadata": json.dumps(metadata),
+                "title": {"type": "plain_text", "text": "Feedback"},
+                "submit": {"type": "plain_text", "text": "Submit"},
+                "blocks": [
+                    {
+                        "type": "input",
+                        "block_id": "feedback_input",
+                        "element": {
+                            "type": "plain_text_input",
+                            "action_id": "feedback_text",
+                        },
+                        "label": {
+                            "type": "plain_text",
+                            "text": "Help us improve the model by telling why this was a bad query.",
+                        },
+                    }
+                ],
+            }
+            try:
+                # show the modal
+                await slack_client.views_open(trigger_id=trigger_id, view=modal)
+            except Exception as e:
+                print(f"Error opening modal: {e}")
+
+    elif interaction_type == "view_submission":
+        # if the user submits the negative feedback form
+        if data["view"]["callback_id"] == "negative_feedback_modal":
+            # Handle the negative feedback form submission
+            metadata = json.loads(data["view"]["private_metadata"])
+            channel_id = metadata["channel_id"]
+            message_ts = metadata["message_ts"]
+            feedback_response_obj = metadata["feedback_response"]
+            feedback_text = data["view"]["state"]["values"]["feedback_input"][
+                "feedback_text"
+            ]["value"]
+
+            slack_message = (
+                "Thank you for your feedback. We will use this to improve our model."
+            )
+
+            # we send a message to the user to indicate that the feedback was received
+            # we do this before sending the feedback to the server to ensure that the user gets a response quickly, and with as little delay as possible
+            await slack_client.chat_update(
+                channel=channel_id,
+                ts=message_ts,
+                text=f"_{slack_message}_",  # italicize the message
+                blocks=[],
+            )
+
+            # send feedback and update the original message to indicate negative feedback was received
+            await submit_feedback_to_defog_server(
+                feedback_type="Bad",
+                feedback_text=feedback_text,
+                feedback_response_obj=feedback_response_obj,
+            )
+
+
+async def show_feedback_prompt(
+    channel_id, user_query_id, user_query, generated_sql, thread_ts
+):
+    """
+    Constructs a prompt for the user to provide feedback on the Slack app with thumbsup and thumbsdown buttons.
+    """
+    # Construct the response object required for sending feedback to the Defog server
+
+    # this value is stored on the Slack frontend, and then sent back to the server when the user clicks on thumbsup or thumbsdown
+    feedback_response_obj = {
+        "questionId": user_query_id,
+        "question": user_query,
+        "generatedSql": generated_sql,
+    }
+    # Serializing to be able to send along with the action payload
+    feedback_response = json.dumps(feedback_response_obj)
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*Did Defog answer your question well?*",
+            },
+        },
+        {"type": "divider"},
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": ":thumbsup:", "emoji": True},
+                    # "style": "primary",
+                    "value": feedback_response,
+                    "action_id": "feedback_positive",
+                },
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": ":thumbsdown:",
+                        "emoji": True,
+                    },
+                    # "style": "danger",
+                    "value": feedback_response,
+                    "action_id": "feedback_negative",
+                },
+            ],
+        },
+        {"type": "divider"},
+    ]
+
+    # Including fallback text for notifications and non-GUI environments
+    await slack_client.chat_postMessage(
+        channel=channel_id,
+        blocks=blocks,
+        text=f"Feedback requested for the query: {user_query}",
+        thread_ts=thread_ts,
+    )
+
+
+async def submit_feedback_to_defog_server(
+    feedback_type,
+    feedback_text,
+    feedback_response_obj,
+):
+    """
+    Sends the feedback to the Defog server.
+    """
+    # Construct the feedback object for sending to the Defog server via send_feedback
+    feedback_obj = {
+        "api_key": get_api_key_from_key_name(None),
+        "feedback": feedback_type,  # "Good" or "Bad"
+        "text": feedback_text,  # feedback text, empty if feedback is Good
+        "response": feedback_response_obj,  # response: dict, required keys: "questionId", "question", "generatedSql"
+        "dev": False,
+    }
+    # Send the feedback to the Defog server
+    res = await send_feedback(feedback_obj)
+    if res["status"] == "received":
+        print("Feedback received", flush=True)
+    else:
+        print("Error sending feedback", flush=True)
+
+
+async def fetch_previous_thread_messages(channel_id, thread_ts):
+    """
+    Fetches the messages in a thread and returns the prev_context list.
+    """
+    # get the messages history for the thread
+    response = await slack_client.conversations_replies(
+        channel=channel_id, ts=thread_ts
+    )
+    messages = response.get("messages", [])
+    prev_context = []  # [parentQuestion, generatedSQL, childQuestion, generatedSQL ...]
+    for message in messages:
+        # consider only the messages that are from the defog bot as those have both question and generated SQL together
+        if "bot_id" not in message:
+            continue
+
+        # now, extract the question and generated SQL from the message
+        question, sql = "", ""
+        # question lies at message["blocks"][0]["elements"][0]["elements"][1]["text"]
+        # geneartedSql lies at message["blocks"][1]["elements"][0]["text"]
+        if "blocks" in message and message["blocks"]:
+            block = message["blocks"][0]
+            if (
+                block["type"] == "rich_text"
+                and "elements" in block
+                and block["elements"]
+            ):
+                elements = block["elements"]
+                # should at least have 2 elements, one for the question and one for the SQL
+                if len(elements) >= 2:
+                    element_with_question, element_with_sql = elements[0], elements[1]
+                    if (
+                        "elements" in element_with_question
+                        and element_with_question["elements"]
+                    ):
+                        offset = 0
+                        # if we have a message at the start that asks user for follow up questions, it induces an offset in the elements list
+                        if (
+                            "text" in element_with_question["elements"][0]
+                            and "You may reply"
+                            in element_with_question["elements"][0]["text"]
+                        ):
+                            offset = 1
+                        question = element_with_question["elements"][offset + 1]["text"]
+                    if "elements" in element_with_sql and element_with_sql["elements"]:
+                        sql = element_with_sql["elements"][0]["text"]
+                        # remove the leading and trailing whitespaces and blank lines
+                        sql = sql.strip()
+        if question and sql:
+            prev_context.append(question)
+            prev_context.append(sql)
+
+    return prev_context
