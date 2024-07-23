@@ -12,6 +12,7 @@ async def make_request(url, json):
         r = await client.post(
             url,
             json=json,
+            timeout=60,
         )
 
     print(r.content, flush=True)
