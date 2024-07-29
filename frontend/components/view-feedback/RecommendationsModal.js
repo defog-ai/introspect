@@ -176,8 +176,8 @@ const RecommendationsModal = ({
             }}
           >
             <div>
-              <BulbOutlined style={{ fontSize: "2.1em" }} />
-              <p>Recommendations</p>
+              <BulbOutlined className="text-4xl" />
+              <p className="text-2xl mt-4">Recommendations</p>
             </div>
           </h2>
           <LineBlock
@@ -245,7 +245,7 @@ const RecommendationsModal = ({
             type="dashed"
             style={{
               minWidth: "23%",
-              padding: "1.1em",
+              padding: "1.2em",
               paddingBottom: "1.1em",
               margin: "1em",
               marginBottom: "0.5em",
@@ -264,14 +264,13 @@ const RecommendationsModal = ({
             {isRunning ? "Running..." : "Ask Defog with Updated Instructions"}
           </Button>
         </div>
-        {!populatingInstructions && (
+        {!populatingInstructions && updatedQuery && (
           <>
             <div style={{ width: "95%", paddingLeft: "1.1em" }}>
               <h2
+                className="text-xl mt-4 mb-3"
                 style={{
                   textAlign: "left",
-                  marginTop: "0.5em",
-                  marginBottom: "0.3em",
                 }}
               >
                 {" "}
@@ -280,9 +279,11 @@ const RecommendationsModal = ({
                 />{" "}
                 Updated Results Using Instructions
               </h2>
-              <h3 style={{ textAlign: "left" }}>Generated SQL Query</h3>
+              <h3 className="text-lg mt-2 mb-1 text-left">
+                Generated SQL Query
+              </h3>
               <DisplayQuery query={updatedQuery} />
-              <h3 style={{ textAlign: "left" }}>Query Results</h3>
+              <h3 className="text-lg mt-2 mb-1 text-left">Query Results</h3>
               <DisplayDataFrame
                 columns={updatedColumns}
                 data={(updatedData || []).map((row) => row.map((cell) => cell))}
@@ -306,8 +307,8 @@ const RecommendationsModal = ({
                 type="dashed"
                 style={{
                   minWidth: "23%",
-                  padding: "1.1em",
-                  paddingBottom: "1.1em",
+                  padding: "1.2em",
+                  paddingBottom: "1.2em",
                   margin: "1em",
                   marginBottom: "0.5em",
                   marginTop: "0.5em",

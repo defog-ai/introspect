@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import setupBaseUrl from "../../utils/setupBaseUrl";
-import { Row, Col, Button, Spin, message } from "antd";
+import { Table, Button, Spin, message } from "antd";
+import { format } from "date-fns";;
 
 const FeedbackTable = ({
   token,
@@ -96,181 +97,211 @@ const FeedbackTable = ({
     return sql.replace(/\s+/g, " ").trim();
   };
 
-  return (
-    feedbackColumns.length > 0 && (
-      <Row type={"flex"} height={"100vh"}>
-        <Col span={24}>
-          <table
+  const toFirstCapital = (str) => {
+    if (!str) return str;
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
+
+  const columns = feedbackColumns.map((col, index) => {
+    if (col == "created_at") {
+      return {
+        title: "Timestamp",
+        dataIndex: col,
+        key: col,
+        render: (text) => (
+          <div style={{ color: "grey" }}>
+            {format(new Date(text), "HH:mm:ss dd/MM/yyyy")}
+          </div>
+        ),
+        width: "7%",
+        align: "center",
+      };
+    }
+    if (col === "feedback_type") {
+      return {
+        title: "Type",
+        dataIndex: col,
+        key: col,
+        render: (text) => (
+          <Button
+            type="primary"
+            shape="round"
+            size="small"
             style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              borderSpacing: 0,
-              backgroundColor: "#fff",
+              backgroundColor:
+                text.toLowerCase() === "bad" ? "#f5222d" : "#52c41a", // Red for bad, green for good
+              borderColor: text.toLowerCase() === "bad" ? "#f5222d" : "#52c41a",
+              color: "#fff",
             }}
           >
-            <thead>
-              <tr>
-                {feedbackColumns.map((col, i) => (
-                  <th
-                    key={i}
-                    style={{
-                      textAlign: "left",
-                      padding: "8px 16px",
-                      borderBottom: "1px solid #e0e0e0",
-                      backgroundColor: "#f0f0f0",
-                      color: "#333",
-                      maxWidth: col === "query_generated" ? "400px" : "200px",
-                    }}
-                  >
-                    {col}
-                  </th>
-                ))}
-                <th
-                  key={feedbackColumns.length}
-                  style={{
-                    padding: "8px 16px",
-                    borderBottom: "1px solid #e0e0e0",
-                    backgroundColor: "#f0f0f0",
-                    color: "#333",
-                    textAlign: "left",
-                  }}
-                >
-                  Recommendation
-                </th>
-              </tr>
-            </thead>
-            <tbody
-              style={{
-                borderCollapse: "collapse",
-                borderSpacing: 0,
-              }}
-            >
-              {feedback
-                .filter(
-                  (row) =>
-                    row[1]?.toLowerCase().includes(filter?.toLowerCase()) ||
-                    row[2]?.toLowerCase().includes(filter?.toLowerCase()) ||
-                    row[3]?.toLowerCase().includes(filter?.toLowerCase())
-                )
-                .map((row, i) => (
-                  <tr key={i}>
-                    {feedbackColumns.map((col, j) => {
-                      if (col === "query_generated") {
-                        return (
-                          <td
-                            key={j}
-                            style={{
-                              maxWidth:
-                                col === "query_generated" ? "400px" : "200px",
-                              padding: "8px 16px",
-                              borderBottom: "1px solid #e0e0e0",
-                            }}
-                          >
-                            <pre style={{ whiteSpace: "pre-wrap" }}>
-                              {row[j]}
-                            </pre>
-                          </td>
-                        );
-                      } else if (col === "feedback_text") {
-                        return (
-                          <td
-                            key={j}
-                            style={{
-                              maxWidth: "300px",
-                            }}
-                          >
-                            {row[j]}
-                          </td>
-                        );
-                      } else if (col === "question") {
-                        return (
-                          <td key={j} style={{ maxWidth: 200 }}>
-                            {row[j]}
-                            {row[5] && (
-                              <>
-                                <br />
-                                <span style={{ color: "grey" }}>
-                                  Parent Question Text: {row[5]}
-                                </span>
-                              </>
-                            )}
-                          </td>
-                        );
-                      } else {
-                        return <td key={j}>{row[j]}</td>;
-                      }
-                    })}
-                    <td
-                      key={feedbackColumns.length}
-                      style={{
-                        textAlign: "center",
-                      }}
-                    >
-                      {row[1].toLowerCase() === "bad" ? (
-                        <Button
-                          onClick={() =>
-                            handleNegativeFeedback(row[2], row[3], row[4])
-                          }
-                          style={{
-                            backgroundColor: "#4CAF50",
-                            borderColor: "#4CAF50",
-                            color: "#fff",
-                          }}
-                        >
-                          Improve using Feedback
-                        </Button>
-                      ) : addingGoldenQuery ? (
-                        <Spin tip="Updating Golden Queries...">
-                          {" "}
-                          Please give us a second
-                        </Spin>
-                      ) : (
-                        <Button
-                          onClick={async () => {
-                            try {
-                              await handleAddToGoldenQueries(row[2], row[3]);
-                            } catch (error) {
-                              console.error(
-                                "Failed to add to golden queries:",
-                                error
-                              );
-                            }
-                          }}
-                          disabled={
-                            goldenQueryMap[`${row[2]}_${normalizeSQL(row[3])}`]
-                          }
-                          style={{
-                            backgroundColor: goldenQueryMap[
-                              `${row[2]}_${normalizeSQL(row[3])}`
-                            ]
-                              ? "#f0e68c"
-                              : "#ffd700",
-                            borderColor: goldenQueryMap[
-                              `${row[2]}_${normalizeSQL(row[3])}`
-                            ]
-                              ? "#f0e68c"
-                              : "#ffd700",
-                            color: "#000",
-                            opacity: goldenQueryMap[
-                              `${row[2]}_${normalizeSQL(row[3])}`
-                            ]
-                              ? 0.5
-                              : 1,
-                          }}
-                        >
-                          {goldenQueryMap[`${row[2]}_${normalizeSQL(row[3])}`]
-                            ? "Already a Golden Query"
-                            : "Add to Golden Queries"}
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </Col>
-      </Row>
-    )
+            {toFirstCapital(text)}
+          </Button>
+        ),
+        width: "5%",
+        align: "center",
+      };
+    }
+    if (col === "query_generated") {
+      return {
+        title: <div style={{ textAlign: "center" }}>Generated SQL Query</div>,
+        dataIndex: col,
+        key: col,
+        render: (text) => (
+          <pre
+            style={{
+              whiteSpace: "pre-wrap",
+              backgroundColor: "#f4f4f4",
+              maxHeight: "300px",
+              overflow: "auto",
+            }}
+          >
+            {text}
+          </pre>
+        ),
+        width: "40%",
+      };
+    }
+    if (col === "feedback_text") {
+      return {
+        title: "Feedback Text",
+        dataIndex: col,
+        key: col,
+        render: (text) => (
+          <div
+            style={{
+              color: "#FF8C00",
+              fontFamily: "Courier, monospace",
+              fontSize: "1.1em",
+              maxHeight: "300px",
+              overflow: "auto",
+            }}
+          >
+            {text}
+          </div>
+        ),
+        width: "20%",
+        align: "center",
+      };
+    }
+    if (col === "question") {
+      return {
+        title: "Question",
+        dataIndex: col,
+        key: col,
+        render: (text, record) => (
+          <div
+            style={{
+              fontFamily: "Times New Roman, serif",
+              fontSize: "1.2em",
+              maxHeight: "300px",
+              overflow: "auto",
+            }}
+          >
+            {text}
+            {record.parentQuestionText && (
+              <>
+                <br />
+                <span style={{ color: "grey" }}>
+                  Parent Question Text: {record.parentQuestionText}
+                </span>
+              </>
+            )}
+          </div>
+        ),
+        width: "20%",
+        align: "center",
+      };
+    }
+    return {
+      title: col,
+      dataIndex: col,
+      key: col,
+    };
+  });
+
+  columns.push({
+    title: "Recommendation",
+    key: "recommendation",
+    render: (text, record) => {
+      const isGolden =
+        goldenQueryMap[
+          `${record.question}_${normalizeSQL(record.query_generated)}`
+        ];
+      return record.feedback_type.toLowerCase() === "bad" ? (
+        <Button
+          onClick={() =>
+            handleNegativeFeedback(
+              record.question,
+              record.query_generated,
+              record.feedback_text
+            )
+          }
+          style={{
+            backgroundColor: "#4CAF50",
+            borderColor: "#4CAF50",
+            color: "#fff",
+            minWidth: "95%",
+          }}
+        >
+          Improve using Feedback
+        </Button>
+      ) : addingGoldenQuery ? (
+        <Spin tip="Updating Golden Queries..."> Please give us a second</Spin>
+      ) : (
+        <Button
+          onClick={async () => {
+            try {
+              await handleAddToGoldenQueries(
+                record.question,
+                record.query_generated
+              );
+            } catch (error) {
+              console.error("Failed to add to golden queries:", error);
+            }
+          }}
+          disabled={isGolden}
+          style={{
+            backgroundColor: isGolden ? "#f0e68c" : "#ffd700",
+            borderColor: isGolden ? "#f0e68c" : "#ffd700",
+            color: "#000",
+            opacity: isGolden ? 0.4 : 1,
+            minWidth: "95%",
+          }}
+        >
+          {isGolden ? "Already a Golden Query" : "Add to Golden Queries"}
+        </Button>
+      );
+    },
+    width: "8%",
+    align: "center",
+  });
+
+  const filteredFeedback = feedback.filter(
+    (row) =>
+      row[1]?.toLowerCase().includes(filter?.toLowerCase()) ||
+      row[2]?.toLowerCase().includes(filter?.toLowerCase()) ||
+      row[3]?.toLowerCase().includes(filter?.toLowerCase())
+  );
+
+  const dataSource = filteredFeedback.map((row, index) => {
+    const rowData = {};
+    feedbackColumns.forEach((col, colIndex) => {
+      rowData[col] = row[colIndex];
+    });
+    rowData.key = index;
+    return rowData;
+  });
+
+  return (
+    <div className="w-full h-full p-1 bg-gray-50 shadow rounded-lg">
+      <Table
+        columns={columns}
+        dataSource={dataSource}
+        pagination={false}
+        scroll={{ x: true }}
+        rowKey="key"
+      />
+    </div>
   );
 };
 

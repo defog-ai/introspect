@@ -5,6 +5,7 @@ import setupBaseUrl from "$utils/setupBaseUrl";
 import { Row, Col, Select, Input } from "antd";
 import FeedbackTable from "../components/view-feedback/FeedbackTable";
 import RecommendationsModal from "../components/view-feedback/RecommendationsModal";
+import { HistoryOutlined } from "@ant-design/icons";
 
 const ViewFeedback = () => {
   const apiKeyNames = (
@@ -119,7 +120,7 @@ const ViewFeedback = () => {
   };
 
   return (
-    <>
+    <div className="flex justify-center">
       <Meta />
       <Scaffolding id={"view-feedback"} userType={"admin"}>
         {apiKeyNames.length > 1 ? (
@@ -138,45 +139,54 @@ const ViewFeedback = () => {
             </Col>
           </Row>
         ) : null}
+        <div className="w-full">
+          {/* create a filter for the users to type in */}
+          <div className="flex justify-center items-center flex-col m-3">
+            <h1>
+              <HistoryOutlined style={{ fontSize: "3em", color: "#1890ff" }} />{" "}
+            </h1>
+            <h1 className="text-2xl mt-4">Feedback History</h1>
+          </div>
 
-        {/* create a filter for the users to type in */}
-        <Row type={"flex"}>
-          <Col span={24} style={{ paddingBottom: "1em" }}>
-            <Input
-              placeholder="Filter rows by text"
-              onChange={(e) => {
-                setFilter(e.target.value);
-              }}
-            />
-          </Col>
-        </Row>
+          <Row className="flex justify-center mb-4">
+            <Col span={24}>
+              <Input
+                placeholder="Filter rows by text"
+                onChange={(e) => {
+                  setFilter(e.target.value);
+                }}
+                className="w-full p-3 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200"
+              />
+            </Col>
+          </Row>
 
-        <FeedbackTable
-          token={token}
-          apiKeyName={apiKeyName}
-          feedbackColumns={feedbackColumns}
-          feedback={feedback}
-          filter={filter}
-          goldenQueries={goldenQueries}
-          setGoldenQueries={setGoldenQueries}
-          handleNegativeFeedback={handleNegativeFeedback}
-          getFeedback={getFeedback}
-        />
-
-        {isModalVisible && (
-          <RecommendationsModal
-            isModalVisible={isModalVisible}
-            setIsModalVisible={setIsModalVisible}
+          <FeedbackTable
             token={token}
             apiKeyName={apiKeyName}
-            question={question}
-            sqlGenerated={sqlGenerated}
-            userFeedback={userFeedback}
-            getCurrentGlossary={getCurrentGlossary}
+            feedbackColumns={feedbackColumns}
+            feedback={feedback}
+            filter={filter}
+            goldenQueries={goldenQueries}
+            setGoldenQueries={setGoldenQueries}
+            handleNegativeFeedback={handleNegativeFeedback}
+            getFeedback={getFeedback}
           />
-        )}
+
+          {isModalVisible && (
+            <RecommendationsModal
+              isModalVisible={isModalVisible}
+              setIsModalVisible={setIsModalVisible}
+              token={token}
+              apiKeyName={apiKeyName}
+              question={question}
+              sqlGenerated={sqlGenerated}
+              userFeedback={userFeedback}
+              getCurrentGlossary={getCurrentGlossary}
+            />
+          )}
+        </div>
       </Scaffolding>
-    </>
+    </div>
   );
 };
 
