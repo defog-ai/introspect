@@ -8,6 +8,7 @@ from generic_utils import (
 from db_utils import validate_user
 import os
 import pandas as pd
+import requests
 
 router = APIRouter()
 
@@ -51,6 +52,7 @@ async def feedback(request: Request):
 
 @router.post("/get_feedback")
 async def get_feedback(request: Request):
+    print("get_feedback was hit")
     """Responds by fetching the feedback users have given in the past."""
     params = await request.json()
     token = params.get("token")
@@ -89,6 +91,27 @@ async def get_feedback(request: Request):
     res["data"] = data
     res["columns"] = columns[:-1]  # remove the last column (parent_question_text)
     return res
+
+
+@router.post("/get_instructions_recommendation")
+async def get_instructions_recommendation(request: Request):
+    """Uses negative feedback for a query to provide recommendations for instructions that might improve it."""
+    params = await request.json()
+    question = params.get("question")
+    sql_generated = params.get("sql_generated")
+    user_feedback = params.get("user_feedback")
+    url = DEFOG_BASE_URL + "/reflect_on_error"
+
+    r = requests.post(
+        url,
+        json={
+            "api_key": get_api_key_from_key_name(None),
+            "question": question,
+            "sql_generated": sql_generated,
+            "error": user_feedback,
+        },
+    )
+    return r.json()
 
 
 ### Helper functions ###
