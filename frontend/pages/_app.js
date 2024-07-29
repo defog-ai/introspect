@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import '../styles/globals.css';
 import "$agents-ui-styles";
 import {
   MessageMonitor,
