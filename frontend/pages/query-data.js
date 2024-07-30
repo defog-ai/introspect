@@ -9,13 +9,16 @@ import {
   SingleSelect,
   Toggle,
 } from "$ui-components";
-import { QueryData } from "$components/agents/QueryData";
+import { TestDrive } from "$components/agents/TestDrive";
 
 const QueryDataPage = () => {
   const [token, setToken] = useState("");
   const [user, setUser] = useState("");
   const [userType, setUserType] = useState("");
   const [devMode, setDevMode] = useState(false);
+  const apiKeyNames = (
+    process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
+  ).split(",");
 
   useEffect(() => {
     const token = localStorage.getItem("defogToken");
@@ -54,11 +57,36 @@ const QueryDataPage = () => {
             <MessageManagerContext.Provider value={MessageManager()}>
               <MessageMonitor />
               {/* env keyname stuff happens inside QueryData component */}
-              <QueryData
+              <TestDrive
                 devMode={devMode}
                 token={token}
                 apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
-                predefinedQuestions={["Show me 5 rows"]}
+                uploadedCsvPredefinedQuestions={[
+                  "Show me any 5 rows from the dataset",
+                ]}
+                dbs={apiKeyNames.map((name) => {
+                  return {
+                    keyName: name,
+                    name: name,
+                    predefinedQuestions:
+                      name === "Manufacturing"
+                        ? [
+                            "What is the average rejection rate by lot?",
+                            "Is there a difference in the plasticity of components that are rejected vs accepted?",
+                          ]
+                        : name === "Sales"
+                          ? [
+                              "Who are our top 5 customers by revenue?",
+                              "What was the month on month change in revenue?",
+                            ]
+                          : name === "Slack"
+                            ? [
+                                "What is the count of number of queries by db type in the last 30 days, except for queries made by jp@defog.ai?",
+                                "Which users have the most queries?",
+                              ]
+                            : ["Show me any 5 rows from the dataset"],
+                  };
+                })}
               />
             </MessageManagerContext.Provider>
           ) : null}
