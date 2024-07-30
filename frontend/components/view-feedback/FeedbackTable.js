@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import setupBaseUrl from "../../utils/setupBaseUrl";
 import { Table, Button, Spin, message } from "antd";
-import { format } from "date-fns";;
 
 const FeedbackTable = ({
   token,
@@ -110,7 +109,13 @@ const FeedbackTable = ({
         key: col,
         render: (text) => (
           <div style={{ color: "grey" }}>
-            {format(new Date(text), "HH:mm:ss dd/MM/yyyy")}
+            {/* text is a date string in the format YYYY-MM-DD HH:MM, convert it into a format like Mar 27, HH:MM */}
+            {new Date(text).toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </div>
         ),
         width: "7%",
@@ -191,8 +196,6 @@ const FeedbackTable = ({
         render: (text, record) => (
           <div
             style={{
-              fontFamily: "Times New Roman, serif",
-              fontSize: "1.2em",
               maxHeight: "300px",
               overflow: "auto",
             }}
