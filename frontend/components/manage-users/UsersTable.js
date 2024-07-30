@@ -39,7 +39,7 @@ const UsersTable = ({ userDets, context, getUserDets, setLoading }) => {
   };
 
   return (
-    <div className="w-3/6">
+    <div className="w-3/6 max-h-screen overflow-y-auto">
       <Table
         className="mt-10"
         dataSource={userDets}

@@ -90,7 +90,7 @@ const ManageUsers = () => {
             setLoading={setLoading}
           />
         </div>
-        <div className="flex justify-center items-center flex-col p-1 w-full">
+        <div className="flex justify-center items-center flex-col p-1 w-full mt-4 mb-4">
           <AddUsersCSVForm
             loading={loading}
             context={context}
