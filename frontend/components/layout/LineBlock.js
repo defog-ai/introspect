@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { Input } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 
-const LineBlock = ({ helperText, mainText, onUpdate, isEditable }) => {
+const LineBlock = ({ helperText, mainText, onUpdate, isEditable, inputModeOn = false }) => {
   const [editableText, setEditableText] = useState(mainText);
-  const [editMode, setEditMode] = useState(false);
+  const [editMode, setEditMode] = useState(inputModeOn);
 
   const handleUpdate = () => {
     onUpdate(editableText); // Update the parent state with new text

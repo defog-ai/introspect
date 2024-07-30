@@ -248,8 +248,6 @@ const FeedbackTable = ({
         >
           Improve using Feedback
         </Button>
-      ) : addingGoldenQuery ? (
-        <Spin tip="Updating Golden Queries..."> Please give us a second</Spin>
       ) : (
         <Button
           onClick={async () => {
@@ -296,15 +294,17 @@ const FeedbackTable = ({
   });
 
   return (
-    <div className="w-full h-full p-1 bg-gray-50 shadow rounded-lg">
-      <Table
-        columns={columns}
-        dataSource={dataSource}
-        pagination={false}
-        scroll={{ x: true }}
-        rowKey="key"
-      />
-    </div>
+    <Spin spinning={addingGoldenQuery} tip="Adding to Golden Queries...">
+      <div className="w-full h-full p-1 bg-gray-50 shadow rounded-lg">
+        <Table
+          columns={columns}
+          dataSource={dataSource}
+          pagination={false}
+          scroll={{ x: true }}
+          rowKey="key"
+        />
+      </div>
+    </Spin>
   );
 };
 

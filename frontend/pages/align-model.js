@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
@@ -13,10 +13,16 @@ const AlignModel = () => {
   const [glossary, setGlossary] = useState("");
   const [goldenQueries, setGoldenQueries] = useState([]); // [ { question: "", sql: "" }, ... ]
   const [token, setToken] = useState("");
+  
+  // loading states
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingInstructions, setIsUpdatingInstructions] = useState(false);
   const [isUpdatingGoldenQueries, setIsUpdatingGoldenQueries] = useState(false);
-  const [hoverIndex, setHoverIndex] = useState(-1);
+  
+  // state that triggers an update in the golden queries
+  const [updatedGoldenQueriesToggle, setUpdatedGoldenQueriesToggle] =
+    useState(false);
+
   const apiKeyNames = (
     process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
   ).split(",");
@@ -30,6 +36,11 @@ const AlignModel = () => {
     // after 100ms, get the glossary and golden queries
     getGlossaryGoldenQueries(devMode);
   }, [devMode, apiKeyName]);
+
+  // triggers golden queries when updatedGoldenQueriesToggle is toggled
+  useEffect(() => {
+    updateGoldenQueries();
+  }, [updatedGoldenQueriesToggle]);
 
   const getGlossaryGoldenQueries = async (dev) => {
     setIsLoading(true);
@@ -82,6 +93,9 @@ const AlignModel = () => {
     );
     const data = await res.json();
     setIsUpdatingInstructions(false);
+    if (data.status === "success") {
+      message.success("Instructions updated successfully!");
+    }
   };
 
   const updateGoldenQueries = async () => {
@@ -103,6 +117,9 @@ const AlignModel = () => {
     );
     const data = await res.json();
     setIsUpdatingGoldenQueries(false);
+    if (data.status === "success") {
+      message.success("Golden queries updated successfully!");
+    }
   };
 
   return (
@@ -130,10 +147,11 @@ const AlignModel = () => {
           <h1>
             <SettingOutlined style={{ fontSize: "3em", color: "#1890ff" }} />{" "}
           </h1>
-          <h1 className="text-2xl mt-4">Align Model</h1>
+          <h1 className="text-3xl mt-4">Align Model</h1>
           <p className="m-4">
             Here, you can see the instructions and golden queries that the model
-            is currently using to create SQL queries. Feel free to change them to get the best results.
+            is currently using to create SQL queries. Feel free to change them
+            to get the best results.
           </p>
         </div>
         <div className="flex flex-col p-1 border border-gray-3200 rounded-lg">
@@ -147,9 +165,9 @@ const AlignModel = () => {
           <GoldenQueries
             goldenQueries={goldenQueries}
             setGoldenQueries={setGoldenQueries}
-            updateGoldenQueries={updateGoldenQueries}
             isLoading={isLoading}
             isUpdatingGoldenQueries={isUpdatingGoldenQueries}
+            setUpdatedGoldenQueriesToggle={setUpdatedGoldenQueriesToggle}
           />
         </div>
       </Scaffolding>

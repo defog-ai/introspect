@@ -169,7 +169,6 @@ const ViewFeedback = () => {
             goldenQueries={goldenQueries}
             setGoldenQueries={setGoldenQueries}
             handleNegativeFeedback={handleNegativeFeedback}
-            getFeedback={getFeedback}
           />
 
           {isModalVisible && (

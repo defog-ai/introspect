@@ -2,22 +2,48 @@ import { useState } from "react";
 import { Table, Input, Button, Space, Spin } from "antd";
 import { EditOutlined, DeleteOutlined, SaveOutlined } from "@ant-design/icons";
 import LineBlock from "../layout/LineBlock";
+import AddQueryModal from "./AddQueryModal";
 
 const GoldenQueries = ({
   goldenQueries,
   setGoldenQueries,
-  updateGoldenQueries,
   isLoading,
   isUpdatingGoldenQueries,
+  setUpdatedGoldenQueriesToggle,
 }) => {
   const [editMode, setEditMode] = useState(
     Array(goldenQueries.length).fill(false)
   );
+  // add new question and query modal state
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const [newQuestion, setNewQuestion] = useState("");
+  const [newSql, setNewSql] = useState("");
 
   const toggleEditMode = (index) => {
     const newEditMode = [...editMode];
     newEditMode[index] = !newEditMode[index];
     setEditMode(newEditMode);
+  };
+
+  // handles submission of new question and query under modal
+  const handleOk = () => {
+    if (newQuestion && newSql) {
+      setGoldenQueries([
+        ...goldenQueries,
+        { question: newQuestion, sql: newSql },
+      ]);
+      setNewQuestion("");
+      setNewSql("");
+      setIsModalVisible(false);
+      setUpdatedGoldenQueriesToggle((prev) => !prev);
+    }
+  };
+
+  const handleCancel = () => {
+    setNewQuestion("");
+    setNewSql("");
+    setIsModalVisible(false);
   };
 
   const columns = [
@@ -82,7 +108,9 @@ const GoldenQueries = ({
           <Button
             icon={
               editMode[index] ? (
-                <SaveOutlined onClick={updateGoldenQueries} />
+                <SaveOutlined
+                  onClick={() => setUpdatedGoldenQueriesToggle((prev) => !prev)}
+                />
               ) : (
                 <EditOutlined />
               )
@@ -98,9 +126,9 @@ const GoldenQueries = ({
               const newGoldenQueries = [...goldenQueries];
               newGoldenQueries.splice(index, 1);
               setGoldenQueries(newGoldenQueries);
-              await updateGoldenQueries();
               // Remove the editMode for the deleted query so it does not carry over
               setEditMode(editMode.filter((_, i) => i !== index));
+              setUpdatedGoldenQueriesToggle((prev) => !prev);
             }}
             disabled={isLoading || isUpdatingGoldenQueries}
           />
@@ -110,8 +138,8 @@ const GoldenQueries = ({
   ];
 
   return (
-    <div className="w-full p-4">
-      <h2 className="text-2xl font-bold mb-3">Golden Queries</h2>
+    <div className="w-full p-4 mb-4">
+      <h2 className="text-2xl mb-3">Golden Queries</h2>
       <p className="mb-6 text-gray-700">
         The golden queries are SQL queries used as examples by the model to
         learn about how your database is structured. You can see and edit them
@@ -140,17 +168,21 @@ const GoldenQueries = ({
       <Button
         type="primary"
         className="mt-4 h-auto p-2 min-w-56"
-        onClick={async () => {
-          const newGoldenQueries = [...goldenQueries];
-          newGoldenQueries.push({ question: "", sql: "" });
-          setGoldenQueries(newGoldenQueries);
-          // Create a new editMode array with all existing false and only the new query true
-          setEditMode([...editMode, true]);
-        }}
+        onClick={() => setIsModalVisible(true)}
         disabled={isLoading || isUpdatingGoldenQueries}
       >
-        Add new question and query
+        Add new Question and Query
       </Button>
+      {isModalVisible && (
+        <AddQueryModal
+          handleOk={handleOk}
+          handleCancel={handleCancel}
+          newQuestion={newQuestion}
+          setNewQuestion={setNewQuestion}
+          newSql={newSql}
+          setNewSql={setNewSql}
+        />
+      )}
     </div>
   );
 };

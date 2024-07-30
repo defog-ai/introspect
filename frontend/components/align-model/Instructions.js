@@ -8,7 +8,7 @@ const Instructions = ({
   isUpdatingInstructions,
 }) => (
   <div className="w-full p-4">
-    <h2 className="text-2xl font-bold mb-3">Instructions</h2>
+    <h2 className="text-2xl mb-3 ">Instructions</h2>
     <p className="mb-4 text-gray-700">
       These instructions are used by the model as a guide for the SQL queries
       that it generates. You can change them below.
