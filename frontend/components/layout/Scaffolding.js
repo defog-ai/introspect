@@ -74,6 +74,11 @@ const Scaffolding = ({
           href: "/align-model",
         },
         {
+          key: "view-feedback",
+          title: "View Feedback",
+          href: "/view-feedback",
+        },
+        {
           key: "query-data",
           title: "Query Data",
           href: "/query-data",
