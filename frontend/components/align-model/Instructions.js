@@ -8,7 +8,7 @@ const Instructions = ({
   isUpdatingInstructions,
 }) => (
   <div className="w-full p-4">
-    <h2 className="text-2xl mb-3 ">Instructions</h2>
+    <h2 className="text-xl mb-3 font-semibold">Instructions</h2>
     <p className="mb-4 text-gray-700">
       These instructions are used by the model as a guide for the SQL queries
       that it generates. You can change them below.
@@ -22,7 +22,7 @@ const Instructions = ({
       }
     >
       <textarea
-        className="w-full min-h-28 p-2 border rounded border-gray-300 shadow-sm focus:border-gray-500 focus:ring focus:ring-gray-200 transition duration font-mono"
+        className="w-full h-40 p-2 border rounded border-gray-300 shadow-sm focus:border-gray-500 focus:ring focus:ring-gray-200 transition duration italic"
         value={glossary}
         onChange={(e) => setGlossary(e.target.value)}
         rows={8}

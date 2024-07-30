@@ -139,7 +139,7 @@ const GoldenQueries = ({
 
   return (
     <div className="w-full p-4 mb-4">
-      <h2 className="text-2xl mb-3">Golden Queries</h2>
+      <h2 className="text-xl mb-3 font-semibold">Golden Queries</h2>
       <p className="mb-6 text-gray-700">
         The golden queries are SQL queries used as examples by the model to
         learn about how your database is structured. You can see and edit them
