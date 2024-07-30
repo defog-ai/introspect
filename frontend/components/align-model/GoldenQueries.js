@@ -1,0 +1,158 @@
+import { useState } from "react";
+import { Table, Input, Button, Space, Spin } from "antd";
+import { EditOutlined, DeleteOutlined, SaveOutlined } from "@ant-design/icons";
+import LineBlock from "../layout/LineBlock";
+
+const GoldenQueries = ({
+  goldenQueries,
+  setGoldenQueries,
+  updateGoldenQueries,
+  isLoading,
+  isUpdatingGoldenQueries,
+}) => {
+  const [editMode, setEditMode] = useState(
+    Array(goldenQueries.length).fill(false)
+  );
+
+  const toggleEditMode = (index) => {
+    const newEditMode = [...editMode];
+    newEditMode[index] = !newEditMode[index];
+    setEditMode(newEditMode);
+  };
+
+  const columns = [
+    {
+      title: "Question",
+      dataIndex: "question",
+      key: "question",
+      width: "30%",
+
+      render: (text, record, index) =>
+        editMode[index] ? (
+          <Input.TextArea
+            value={text}
+            onChange={(e) => {
+              const newGoldenQueries = [...goldenQueries];
+              newGoldenQueries[index].question = e.target.value;
+              setGoldenQueries(newGoldenQueries);
+            }}
+            rows={1}
+            disabled={isLoading || isUpdatingGoldenQueries}
+          />
+        ) : (
+          <LineBlock
+            helperText=""
+            mainText={text}
+            onUpdate={() => {}}
+            isEditable={false}
+          />
+        ),
+    },
+    {
+      title: "SQL Query",
+      dataIndex: "sql",
+      key: "sql",
+      width: "65%",
+      render: (text, record, index) =>
+        editMode[index] ? (
+          <Input.TextArea
+            value={text}
+            onChange={(e) => {
+              const newGoldenQueries = [...goldenQueries];
+              newGoldenQueries[index].sql = e.target.value;
+              setGoldenQueries(newGoldenQueries);
+            }}
+            rows={4}
+            disabled={isLoading || isUpdatingGoldenQueries}
+            className="font-mono text-sm p-2 bg-gray-50 border border-gray-300"
+          />
+        ) : (
+          <pre className="whitespace-pre-wrap bg-gray-100 max-h-72 overflow-auto">
+            {text}
+          </pre>
+        ),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      width: "5%",
+      align: "center",
+      render: (text, record, index) => (
+        <Space>
+          <Button
+            icon={
+              editMode[index] ? (
+                <SaveOutlined onClick={updateGoldenQueries} />
+              ) : (
+                <EditOutlined />
+              )
+            }
+            onClick={() => toggleEditMode(index)}
+            disabled={isLoading || isUpdatingGoldenQueries}
+          />
+          <Button
+            icon={<DeleteOutlined />}
+            type="primary"
+            danger
+            onClick={async () => {
+              const newGoldenQueries = [...goldenQueries];
+              newGoldenQueries.splice(index, 1);
+              setGoldenQueries(newGoldenQueries);
+              await updateGoldenQueries();
+              // Remove the editMode for the deleted query so it does not carry over
+              setEditMode(editMode.filter((_, i) => i !== index));
+            }}
+            disabled={isLoading || isUpdatingGoldenQueries}
+          />
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div className="w-full p-4">
+      <h2 className="text-2xl font-bold mb-3">Golden Queries</h2>
+      <p className="mb-6 text-gray-700">
+        The golden queries are SQL queries used as examples by the model to
+        learn about how your database is structured. You can see and edit them
+        below.
+      </p>
+      <Spin
+        spinning={isLoading || isUpdatingGoldenQueries}
+        tip={
+          isUpdatingGoldenQueries
+            ? "Updating Golden Queries..."
+            : "Loading Golden Queries"
+        }
+      >
+        <div className="max-h-screen overflow-auto">
+          <Table
+            columns={columns}
+            dataSource={goldenQueries.map((query, index) => ({
+              ...query,
+              key: index,
+            }))}
+            pagination={false}
+          />
+        </div>
+      </Spin>
+
+      <Button
+        type="primary"
+        className="mt-4 h-auto p-2 min-w-56"
+        onClick={async () => {
+          const newGoldenQueries = [...goldenQueries];
+          newGoldenQueries.push({ question: "", sql: "" });
+          setGoldenQueries(newGoldenQueries);
+          // Create a new editMode array with all existing false and only the new query true
+          setEditMode([...editMode, true]);
+        }}
+        disabled={isLoading || isUpdatingGoldenQueries}
+      >
+        Add new question and query
+      </Button>
+    </div>
+  );
+};
+
+export default GoldenQueries;
