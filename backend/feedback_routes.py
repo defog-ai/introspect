@@ -8,7 +8,6 @@ from generic_utils import (
 from db_utils import validate_user
 import os
 import pandas as pd
-import requests
 
 router = APIRouter()
 
@@ -97,21 +96,26 @@ async def get_feedback(request: Request):
 async def get_instructions_recommendation(request: Request):
     """Uses negative feedback for a query to provide recommendations for instructions that might improve it."""
     params = await request.json()
+    token = params.get("token")
+    if not validate_user(token):
+        return {"error": "unauthorized"}
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
     question = params.get("question")
     sql_generated = params.get("sql_generated")
     user_feedback = params.get("user_feedback")
     url = DEFOG_BASE_URL + "/reflect_on_error"
 
-    r = requests.post(
-        url,
+    r = await make_request(
+        url=url,
         json={
-            "api_key": get_api_key_from_key_name(None),
+            "api_key": api_key,
             "question": question,
             "sql_generated": sql_generated,
             "error": user_feedback,
         },
     )
-    return r.json()
+    return r
 
 
 ### Helper functions ###
