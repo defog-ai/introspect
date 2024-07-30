@@ -17,7 +17,6 @@ async def make_request(url, json):
             timeout=60,
         )
 
-    print(r.content, flush=True)
     return r.json()
 
 
