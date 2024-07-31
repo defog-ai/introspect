@@ -2,20 +2,31 @@ import { useState, useEffect } from "react";
 import { Form, Input, Button, Select, message } from "antd";
 import { IdcardOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import "tailwindcss/tailwind.css";
+import { csv } from "d3";
 
 const { Option } = Select;
 
-const AddUsersForm = ({ loading, context, getUserDets, setLoading }) => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [userType, setUserType] = useState("");
+const AddUsersCSVForm = ({ loading, context, getUserDets, setLoading }) => {
+  const [users, setUsers] = useState([
+    { username: "", password: "", userType: "" },
+  ]);
   const [csvString, setCsvString] = useState("username,password,user_type\n");
 
   useEffect(() => {
-    setCsvString(
-      `username,password,user_type\n${username},${password},${userType}`
-    );
-  }, [username, password, userType]);
+    const csv = users
+      .filter((user) => user.username && user.password && user.userType)
+      .map((user) => `${user.username},${user.password},${user.userType}`)
+      .join("\n");
+    setCsvString(`username,password,user_type\n${csv}`);
+  }, [users]);
+
+  const handleChange = (index, field, value) => {
+    const newUsers = [...users];
+    newUsers[index][field] = value;
+    setUsers(newUsers);
+    console.log(csvString);
+  };
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -26,14 +37,10 @@ const AddUsersForm = ({ loading, context, getUserDets, setLoading }) => {
     });
     const data = await res.json();
     if (data.status === "success") {
-      message.success("User added successfully! Refreshing the user data...");
-      console.log(data.status);
-      // Clear the form values here
-      setUsername("");
-      setPassword("");
-      setUserType("");
+      message.success("Users added successfully! Refreshing the user data...");
+      setUsers([{ username: "", password: "", userType: "" }]); // Clear the form values
     } else {
-      message.error("There was an error adding the user. Please try again.");
+      message.error("There was an error adding the users. Please try again.");
     }
     await getUserDets();
     setLoading(false);
@@ -41,39 +48,91 @@ const AddUsersForm = ({ loading, context, getUserDets, setLoading }) => {
 
   return (
     <div className="w-3/4 p-6 border border-gray-200 rounded-lg shadow-lg">
-      <h1 className="text-center text-2xl">
+      <h1 className="text-center text-2xl mb-8">
         <IdcardOutlined className="mr-2" />
-        Add User
+        Add Users Manually
       </h1>
-      <Form layout="vertical" disabled={loading} onFinish={handleSubmit}>
-        <Form.Item label="Username" name="username" required>
-          <Input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-        </Form.Item>
-        <Form.Item label="Password" name="password" required>
-          <Input.Password
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </Form.Item>
-        <Form.Item label="User Type" name="user_type" required>
-          <Select value={userType} onChange={(value) => setUserType(value)}>
-            <Option value="admin">Admin</Option>
-            <Option value="general">General</Option>
-          </Select>
-        </Form.Item>
-        <Form.Item label="Generated CSV String">
-          <Input.TextArea
-            value={csvString}
-            readOnly
-            autoSize={{ minRows: 2, maxRows: 4 }}
-          />
-        </Form.Item>
+
+      <Form
+        layout="vertical"
+        disabled={loading}
+        onFinish={handleSubmit}
+        className="w-full"
+      >
+        {users.map((user, index) => (
+          <div key={index} className="flex space-x-4 mb-4">
+            <Form.Item
+              label="Username"
+              name={`username${index}`}
+              required
+              className="w-1/3"
+            >
+              <Input
+                className="border border-gray-200 h-9 rounded-md"
+                value={user.username}
+                onChange={(e) =>
+                  handleChange(index, "username", e.target.value)
+                }
+              />
+            </Form.Item>
+            <Form.Item
+              label="Password"
+              name={`password${index}`}
+              required
+              className="w-1/3"
+            >
+              <Input.Password
+                className="h-9"
+                value={user.password}
+                onChange={(e) =>
+                  handleChange(index, "password", e.target.value)
+                }
+              />
+            </Form.Item>
+            <Form.Item
+              label="User Type"
+              name={`userType${index}`}
+              required
+              className="w-1/3"
+            >
+              <Select
+                value={user.userType}
+                onChange={(value) => handleChange(index, "userType", value)}
+                className="h-9"
+              >
+                <Option value="admin">Admin</Option>
+                <Option value="general">General</Option>
+              </Select>
+            </Form.Item>
+          </div>
+        ))}
+        <Button
+          type="dashed"
+          onClick={() =>
+            setUsers([...users, { username: "", password: "", userType: "" }])
+          }
+          block
+        >
+          Add Another User
+        </Button>
+        {csvString.trim() !== "username,password,user_type" && (
+          <Form.Item label="Generated CSV String" className="mt-4">
+            <Input.TextArea
+              value={csvString}
+              readOnly
+              autoSize={{ minRows: 2, maxRows: 4 }}
+              className="font-mono border border-gray-300 bg-gray-100"
+            />
+          </Form.Item>
+        )}
         <Form.Item>
-          <Button type="primary" htmlType="submit" block>
-            Add User
+          <Button
+            type="primary"
+            htmlType="submit"
+            className="w-1/3 mx-auto block mt-20"
+            disabled={csvString.trim() === "username,password,user_type"}
+          >
+            Add Users
           </Button>
         </Form.Item>
       </Form>
@@ -81,4 +140,4 @@ const AddUsersForm = ({ loading, context, getUserDets, setLoading }) => {
   );
 };
 
-export default AddUsersForm;
+export default AddUsersCSVForm;

@@ -1,53 +1,151 @@
-import React from "react";
-import { Form, Input, Button, message } from "antd";
-import { UsergroupAddOutlined } from "@ant-design/icons";
+import React, { useState, useEffect } from "react";
+import { Form, Input, Button, Select, message, Upload, Typography } from "antd";
+import { UsergroupAddOutlined, UploadOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import Papa from "papaparse";
+import { csv } from "d3";
 
-const AddUsersForm = ({ loading, context, getUserDets, setLoading }) => (
-  <div className="w-3/4 p-6 border border-gray-200 rounded-lg shadow-lg">
-    <h1 className="text-center text-2xl">
-      <UsergroupAddOutlined /> Add Users{" "}
-    </h1>
+const { Title } = Typography;
 
-    <p className="mb-4 mt-4">
-      Paste in user details as a CSV file with the headers:
-      `username,password,user_type`
-    </p>
-    <Form
-      name="add-users"
-      disabled={loading}
-      onFinish={async (values) => {
-        setLoading(true);
-        const res = await fetch(setupBaseUrl("http", `admin/add_users`), {
-          method: "POST",
-          body: JSON.stringify({ ...values, token: context.token }),
-          headers: { "Content-Type": "application/json" },
-        });
-        const data = await res.json();
-        console.log(data);
-        if (data.status === "success") {
-          message.success(
-            "Users added successfully! Refreshing the user data..."
-          );
-        } else {
-          message.error(
-            "There was an error adding the users. Please try again."
-          );
-        }
-        await getUserDets();
-        setLoading(false);
-      }}
-    >
-      <Form.Item label="Google Sheets URL" name="gsheets_url">
-        <Input className="pd-2" />
-      </Form.Item>
-      <Form.Item>
-        <Button type="primary" htmlType="submit" block>
-          Add Users
-        </Button>
-      </Form.Item>
-    </Form>
-  </div>
-);
+const AddUsersForm = ({ loading, context, getUserDets, setLoading }) => {
+  const [users, setUsers] = useState([
+    { username: "", password: "", userType: "" },
+  ]);
+  const [csvString, setCsvString] = useState("username,password,user_type\n");
+  const [googleSheetsUrl, setGoogleSheetsUrl] = useState("");
+  const [isFileUploaded, setFileUploaded] = useState(false);
+
+  useEffect(() => {
+    const csv = users
+      .filter((user) => user.username && user.password && user.userType)
+      .map((user) => `${user.username},${user.password},${user.userType}`)
+      .join("\n");
+    console.log(csv);
+    setCsvString(`username,password,user_type\n${csv}`);
+    console.log(csvString);
+  }, [users]);
+
+  useEffect(() => {
+    const csv = users
+      .filter((user) => user.username && user.password && user.userType)
+      .map((user) => `${user.username},${user.password},${user.userType}`)
+      .join("\n");
+    setCsvString(`username,password,user_type\n${csv}`);
+  }, [users]);
+
+  const handleFileUpload = (file) => {
+    Papa.parse(file, {
+      complete: (results) => {
+        const parsedData = results.data.map((row) => ({
+          username: row.username,
+          password: row.password,
+          userType: row.user_type,
+        }));
+        setUsers(parsedData);
+        setFileUploaded(true);
+        setGoogleSheetsUrl("");
+        message.success(
+          "CSV file parsed successfully. Please hit 'Add Users' to proceed."
+        );
+      },
+      header: true,
+      skipEmptyLines: true,
+    });
+    return false;
+  };
+
+  const handleSubmit = async (values) => {
+    setLoading(true);
+    const endpoint =
+      csvString.trim() != "username,password,user_type"
+        ? "admin/add_users_csv"
+        : "admin/add_users";
+    const payload =
+      csvString.trim() != "username,password,user_type"
+        ? { users_csv: csvString, token: context.token }
+        : { ...values, token: context.token };
+    const res = await fetch(setupBaseUrl("http", endpoint), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      message.success("Users added successfully! Refreshing the user data...");
+      setUsers([{ username: "", password: "", userType: "" }]);
+    } else {
+      message.error("There was an error adding the users. Please try again.");
+    }
+    await getUserDets();
+    setLoading(false);
+    setFileUploaded(false);
+    setCsvString("username,password,user_type\n");
+  };
+
+  return (
+    <div className="w-3/4 p-6 border border-gray-200 rounded-lg shadow-lg">
+      <h1 className="text-center text-2xl">
+        <UsergroupAddOutlined className="mr-2" />
+        Add Users
+      </h1>
+
+      <Form layout="vertical" disabled={loading} onFinish={handleSubmit}>
+        <Title level={4}>Option 1: Paste Google Sheets URL</Title>
+        <Form.Item label="Google Sheets URL" name="gsheets_url">
+          <Input
+            className="pd-2"
+            value={googleSheetsUrl}
+            onChange={(e) => setGoogleSheetsUrl(e.target.value)}
+          />
+        </Form.Item>
+
+        <Title level={4} className="mt-6">
+          Option 2: Upload CSV File
+        </Title>
+        <Form.Item
+          label={
+            isFileUploaded
+              ? ""
+              : "Expected columns in the file: username,password,user_type"
+          }
+        >
+          <Upload
+            beforeUpload={handleFileUpload}
+            accept=".csv"
+            showUploadList={false}
+            disabled={isFileUploaded}
+          >
+            <Button icon={<UploadOutlined />} disabled={isFileUploaded}>
+              {isFileUploaded ? "Uploaded" : "Upload CSV"}
+            </Button>
+          </Upload>
+        </Form.Item>
+
+        {isFileUploaded && (
+          <Form.Item label="Generated CSV String" className="mt-4">
+            <Input.TextArea
+              value={csvString}
+              readOnly
+              autoSize={{ minRows: 2, maxRows: 4 }}
+              className="font-mono border border-gray-300 bg-gray-100"
+            />
+          </Form.Item>
+        )}
+        <Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            className="w-1/3 mx-auto block"
+            disabled={
+              csvString.trim() === "username,password,user_type" && !googleSheetsUrl
+            }
+          >
+            Add Users
+          </Button>
+        </Form.Item>
+      </Form>
+    </div>
+  );
+};
 
 export default AddUsersForm;

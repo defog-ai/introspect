@@ -39,9 +39,9 @@ const UsersTable = ({ userDets, context, getUserDets, setLoading }) => {
   };
 
   return (
-    <div className="w-3/6 max-h-screen overflow-y-auto">
+    <div className="w-4/6 max-h-screen overflow-y-auto mb-4">
       <Table
-        className="mt-10"
+        className="mt-10 border border-gray-200 rounded-lg shadow-lg bg-gray-100"
         dataSource={userDets}
         columns={[
           {
