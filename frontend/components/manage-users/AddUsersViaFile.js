@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Form, Input, Button, message, Upload, Typography } from "antd";
-import { UsergroupAddOutlined, UploadOutlined } from "@ant-design/icons";
+import { FileAddOutlined, UploadOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Papa from "papaparse";
 
@@ -104,9 +104,9 @@ const AddUsersViaFile = ({ loading, context, getUserDets, setLoading }) => {
 
   return (
     <div className="w-3/4 p-6 border border-gray-200 rounded-lg shadow-lg">
-      <h1 className="text-center text-2xl">
-        <UsergroupAddOutlined className="mr-2" />
-        Add Users
+      <h1 className="text-center text-2xl mb-8">
+        <FileAddOutlined className="mr-2" />
+        Add Users via File
       </h1>
 
       <Form layout="vertical" disabled={loading} onFinish={handleSubmit}>
