@@ -4,8 +4,8 @@ import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import { UserContext } from "$components/context/UserContext";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import AddUsersForm from "components/manage-users/AddUsersForm";
-import AddUsersCSVForm from "components/manage-users/AddUsersCSVForm";
+import AddUsersViaFile from "components/manage-users/AddUsersViaFile";
+import AddUsersViaForm from "components/manage-users/AddUsersViaForm";
 import UsersTable from "components/manage-users/UsersTable";
 import { message } from "antd";
 import { TeamOutlined } from "@ant-design/icons";
@@ -83,7 +83,7 @@ const ManageUsers = () => {
           />
         </div>
         <div className="flex justify-center items-center flex-col p-1 w-full">
-          <AddUsersForm
+          <AddUsersViaFile
             loading={loading}
             context={context}
             getUserDets={getUserDets}
@@ -91,7 +91,7 @@ const ManageUsers = () => {
           />
         </div>
         <div className="flex justify-center items-center flex-col p-1 w-full mt-4 mb-4">
-          <AddUsersCSVForm
+          <AddUsersViaForm
             loading={loading}
             context={context}
             getUserDets={getUserDets}

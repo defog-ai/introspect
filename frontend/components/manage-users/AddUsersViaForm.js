@@ -2,12 +2,10 @@ import { useState, useEffect } from "react";
 import { Form, Input, Button, Select, message } from "antd";
 import { IdcardOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import "tailwindcss/tailwind.css";
-import { csv } from "d3";
 
 const { Option } = Select;
 
-const AddUsersCSVForm = ({ loading, context, getUserDets, setLoading }) => {
+const AddUsersViaForm = ({ loading, context, getUserDets, setLoading }) => {
   const [users, setUsers] = useState([
     { username: "", password: "", userType: "" },
   ]);
@@ -25,7 +23,6 @@ const AddUsersCSVForm = ({ loading, context, getUserDets, setLoading }) => {
     const newUsers = [...users];
     newUsers[index][field] = value;
     setUsers(newUsers);
-    console.log(csvString);
   };
 
   const handleSubmit = async () => {
@@ -140,4 +137,4 @@ const AddUsersCSVForm = ({ loading, context, getUserDets, setLoading }) => {
   );
 };
 
-export default AddUsersCSVForm;
+export default AddUsersViaForm;

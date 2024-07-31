@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Form, Input, Button, Select, message, Upload, Typography } from "antd";
+import { Form, Input, Button, message, Upload, Typography } from "antd";
 import { UsergroupAddOutlined, UploadOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Papa from "papaparse";
-import { csv } from "d3";
 
 const { Title } = Typography;
 
-const AddUsersForm = ({ loading, context, getUserDets, setLoading }) => {
+const AddUsersViaFile = ({ loading, context, getUserDets, setLoading }) => {
   const [users, setUsers] = useState([
     { username: "", password: "", userType: "" },
   ]);
@@ -20,9 +19,7 @@ const AddUsersForm = ({ loading, context, getUserDets, setLoading }) => {
       .filter((user) => user.username && user.password && user.userType)
       .map((user) => `${user.username},${user.password},${user.userType}`)
       .join("\n");
-    console.log(csv);
     setCsvString(`username,password,user_type\n${csv}`);
-    console.log(csvString);
   }, [users]);
 
   useEffect(() => {
@@ -35,6 +32,9 @@ const AddUsersForm = ({ loading, context, getUserDets, setLoading }) => {
 
   const handleFileUpload = (file) => {
     Papa.parse(file, {
+      error: (error) => {
+        message.error("There was an error parsing the CSV file.");
+      },
       complete: (results) => {
         const parsedData = results.data.map((row) => ({
           username: row.username,
@@ -55,31 +55,51 @@ const AddUsersForm = ({ loading, context, getUserDets, setLoading }) => {
   };
 
   const handleSubmit = async (values) => {
+    // this assumes user has chosen one of the two options: googleSheetsUrl or upload CSV file
     setLoading(true);
-    const endpoint =
-      csvString.trim() != "username,password,user_type"
-        ? "admin/add_users_csv"
-        : "admin/add_users";
-    const payload =
-      csvString.trim() != "username,password,user_type"
-        ? { users_csv: csvString, token: context.token }
-        : { ...values, token: context.token };
-    const res = await fetch(setupBaseUrl("http", endpoint), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.status === "success") {
-      message.success("Users added successfully! Refreshing the user data...");
-      setUsers([{ username: "", password: "", userType: "" }]);
-    } else {
-      message.error("There was an error adding the users. Please try again.");
+    try {
+      const endpoint =
+        csvString.trim() !== "username,password,user_type"
+          ? "admin/add_users_csv"
+          : "admin/add_users";
+
+      const payload =
+        csvString.trim() !== "username,password,user_type"
+          ? { users_csv: csvString, token: context.token }
+          : { ...values, token: context.token };
+
+      const res = await fetch(setupBaseUrl("http", endpoint), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      if (data.status === "success") {
+        message.success(
+          "Users added successfully! Refreshing the user data..."
+        );
+        setUsers([{ username: "", password: "", userType: "" }]);
+      } else {
+        throw new Error(data.message || "There was an error adding the users.");
+      }
+      await getUserDets();
+    } catch (error) {
+      console.error("Error:", error);
+      message.error(
+        error.message ||
+          "There was an error adding the users. Please try again."
+      );
+    } finally {
+      setLoading(false);
+      setFileUploaded(false);
+      setCsvString("username,password,user_type\n");
     }
-    await getUserDets();
-    setLoading(false);
-    setFileUploaded(false);
-    setCsvString("username,password,user_type\n");
   };
 
   return (
@@ -137,7 +157,8 @@ const AddUsersForm = ({ loading, context, getUserDets, setLoading }) => {
             htmlType="submit"
             className="w-1/3 mx-auto block"
             disabled={
-              csvString.trim() === "username,password,user_type" && !googleSheetsUrl
+              csvString.trim() === "username,password,user_type" &&
+              !googleSheetsUrl
             }
           >
             Add Users
@@ -148,4 +169,4 @@ const AddUsersForm = ({ loading, context, getUserDets, setLoading }) => {
   );
 };
 
-export default AddUsersForm;
+export default AddUsersViaFile;

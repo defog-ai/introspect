@@ -1,4 +1,3 @@
-import React from "react";
 import { Table, Space, message, Button, Modal } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
