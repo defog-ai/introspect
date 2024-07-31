@@ -18,6 +18,7 @@ const ManageUsers = () => {
   const router = useRouter();
 
   const getUserDets = async () => {
+    setLoading(true);
     if (!context.token) {
       return;
     }
@@ -35,6 +36,7 @@ const ManageUsers = () => {
         "There was an error fetching the user data. Please try again."
       );
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -79,6 +81,7 @@ const ManageUsers = () => {
             userDets={userDets}
             context={context}
             getUserDets={getUserDets}
+            loading={loading}
             setLoading={setLoading}
           />
         </div>
@@ -87,7 +90,6 @@ const ManageUsers = () => {
             loading={loading}
             context={context}
             getUserDets={getUserDets}
-            setLoading={setLoading}
           />
         </div>
         <div className="flex justify-center items-center flex-col p-1 w-full mt-4 mb-4">
@@ -95,7 +97,6 @@ const ManageUsers = () => {
             loading={loading}
             context={context}
             getUserDets={getUserDets}
-            setLoading={setLoading}
           />
         </div>
       </Scaffolding>

@@ -6,7 +6,7 @@ import Papa from "papaparse";
 
 const { Title } = Typography;
 
-const AddUsersViaFile = ({ loading, context, getUserDets, setLoading }) => {
+const AddUsersViaFile = ({ loading, context, getUserDets }) => {
   const [users, setUsers] = useState([
     { username: "", password: "", userType: "" },
   ]);
@@ -56,7 +56,6 @@ const AddUsersViaFile = ({ loading, context, getUserDets, setLoading }) => {
 
   const handleSubmit = async (values) => {
     // this assumes user has chosen one of the two options: googleSheetsUrl or upload CSV file
-    setLoading(true);
     try {
       const endpoint =
         csvString.trim() !== "username,password,user_type"
@@ -96,7 +95,6 @@ const AddUsersViaFile = ({ loading, context, getUserDets, setLoading }) => {
           "There was an error adding the users. Please try again."
       );
     } finally {
-      setLoading(false);
       setFileUploaded(false);
       setCsvString("username,password,user_type\n");
     }

@@ -1,8 +1,8 @@
-import { Table, Space, message, Button, Modal } from "antd";
+import { Table, Space, message, Button, Modal, Spin } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
-const UsersTable = ({ userDets, context, getUserDets, setLoading }) => {
+const UsersTable = ({ userDets, context, getUserDets, loading, setLoading }) => {
   const showDeleteConfirm = (username) => {
     Modal.confirm({
       title: "Are you sure you want to delete this user?",
@@ -39,6 +39,7 @@ const UsersTable = ({ userDets, context, getUserDets, setLoading }) => {
 
   return (
     <div className="w-4/6 max-h-screen overflow-y-auto mb-4">
+      <Spin spinning={loading} tip="Getting Latest Users Data">
       <Table
         className="mt-10 border border-gray-200 rounded-lg shadow-lg bg-gray-100"
         dataSource={userDets}
@@ -74,6 +75,7 @@ const UsersTable = ({ userDets, context, getUserDets, setLoading }) => {
           },
         ]}
       />
+      </Spin>
     </div>
   );
 };

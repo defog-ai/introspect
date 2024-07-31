@@ -5,7 +5,7 @@ import setupBaseUrl from "$utils/setupBaseUrl";
 
 const { Option } = Select;
 
-const AddUsersViaForm = ({ loading, context, getUserDets, setLoading }) => {
+const AddUsersViaForm = ({ loading, context, getUserDets }) => {
   const [users, setUsers] = useState([
     { username: "", password: "", userType: "" },
   ]);
@@ -26,7 +26,6 @@ const AddUsersViaForm = ({ loading, context, getUserDets, setLoading }) => {
   };
 
   const handleSubmit = async () => {
-    setLoading(true);
     const res = await fetch(setupBaseUrl("http", `admin/add_users_csv`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -40,7 +39,6 @@ const AddUsersViaForm = ({ loading, context, getUserDets, setLoading }) => {
       message.error("There was an error adding the users. Please try again.");
     }
     await getUserDets();
-    setLoading(false);
   };
 
   return (
