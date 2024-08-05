@@ -62,6 +62,12 @@ const ExtractMetadata = () => {
         }),
       }
     );
+    // check if the response has status 200
+    if (res.status === 401) {
+      message.error("Your credentials are incorrect. Please log in again.");
+      return;
+    }
+
     const data = await res.json();
     if (!data.error) {
       // reset the current values in the db_creds form
@@ -150,6 +156,11 @@ const ExtractMetadata = () => {
         key_name: apiKeyName,
       }),
     });
+    // check if the response has status 200
+    if (res.status === 401) {
+      message.error("Your credentials are incorrect. Please log in again.");
+      return;
+    }
     const data = await res.json();
     if (!data.error) {
       setMetadata(data?.metadata || []);
