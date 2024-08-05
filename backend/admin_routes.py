@@ -11,6 +11,7 @@ import pandas as pd
 from io import StringIO
 import requests
 import asyncio
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -24,7 +25,13 @@ async def add_user(request: Request):
     token = params.get("token")
     gsheets_url = params.get("gsheets_url")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     if not gsheets_url:
         return {"error": "no google sheets url provided"}
@@ -94,7 +101,13 @@ async def add_users_csv(request: Request):
     token = params.get("token")
     users_csv = params.get("users_csv")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     if not users_csv:
         return {"error": "no users provided"}
@@ -152,7 +165,13 @@ async def get_users(request: Request):
     params = await request.json()
     token = params.get("token", None)
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     with engine.begin() as conn:
         users = conn.execute(select(Users)).fetchall()
@@ -166,7 +185,13 @@ async def delete_user(request: Request):
     params = await request.json()
     token = params.get("token", None)
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     username = params.get("username", None)
     with engine.begin() as conn:

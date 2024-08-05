@@ -5,6 +5,7 @@ import pandas as pd
 import asyncio
 import os
 from generic_utils import make_request, get_api_key_from_key_name
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -26,7 +27,13 @@ async def query(request: Request):
     ignore_cache = body.get("ignore_cache", False)
     token = body.get("token")
     if not validate_user(token):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     print(
         "Base Url: ",

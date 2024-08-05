@@ -5,6 +5,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 import asyncio
 import os
+from fastapi.responses import JSONResponse
 
 INTERNAL_API_KEY = "DUMMY_KEY"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
@@ -51,9 +52,13 @@ async def validate_google_token(token: str):
             }
     except ValueError:
         # Invalid token
-        return {
-            "status": "unauthorized",
-        }
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
 
 @router.post("/login_google")
@@ -72,7 +77,13 @@ async def reset_password(request: Request):
     new_password = params.get("password", None)
     token = params.get("token", None)
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
     if not username:
         return {"error": "no user id provided"}
     if not new_password:

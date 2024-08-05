@@ -8,6 +8,7 @@ from generic_utils import (
 from db_utils import validate_user
 import os
 import pandas as pd
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -21,7 +22,13 @@ async def feedback(request: Request):
     key_name = params.get("key_name")
     token = params.get("token")
     if not validate_user(token):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
     api_key = get_api_key_from_key_name(key_name)
     feedback = params.get("feedback")  # "good" or "Bad"
     text = params.get("text")  # the text of the feedback
@@ -56,7 +63,13 @@ async def get_feedback(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
     url = DEFOG_BASE_URL + "/get_feedback"
@@ -98,7 +111,13 @@ async def get_instructions_recommendation(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
     question = params.get("question")

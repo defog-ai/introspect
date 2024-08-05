@@ -6,6 +6,7 @@ from io import StringIO
 from defog.query import execute_query
 import re
 import pandas as pd
+from fastapi.responses import JSONResponse
 
 from db_utils import (
     validate_user,
@@ -34,7 +35,13 @@ async def get_tables_db_creds(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
@@ -94,7 +101,13 @@ async def get_metadata(request: Request):
     token = params.get("token")
     is_temp = params.get("temp", False)
     if not validate_user(token):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
@@ -116,7 +129,13 @@ async def update_db_creds(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
@@ -142,7 +161,13 @@ async def generate_metadata(request: Request):
 
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
@@ -224,7 +249,13 @@ async def update_metadata(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
@@ -270,7 +301,13 @@ async def copy_prod_to_dev(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
 
@@ -286,7 +323,13 @@ async def copy_prod_to_dev(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
 
@@ -303,7 +346,13 @@ async def get_glossary_golden_queries(request: Request):
     token = params.get("token")
     dev = params.get("dev", False)
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
@@ -329,7 +378,13 @@ async def update_glossary(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
@@ -355,7 +410,13 @@ async def update_golden_queries(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
@@ -390,7 +451,13 @@ async def upload_csv(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name", params.get("keyName"))
     if not key_name:
@@ -466,7 +533,13 @@ async def preview_table(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)

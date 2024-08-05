@@ -3,6 +3,7 @@ import os
 from db_utils import validate_user, get_db_type_creds
 from generic_utils import make_request, get_api_key_from_key_name
 from defog import Defog
+from fastapi.responses import JSONResponse
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
@@ -15,7 +16,13 @@ async def check_basic_readiness(request: Request):
     token = params.get("token")
     dev = params.get("dev")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
@@ -54,7 +61,13 @@ async def check_golden_queries_validity(request: Request):
     token = params.get("token")
     dev = params.get("dev")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
@@ -77,7 +90,13 @@ async def check_glossary_consistency(request: Request):
     token = params.get("token")
     dev = params.get("dev")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
@@ -95,7 +114,13 @@ async def check_golden_query_coverage(request: Request):
     token = params.get("token")
     dev = params.get("dev")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
