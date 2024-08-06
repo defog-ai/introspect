@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import { UserContext } from "$components/context/UserContext";
 import Scaffolding from "$components/layout/Scaffolding";
+import { Spin } from "antd";
 
 const QueryDatabase = () => {
   const [userType, setUserType] = useState("");
@@ -52,7 +53,7 @@ const QueryDatabase = () => {
               </h1>
               <h3 className="text-lg text-gray-700">
                 Please wait while we log you in and redirect you to the right
-                page...
+                page... <Spin />
               </h3>
             </div>
             {loading && (
