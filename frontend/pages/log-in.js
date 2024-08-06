@@ -4,7 +4,7 @@ import { message } from "antd";
 import Meta from "$components/layout/Meta";
 import { UserContext } from "$components/context/UserContext";
 import Scaffolding from "$components/layout/Scaffolding";
-import GoogleLoginButton from "$components/auth/GoogleLogin";
+// import GoogleLoginButton from "$components/auth/GoogleLogin";
 
 const LogIn = () => {
   const [context, setContext] = useContext(UserContext);
@@ -50,11 +50,11 @@ const LogIn = () => {
           <div className="sm:mx-auto sm:w-full sm:max-w-sm">
             <img
               alt="Your Company"
-              src="https://tailwindui.com/img/logos/mark.svg?color=blue&shade=600"
+              src="/logo512.png"
               className="mx-auto h-10 w-auto"
             />
             <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-              Sign in to your Defog
+              Sign in to Defog
             </h2>
           </div>
 
@@ -87,14 +87,14 @@ const LogIn = () => {
                   >
                     Password
                   </label>
-                  <div className="text-sm">
+                  {/* <div className="text-sm">
                     <a
                       href="#"
                       className="font-semibold text-blue-600 hover:text-blue-500"
                     >
                       Forgot password?
                     </a>
-                  </div>
+                  </div> */}
                 </div>
                 <div className="mt-2">
                   <input
@@ -118,12 +118,12 @@ const LogIn = () => {
               </div>
             </form>
 
-            <div className="mt-4">
+            {/* <div className="mt-4">
             <GoogleLoginButton />
-            </div>
+            </div> */}
 
             <p className="mt-10 text-center text-sm text-gray-500">
-              Not a member?{" "}
+              Don't have an API key?{" "}
               <a
                 href="https://defog.ai/signup"
                 className="font-semibold leading-6 text-blue-600 hover:text-blue-500"
