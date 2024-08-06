@@ -55,9 +55,9 @@ const BasicStatus = ({ loading, metadataUploaded, glossaryUploaded, goldenQuerie
 
   return (
     <Col span={24} style={{ paddingTop: '1em', paddingBottom: '1em'}}>
-      <h2>
+      <h2 className='text-lg font-semibold'>
         <Tooltip title="Do regular quality checks to keep defog fully customised for databse">
-          <ToolOutlined style={{ marginRight: '0.5em', fontSize: '1.2em', color: '#1890ff', cursor: 'pointer'}} />
+          <ToolOutlined style={{ marginRight: '0.5em', color: '#1890ff', cursor: 'pointer'}} />
         </Tooltip>
         Basic Configuration Status
       </h2>

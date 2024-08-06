@@ -142,7 +142,6 @@ const AlignModel = () => {
             </Col>
           </Row>
         ) : null}
-        {/* this bit is repeated in frontend/pages/view-feedback.js so might as well make a common component */}
         <div className="flex justify-center items-center flex-col p-1 mt-1">
           <h1>
             <SettingOutlined style={{ fontSize: "3em", color: "#1890ff" }} />{" "}

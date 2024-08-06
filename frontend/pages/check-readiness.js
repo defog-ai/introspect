@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Meta from "$components/layout/Meta";
 import { Row, Col, Select, Tooltip, message } from "antd";
 import {
   SafetyCertificateOutlined,
-  QuestionCircleOutlined,
   AuditOutlined,
 } from "@ant-design/icons";
 import BasicStatus from "$components/check-readiness/BasicStatus";
@@ -13,7 +12,6 @@ import GoldenQueryCoverage from "$components/check-readiness/GoldenQueryCoverage
 
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Scaffolding from "$components/layout/Scaffolding";
-import CustomTooltip from "$components/layout/Tooltip";
 
 const CheckReadiness = () => {
   // Loading states for each check
@@ -66,7 +64,7 @@ const CheckReadiness = () => {
 
     setloadingBasicStatus(true);
     const res = await fetch(
-      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + `/readiness/basic`,
+      setupBaseUrl('http', `readiness/basic`),
       {
         method: "POST",
         headers: {
@@ -89,14 +87,14 @@ const CheckReadiness = () => {
       message.error(
         "An error occurred while checking if your metadata was adequately added."
       );
+      console.log(data);
     }
   };
 
   const checkGoldenQueriesValidity = async () => {
     setLoadingGoldenQueries(true);
     const res = await fetch(
-      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") +
-        `/readiness/check_golden_queries_validity`,
+      setupBaseUrl('http', `readiness/check_golden_queries_validity`),
       {
         method: "POST",
         headers: {
@@ -122,8 +120,7 @@ const CheckReadiness = () => {
   const checkInstructionConsistency = async () => {
     setLoadingInstructionConsistency(true);
     const res = await fetch(
-      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") +
-        `/readiness/check_instruction_consistency`,
+      setupBaseUrl('http', `readiness/check_instruction_consistency`),
       {
         method: "POST",
         headers: {
@@ -146,8 +143,7 @@ const CheckReadiness = () => {
   const checkGoldenQueryCoverage = async () => {
     setLoadingGoldenQueryCoverage(true);
     const res = await fetch(
-      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") +
-        `/readiness/check_golden_query_coverage`,
+      setupBaseUrl("http", `readiness/check_golden_query_coverage`),
       {
         method: "POST",
         headers: {
@@ -213,40 +209,16 @@ const CheckReadiness = () => {
             </Col>
           </Row>
         ) : null}
-        <h1
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            paddingTop: "1em",
-            paddingBottom: "0em",
-          }}
-        >
-          <SafetyCertificateOutlined
-            style={{ marginRight: "0.5em", fontSize: "3em", color: "#52c41a" }}
-          />
-        </h1>
-        <h1
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            paddingTop: "0.5em",
-            paddingBottom: "1em",
-          }}
-        >
-          System Readiness Check
-          <Tooltip title="Check if you have added aligned your Defog instance sufficiently">
-            <QuestionCircleOutlined
-              style={{
-                marginLeft: "0.5em",
-                fontSize: "1em",
-                color: "#1890ff",
-                cursor: "pointer",
-              }}
-            />
-          </Tooltip>
-        </h1>
+       
+        <div className="flex justify-center items-center flex-col p-1 mt-1">
+          <h1>
+            <SafetyCertificateOutlined style={{ fontSize: "3em", color: "#52c41a" }} />{" "}
+          </h1>
+          <h1 className="text-2xl mt-4">System Readiness Check</h1>
+          <p className="m-4">
+          Check if you have added aligned your Defog instance sufficiently. These checks help ensure that Defog can provide accurate results.
+          </p>
+        </div>
         <Row
           gutter={{
             xs: 8,
@@ -263,7 +235,7 @@ const CheckReadiness = () => {
           />
 
           <Col span={24} style={{ paddingTop: "1em" }}>
-            <h2 style={{ display: "flex", alignItems: "center" }}>
+            <h2 style={{ display: "flex", alignItems: "center" }} className="text-lg font-semibold">
               <Tooltip title="Do regular quality checks to keep defog fully customised for databse">
                 <AuditOutlined
                   style={{
