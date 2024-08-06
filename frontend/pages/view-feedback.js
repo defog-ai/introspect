@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Meta from "../components/layout/Meta";
 import Scaffolding from "../components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { Row, Col, Select, Input } from "antd";
+import { Row, Col, Select, Input, Spin } from "antd";
 import FeedbackTable from "../components/view-feedback/FeedbackTable";
 import RecommendationsModal from "../components/view-feedback/RecommendationsModal";
 import { HistoryOutlined } from "@ant-design/icons";
@@ -29,6 +29,9 @@ const ViewFeedback = () => {
   const [isModalVisible, setIsModalVisible] = useState(false); // recommendations modal
   const [filter, setFilter] = useState(""); // filter for search
 
+  // loading state for the feedback data
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     const apiKeyName = localStorage.getItem("defogDbSelected");
     const token = localStorage.getItem("defogToken");
@@ -51,6 +54,7 @@ const ViewFeedback = () => {
 
   // fetches data about all the past feedbacks given by the user
   const getFeedback = async (token, apiKeyName) => {
+    setLoading(true);
     if (!token) {
       return;
     }
@@ -67,6 +71,7 @@ const ViewFeedback = () => {
     const data = await res.json();
     setFeedbackColumns(data.columns);
     setFeedback(data.data);
+    setLoading(false);
   };
 
   const fetchCurrentGlossaryAndGoldenQueries = async (token, apiKeyName) => {
@@ -159,17 +164,18 @@ const ViewFeedback = () => {
               />
             </Col>
           </Row>
-
-          <FeedbackTable
-            token={token}
-            apiKeyName={apiKeyName}
-            feedbackColumns={feedbackColumns}
-            feedback={feedback}
-            filter={filter}
-            goldenQueries={goldenQueries}
-            setGoldenQueries={setGoldenQueries}
-            handleNegativeFeedback={handleNegativeFeedback}
-          />
+          <Spin spinning={loading} tip="Loading past feedback data...">
+            <FeedbackTable
+              token={token}
+              apiKeyName={apiKeyName}
+              feedbackColumns={feedbackColumns}
+              feedback={feedback}
+              filter={filter}
+              goldenQueries={goldenQueries}
+              setGoldenQueries={setGoldenQueries}
+              handleNegativeFeedback={handleNegativeFeedback}
+            />
+          </Spin>
 
           {isModalVisible && (
             <RecommendationsModal
