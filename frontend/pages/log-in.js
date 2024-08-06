@@ -1,5 +1,6 @@
 import React, { useContext } from "react";
 import { useRouter } from "next/router";
+import { message } from "antd";
 import Meta from "$components/layout/Meta";
 import { UserContext } from "$components/context/UserContext";
 import Scaffolding from "$components/layout/Scaffolding";
