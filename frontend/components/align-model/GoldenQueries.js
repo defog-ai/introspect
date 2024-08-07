@@ -3,8 +3,11 @@ import { Table, Input, Button, Space, Spin } from "antd";
 import { EditOutlined, DeleteOutlined, SaveOutlined } from "@ant-design/icons";
 import LineBlock from "../layout/LineBlock";
 import AddQueryModal from "./AddQueryModal";
+import setupBaseUrl from "$utils/setupBaseUrl";
 
 const GoldenQueries = ({
+  token, 
+  apiKeyName,
   goldenQueries,
   setGoldenQueries,
   isLoading,
@@ -17,8 +20,12 @@ const GoldenQueries = ({
   // add new question and query modal state
   const [isModalVisible, setIsModalVisible] = useState(false);
 
+  // states for the new question and query 
   const [newQuestion, setNewQuestion] = useState("");
   const [newSql, setNewSql] = useState("");
+  // states for the results from running the new query
+  const [newColumns, setNewColumns] = useState([]);
+  const [newData, setNewData] = useState([]);
 
   const toggleEditMode = (index) => {
     const newEditMode = [...editMode];
@@ -33,9 +40,7 @@ const GoldenQueries = ({
         ...goldenQueries,
         { question: newQuestion, sql: newSql },
       ]);
-      setNewQuestion("");
-      setNewSql("");
-      setIsModalVisible(false);
+      handleCancel();
       setUpdatedGoldenQueriesToggle((prev) => !prev);
     }
   };
@@ -43,6 +48,8 @@ const GoldenQueries = ({
   const handleCancel = () => {
     setNewQuestion("");
     setNewSql("");
+    setNewColumns([]);
+    setNewData([]);
     setIsModalVisible(false);
   };
 
@@ -136,6 +143,40 @@ const GoldenQueries = ({
       ),
     },
   ];
+// Generate and execute SQL query given a question
+const generateAndExecuteQuery = async (question) => {
+  try {
+    const response = await fetch(setupBaseUrl("http", `query`), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token: token,
+        key_name: apiKeyName,
+        question: question,
+        previous_context: [],
+        dev_body: false,
+        ignore_cache: true,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch data from server');
+    }
+
+    const data = await response.json();
+
+    setNewColumns(data.columns || []);
+    setNewData(data.data || []);
+    return data.query_generated || "";
+
+  } catch (error) {
+    console.error("Error generating and executing query:", error);
+    return "";
+  }
+};
+
 
   return (
     <div className="w-full p-4 mb-4">
@@ -181,6 +222,9 @@ const GoldenQueries = ({
           setNewQuestion={setNewQuestion}
           newSql={newSql}
           setNewSql={setNewSql}
+          newColumns={newColumns}
+          newData={newData}
+          generateSqlQuery={generateAndExecuteQuery}
         />
       )}
     </div>

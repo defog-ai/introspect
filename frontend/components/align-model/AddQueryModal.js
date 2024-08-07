@@ -1,6 +1,8 @@
-import { Modal, Input } from "antd";
+import { useState } from "react";
+import { Modal, Input, Spin } from "antd";
 import { StarFilled } from "@ant-design/icons";
 import LineBlock from "$components/layout/LineBlock";
+import DisplayData from "$components/view-feedback/DisplayDataFrame";
 
 const AddQueryModal = ({
   handleOk,
@@ -9,7 +11,22 @@ const AddQueryModal = ({
   setNewQuestion,
   newSql,
   setNewSql,
+  newColumns,
+  newData,
+  generateSqlQuery,
 }) => {
+  const [loading, setLoading] = useState(false);
+
+  // generates a new SQL query based on the new question
+  const onUpdate = async (newQuestion) => {
+    setLoading(true);
+    setNewQuestion(newQuestion);
+    setNewSql("Generating SQL...");
+    const query = await generateSqlQuery(newQuestion);
+    setNewSql(query);
+    setLoading(false);
+  };
+
   return (
     <Modal
       title={
@@ -24,22 +41,31 @@ const AddQueryModal = ({
       onOk={handleOk}
       onCancel={handleCancel}
       open={true}
-      className="w-1/2"
+      className="w-3/4"
     >
       <LineBlock
         helperText="Question: "
         mainText={newQuestion}
-        onUpdate={setNewQuestion}
+        onUpdate={onUpdate}
         isEditable={true}
         inputModeOn={true}
       />
-      <Input.TextArea
-        placeholder="SQL Query"
-        value={newSql}
-        onChange={(e) => setNewSql(e.target.value)}
-        rows={4}
-        className="min-h-52 font-mono text-sm p-2 bg-gray-50 border border-gray-300"
-      />
+      <Spin spinning={loading} tip="Give us a few seconds..">
+        <Input.TextArea
+          placeholder="SQL Query"
+          value={newSql}
+          onChange={(e) => setNewSql(e.target.value)}
+          rows={4}
+          className="min-h-52 font-mono text-sm p-2 bg-gray-50 border border-gray-300"
+        />
+      </Spin>
+
+      {/* display results of the query*/}
+      {newSql && newSql !== "Generating SQL..." && (
+        <div className="mt-5 ">
+          <DisplayData columns={newColumns} data={newData} />
+        </div>
+      )}
     </Modal>
   );
 };
