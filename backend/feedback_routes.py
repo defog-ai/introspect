@@ -9,6 +9,7 @@ from db_utils import validate_user
 import os
 import pandas as pd
 from fastapi.responses import JSONResponse
+from datetime import datetime
 
 router = APIRouter()
 
@@ -58,7 +59,6 @@ async def feedback(request: Request):
 
 @router.post("/get_feedback")
 async def get_feedback(request: Request):
-    print("get_feedback was hit")
     """Responds by fetching the feedback users have given in the past."""
     params = await request.json()
     token = params.get("token")
@@ -75,6 +75,7 @@ async def get_feedback(request: Request):
     url = DEFOG_BASE_URL + "/get_feedback"
     res = await make_request(url, json={"api_key": api_key})
     data = res["data"]
+    data = get_most_recent_entries_per_group(data)
     for idx, item in enumerate(data):
         # first item is created_at
         data[idx][0] = format_date_string(item[0])
@@ -163,3 +164,19 @@ async def send_feedback(params_obj):
     url = DEFOG_BASE_URL + "/feedback"
     res = await make_request(url, json=params_obj)
     return res
+
+
+def get_most_recent_entries_per_group(data: list) -> list:
+    """Given a list of lists, where each inner list represents a row of feedback data, this function
+    returns the most recent entry for each group of entries that share the same question and genearted sql.
+    """
+    latest_entries = {}
+    for item in data:
+        # Use question and generated SQL query as unique key
+        key = (item[2], item[3])
+        timestamp = datetime.fromisoformat(item[0].rstrip("Z"))
+        if key not in latest_entries or latest_entries[key][0] < timestamp:
+            # add a timestamp to the beginning to make it easier to compare between timestamps
+            latest_entries[key] = [timestamp] + item
+
+    return [rest for _, (_, *rest) in latest_entries.items()]
