@@ -170,13 +170,17 @@ def get_most_recent_entries_per_group(data: list) -> list:
     """Given a list of lists, where each inner list represents a row of feedback data, this function
     returns the most recent entry for each group of entries that share the same question and genearted sql.
     """
-    latest_entries = {}
-    for item in data:
-        # Use question and generated SQL query as unique key
-        key = (item[2], item[3])
-        timestamp = datetime.fromisoformat(item[0].rstrip("Z"))
-        if key not in latest_entries or latest_entries[key][0] < timestamp:
-            # add a timestamp to the beginning to make it easier to compare between timestamps
-            latest_entries[key] = [timestamp] + item
-
-    return [rest for _, (_, *rest) in latest_entries.items()]
+    try:
+        latest_entries = {}
+        for item in data:
+            # Use question and generated SQL query as unique key
+            key = (item[2], item[3])
+            timestamp = datetime.fromisoformat(item[0].rstrip("Z"))
+            if key not in latest_entries or latest_entries[key][0] < timestamp:
+                # add a timestamp to the beginning to make it easier to compare between timestamps
+                latest_entries[key] = [timestamp] + item
+        # remove the timestamp from the beginning
+        return [entry[1:] for entry in latest_entries.values()]
+    except Exception as e:
+        print(e)
+        return data
