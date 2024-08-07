@@ -13,12 +13,12 @@ const AlignModel = () => {
   const [glossary, setGlossary] = useState("");
   const [goldenQueries, setGoldenQueries] = useState([]); // [ { question: "", sql: "" }, ... ]
   const [token, setToken] = useState("");
-  
+
   // loading states
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingInstructions, setIsUpdatingInstructions] = useState(false);
   const [isUpdatingGoldenQueries, setIsUpdatingGoldenQueries] = useState(false);
-  
+
   // state that triggers an update in the golden queries
   const [updatedGoldenQueriesToggle, setUpdatedGoldenQueriesToggle] =
     useState(false);
@@ -162,6 +162,8 @@ const AlignModel = () => {
             isUpdatingInstructions={isUpdatingInstructions}
           />
           <GoldenQueries
+            token={token}
+            apiKeyName={apiKeyName}
             goldenQueries={goldenQueries}
             setGoldenQueries={setGoldenQueries}
             isLoading={isLoading}

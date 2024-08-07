@@ -195,7 +195,7 @@ const RecommendationsModal = ({
             }}
             isEditable={!populatingInstructions}
           />
-          <p style={{ paddingLeft: "1.1em" }}>
+          <p style={{ paddingLeft: "1.1em", fontSize: "1.1em" }}>
             {!populatingInstructions
               ? "Based on your feedback these are the instructions when given to the model might help get the right answer. Feel free to edit before hitting ask defog again:"
               : "The more meaningful the feedback, the better suggestions you get! You will soon have an option to edit the feedback and doing so automatically regenerates new instructions for you!"}
@@ -266,7 +266,7 @@ const RecommendationsModal = ({
         </div>
         {!populatingInstructions && updatedQuery && (
           <>
-            <div style={{ width: "95%", paddingLeft: "1.1em" }}>
+            <div style={{ width: "95%", paddingLeft: "1.1em", marginBottom: "2em" }}>
               <h2
                 className="text-xl mt-4 mb-3"
                 style={{
