@@ -1,16 +1,13 @@
 function DisplayData({ columns, data }) {
-    return (
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+  return (
+    <div className="max-w-full max-h-screen overflow-auto"> 
+      <table className="min-w-full border-collapse">
         <thead>
           <tr>
             {columns.map((col, index) => (
               <th
                 key={index}
-                style={{
-                  border: "1px solid #ccc",
-                  padding: "8px",
-                  backgroundColor: "#eee",
-                }}
+                className="border px-8 py-2 bg-gray-200 text-center"
               >
                 {col}
               </th>
@@ -23,7 +20,7 @@ function DisplayData({ columns, data }) {
               {row.map((cell, cellIndex) => (
                 <td
                   key={cellIndex}
-                  style={{ border: "1px solid #ccc", padding: "8px" }}
+                  className="border px-8 py-2 text-center"
                 >
                   {cell.toString()}
                 </td>
@@ -32,8 +29,8 @@ function DisplayData({ columns, data }) {
           ))}
         </tbody>
       </table>
-    );
-  }
-  
-  export default DisplayData;
-  
+    </div>
+  );
+}
+
+export default DisplayData;
