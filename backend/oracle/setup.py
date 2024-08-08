@@ -3,6 +3,28 @@
 import os
 import sqlite3
 
+CREATE_REPORTS_TABLE = """
+CREATE TABLE IF NOT EXISTS reports (
+    report_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    report_name TEXT,
+    status TEXT,
+    date_created TEXT,
+    api_key VARCHAR(255),
+    username TEXT,
+    inputs TEXT,
+    outputs TEXT,
+    feedback TEXT
+);
+"""
+CREATE_CLARIFICATIONS_TABLE = """
+CREATE TABLE IF NOT EXISTS clarifications (
+    clarification_id TEXT,
+    report_id TEXT,
+    llm_question TEXT,
+    user_response TEXT
+);
+"""
+
 def setup_dir(app_root_path: str):
     oracle_path = os.path.join(app_root_path, "oracle")
     if not os.path.exists(oracle_path):
@@ -17,17 +39,8 @@ def setup_dir(app_root_path: str):
         print("Database not found. Creating a new one.")
         conn = sqlite3.connect(oracle_sqlite_db_path)
         c = conn.cursor()
-        c.execute(
-            """
-            CREATE TABLE reports (
-                report_id TEXT PRIMARY KEY, -- excludes directory and file extension
-                report_name TEXT,
-                status TEXT,
-                date_created TEXT,
-                feedback TEXT
-            )
-            """
-        )
+        c.execute(CREATE_REPORTS_TABLE)
+        c.execute(CREATE_CLARIFICATIONS_TABLE)
         conn.commit()
         conn.close()
         print("SQLite3 Database for Oracle created.")
@@ -35,6 +48,10 @@ def setup_dir(app_root_path: str):
         # test connection
         try:
             conn = sqlite3.connect(oracle_sqlite_db_path)
+            # check if tables exist
+            c = conn.cursor()
+            c.execute("SELECT * FROM reports")
+            c.execute("SELECT * FROM clarifications")
             conn.close()
             print("SQLite3 Database for Oracle found.")
         except sqlite3.Error:
