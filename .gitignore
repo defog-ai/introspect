@@ -64,3 +64,6 @@ notebooks/
 
 # defog-metadata
 defog_metadata.csv
+
+# reports
+oracle/reports
