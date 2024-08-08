@@ -8,6 +8,7 @@ from connection_manager import ConnectionManager
 from report_data_manager import ReportDataManager
 from agents.planner_executor.execute_tool import execute_tool
 from agents.planner_executor.planner_executor_agent_rest import RESTExecutor
+from oracle.setup import setup_dir
 import doc_endpoints
 from uuid import uuid4
 from utils import make_request
@@ -49,6 +50,8 @@ app.add_middleware(
 request_types = ["clarify", "understand", "gen_approaches", "gen_steps", "gen_report"]
 report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
 
+# check if the oracle directory structure exists and create if not
+setup_dir(os.getcwd())
 
 @app.get("/ping")
 async def root():

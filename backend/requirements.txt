@@ -28,6 +28,7 @@ seaborn
 slack_sdk
 snowflake-connector-python
 sqlalchemy
+sqlite3
 statsmodels
 tabulate
 tiktoken
