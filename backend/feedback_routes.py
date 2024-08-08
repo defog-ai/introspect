@@ -75,7 +75,6 @@ async def get_feedback(request: Request):
     url = DEFOG_BASE_URL + "/get_feedback"
     res = await make_request(url, json={"api_key": api_key})
     data = res["data"]
-    data = get_most_recent_entries_per_group(data)
     for idx, item in enumerate(data):
         # first item is created_at
         data[idx][0] = format_date_string(item[0])
@@ -84,6 +83,10 @@ async def get_feedback(request: Request):
         data[idx][3] = format_sql(item[3])
 
     df = pd.DataFrame(data, columns=res["columns"])
+    # keep the most recent feedback for each question, query pair
+    df = df.sort_values(by="created_at", ascending=False).drop_duplicates(
+        subset=["question", "query_generated"]
+    )
     question_id_text = (
         df[df.question_id.notnull()].set_index("question_id")["question"].to_dict()
     )
@@ -164,23 +167,3 @@ async def send_feedback(params_obj):
     url = DEFOG_BASE_URL + "/feedback"
     res = await make_request(url, json=params_obj)
     return res
-
-
-def get_most_recent_entries_per_group(data: list) -> list:
-    """Given a list of lists, where each inner list represents a row of feedback data, this function
-    returns the most recent entry for each group of entries that share the same question and genearted sql.
-    """
-    try:
-        latest_entries = {}
-        for item in data:
-            # Use question and generated SQL query as unique key
-            key = (item[2], item[3])
-            timestamp = datetime.fromisoformat(item[0].rstrip("Z"))
-            if key not in latest_entries or latest_entries[key][0] < timestamp:
-                # add a timestamp to the beginning to make it easier to compare between timestamps
-                latest_entries[key] = [timestamp] + item
-        # remove the timestamp from the beginning
-        return [entry[1:] for entry in latest_entries.values()]
-    except Exception as e:
-        print(e)
-        return data
