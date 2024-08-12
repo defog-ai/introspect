@@ -3,13 +3,8 @@ FROM python:3.10
 
 WORKDIR backend
 
-ARG OPENAI_API_KEY=""
-
-# set env vars
-ENV OPENAI_API_KEY=$OPENAI_API_KEY
-
 # need cmake for scikit
-RUN apt-get update && apt-get install -y python3-pip cmake
+RUN apt-get update && apt-get install -y python3-pip cmake netcat-openbsd
 
 COPY ./backend/requirements.txt ./requirements.txt
 

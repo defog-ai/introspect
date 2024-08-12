@@ -1,5 +1,6 @@
 aiohttp
 airbyte
+celery[redis]
 colorama
 databricks-sql-connector
 defog==0.65.7
@@ -18,7 +19,6 @@ pandasql
 pgvector
 pika
 psycopg2-binary
-pysqlite3
 pyyaml
 redshift_connector
 requests
