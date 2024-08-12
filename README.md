@@ -24,13 +24,12 @@ cd frontend && npm run export
 On Linux/Mac
 
 ```bash
-ENDPOINT="localhost:80 OR your IP" docker compose up --no-attach agents-nginx
+docker compose up --no-attach agents-nginx
 ```
 
 On Windows
 
 ```bash
-$env.ENDPOINT = "localhost:80 OR your IP"
 docker compose up -d
 ```
 

@@ -174,3 +174,26 @@ ALTER TABLE ONLY public.defog_users
 ALTER TABLE ONLY public.defog_tool_runs
     ADD CONSTRAINT tool_runs_pkey PRIMARY KEY (tool_run_id);
 
+
+-- Oracle tables and data
+CREATE TABLE IF NOT EXISTS oracle_reports (
+    report_id SERIAL PRIMARY KEY,
+    report_name TEXT,
+    status TEXT,
+    created_ts TIMESTAMP,
+    api_key VARCHAR(255),
+    username TEXT,
+    inputs TEXT,
+    outputs TEXT,
+    feedback TEXT
+);
+
+CREATE TABLE IF NOT EXISTS oracle_clarifications (
+    clarification_id TEXT,
+    report_id TEXT,
+    llm_question TEXT,
+    user_response TEXT,
+    created_ts TIMESTAMP NOT NULL,
+    resolved_ts TIMESTAMP,
+    PRIMARY KEY (clarification_id, report_id)
+);

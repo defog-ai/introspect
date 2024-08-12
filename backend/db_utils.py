@@ -53,6 +53,8 @@ Tools = Base.classes.defog_tools
 Users = Base.classes.defog_users
 Feedback = Base.classes.defog_plans_feedback
 DbCreds = Base.classes.defog_db_creds
+OracleReports = Base.classes.oracle_reports
+OracleClarifications = Base.classes.oracle_clarifications
 
 
 def save_csv_to_db(table_name, data):
