@@ -21,6 +21,7 @@ frontend/out
 .env
 .DS_Store
 *.pem
+frontend/.env.local
 
 # debug
 npm-debug.log*
