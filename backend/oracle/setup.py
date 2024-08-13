@@ -2,6 +2,7 @@
 # and creates them if they don't exist
 import os
 
+
 def setup_dir(app_root_path: str):
     oracle_path = os.path.join(app_root_path, "oracle")
     if not os.path.exists(oracle_path):

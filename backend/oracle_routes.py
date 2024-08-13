@@ -1,7 +1,8 @@
+from datetime import datetime
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import select
+from sqlalchemy.sql import insert, select
 
 from db_utils import OracleReports, engine, validate_user
 from generic_utils import get_api_key_from_key_name
@@ -41,8 +42,24 @@ async def begin_generation(req: Request):
             },
         )
     api_key = get_api_key_from_key_name(key_name)
-    begin_generation_task.apply_async(args=[api_key, username, body])
-    return JSONResponse(status_code=200, content={"message": "Report generation started"})
+    # insert a new row into the OracleReports table and get a new report_id
+    with Session(engine) as session:
+        stmt = (
+            insert(OracleReports)
+            .values(
+                api_key=api_key,
+                username=username,
+                inputs=body,
+                status="started",
+                created_ts=datetime.now()
+            )
+            .returning(OracleReports.report_id)
+        )
+        result = session.execute(stmt)
+        report_id = result.scalar_one()
+        session.commit()
+    begin_generation_task.apply_async(args=[api_key, username, report_id, body])
+    return JSONResponse(content={"report_id": report_id, "status": "started"})
 
 @router.post("/oracle/list_reports")
 async def reports_list(req: Request):
