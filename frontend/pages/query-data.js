@@ -4,7 +4,7 @@ import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import { Toggle } from "@defogdotai/agents-ui-components/core-ui";
 
-import { DefogAnalysisAgentEmbed } from "@defogdotai/agents-ui-components/agent";
+import { TestDrive } from "$components/TestDrive";
 
 const QueryDataPage = () => {
   const [token, setToken] = useState("");
@@ -50,15 +50,9 @@ const QueryDataPage = () => {
 
           {token ? (
             <>
-              <DefogAnalysisAgentEmbed
+              <TestDrive
                 token={token}
-                user={user}
                 devMode={devMode}
-                apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
-                uploadedCsvPredefinedQuestions={[
-                  "Show me any 5 rows from the dataset",
-                ]}
-                showAnalysisUnderstanding={false}
                 dbs={apiKeyNames.map((name) => {
                   return {
                     name: name,
