@@ -15,7 +15,6 @@ const LogIn = () => {
     const formData = new FormData(event.target);
     const values = Object.fromEntries(formData);
 
-    console.log("test");
     const urlToUse = (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/login";
     const response = await fetch(urlToUse, {
       method: "POST",
@@ -36,7 +35,7 @@ const LogIn = () => {
       localStorage.setItem("defogUserType", data.user_type);
 
       // redirect to home page
-      router.push("/");
+      router.push("/extract-metadata");
     } else {
       message.error("Login failed. Please contact your administrator.");
     }
@@ -49,7 +48,7 @@ const LogIn = () => {
         <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8 mt-16">
           <div className="sm:mx-auto sm:w-full sm:max-w-sm">
             <img
-              alt="Your Company"
+              alt="Defog.ai"
               src="/logo512.png"
               className="mx-auto h-10 w-auto"
             />
