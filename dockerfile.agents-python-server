@@ -13,16 +13,5 @@ RUN pip install -r ./requirements.txt
 # expose python server port
 EXPOSE 1235
 
-# create empty report assets dirs
-RUN mkdir -p /agents-assets/report-assets
-RUN mkdir -p /agents-assets/report-assets/boxplots 
-RUN mkdir -p /agents-assets/report-assets/datasets 
-RUN mkdir -p /agents-assets/report-assets/heatmaps 
-RUN mkdir -p /agents-assets/report-assets/linechart 
-RUN mkdir -p /agents-assets/report-assets/linecharts
-RUN touch /agent-logs-out
-
-ENV PYTHONUNBUFFERED=true
-
 # start startup script
 CMD sh ./startup.sh

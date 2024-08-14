@@ -1,27 +1,11 @@
-from typing import Dict, List
-import tiktoken
-from datetime import date
-import pandas as pd
 import base64
 import os
+from typing import Dict, List
 
-# these are needed for the exec_code function
 import pandas as pd
+import tiktoken
 
-from openai import AsyncOpenAI
-
-# get OPENAI_API_KEY from env
-
-openai = None
-
-if (
-    os.environ.get("OPENAI_API_KEY") is None
-    or os.environ.get("OPENAI_API_KEY") == "None"
-    or os.environ.get("OPENAI_API_KEY") == ""
-):
-    print("OPENAI_API_KEY not found in env")
-else:
-    openai = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+from utils_llm import llm_call
 
 report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
 
@@ -109,10 +93,6 @@ async def analyse_data(
     """
     Generate a short summary of the results for the given qn.
     """
-    if not openai:
-        yield {"success": False, "model_analysis": "NONE"}
-        return
-
     if data is None:
         yield {"success": False, "model_analysis": "No data found"}
         return
@@ -167,12 +147,11 @@ async def analyse_data(
             },
         ]
 
-    completion = await openai.chat.completions.create(
+    completion = await llm_call(
         model="gpt-4o",
         messages=messages,
         temperature=0,
         seed=42,
-        stream=True,
         max_tokens=400,
     )
 

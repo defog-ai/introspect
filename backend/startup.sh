@@ -1,3 +1,12 @@
+# create empty report assets dirs
+mkdir -p /agents-assets/report-assets
+mkdir -p /agents-assets/report-assets/boxplots 
+mkdir -p /agents-assets/report-assets/datasets 
+mkdir -p /agents-assets/report-assets/heatmaps 
+mkdir -p /agents-assets/report-assets/linechart 
+mkdir -p /agents-assets/report-assets/linecharts
+touch /agent-logs-out
+
 python3 create_sqlite_tables.py
 python3 create_admin_user.py
 python3 add_tools_to_db.py
