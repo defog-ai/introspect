@@ -6,7 +6,7 @@
     "dev": "next dev -p 1236",
     "build": "next build",
     "start": "next start -p 1236",
-    "export": "next build && next export && sh ./export.sh",
+    "export": "sh ./rename_env.sh && next build && next export && sh ./export.sh && sh ./rename_env.sh",
     "lint": "next lint"
   },
   "dependencies": {
