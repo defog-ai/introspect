@@ -1,26 +1,54 @@
 from datetime import datetime
+import os
+
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert, select
 
 from db_utils import OracleReports, engine, validate_user
-from generic_utils import get_api_key_from_key_name
+from generic_utils import get_api_key_from_key_name, make_request
 from oracle.core import begin_generation_task
 
 router = APIRouter()
 
-@router.post("/oracle/verify_objective")
-async def verify_objective(req: Request):
+DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
+
+@router.post("/oracle/clarify_formulation")
+async def clarify_formulation(req: Request):
     """
     Given the question / objective statement provided by the user, this endpoint
-    will attempt to generate a query that can be used to derive the metric that
-    the question is asking for. The query will be generated using defog-backend-python,
-    run locally, and the results + SQL will be returned to the user for verification.
+    will return:
+        clarifications: list[str]
+        explanation: str
+        objective: str
+        constraints: list[str]
+        constants: list[str]
+        variables: str
+        ready: bool
+    Note that our UX has only been designed to display the clarifications + 
+    ready indicator for now. All other fields are optionally used by the client.
     """
     body = await req.json()
-    # TODO: Implement this endpoint
-    return JSONResponse(status_code=501, content={"error": "Not Implemented"})
+    key_name = body.pop("key_name")
+    token = body.pop("token")
+    username = validate_user(token, user_type=None, get_username=True)
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+    body["api_key"] = get_api_key_from_key_name(key_name)
+    if "question" not in body:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Bad Request", "message": "Missing 'question' field"}
+        )
+    response = await make_request(DEFOG_BASE_URL + "/oracle/clarify_formulation", body)
+    return JSONResponse(content=response)
 
 @router.post("/oracle/begin_generation")
 async def begin_generation(req: Request):
