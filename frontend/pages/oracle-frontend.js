@@ -1,46 +1,19 @@
+import { Input } from "antd";
 import { useState, useEffect } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import { CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 
 function OracleDashboard() {
-  const [reports, setReports] = useState([
-    {
-      name: "Report 1",
-      status: "generating",
-      date: "",
-    },
-    {
-      name: "Report 2",
-      status: "generated",
-      date: "2024-08-01",
-    },
-    {
-      name: "Report 3",
-      status: "generated",
-      date: "2024-08-02",
-    },
-  ]);
+  const apiKeyNames = (
+    process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
+  ).split(",");
+  const [apiKeyName, setApiKeyName] = useState(apiKeyNames[0]);
   const [userTask, setUserTask] = useState("");
-
-  const getReports = async () => {
-    // fetch reports
-    const token = localStorage.getItem("defogToken");
-    const res = await fetch(setupBaseUrl("http", `oracle/get_reports`), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        token,
-      }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      setReports(data.reports);
-    }
-  };
+  const [clarifications, setClarifications] = useState([]);
+  const [ready, setReady] = useState(false);
+  const [reports, setReports] = useState([]);
 
   const getClarifications = async () => {
     // fetch clarifications as the user is typing
@@ -50,25 +23,47 @@ function OracleDashboard() {
     }
 
     const token = localStorage.getItem("defogToken");
-    const res = await fetch(setupBaseUrl("http", `oracle/get_clarifications`), {
+    const res = await fetch(setupBaseUrl("http", `oracle/clarify_formulation`), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        token,
-        user_task: userTask,
+        "token": token,
+        "key_name": apiKeyName,
+        "question": userTask,
       }),
     });
 
     if (res.ok) {
       const data = await res.json();
-
-      // for now, we just log the data
-      // later, we can do something more useful with it
-      console.log(data);
+      // we have the following fields to set:
+      // - data.clarifications [list of string]
+      // - data.ready [bool]
+      setClarifications(data.clarifications);
+      setReady(data.ready);
     } else {
       console.error("Failed to fetch clarifications");
+    }
+  };
+
+  const getReports = async () => {
+    // fetch reports
+    const token = localStorage.getItem("defogToken");
+    const res = await fetch(setupBaseUrl("http", `oracle/list_reports`), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        "token": token,
+        "key_name": apiKeyName,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setReports(data.reports);
     }
   };
 
@@ -96,10 +91,10 @@ function OracleDashboard() {
   };
 
   useEffect(() => {
-    // after 5000ms, get clarifications
+    // after 3000ms, get clarifications
     const timeout = setTimeout(() => {
       getClarifications();
-    }, 5000);
+    }, 3000);
 
     return () => clearTimeout(timeout);
 
@@ -127,9 +122,8 @@ function OracleDashboard() {
             </p>
           </div>
 
-          <div className="mb-6">
-            <input
-              type="text"
+          <div className="flex items-center mb-6">
+            <Input.TextArea
               placeholder="Describe what you would like the Oracle to do..."
               className="w-full p-3 border rounded-lg text-gray-700 focus:outline-none focus:border-purple-500"
               value={userTask}
@@ -137,7 +131,18 @@ function OracleDashboard() {
                 setUserTask(e.target.value);
                 // let the user type a few characters before fetching clarifications
               }}
+              autoSize={{ minRows: 2, maxRows: 10 }}
+              style={{ flexBasis: '90%' }}
             />
+            <div className="ml-2">
+            {userTask && (
+              ready ? (
+                <CheckCircleOutlined style={{ color: "green" }} />
+              ) : (
+                <ExclamationCircleOutlined style={{ color: "#808080" }} />
+              )
+            )}
+            </div>
           </div>
 
           <div className="mb-6">
@@ -180,11 +185,11 @@ function OracleDashboard() {
             <h2 className="text-xl font-semibold mb-4">Past Reports</h2>
             {reports.map((report, index) => (
               <div key={index} className="bg-purple-100 p-4 rounded-lg mb-4">
-                <p className="text-purple-700">{report.name}</p>
+                <p className="text-purple-700">{report.report_name}</p>
                 <p className="text-gray-500">
                   {report.status === "generating"
                     ? "Report generating..."
-                    : `Report generated on ${report.date}`}
+                    : `Report generated on ${report.date_created}`}
                 </p>
                 <div className="flex space-x-4">
                   <button className="text-purple-700 hover:text-purple-900">
