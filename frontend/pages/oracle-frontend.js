@@ -1,9 +1,12 @@
-import { Input } from "antd";
+import { Input, Row, Col, Select } from "antd";
 import { useState, useEffect } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import {
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+} from "@ant-design/icons";
 
 function OracleDashboard() {
   const apiKeyNames = (
@@ -23,17 +26,20 @@ function OracleDashboard() {
     }
 
     const token = localStorage.getItem("defogToken");
-    const res = await fetch(setupBaseUrl("http", `oracle/clarify_formulation`), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        "token": token,
-        "key_name": apiKeyName,
-        "question": userTask,
-      }),
-    });
+    const res = await fetch(
+      setupBaseUrl("http", `oracle/clarify_formulation`),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+          key_name: apiKeyName,
+          question: userTask,
+        }),
+      }
+    );
 
     if (res.ok) {
       const data = await res.json();
@@ -56,8 +62,8 @@ function OracleDashboard() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        "token": token,
-        "key_name": apiKeyName,
+        token: token,
+        key_name: apiKeyName,
       }),
     });
 
@@ -112,6 +118,23 @@ function OracleDashboard() {
     <>
       <Meta />
       <Scaffolding id="align-model" userType="admin">
+        {apiKeyNames.length > 1 ? (
+          <Row type={"flex"} height={"100vh"}>
+            <Col span={24} style={{ paddingBottom: "1em" }}>
+              <Select
+                style={{ width: "100%" }}
+                onChange={(e) => {
+                  setApiKeyName(e);
+                }}
+                options={apiKeyNames.map((item) => {
+                  return { value: item, key: item, label: item };
+                })}
+                defaultValue={apiKeyName}
+              />
+            </Col>
+          </Row>
+        ) : null}
+
         <div className="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
           <div className="mb-6">
             <h1 className="text-2xl font-semibold mb-2">The Oracle</h1>
@@ -132,16 +155,15 @@ function OracleDashboard() {
                 // let the user type a few characters before fetching clarifications
               }}
               autoSize={{ minRows: 2, maxRows: 10 }}
-              style={{ flexBasis: '90%' }}
+              style={{ flexBasis: "90%" }}
             />
             <div className="ml-2">
-            {userTask && (
-              ready ? (
-                <CheckCircleOutlined style={{ color: "green" }} />
-              ) : (
-                <ExclamationCircleOutlined style={{ color: "#808080" }} />
-              )
-            )}
+              {userTask &&
+                (ready ? (
+                  <CheckCircleOutlined style={{ color: "green" }} />
+                ) : (
+                  <ExclamationCircleOutlined style={{ color: "#808080" }} />
+                ))}
             </div>
           </div>
 
