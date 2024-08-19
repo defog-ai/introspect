@@ -24,14 +24,24 @@ from uuid import uuid4
 
 router = APIRouter()
 
-import redis
 import os
+
+import redis
 
 REDIS_HOST = os.getenv("REDIS_INTERNAL_HOST", "agents-redis")
 REDIS_PORT = os.getenv("REDIS_INTERNAL_PORT", 6379)
 redis_client = redis.Redis(
     host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True
 )
+
+redis_available = False
+question_cache = {}
+try:
+    # check if redis is available
+    redis_client.ping()
+    redis_available = True
+except Exception as e:
+    logging.error(f"Error connecting to redis. Using in-memory cache instead.")
 
 
 @router.post("/generate_step")
@@ -168,8 +178,15 @@ async def generate_step(request: Request):
             question = question.strip()
             if len(prev_questions) > 0:
                 # make a request to combine the previous questions and the current question
-                if redis_client.exists(f"unified_question:{analysis_id}"):
-                    question = redis_client.get(f"unified_question:{analysis_id}")
+
+                if (
+                    redis_client.exists(f"unified_question:{analysis_id}")
+                    or analysis_id in question_cache
+                ):
+                    if redis_available:
+                        question = redis_client.get(f"unified_question:{analysis_id}")
+                    else:
+                        question = question_cache.get(analysis_id)
                 else:
                     question_unifier_url = (
                         os.getenv("DEFOG_BASE_URL", "https://api.defog.ai")
@@ -184,9 +201,12 @@ async def generate_step(request: Request):
                         },
                     )
                     question = unified_question.get("rephrased_question", question)
-                    redis_client.setex(
-                        f"unified_question:{analysis_id}", 3600, question
-                    )
+                    if redis_available:
+                        redis_client.setex(
+                            f"unified_question:{analysis_id}", 3600, question
+                        )
+                    else:
+                        question_cache[analysis_id] = question
 
                 print(f"*******\nUnified question: {question}\n********", flush=True)
 
