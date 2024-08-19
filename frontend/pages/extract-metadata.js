@@ -27,6 +27,8 @@ const ExtractMetadata = () => {
   const [dbConnectionstatus, setDbConnectionStatus] = useState(false);
   const [dbCredsUpdatedToggle, setDbCredsUpdatedToggle] = useState(false); // to trigger re render after db creds are updated
 
+  const [columnDescriptionCheck, setColumnDescriptionCheck] = useState(true);
+
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -99,8 +101,7 @@ const ExtractMetadata = () => {
     setLoading(false);
     if (!data.error) {
       setMetadata(data.metadata || []);
-    }
-    else {
+    } else {
       setMetadata([]);
     }
   };
@@ -167,7 +168,9 @@ const ExtractMetadata = () => {
               loading={loading}
               isDatabaseSetupWell={dbConnectionstatus}
               isTablesIndexed={isTablesIndexed}
-              hasNonEmptyDescription={hasNonEmptyDescription}
+              hasNonEmptyDescription={
+                hasNonEmptyDescription && columnDescriptionCheck
+              }
             />
           </div>
 
@@ -191,6 +194,7 @@ const ExtractMetadata = () => {
                 apiKeyName={apiKeyName}
                 tablesData={tablesData}
                 metadata={metadata} // Pass metadata as prop
+                setColumnDescriptionCheck={setColumnDescriptionCheck}
               />
             </TabPane>
           </Tabs>

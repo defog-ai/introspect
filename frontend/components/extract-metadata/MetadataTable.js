@@ -8,6 +8,7 @@ const MetadataTable = ({
   apiKeyName,
   tablesData,
   metadata: initialMetadata,
+  setColumnDescriptionCheck,
 }) => {
   // all tables from the database
   const [tables, setTables] = useState([]);
@@ -26,6 +27,12 @@ const MetadataTable = ({
   const [desc, setDesc] = useState({});
   const [filter, setFilter] = useState([]); // list of table names to filter
   const [form] = Form.useForm();
+
+  const hasNonEmptyDescriptionFunction = (metadata) => {
+    return metadata.some(
+      (item) => item.column_description && item.column_description.trim() !== ""
+    );
+  };  
 
   useEffect(() => {
     if (tablesData) {
@@ -69,6 +76,7 @@ const MetadataTable = ({
               message.error(data.detail);
             } else {
               message.success("Metadata updated successfully!");
+              setColumnDescriptionCheck(hasNonEmptyDescriptionFunction(metadata));
             }
           }
         } catch (error) {
