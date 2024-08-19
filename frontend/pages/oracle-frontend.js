@@ -2,6 +2,7 @@ import { Button, Input, Row, Col, Select, Spin } from "antd";
 import { useState, useEffect } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
+import Sources from "$components/oracle/Sources";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import {
   CheckCircleOutlined,
@@ -17,15 +18,12 @@ function OracleDashboard() {
   const [userTask, setUserTask] = useState("");
   const [clarifications, setClarifications] = useState([]);
   const [waitClarifications, setWaitClarifications] = useState(false);
+  const [sources, setSources] = useState([]);
+  const [waitSources, setWaitSources] = useState(false);
   const [ready, setReady] = useState(false);
   const [reports, setReports] = useState([]);
 
   const getClarifications = async () => {
-    // fetch clarifications as the user is typing
-    if (userTask.length < 5) {
-      console.log("User task is too short, not fetching clarifications yet");
-      return;
-    }
     setWaitClarifications(true);
     const token = localStorage.getItem("defogToken");
     const res = await fetch(
@@ -59,6 +57,33 @@ function OracleDashboard() {
     setClarifications((prevClarifications) =>
       prevClarifications.filter((_, i) => i !== index)
     );
+  };
+
+  const getSources = async () => {
+    setWaitSources(true);
+    const token = localStorage.getItem("defogToken");
+    const res = await fetch(
+      setupBaseUrl("http", `oracle/suggest_web_sources`),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+          key_name: apiKeyName,
+          question: userTask,
+        }),
+      }
+    );
+    setWaitSources(false);
+    if (res.ok) {
+      const data = await res.json();
+      // we only use the list of organic search results, discarding the rest for now
+      setSources(data.organic);
+    } else {
+      console.error("Failed to fetch sources");
+    }
   };
 
   // function that checks if status == done or error for each report
@@ -154,7 +179,12 @@ function OracleDashboard() {
   useEffect(() => {
     // after 3000ms, get clarifications
     const timeout = setTimeout(() => {
-      getClarifications();
+      // fetch clarifications as the user is typing
+      if (userTask.length < 5) {
+        console.log("User task is too short, not fetching clarifications yet");
+      } else {
+        Promise.all([getClarifications(), getSources()]);
+      }
     }, 3000);
 
     return () => clearTimeout(timeout);
@@ -244,6 +274,10 @@ function OracleDashboard() {
               ))}
             </div>
           )}
+
+          <div className="mt-6">
+            <Sources sources={sources} />
+          </div>
 
           <Button
             className="bg-purple-500 text-white py-2 px-4 rounded-lg hover:bg-purple-600"

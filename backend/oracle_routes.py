@@ -50,6 +50,33 @@ async def clarify_formulation(req: Request):
     response = await make_request(DEFOG_BASE_URL + "/oracle/clarify_formulation", body)
     return JSONResponse(content=response)
 
+@router.post("/oracle/suggest_web_sources")
+async def suggest_web_sources(req: Request):
+    """
+    Given the question / objective statement provided by the user, this endpoint
+    will return a list of web sources that can be used to generate the report.
+    """
+    body = await req.json()
+    key_name = body.pop("key_name")
+    token = body.pop("token")
+    username = validate_user(token, user_type=None, get_username=True)
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+    body["api_key"] = get_api_key_from_key_name(key_name)
+    if "question" not in body:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Bad Request", "message": "Missing 'question' field"}
+        )
+    response = await make_request(DEFOG_BASE_URL + "/unstructured_data/search", body)
+    return JSONResponse(content=response)
+
 @router.post("/oracle/begin_generation")
 async def begin_generation(req: Request):
     """
