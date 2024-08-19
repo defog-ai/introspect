@@ -154,6 +154,9 @@ async def gather_context(
     # TODO implement this function
     # dummy print statement for now
     print(f"Gathering context for report {report_id}")
+    print("Got the following sources:")
+    for source in inputs.get("sources", []):
+        print(f"{source}")
     # sleep for a random amount of time to simulate work
     await sleep(random.random() * 2)
     return {"context": "context gathered"}

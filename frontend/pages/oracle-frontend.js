@@ -80,7 +80,12 @@ function OracleDashboard() {
     if (res.ok) {
       const data = await res.json();
       // we only use the list of organic search results, discarding the rest for now
-      setSources(data.organic);
+      const sources = data.organic;
+      // add a selected field to each source
+      sources.forEach((source) => {
+        source.selected = false;
+      });
+      setSources(sources);
     } else {
       console.error("Failed to fetch sources");
     }
@@ -158,6 +163,8 @@ function OracleDashboard() {
   const generateReport = async () => {
     // generate a report
     const token = localStorage.getItem("defogToken");
+    const selectedSources = sources.filter((source) => source.selected);
+    console.log(selectedSources);
     const res = await fetch(setupBaseUrl("http", `oracle/begin_generation`), {
       method: "POST",
       headers: {
@@ -167,6 +174,7 @@ function OracleDashboard() {
         token,
         key_name: apiKeyName,
         question: userTask,
+        sources: selectedSources,
       }),
     });
 
@@ -277,12 +285,11 @@ function OracleDashboard() {
           )}
 
           <div className="mt-6">
-            <Sources sources={sources} />
+            <Sources sources={sources} setSources={setSources} />
           </div>
 
           <Button
             className="bg-purple-500 text-white py-2 px-4 rounded-lg hover:bg-purple-600"
-            disabled={!ready}
             onClick={generateReport}
           >
             Generate
