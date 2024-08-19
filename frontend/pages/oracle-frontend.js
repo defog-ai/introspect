@@ -69,34 +69,44 @@ function OracleDashboard() {
   };
 
   const getReports = async () => {
-    // fetch reports
     const token = localStorage.getItem("defogToken");
     let allFinished = false;
-    // keep polling every 1s until all reports are done
-    while (!allFinished) {
-      const res = await fetch(setupBaseUrl("http", `oracle/list_reports`), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token: token,
-          key_name: apiKeyName,
-        }),
-      });
 
-      if (res.ok) {
-        const data = await res.json();
-        setReports(data.reports);
-        allFinished = checkAllFinished(data.reports);
-        if (!allFinished) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
+    const pollReports = async () => {
+      try {
+        const res = await fetch(setupBaseUrl("http", `oracle/list_reports`), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: token,
+            key_name: apiKeyName,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setReports(data.reports);
+          allFinished = checkAllFinished(data.reports);
+
+          if (allFinished) {
+            clearInterval(intervalId);
+          }
+        } else {
+          console.error("Failed to fetch reports");
+          clearInterval(intervalId);
         }
-      } else {
-        console.error("Failed to fetch reports");
-        allFinished = true;
+      } catch (error) {
+        console.error("An error occurred:", error);
+        clearInterval(intervalId);
       }
-    }
+    };
+
+    const intervalId = setInterval(pollReports, 1000);
+
+    // Optionally, start the first poll immediately
+    pollReports();
   };
 
   const deleteReport = async (index) => {
