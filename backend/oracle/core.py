@@ -155,7 +155,7 @@ async def gather_context(
     # dummy print statement for now
     print(f"Gathering context for report {report_id}")
     # sleep for a random amount of time to simulate work
-    await sleep(random.randint(1, 5))
+    await sleep(random.random() * 2)
     return {"context": "context gathered"}
 
 async def explore_data(
@@ -181,6 +181,7 @@ async def wait_clarifications(
     username: str,
     report_id: str,
     inputs: Dict[str, Any],
+    outputs: Dict[str, Any],
 ):
     """
     This function will check the `clarifications` table in the SQLite3 database,
@@ -191,7 +192,7 @@ async def wait_clarifications(
     # dummy print statement for now
     print(f"Waiting for clarifications for report {report_id}")
     # sleep for a random amount of time to simulate work
-    await sleep(random.randint(1, 5))
+    await sleep(random.random() * 2)
     return {"clarifications": "all clarifications addressed"}
 
 async def predict(
@@ -211,7 +212,7 @@ async def predict(
     # dummy print statement for now
     print(f"Predicting for report {report_id}")
     # sleep for a random amount of time to simulate work
-    await sleep(random.randint(1, 5))
+    await sleep(random.random() * 2)
     return {"predictions": "predictions generated"}
 
 async def optimize(
@@ -231,7 +232,7 @@ async def optimize(
     # dummy print statement for now
     print(f"Optimizing for report {report_id}")
     # sleep for a random amount of time to simulate work
-    await sleep(random.randint(1, 5))
+    await sleep(random.random() * 2)
     return {"optimization": "optimization completed"}
 
 async def export(
@@ -251,5 +252,5 @@ async def export(
     # dummy print statement for now
     print(f"Exporting for report {report_id}")
     # sleep for a random amount of time to simulate work
-    await sleep(random.randint(1, 5))
+    await sleep(random.random() * 2)
     return {"export": "report exported"}
