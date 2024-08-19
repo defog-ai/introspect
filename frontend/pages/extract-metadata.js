@@ -100,6 +100,9 @@ const ExtractMetadata = () => {
     if (!data.error) {
       setMetadata(data.metadata || []);
     }
+    else {
+      setMetadata([]);
+    }
   };
 
   const validateDatabaseConnection = async (db_type, db_creds) => {

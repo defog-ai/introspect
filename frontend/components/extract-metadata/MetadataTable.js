@@ -65,7 +65,11 @@ const MetadataTable = ({
               document.getElementById("allowed-joins").value =
                 data.suggested_joins;
             }
-            message.success("Metadata updated successfully!");
+            if (data.detail) {
+              message.error(data.detail);
+            } else {
+              message.success("Metadata updated successfully!");
+            }
           }
         } catch (error) {
           console.error("Error saving data:", error);
