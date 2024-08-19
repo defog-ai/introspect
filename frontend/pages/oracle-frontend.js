@@ -183,7 +183,8 @@ function OracleDashboard() {
       if (userTask.length < 5) {
         console.log("User task is too short, not fetching clarifications yet");
       } else {
-        Promise.all([getClarifications(), getSources()]);
+        getClarifications();
+        getSources();
       }
     }, 3000);
 
