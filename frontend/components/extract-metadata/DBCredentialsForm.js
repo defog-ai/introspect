@@ -30,6 +30,7 @@ const DbCredentialsForm = ({
   setDbConnectionStatus,
   dbData = {},
   setDbData,
+  setDbCredsUpdatedToggle,
 }) => {
   const [form] = Form.useForm();
   const [dbType, setDbType] = useState(dbData.db_type || "postgres");
@@ -54,7 +55,6 @@ const DbCredentialsForm = ({
       if (Object.keys(dbData).length > 0) {
         console.log(dbData);
         setDbType(dbData.db_type);
-        console.log("dbData before setting fields:", dbData);
         form.setFieldsValue({
           db_type: dbData.db_type,
           ...dbData.db_creds,
@@ -117,8 +117,9 @@ const DbCredentialsForm = ({
       const data = await res.json();
       console.log("data", data);
       if (data?.success === true) {
-        setDbData({ db_type: payload.db_type, db_creds: payload.db_creds });
+        // setDbData({ db_type: payload.db_type, db_creds: payload.db_creds });
         message.success("Database Credentials updated successfully!");
+        setDbCredsUpdatedToggle((prev) => !prev);
       } else {
         message.error("Failed to update Database Credentials.");
       }

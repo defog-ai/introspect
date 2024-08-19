@@ -25,6 +25,7 @@ const ExtractMetadata = () => {
   const [metadata, setMetadata] = useState([]); // metadata of the tables
 
   const [dbConnectionstatus, setDbConnectionStatus] = useState(false);
+  const [dbCredsUpdatedToggle, setDbCredsUpdatedToggle] = useState(false); // to trigger re render after db creds are updated
 
   const [loading, setLoading] = useState(false);
 
@@ -47,7 +48,7 @@ const ExtractMetadata = () => {
     };
 
     fetchUserData();
-  }, [apiKeyName]);
+  }, [apiKeyName, dbCredsUpdatedToggle]);
 
   const getTablesAndDbCreds = async (token, apiKeyName) => {
     setLoading(true);
@@ -176,6 +177,7 @@ const ExtractMetadata = () => {
                 setDbConnectionStatus={setDbConnectionStatus}
                 dbData={dbData}
                 setDbData={setDbData}
+                setDbCredsUpdatedToggle={setDbCredsUpdatedToggle}
               />
             </TabPane>
             <TabPane tab="Extract Metadata" key="2">
