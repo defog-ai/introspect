@@ -103,6 +103,15 @@ async def generate_step(request: Request):
         if not api_key:
             raise Exception("Invalid API key name.")
 
+        if len(clarification_questions) > 0:
+            # this means that the user has answered the clarification questions
+            # so we can generate the assignment understanding (which is just a statement of the user's clarifications)
+            await generate_assignment_understanding(
+                analysis_id=analysis_id,
+                clarification_questions=clarification_questions,
+                dfg_api_key=api_key,
+            )
+
         if sql_only:
             # if sql_only is true, just call the sql generation function and return, while saving the step
             inputs = {
@@ -262,15 +271,6 @@ async def clarify(request: Request):
             dev=dev,
             temp=temp,
         )
-
-        err = await generate_assignment_understanding(
-            analysis_id=analysis_id,
-            clarification_questions=clarification_questions,
-            dfg_api_key=api_key,
-        )
-
-        if err:
-            raise Exception("Error generating assignment understanding")
 
         return {
             "success": True,
