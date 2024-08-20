@@ -122,7 +122,17 @@ To begin, export the frontend assets:
 cd frontend && npm run export
 ```
 
-Next, build the docker images:
+As it's highly likely that our customers are working on a different platform (e.g. windows) from ours (macs), we need to build multi-platform images. To do so, you would need to install and setup buildx to build multi-architecture images. You can read more about buildx [here](https://docs.docker.com/buildx/working-with-buildx/). For now, install buildx and create a new builder:
+
+```bash
+# install buildx
+docker buildx install
+# create a new builder
+docker buildx create --name mybuilder
+docker buildx use mybuilder
+```
+
+Next, build the docker images. This command will automatically use buildx to build multi-architecture images as we have specified the `platform` argument in the docker-compose-build.yaml file.
 
 ```bash
 docker compose -f docker-compose-build.yaml build
@@ -141,6 +151,16 @@ docker push defogai/agents-postgres:latest
 docker push defogai/agents-python-server:latest
 docker push defogai/agents-nginx:latest
 ```
+
+To build and push each image individually, here are the commands:
+
+```bash
+docker buildx build --platform linux/arm64,linux/amd64 -f dockerfile.agents-postgres -t defogai/agents-postgres:latest --push .
+docker buildx build --platform linux/arm64,linux/amd64 -f dockerfile.agents-python-server -t defogai/agents-python-server:latest --push .
+docker buildx build --platform linux/arm64,linux/amd64 -f dockerfile.agents-nginx -t defogai/agents-nginx:latest --push .
+```
+
+Note that whatever you build and push with will overwrite past builds with the same tag. E.g. if the previous build on latest had support for linux and windows and your latest build locally was only for linux, then the windows build will be lost after the latest push from your local build.
 
 ### Run Exported Docker Images
 
