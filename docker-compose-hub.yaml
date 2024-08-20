@@ -1,22 +1,19 @@
-version: "3"
+version: '3.8'
+
 services:
   agents-postgres:
-    build:
-      context: .
-      dockerfile: dockerfile.agents-postgres
-    networks:
-      - agents-network
-    # ports:
-    #   - 5432:5432
+    image: defogai/agents-postgres:latest
     environment:
-      POSTGRES_DB: postgres
-      POSTGRES_NAME: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
     volumes:
       - agents-postgres:/var/lib/postgresql/data
+    networks:
+      - agents-network
 
   agents-python-server:
+    image: defogai/agents-python-server:latest
     environment:
       - DEFOG_API_KEY=${DEFOG_API_KEY}
       - DEFOG_API_KEY_NAMES=${DEFOG_API_KEY_NAMES}
@@ -43,73 +40,37 @@ services:
       - LLM_MODEL_NAME=${LLM_MODEL_NAME}
       - STRIPE_ACCOUNT_ID=${STRIPE_ACCOUNT_ID}
       - STRIPE_CLIENT_SECRET=${STRIPE_CLIENT_SECRET}
-    build:
-      context: .
-      dockerfile: dockerfile.agents-python-server
-      args:
-        OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
-    restart: always
-    ports:
-      - "1235:1235"
     volumes:
       - agents-assets:/agents-assets/
-      - ./backend:/backend
     depends_on:
-      - agents-partykit
       - agents-postgres
       - agents-redis
-
     networks:
       - agents-network
-
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: 34.133.235.56:443
-        tag: defog.local.python-server
 
   agents-nginx:
-    build:
-      context: .
-      dockerfile: dockerfile.agents-nginx
-      args:
-        DEFOG_API_KEY: "${DEFOG_API_KEY}"
-        DEFOG_API_KEY_NAMES: "${DEFOG_API_KEY_NAMES}"
-        GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
-        PORT: "${PORT:-80}"
-        BUTTON_TEXT: "${BUTTON_TEXT}"
-        ALLOW_UPDATES: "${ALLOW_UPDATES:-YES}"
-        ALLOW_CACHING: "${ALLOW_CACHING:-YES}"
+    image: defogai/agents-nginx:latest
     ports:
-      - "${PORT:-80}:80"
+      - "80:80"
       - "443:443"
-    depends_on:
-      - agents-python-server
     networks:
       - agents-network
+    depends_on:
+      - agents-python-server
 
   agents-redis:
     image: redis:7-alpine
-    networks:
-      - agents-network
-    ports:
-      - "${REDIS_EXTERNAL_PORT}:${REDIS_INTERNAL_PORT}"
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 256M
     command: >
       redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
-      - redis-data:/data
-    environment:
-      - REDIS_MAXMEMORY=256mb
+      - agents-redis:/data
+    networks:
+      - agents-network
 
 volumes:
   agents-postgres:
   agents-assets:
-  redis-data:
+  agents-redis:
 
 networks:
-  agents-network: # curl --header "Content-Type: application/json"  --data '{"request_type": "ping"}' http://localhost:80/llm-calls/
+  agents-network:

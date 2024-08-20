@@ -1,0 +1,28 @@
+# builds image for the agents backend
+FROM python:3.10
+
+WORKDIR backend
+
+# need cmake for scikit
+RUN apt-get update && apt-get install -y python3-pip cmake netcat-openbsd
+
+COPY ./backend /backend
+
+RUN pip install -r /backend/requirements.txt
+
+# expose python server port
+EXPOSE 1235
+
+# create empty analysis assets dirs
+RUN mkdir -p /agents-assets/analysis-assets
+RUN mkdir -p /agents-assets/analysis-assets/boxplots 
+RUN mkdir -p /agents-assets/analysis-assets/datasets 
+RUN mkdir -p /agents-assets/analysis-assets/heatmaps 
+RUN mkdir -p /agents-assets/analysis-assets/linechart 
+RUN mkdir -p /agents-assets/analysis-assets/linecharts
+RUN touch /agent-logs-out
+
+ENV PYTHONUNBUFFERED=true
+
+# start startup script
+CMD sh ./startup.sh

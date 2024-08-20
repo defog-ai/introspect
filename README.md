@@ -9,11 +9,12 @@ This contains the self-hosted agents front-end and back-end that we have created
 3. Let admin users connect to a data warehouse and add tables
 
 ## Running without a security certificate
+
 If you are running this locally or on the intranet, you can leave `dockerfile.agents-nginx` unchanged. But if deploying this on the internet and with an SSL certificate, you should modify `dockerfile.agents-nginx` so it uses `nginx/nginx_prod.conf` as its nginx config. You should also uncomment the lines for copying the certificate and private key.
 
 ## Docker
 
-To build the docker containers, make sure you have docker running on your system.
+To run the docker containers, make sure you have docker running on your system.
 
 (only needed if you have to export the frontend to static files)
 
@@ -112,3 +113,49 @@ You can use the following command to generate the playwright code from a set of 
 ```sh
 npx playwright codegen http://localhost:1234
 ```
+
+## Build Docker Images
+
+To begin, export the frontend assets:
+
+```bash
+cd frontend && npm run export
+```
+
+Next, build the docker images:
+
+```bash
+docker compose -f docker-compose-build.yaml build
+```
+
+Note that docker-compose-build.yaml is used only for building the images and doesn't contain any runtime configurations (e.g. ports, volumes, networks, environment variables etc). It also uses `dockerfile.agents-python-server-export` which doesn't mount the local backend directory as a volume. This is because we will not have the backend directory in our customers' systems.
+
+Finally, tag and push the images to the registry (https://hub.docker.com/repositories/defogai):
+
+```bash
+docker tag defog-self-hosted-agents-postgres defogai/agents-postgres:latest
+docker tag defog-self-hosted-agents-python-server defogai/agents-python-server:latest
+docker tag defog-self-hosted-agents-nginx defogai/agents-nginx:latest
+
+docker push defogai/agents-postgres:latest
+docker push defogai/agents-python-server:latest
+docker push defogai/agents-nginx:latest
+```
+
+### Run Exported Docker Images
+
+As before, remember to make a copy of the `.env.template`, rename it to `.env`, and replace the placeholders with the actual values.
+
+To run the exported images, you would need to use a different compose file, namely `docker-compose-hub.yaml`. This file does not contain the build steps, but only the image links (to our defogai docker repository), and is used to run the built images from the repository. You can run the following command to start the containers:
+
+```bash
+docker compose -f docker-compose-hub.yaml up -d
+```
+
+Our repositories for the images are:
+
+- https://hub.docker.com/repository/docker/defogai/agents-nginx/general
+- https://hub.docker.com/repository/docker/defogai/agents-python-server/general
+- https://hub.docker.com/repository/docker/defogai/agents-postgres/general
+
+When distributing the composed image, customers only need the `docker-compose-hub.yaml` and the `.env.template` files. They can then rename the `.env.template` to `.env` and fill in the required values. The `docker-compose-hub.yaml` file can be used to pull the built images and start the containers.

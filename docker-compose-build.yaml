@@ -1,0 +1,26 @@
+version: "3.8"
+services:
+  agents-postgres:
+    build:
+      context: .
+      dockerfile: dockerfile.agents-postgres
+
+  agents-python-server:
+    build:
+      context: .
+      dockerfile: dockerfile.agents-python-server-export
+      args:
+        OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+
+  agents-nginx:
+    build:
+      context: .
+      dockerfile: dockerfile.agents-nginx
+      args:
+        DEFOG_API_KEY: "${DEFOG_API_KEY}"
+        DEFOG_API_KEY_NAMES: "${DEFOG_API_KEY_NAMES}"
+        GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+        PORT: "${PORT:-80}"
+        BUTTON_TEXT: "${BUTTON_TEXT}"
+        ALLOW_UPDATES: "${ALLOW_UPDATES:-YES}"
+        ALLOW_CACHING: "${ALLOW_CACHING:-YES}"
