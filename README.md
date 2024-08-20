@@ -156,7 +156,7 @@ To build and push each image individually, here are the commands:
 
 ```bash
 docker buildx build --platform linux/arm64,linux/amd64 -f dockerfile.agents-postgres -t defogai/agents-postgres:latest --push .
-docker buildx build --platform linux/arm64,linux/amd64 -f dockerfile.agents-python-server -t defogai/agents-python-server:latest --push .
+docker buildx build --platform linux/arm64,linux/amd64 -f dockerfile.agents-python-server-export -t defogai/agents-python-server:latest --push .
 docker buildx build --platform linux/arm64,linux/amd64 -f dockerfile.agents-nginx -t defogai/agents-nginx:latest --push .
 ```
 

@@ -1,7 +1,7 @@
 # builds image for the agents backend
 FROM python:3.10
 
-WORKDIR backend
+WORKDIR /backend
 
 # need cmake for scikit
 RUN apt-get update && apt-get install -y python3-pip cmake netcat-openbsd
