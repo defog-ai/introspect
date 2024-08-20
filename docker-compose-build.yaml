@@ -4,11 +4,17 @@ services:
     build:
       context: .
       dockerfile: dockerfile.agents-postgres
+      platforms:
+        - linux/amd64
+        - linux/arm64
 
   agents-python-server:
     build:
       context: .
       dockerfile: dockerfile.agents-python-server-export
+      platforms:
+        - linux/amd64
+        - linux/arm64
       args:
         OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
 
@@ -16,6 +22,9 @@ services:
     build:
       context: .
       dockerfile: dockerfile.agents-nginx
+      platforms:
+        - linux/amd64
+        - linux/arm64
       args:
         DEFOG_API_KEY: "${DEFOG_API_KEY}"
         DEFOG_API_KEY_NAMES: "${DEFOG_API_KEY_NAMES}"
@@ -24,3 +33,4 @@ services:
         BUTTON_TEXT: "${BUTTON_TEXT}"
         ALLOW_UPDATES: "${ALLOW_UPDATES:-YES}"
         ALLOW_CACHING: "${ALLOW_CACHING:-YES}"
+
