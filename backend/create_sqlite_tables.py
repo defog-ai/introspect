@@ -149,5 +149,30 @@ defog_db_creds = Table(
     Column("db_creds", JSON),
 )
 
+oracle_reports = Table(
+    "oracle_reports",
+    metadata,
+    Column("report_id", Text, primary_key=True),
+    Column("report_name", Text),
+    Column("status", Text),
+    Column("created_ts", Text),
+    Column("api_key", Text),
+    Column("username", Text),
+    Column("inputs", JSON),
+    Column("outputs", JSON),
+    Column("feedback", Text),
+)
+
+oracle_clarifications = Table(
+    "oracle_clarifications",
+    metadata,
+    Column("clarification_id", Text, primary_key=True),
+    Column("report_id", Text, primary_key=True),
+    Column("llm_question", Text),
+    Column("user_response", Text),
+    Column("created_ts", Text),
+    Column("resolved_ts", Text),
+)
+
 # Create tables in the database
 metadata.create_all(engine)
