@@ -112,8 +112,8 @@ async def generate_step(request: Request):
                 analysis_id=analysis_id
             )
 
-            # if it doesn't exist, then `err` will be a truthy value
-            if err:
+            # if it doesn't exist, then `assignment_understanding` will be None
+            if assignment_understanding is None:
                 _, assignment_understanding = await generate_assignment_understanding(
                     analysis_id=analysis_id,
                     clarification_questions=clarification_questions,
