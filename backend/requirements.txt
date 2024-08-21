@@ -3,7 +3,7 @@ airbyte
 celery[redis]
 colorama
 databricks-sql-connector
-defog==0.65.7
+defog
 fastapi
 google-auth
 google-cloud-bigquery
