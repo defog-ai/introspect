@@ -21,6 +21,7 @@ from db_utils import (
 )
 from generic_utils import get_api_key_from_key_name
 import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes, agent_routes, oracle_routes, imgo_routes
+
 logging.basicConfig(level=logging.INFO)
 
 manager = ConnectionManager()
@@ -184,3 +185,9 @@ async def plan_and_execute(request: Request):
     )
     steps, success = await executor.execute()
     return {"steps": steps, "success": success}
+
+
+@app.post("/get_api_key_names")
+async def get_api_key_names(request: Request):
+    DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
+    return {"api_key_names": DEFOG_API_KEY_NAMES.split(",")}
