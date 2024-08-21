@@ -16,9 +16,6 @@ COPY ./nginx/nginx_local.conf /etc/nginx/nginx.conf
 # copy the build output to replace the default nginx contents
 COPY ./frontend/out /var/www/html
 
-# replace all instances of REPLACE_WITH_DEFOG_API_KEY with the actual API key inside all files in /var/www/html
-RUN find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_DEFOG_API_KEY/${DEFOG_API_KEY}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_API_KEY_NAMES/${DEFOG_API_KEY_NAMES}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_GOOGLE_CLIENT_ID/${GOOGLE_CLIENT_ID}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_BUTTON_TEXT/${BUTTON_TEXT}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_ALLOW_UPDATES/${ALLOW_UPDATES}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_ALLOW_CACHING/${ALLOW_CACHING}/g" {} \;
-
 # uncomment these lines if running in production
 # COPY ./defogcert.pem /etc/ssl/certs/defogcert.pem
 # COPY ./defogkey.pem /etc/ssl/private/defogkey.pem
