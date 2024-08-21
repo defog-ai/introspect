@@ -1,13 +1,6 @@
 # get nginx
 FROM nginx:latest
 
-ARG DEFOG_API_KEY
-ARG DEFOG_API_KEY_NAMES
-ARG GOOGLE_CLIENT_ID
-ARG BUTTON_TEXT
-ARG ALLOW_UPDATES
-ARG COPY_SSL_CERT
-
 # copy the nginx config file
 # change nginx_local.conf to nginx_prod.conf if running on a production server
 # COPY ./nginx/nginx_prod.conf /etc/nginx/nginx.conf

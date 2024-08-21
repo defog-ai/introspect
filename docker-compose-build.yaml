@@ -25,12 +25,4 @@ services:
       platforms:
         - linux/amd64
         - linux/arm64
-      args:
-        DEFOG_API_KEY: "${DEFOG_API_KEY}"
-        DEFOG_API_KEY_NAMES: "${DEFOG_API_KEY_NAMES}"
-        GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
-        PORT: "${PORT:-80}"
-        BUTTON_TEXT: "${BUTTON_TEXT}"
-        ALLOW_UPDATES: "${ALLOW_UPDATES:-YES}"
-        ALLOW_CACHING: "${ALLOW_CACHING:-YES}"
 
