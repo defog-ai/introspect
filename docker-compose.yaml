@@ -6,8 +6,6 @@ services:
       dockerfile: dockerfile.agents-postgres
     networks:
       - agents-network
-    # ports:
-    #   - 5432:5432
     environment:
       POSTGRES_DB: postgres
       POSTGRES_NAME: postgres
@@ -55,18 +53,11 @@ services:
       - agents-assets:/agents-assets/
       - ./backend:/backend
     depends_on:
-      - agents-partykit
       - agents-postgres
       - agents-redis
 
     networks:
       - agents-network
-
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: 34.133.235.56:443
-        tag: defog.local.python-server
 
   agents-nginx:
     build:
@@ -112,4 +103,4 @@ volumes:
   redis-data:
 
 networks:
-  agents-network: # curl --header "Content-Type: application/json"  --data '{"request_type": "ping"}' http://localhost:80/llm-calls/
+  agents-network: 
