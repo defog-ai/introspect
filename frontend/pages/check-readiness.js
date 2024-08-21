@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import Meta from "$components/layout/Meta";
 import { Row, Col, Select, Tooltip, message } from "antd";
-import {
-  SafetyCertificateOutlined,
-  AuditOutlined,
-} from "@ant-design/icons";
+import { SafetyCertificateOutlined, AuditOutlined } from "@ant-design/icons";
 import BasicStatus from "$components/check-readiness/BasicStatus";
 import GoldenQueriesValidity from "$components/check-readiness/GoldenQueriesValidity";
 import InstructionConsistency from "$components/check-readiness/InstructionConsistency";
@@ -48,10 +45,36 @@ const CheckReadiness = () => {
   const [coveredColumns, setCoveredColumns] = useState(0);
   const [missingTables, setMissingTables] = useState([]);
 
-  const apiKeyNames = (
-    process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
-  ).split(",");
+  const [apiKeyNames, setApiKeyNames] = useState([]);
+
+  const getApiKeyNames = async (token) => {
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+        }),
+      }
+    );
+    if (!res.ok) {
+      throw new Error(
+        "Failed to get api key names - are you sure your network is working?"
+      );
+    }
+    const data = await res.json();
+    setApiKeyNames(data.api_key_names);
+    setApiKeyName(data.api_key_names[0]);
+  };
   const [apiKeyName, setApiKeyName] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("defogToken");
+    getApiKeyNames(token);
+  }, []);
 
   const checkBasicReadiness = async () => {
     let token;
@@ -63,19 +86,16 @@ const CheckReadiness = () => {
     }
 
     setloadingBasicStatus(true);
-    const res = await fetch(
-      setupBaseUrl('http', `readiness/basic`),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token: token,
-          key_name: apiKeyName,
-        }),
-      }
-    );
+    const res = await fetch(setupBaseUrl("http", `readiness/basic`), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token: token,
+        key_name: apiKeyName,
+      }),
+    });
     const data = await res.json();
     if (data.success) {
       setloadingBasicStatus(false);
@@ -94,7 +114,7 @@ const CheckReadiness = () => {
   const checkGoldenQueriesValidity = async () => {
     setLoadingGoldenQueries(true);
     const res = await fetch(
-      setupBaseUrl('http', `readiness/check_golden_queries_validity`),
+      setupBaseUrl("http", `readiness/check_golden_queries_validity`),
       {
         method: "POST",
         headers: {
@@ -120,7 +140,7 @@ const CheckReadiness = () => {
   const checkInstructionConsistency = async () => {
     setLoadingInstructionConsistency(true);
     const res = await fetch(
-      setupBaseUrl('http', `readiness/check_instruction_consistency`),
+      setupBaseUrl("http", `readiness/check_instruction_consistency`),
       {
         method: "POST",
         headers: {
@@ -209,14 +229,17 @@ const CheckReadiness = () => {
             </Col>
           </Row>
         ) : null}
-       
+
         <div className="flex justify-center items-center flex-col p-1 mt-1">
           <h1>
-            <SafetyCertificateOutlined style={{ fontSize: "3em", color: "#52c41a" }} />{" "}
+            <SafetyCertificateOutlined
+              style={{ fontSize: "3em", color: "#52c41a" }}
+            />{" "}
           </h1>
           <h1 className="text-2xl mt-4">System Readiness Check</h1>
           <p className="m-4">
-          Check if you have added aligned your Defog instance sufficiently. These checks help ensure that Defog can provide accurate results.
+            Check if you have added aligned your Defog instance sufficiently.
+            These checks help ensure that Defog can provide accurate results.
           </p>
         </div>
         <Row
@@ -235,7 +258,10 @@ const CheckReadiness = () => {
           />
 
           <Col span={24} style={{ paddingTop: "1em" }}>
-            <h2 style={{ display: "flex", alignItems: "center" }} className="text-lg font-semibold">
+            <h2
+              style={{ display: "flex", alignItems: "center" }}
+              className="text-lg font-semibold"
+            >
               <Tooltip title="Do regular quality checks to keep defog fully customised for databse">
                 <AuditOutlined
                   style={{

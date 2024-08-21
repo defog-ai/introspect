@@ -9,7 +9,7 @@ import { HistoryOutlined } from "@ant-design/icons";
 
 const ViewFeedback = () => {
   const apiKeyNames = (
-    process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
+    process.env.NEXT_PUBLIC_API_KEY_NAMES || "Your Database"
   ).split(",");
   const [apiKeyName, setApiKeyName] = useState(null);
   const [token, setToken] = useState();

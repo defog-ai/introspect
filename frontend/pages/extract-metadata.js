@@ -12,10 +12,36 @@ const { TabPane } = Tabs;
 
 const ExtractMetadata = () => {
   const router = useRouter();
-  const apiKeyNames = (
-    process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
-  ).split(",");
-  const [apiKeyName, setApiKeyName] = useState(apiKeyNames[0]);
+  const [apiKeyNames, setApiKeyNames] = useState([]);
+
+  const getApiKeyNames = async (token) => {
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+        }),
+      }
+    );
+    if (!res.ok) {
+      throw new Error(
+        "Failed to get api key names - are you sure your network is working?"
+      );
+    }
+    const data = await res.json();
+    setApiKeyNames(data.api_key_names);
+    setApiKeyName(data.api_key_names[0]);
+  };
+  const [apiKeyName, setApiKeyName] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("defogToken");
+    getApiKeyNames(token);
+  }, []);
   const [token, setToken] = useState("");
   const [user, setUser] = useState("");
   const [userType, setUserType] = useState("");
@@ -158,7 +184,7 @@ const ExtractMetadata = () => {
                   options={apiKeyNames.map((item) => {
                     return { value: item, key: item, label: item };
                   })}
-                  defaultValue={apiKeyName}
+                  value={apiKeyName}
                 />
               </Col>
             </Row>

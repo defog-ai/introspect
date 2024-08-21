@@ -85,7 +85,7 @@ export default function DocPage() {
   console.log(docId.current, token);
 
   const apiKeyNames = (
-    process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
+    process.env.NEXT_PUBLIC_API_KEY_NAMES || "Your Database"
   ).split(",");
 
   return docId.current ? (

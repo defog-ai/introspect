@@ -11,9 +11,29 @@ const QueryDataPage = () => {
   const [user, setUser] = useState("");
   const [userType, setUserType] = useState("");
   const [devMode, setDevMode] = useState(false);
-  const apiKeyNames = (
-    process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
-  ).split(",");
+  const [apiKeyNames, setApiKeyNames] = useState([]);
+
+  const getApiKeyNames = async (token) => {
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+        }),
+      }
+    );
+    if (!res.ok) {
+      throw new Error(
+        "Failed to get api key names - are you sure your network is working?"
+      );
+    }
+    const data = await res.json();
+    setApiKeyNames(data.api_key_names);
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("defogToken");
@@ -22,6 +42,8 @@ const QueryDataPage = () => {
     setUser(user);
     setUserType(userType);
     setToken(token);
+
+    getApiKeyNames(token);
   }, []);
 
   return (
