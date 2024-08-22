@@ -1,8 +1,11 @@
 # test if postgres is up, and sleep until it is
-while ! nc -z $DBNAME $DBPORT; do
-  echo "Waiting for ${DB_NAME} to be available..."
-  sleep 1
-done
+# if INTERNAL_DB is postgres, then wait for postgres to be up
+if [ "$INTERNAL_DB" = "postgres" ]; then
+  while ! nc -z $DBHOST $DBPORT; do
+    echo "Waiting for ${DBHOST} to be available..."
+    sleep 1
+  done
+fi
 
 python3 create_sql_tables.py
 python3 create_admin_user.py
