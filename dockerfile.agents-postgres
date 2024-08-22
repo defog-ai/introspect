@@ -1,4 +1,1 @@
 FROM postgres:latest
-
-COPY ./backend/docker-setup-files/schema.sql /docker-entrypoint-initdb.d/
-
