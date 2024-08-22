@@ -229,11 +229,11 @@ def create_postgres_tables():
 
 # see from the command line arg if we are creating tables in sqlite or postgres
 if __name__ == "__main__":
-    db_type = os.getenv("INTERNAL_DB", "sqlite")
+    internal_db = os.getenv("INTERNAL_DB", "sqlite")
 
-    if db_type == "sqlite":
+    if internal_db == "sqlite":
         create_sqlite_tables()
-    elif db_type == "postgres":
+    elif internal_db == "postgres":
         create_postgres_tables()
     else:
         raise ValueError("Invalid db_type")
