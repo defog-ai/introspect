@@ -1,7 +1,15 @@
 # read a sql file, and create tables in sqlite database
 
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, Text, Boolean
-import argparse
+from sqlalchemy import (
+    create_engine,
+    MetaData,
+    Table,
+    Column,
+    Integer,
+    Text,
+    Boolean,
+    DateTime,
+)
 from sqlalchemy.dialects.sqlite import JSON
 import os
 
@@ -17,7 +25,7 @@ defog_docs = Table(
     Column("doc_blocks", JSON),
     Column("editor_defog_blocks", JSON),
     Column("api_key", Text, nullable=False),
-    Column("timestamp", Text),
+    Column("timestamp", DateTime),
     Column("username", Text),
     Column("doc_xml", Text),
     Column("doc_uint8", JSON),
@@ -39,7 +47,7 @@ defog_analyses = Table(
     Column("analysis_id", Text, primary_key=True),
     Column("api_key", Text, nullable=False),
     Column("email", Text),
-    Column("timestamp", Text),
+    Column("timestamp", DateTime),
     Column("approaches", JSON),
     Column("clarify", JSON),
     Column("assignment_understanding", JSON),
@@ -114,9 +122,9 @@ defog_users = Table(
     Column("token", Text, nullable=False),
     Column("user_type", Text, nullable=False),
     Column("csv_tables", Text),
-    Column("is_premium", Integer),
-    Column("created_at", Text),
-    Column("is_verified", Integer),
+    Column("is_premium", Boolean),
+    Column("created_at", DateTime),
+    Column("is_verified", Boolean),
 )
 
 defog_plans_feedback = Table(
@@ -148,7 +156,7 @@ oracle_reports = Table(
     Column("report_id", Text, primary_key=True),
     Column("report_name", Text),
     Column("status", Text),
-    Column("created_ts", Text),
+    Column("created_ts", DateTime),
     Column("api_key", Text),
     Column("username", Text),
     Column("inputs", JSON),
@@ -163,8 +171,8 @@ oracle_clarifications = Table(
     Column("report_id", Text, primary_key=True),
     Column("llm_question", Text),
     Column("user_response", Text),
-    Column("created_ts", Text),
-    Column("resolved_ts", Text),
+    Column("created_ts", DateTime),
+    Column("resolved_ts", DateTime),
 )
 
 oracle_sources = Table(
@@ -221,7 +229,7 @@ def create_postgres_tables():
 
 # see from the command line arg if we are creating tables in sqlite or postgres
 if __name__ == "__main__":
-    db_type = os.getenv("DB_TYPE", "postgres")
+    db_type = os.getenv("DB_TYPE", "sqlite")
 
     if db_type == "sqlite":
         create_sqlite_tables()
