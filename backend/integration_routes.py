@@ -7,6 +7,7 @@ from defog.query import execute_query
 import re
 import pandas as pd
 from fastapi.responses import JSONResponse
+from uuid import uuid4
 
 from db_utils import (
     validate_user,
@@ -193,7 +194,13 @@ async def update_db_creds(request: Request):
             del db_creds[k]
 
     if db_type == "bigquery":
-        db_creds["json_key_path"] = "./bq.json"
+        credentials_file = db_creds.get("credentials_file")
+        if credentials_file:
+            del db_creds["credentials_file"]
+            fname = str(uuid4()) + ".json"
+            with open(os.path.join(defog_path, fname), "w") as f:
+                f.write(credentials_file)
+        db_creds["json_key_path"] = os.path.join(defog_path, fname)
 
     success = update_db_type_creds(api_key=api_key, db_type=db_type, db_creds=db_creds)
     print(success)
