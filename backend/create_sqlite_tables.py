@@ -174,5 +174,18 @@ oracle_clarifications = Table(
     Column("resolved_ts", Text),
 )
 
+oracle_sources = Table(
+    "oracle_sources",
+    metadata,
+    Column("link", Text, primary_key=True),
+    Column("title", Text),
+    Column("position", Integer),
+    Column("source_type", Text),
+    Column("attributes", Text),
+    Column("snippet", Text),
+    Column("text_parsed", Text),
+    Column("text_summary", Text),
+)
+
 # Create tables in the database
 metadata.create_all(engine)
