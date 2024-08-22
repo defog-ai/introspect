@@ -132,27 +132,7 @@ docker buildx create --name mybuilder
 docker buildx use mybuilder
 ```
 
-Next, build the docker images. This command will automatically use buildx to build multi-architecture images as we have specified the `platform` argument in the docker-compose-build.yaml file.
-
-```bash
-docker compose -f docker-compose-build.yaml build
-```
-
-Note that docker-compose-build.yaml is used only for building the images and doesn't contain any runtime configurations (e.g. ports, volumes, networks, environment variables etc). It also uses `dockerfile.agents-python-server-export` which doesn't mount the local backend directory as a volume. This is because we will not have the backend directory in our customers' systems.
-
-Finally, tag and push the images to the registry (https://hub.docker.com/repositories/defogai):
-
-```bash
-docker tag defog-self-hosted-agents-postgres defogai/agents-postgres:latest
-docker tag defog-self-hosted-agents-python-server defogai/agents-python-server:latest
-docker tag defog-self-hosted-agents-nginx defogai/agents-nginx:latest
-
-docker push defogai/agents-postgres:latest
-docker push defogai/agents-python-server:latest
-docker push defogai/agents-nginx:latest
-```
-
-To build and push each image individually, here are the commands:
+Next, build the docker images. To build and push each image individually, here are the commands:
 
 ```bash
 docker buildx build --platform linux/arm64,linux/amd64 -f dockerfile.agents-postgres -t defogai/agents-postgres:latest --push .
