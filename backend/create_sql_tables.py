@@ -221,18 +221,11 @@ def create_postgres_tables():
 
 # see from the command line arg if we are creating tables in sqlite or postgres
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--db_type",
-        type=str,
-        default="postgres",
-        help="Type of database to create tables in",
-    )
-    args = parser.parse_args()
+    db_type = os.getenv("DB_TYPE", "postgres")
 
-    if args.db_type == "sqlite":
+    if db_type == "sqlite":
         create_sqlite_tables()
-    elif args.db_type == "postgres":
+    elif db_type == "postgres":
         create_postgres_tables()
     else:
         raise ValueError("Invalid db_type")
