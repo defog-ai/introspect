@@ -8,7 +8,7 @@ const dbCredOptions = {
   redshift: ["host", "port", "user", "password", "database", "schema"],
   snowflake: ["account", "warehouse", "user", "password"],
   databricks: ["server_hostname", "access_token", "http_path", "schema"],
-  bigquery: [],
+  bigquery: ["credentials_file_content"],
   sqlserver: ["server", "database", "user", "password"],
 };
 
@@ -164,20 +164,29 @@ const DbCredentialsForm = ({
                 : []
             }
           >
-            <Input
-              type={
-                field === "password" || field === "access_token"
-                  ? "password"
-                  : "text"
-              }
-              placeholder={
-                dbType === "sqlserver" && field === "database"
-                  ? "Leave blank if you want to query multiple databases inside the same server"
-                  : placeholders?.[field] || `Enter ${field}`
-              }
-              className="w-full p-2 border rounded bg-gray-50 text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
+            {field !== "credentials_file_content" ? (
+              <Input
+                type={
+                  field === "password" || field === "access_token"
+                    ? "password"
+                    : "text"
+                }
+                placeholder={
+                  dbType === "sqlserver" && field === "database"
+                    ? "Leave blank if you want to query multiple databases inside the same server"
+                    : placeholders?.[field] || `Enter ${field}`
+                }
+                className="w-full p-2 border rounded bg-gray-50 text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
+              />
+            ) : (
+              <Input.TextArea
+                placeholder="Paste the contents of your credentials file here"
+                className="w-full p-2 border rounded bg-gray-50 text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
+                rows={10}
+              />
+            )}
           </Form.Item>
         ))}
         <Form.Item>
