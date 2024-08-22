@@ -19,6 +19,7 @@ pandasql
 pgvector
 pika
 psycopg2-binary
+pyodbc
 pyyaml
 redis
 redshift_connector
