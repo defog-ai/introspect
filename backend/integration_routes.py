@@ -194,9 +194,9 @@ async def update_db_creds(request: Request):
             del db_creds[k]
 
     if db_type == "bigquery":
-        credentials_file = db_creds.get("credentials_file")
+        credentials_file = db_creds.get("credentials_file_content")
         if credentials_file:
-            del db_creds["credentials_file"]
+            del db_creds["credentials_file_content"]
             fname = str(uuid4()) + ".json"
             with open(os.path.join(defog_path, fname), "w") as f:
                 f.write(credentials_file)
@@ -616,6 +616,9 @@ async def preview_table(request: Request):
 
         table_name = params.get("table_name")
 
+    print("Table name", table_name, flush=True)
+    print("DB Type", db_type, flush=True)
+
     # we need to sanitize the table name to prevent SQL injection
     # for example, if table_name is `table1; DROP TABLE table2`, and we are just doing `SELECT * FROM {table_name} LIMIT 10`, the query would be "SELECT * FROM table1; DROP TABLE table2 LIMIT 10"
     # to prevent this, we need to check that the table name only has alphanumeric characters, underscores, or spaces
@@ -629,10 +632,12 @@ async def preview_table(request: Request):
         return {"error": "invalid table name"}
 
     # in these select statements, add quotes around the table name to prevent SQL injection using a space in the table name
-    if db_type != "sqlserver":
+    if db_type not in ["sqlserver", "bigquery"]:
         sql_query = f'SELECT * FROM "{table_name}" LIMIT 10'
-    else:
+    elif db_type == "sqlserver":
         sql_query = f'SELECT TOP 10 * FROM "{table_name}"'
+    elif db_type == "bigquery":
+        sql_query = f"SELECT * FROM `{table_name}` LIMIT 10"
 
     print("Executing preview table query", flush=True)
     print(sql_query, flush=True)
