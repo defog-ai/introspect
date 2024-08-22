@@ -30,14 +30,16 @@ def safe_sql(query):
     if query is None:
         return False
 
-    query = query.lower()
+    query = query.strip()
+    query = query.replace("\n", " ").replace("\t", " ")
+    query = " " + query.lower() + " "
     if (
-        "drop" in query
-        or "delete" in query
-        or "truncate" in query
-        or "append" in query
-        or "insert" in query
-        or "update" in query
+        " drop " in query
+        or " delete " in query
+        or " truncate " in query
+        or " append " in query
+        or " insert " in query
+        or " update " in query
     ):
         return False
 
