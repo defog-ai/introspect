@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import Sources from "$components/oracle/Sources";
+import TaskType from "$components/oracle/TaskType";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import {
   CheckCircleOutlined,
@@ -44,6 +45,7 @@ function OracleDashboard() {
   const [userTask, setUserTask] = useState("");
   const [clarifications, setClarifications] = useState([]);
   const [waitClarifications, setWaitClarifications] = useState(false);
+  const [taskType, setTaskType] = useState("");
   const [sources, setSources] = useState([]);
   const [waitSources, setWaitSources] = useState(false);
   const [ready, setReady] = useState(false);
@@ -52,26 +54,25 @@ function OracleDashboard() {
   const getClarifications = async () => {
     setWaitClarifications(true);
     const token = localStorage.getItem("defogToken");
-    const res = await fetch(
-      setupBaseUrl("http", `oracle/clarify_formulation`),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token: token,
-          key_name: apiKeyName,
-          question: userTask,
-        }),
-      }
-    );
+    const res = await fetch(setupBaseUrl("http", `oracle/clarify_question`), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token: token,
+        key_name: apiKeyName,
+        question: userTask,
+      }),
+    });
     setWaitClarifications(false);
     if (res.ok) {
       const data = await res.json();
       // we have the following fields to set:
       // - data.clarifications [list of string]
+      // - data.task_type [string]
       // - data.ready [bool]
+      setTaskType(data.task_type);
       setClarifications(data.clarifications);
       setReady(data.ready);
     } else {
@@ -201,6 +202,7 @@ function OracleDashboard() {
         key_name: apiKeyName,
         question: userTask,
         sources: selectedSources,
+        task_type: taskType,
       }),
     });
 
@@ -295,10 +297,11 @@ function OracleDashboard() {
             // show clarifications only when there are some
             <div className="mt-6">
               <h2 className="text-xl font-semibold mb-2">Clarifications</h2>
+              <TaskType taskType={taskType} />
               {clarifications.map((clarification, index) => (
                 <div
                   key={index}
-                  className="bg-amber-100 p-4 rounded-lg mb-4 relative"
+                  className="bg-amber-100 p-4 rounded-lg my-2 relative"
                 >
                   <p className="text-amber-500">{clarification}</p>
                   <CloseOutlined
@@ -315,7 +318,7 @@ function OracleDashboard() {
           </div>
 
           <Button
-            className="bg-purple-500 text-white py-2 px-4 rounded-lg hover:bg-purple-600"
+            className="bg-purple-500 text-white py-4 px-4 mt-2 mb-2 rounded-lg hover:bg-purple-600"
             onClick={generateReport}
           >
             Generate

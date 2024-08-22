@@ -8,26 +8,24 @@ from sqlalchemy.sql import insert, select
 
 from db_utils import OracleReports, engine, validate_user
 from generic_utils import get_api_key_from_key_name, make_request
-from oracle.core import begin_generation_task
+from oracle.core import TASK_TYPES, begin_generation_task
 
 router = APIRouter()
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
-@router.post("/oracle/clarify_formulation")
-async def clarify_formulation(req: Request):
+
+@router.post("/oracle/clarify_question")
+async def clarify_question(req: Request):
     """
     Given the question / objective statement provided by the user, this endpoint
     will return:
         clarifications: list[str]
-        explanation: str
-        objective: str
-        constraints: list[str]
-        constants: list[str]
-        variables: str
+        task_type: str
         ready: bool
-    Note that our UX has only been designed to display the clarifications + 
-    ready indicator for now. All other fields are optionally used by the client.
+    Depending on the task type, the endpoint will return other additional fields.
+    Note that our UX has only been designed to display the clarifications, task_type,
+    and ready indicator for now. All other fields are not used by the client.
     """
     body = await req.json()
     key_name = body.pop("key_name")
@@ -45,10 +43,16 @@ async def clarify_formulation(req: Request):
     if "question" not in body:
         return JSONResponse(
             status_code=400,
-            content={"error": "Bad Request", "message": "Missing 'question' field"}
+            content={"error": "Bad Request", "message": "Missing 'question' field"},
         )
-    response = await make_request(DEFOG_BASE_URL + "/oracle/clarify_formulation", body)
+    response = await make_request(DEFOG_BASE_URL + "/oracle/clarify_task_type", body)
+    task_type = response.get("task_type", "")
+    print(f"Task type: {task_type}")
+    body["task_type"] = task_type
+    response = await make_request(DEFOG_BASE_URL + "/oracle/clarify", body)
+    response["task_type"] = task_type
     return JSONResponse(content=response)
+
 
 @router.post("/oracle/suggest_web_sources")
 async def suggest_web_sources(req: Request):
@@ -72,10 +76,11 @@ async def suggest_web_sources(req: Request):
     if "question" not in body:
         return JSONResponse(
             status_code=400,
-            content={"error": "Bad Request", "message": "Missing 'question' field"}
+            content={"error": "Bad Request", "message": "Missing 'question' field"},
         )
     response = await make_request(DEFOG_BASE_URL + "/unstructured_data/search", body)
     return JSONResponse(content=response)
+
 
 @router.post("/oracle/begin_generation")
 async def begin_generation(req: Request):
@@ -97,6 +102,38 @@ async def begin_generation(req: Request):
             },
         )
     api_key = get_api_key_from_key_name(key_name)
+    if "question" not in body:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Bad Request", "message": "Missing 'question' field"},
+        )
+    if "task_type" not in body:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Bad Request", "message": "Missing 'task_type' field"},
+        )
+    task_type = body["task_type"]
+    if task_type not in TASK_TYPES:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Bad Request",
+                "message": f"Invalid 'task_type' field. Must be one of: {TASK_TYPES}",
+            },
+        )
+    if "sources" not in body:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Bad Request", "message": "Missing 'sources' field"},
+        )
+    elif not isinstance(body["sources"], list):
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Bad Request",
+                "message": "'sources' field must be a list",
+            },
+        )
     # insert a new row into the OracleReports table and get a new report_id
     with Session(engine) as session:
         stmt = (
@@ -106,15 +143,18 @@ async def begin_generation(req: Request):
                 username=username,
                 inputs=body,
                 status="started",
-                created_ts=datetime.now()
+                created_ts=datetime.now(),
             )
             .returning(OracleReports.report_id)
         )
         result = session.execute(stmt)
         report_id = result.scalar_one()
         session.commit()
-    begin_generation_task.apply_async(args=[api_key, username, report_id, body])
+    begin_generation_task.apply_async(
+        args=[api_key, username, report_id, task_type, body]
+    )
     return JSONResponse(content={"report_id": report_id, "status": "started"})
+
 
 @router.post("/oracle/list_reports")
 async def reports_list(req: Request):
@@ -148,12 +188,9 @@ async def reports_list(req: Request):
                 OracleReports.report_name,
                 OracleReports.status,
                 OracleReports.created_ts,
-                OracleReports.inputs
+                OracleReports.inputs,
             )
-            .where(
-                OracleReports.api_key == api_key,
-                OracleReports.username == username
-            )
+            .where(OracleReports.api_key == api_key, OracleReports.username == username)
             .order_by(OracleReports.created_ts.desc())
         )
         result = session.execute(stmt)
@@ -171,6 +208,7 @@ async def reports_list(req: Request):
     ]
     return JSONResponse(status_code=200, content={"reports": reports_list})
 
+
 @router.post("/oracle/download_report")
 async def download_report(req: Request):
     """
@@ -179,6 +217,7 @@ async def download_report(req: Request):
     body = await req.json()
     # TODO: Implement this endpoint
     return JSONResponse(status_code=501, content={"error": "Not Implemented"})
+
 
 @router.post("/oracle/delete_report")
 async def delete_report(req: Request):
@@ -202,13 +241,10 @@ async def delete_report(req: Request):
     api_key = get_api_key_from_key_name(key_name)
 
     with Session(engine) as session:
-        stmt = (
-            select(OracleReports)
-            .where(
-                OracleReports.api_key == api_key,
-                OracleReports.username == username,
-                OracleReports.report_id == report_id
-            )
+        stmt = select(OracleReports).where(
+            OracleReports.api_key == api_key,
+            OracleReports.username == username,
+            OracleReports.report_id == report_id,
         )
         result = session.execute(stmt)
         report = result.scalar_one_or_none()
@@ -218,6 +254,7 @@ async def delete_report(req: Request):
             return JSONResponse(status_code=200, content={"message": "Report deleted"})
         else:
             return JSONResponse(status_code=404, content={"error": "Report not found"})
+
 
 @router.post("/oracle/rename_report")
 async def rename_report(req: Request):
@@ -229,6 +266,7 @@ async def rename_report(req: Request):
     # TODO: Implement this endpoint
     return JSONResponse(status_code=501, content={"error": "Not Implemented"})
 
+
 @router.post("/oracle/feedback_report")
 async def feedback_report(req: Request):
     """
@@ -237,6 +275,7 @@ async def feedback_report(req: Request):
     body = await req.json()
     # TODO: Implement this endpoint
     return JSONResponse(status_code=501, content={"error": "Not Implemented"})
+
 
 @router.post("/oracle/get_clarifications")
 async def get_clarifications(req: Request):
@@ -251,6 +290,7 @@ async def get_clarifications(req: Request):
     body = await req.json()
     # TODO: Implement this endpoint
     return JSONResponse(status_code=501, content={"error": "Not Implemented"})
+
 
 @router.post("/oracle/clarify_report")
 async def clarify_report(req: Request):

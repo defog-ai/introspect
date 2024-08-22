@@ -172,16 +172,17 @@ ALTER TABLE ONLY public.defog_tool_runs
 
 
 -- Oracle tables and data
-CREATE TABLE IF NOT EXISTS oracle_reports (
-    report_id SERIAL PRIMARY KEY,
-    report_name TEXT,
-    status TEXT,
-    created_ts TIMESTAMP,
-    api_key VARCHAR(255),
-    username TEXT,
-    inputs JSONB,
-    outputs JSONB,
-    feedback TEXT
+
+-- sources are not user or report specific and can be shared across multiple users/reports for now
+CREATE TABLE IF NOT EXISTS oracle_sources (
+    link TEXT PRIMARY KEY,
+    title TEXT,
+    position INT,
+    source_type TEXT,
+    attributes TEXT,
+    snippet TEXT,
+    text_parsed TEXT,
+    text_summary TEXT
 );
 
 CREATE TABLE IF NOT EXISTS oracle_clarifications (
@@ -192,4 +193,16 @@ CREATE TABLE IF NOT EXISTS oracle_clarifications (
     created_ts TIMESTAMP NOT NULL,
     resolved_ts TIMESTAMP,
     PRIMARY KEY (clarification_id, report_id)
+);
+
+CREATE TABLE IF NOT EXISTS oracle_reports (
+    report_id SERIAL PRIMARY KEY,
+    report_name TEXT,
+    status TEXT,
+    created_ts TIMESTAMP,
+    api_key VARCHAR(255),
+    username TEXT,
+    inputs JSONB,
+    outputs JSONB,
+    feedback TEXT
 );
