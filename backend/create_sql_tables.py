@@ -1,16 +1,9 @@
 # read a sql file, and create tables in sqlite database
 
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, Text, Boolean
+import argparse
 from sqlalchemy.dialects.sqlite import JSON
 import os
-
-path_to_sql_file = "defog_local.db"
-
-if not os.path.exists(path_to_sql_file):
-    open(path_to_sql_file, "w").close()
-
-# Create an engine (SQLite in this example)
-engine = create_engine(f"sqlite:///{path_to_sql_file}", echo=True)
 
 # Initialize MetaData object
 metadata = MetaData()
@@ -187,5 +180,59 @@ oracle_sources = Table(
     Column("text_summary", Text),
 )
 
-# Create tables in the database
-metadata.create_all(engine)
+
+def create_sqlite_tables():
+    """
+    Create tables in SQLite database
+    """
+    path_to_sql_file = "defog_local.db"
+
+    if not os.path.exists(path_to_sql_file):
+        open(path_to_sql_file, "w").close()
+
+    # Create an engine (SQLite in this example)
+    engine = create_engine(f"sqlite:///{path_to_sql_file}", echo=True)
+
+    # Create tables in the database
+    metadata.create_all(engine)
+
+
+def create_postgres_tables():
+    """
+    Create tables in Postgres database
+    """
+    db_creds = {
+        "user": os.environ.get("DBUSER", "postgres"),
+        "password": os.environ.get("DBPASSWORD", "postgres"),
+        "host": os.environ.get("DBHOST", "agents-postgres"),
+        "port": os.environ.get("DBPORT", "5432"),
+        "database": os.environ.get("DATABASE", "postgres"),
+    }
+
+    # if using postgres
+    connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
+
+    # Create an engine (Postgres in this example)
+    engine = create_engine(connection_uri, echo=True)
+
+    # Create tables in the database
+    metadata.create_all(engine)
+
+
+# see from the command line arg if we are creating tables in sqlite or postgres
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--db_type",
+        type=str,
+        default="postgres",
+        help="Type of database to create tables in",
+    )
+    args = parser.parse_args()
+
+    if args.db_type == "sqlite":
+        create_sqlite_tables()
+    elif args.db_type == "postgres":
+        create_postgres_tables()
+    else:
+        raise ValueError("Invalid db_type")
