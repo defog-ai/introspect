@@ -55,7 +55,6 @@ services:
       - agents-assets:/agents-assets/
       - ./backend:/backend
     depends_on:
-      - agents-partykit
       - agents-postgres
       - agents-redis
 
