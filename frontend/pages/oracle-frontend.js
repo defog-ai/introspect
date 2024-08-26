@@ -318,8 +318,9 @@ function OracleDashboard() {
           </div>
 
           <Button
-            className="bg-purple-500 text-white py-4 px-4 mt-2 mb-2 rounded-lg hover:bg-purple-600"
+            className="bg-purple-500 text-white py-4 px-4 mt-2 mb-2 rounded-lg hover:bg-purple-600 disabled:bg-gray-300"
             onClick={generateReport}
+            disabled={userTask.length < 5 || taskType === ""}
           >
             Generate
           </Button>

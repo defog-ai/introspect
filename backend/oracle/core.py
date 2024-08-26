@@ -1,16 +1,19 @@
 import asyncio
 import json
+import logging
 import os
 import random
-from asyncio import sleep
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Dict, List
 
+from celery.utils.log import get_task_logger
 from db_utils import OracleReports, OracleSources, engine
 from generic_utils import make_request
-from sqlalchemy import insert, update, select
+from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
+from utils_logging import LOG_LEVEL, save_and_log, save_timing
 
 from .celery_app import celery_app
 
@@ -23,6 +26,10 @@ TASK_TYPES = [
     OPTIMIZATION,
 ]
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
+# celery requires a different logger object. we can still reuse utils_logging
+# which just assumes a LOGGER object is defined
+LOGGER = get_task_logger(__name__)
+LOGGER.setLevel(LOG_LEVEL)
 
 celery_async_executors = ThreadPoolExecutor(max_workers=4)
 
@@ -32,7 +39,7 @@ def begin_generation_task(
     api_key: str, username: str, report_id: int, task_type: str, inputs: Dict[str, Any]
 ):
     t_start = datetime.now()
-    print(f"Starting celery task for {username} at {t_start}")
+    LOGGER.info(f"Starting celery task for {username} at {t_start}")
     with celery_async_executors:
         loop = asyncio.get_event_loop()
         task = loop.create_task(
@@ -41,7 +48,7 @@ def begin_generation_task(
         loop.run_until_complete(task)
     t_end = datetime.now()
     time_elapsed = (t_end - t_start).total_seconds()
-    print(f"Completed celery task for {username} in {time_elapsed:.2f} seconds.")
+    LOGGER.info(f"Completed celery task for {username} in {time_elapsed:.2f} seconds.")
 
 
 async def begin_generation_async_task(
@@ -60,9 +67,12 @@ async def begin_generation_async_task(
     stage = "gather_context"
     outputs = {}
     continue_generation = True
+    ts, timings = time.time(), []
+
     while continue_generation:
         # call the control function with the current stage
         try:
+            LOGGER.info(f"Executing stage {stage} for report {report_id}")
             stage_result = await execute_stage(
                 api_key=api_key,
                 username=username,
@@ -81,12 +91,6 @@ async def begin_generation_async_task(
                 report.status = stage
                 report.outputs = outputs
                 session.commit()
-            # check if the report is done
-            if stage == "done":
-                continue_generation = False
-            else:
-                # get the next stage
-                stage = next_stage(stage, task_type)
         except Exception as e:
             # update the status of the report
             with Session(engine) as session:
@@ -94,9 +98,18 @@ async def begin_generation_async_task(
                 result = session.execute(stmt)
                 report = result.scalar_one()
                 report.status = "error"
-                print(f"Error occurred in stage {stage}:\n{e}")
+                LOGGER.error(f"Error occurred in stage {stage}:\n{e}")
                 session.commit()
             continue_generation = False
+        
+        if stage == "done":
+            continue_generation = False
+        # perform logging for current stage
+        if continue_generation:
+            ts = save_timing(ts, f"Stage {stage} completed", timings)
+            stage = next_stage(stage, task_type)
+        else:
+            save_and_log(ts, f"Report {report_id} completed", timings)
 
 
 def next_stage(stage: str, task_type: str) -> str:
@@ -134,6 +147,9 @@ async def execute_stage(
     Depending on the current stage, the control function will call the appropriate
     function to handle the stage. The stage functions will perform the necessary
     actions to complete the stage and return the result.
+    We prefer explicit function references rather than calling `exec` or `eval`
+    over the same set of input arguments to facilitate easier reading and also 
+    for security reasons.
     """
     if stage == "gather_context":
         stage_result = await gather_context(
@@ -191,7 +207,6 @@ async def execute_stage(
         )
     elif stage == "done":
         stage_result = None
-        print(f"Report {report_id} is done.")
     # add more stages here for new report sections if necessary in the future
     else:
         raise ValueError(f"Stage {stage} not recognized.")
@@ -210,19 +225,35 @@ async def gather_context(
     This function will gather the context for the report, by consolidating
     information from the glossary, metadata, and unstructured data sources,
     which are relevant to the question and metric_sql provided.
-    Side Effects:
-    - Clarification questions generated at this stage will be saved to the
-        `oracle_clarifications` table.
+    
+    Returns a dictionary with the following outputs:
+    
+    Always present across task types:
+    - problem_statement: str. The summarized brief of the problem at hand to solve. first to be generated.
+    - context: str. The context of the problem, described qualitatively. second to be generated.
+    - issues: List[str]. A list of issues with the data. empty list returned if no issues present. last to be generated.
+
+    Exploration task type:
+    - data_overview: str. A brief overview of the data.
+
+    Prediction task type:
+    - target: str. The target variable to predict.
+    - features: List[str]. A list of features to use for prediction.
+
+    Optimization task type:
+    - objective: str. The objective of the optimization.
+    - constraints: List[str]. A list of constraints for the formulation.
+    - variables: List[str]. A list of decision variables that the user can control.
     """
-    print(f"Gathering context for report {report_id}")
+    LOGGER.debug(f"Gathering context for report {report_id}")
     question = inputs["question"]
-    print("Got the following sources:")
+    LOGGER.debug("Got the following sources:")
     sources = []
     for source in inputs["sources"]:
         if "link" in source:
             source["type"] = "webpage"
             sources.append(source)
-        print(f"{source}")
+        LOGGER.debug(f"{source}")
     json_data = {
         "api_key": api_key,
         "question": question,
@@ -256,6 +287,7 @@ async def gather_context(
             if result.scalar() is None:
                 stmt = insert(OracleSources).values(source)
                 session.execute(stmt)
+                LOGGER.debug(f"Inserted source {source['link']} into the database.")
             else:
                 stmt = (
                     update(OracleSources)
@@ -263,10 +295,55 @@ async def gather_context(
                     .values(source)
                 )
                 session.execute(stmt)
-            print(f"Inserted source {source['link']} into the database.")
+                LOGGER.debug(f"Updated source {source['link']} in the database.")
         session.commit()
-    # TODO summarize all sources, attempt formulation and save clarification questions into DB
-    return {"sources": sources_parsed}
+    # summarize all sources. we only need the title, type, and summary
+    sources_summary = []
+    
+    for source in sources_parsed:
+        source_summary = {
+            "title": source.get("title", ""),
+            "type": source.get("type"),
+            "summary": source.get("summary"),
+        }
+        sources_summary.append(source_summary)
+    json_data = {
+        "api_key": api_key,
+        "question": question,
+        "task_type": task_type,
+        "sources": sources_summary,
+    }
+    combined_summary = await make_request(
+        DEFOG_BASE_URL + "/unstructured_data/combine_summaries", json_data
+    )
+    if "error" in combined_summary:
+        LOGGER.error(f"Error occurred in combining summaries: {combined_summary['error']}")
+        return
+
+    # validate response from backend
+    if "problem_statement" not in combined_summary:
+        LOGGER.error("No problem statement found in combined summary.")
+    if "context" not in combined_summary:
+        LOGGER.error("No context found in combined summary.")
+    if "issues" not in combined_summary:
+        LOGGER.error("No issues found in combined summary.")
+    if task_type == EXPLORATION:
+        if "data_overview" not in combined_summary:
+            LOGGER.error("No data overview found in combined summary.")
+    elif task_type == PREDICTION:
+        if "target" not in combined_summary:
+            LOGGER.error("No target found in combined summary.")
+        if "features" not in combined_summary:
+            LOGGER.error("No features found in combined summary.")
+    elif task_type == OPTIMIZATION:
+        if "objective" not in combined_summary:
+            LOGGER.error("No objective found in combined summary.")
+        if "constraints" not in combined_summary:
+            LOGGER.error("No constraints found in combined summary.")
+        if "variables" not in combined_summary:
+            LOGGER.error("No variables found in combined summary.")
+    LOGGER.debug(f"Context gathered for report {report_id}:\n{combined_summary}")
+    return combined_summary
 
 
 async def explore_data(
@@ -285,7 +362,7 @@ async def explore_data(
     """
     # TODO implement this function
     # dummy print statement for now
-    print(f"Exploring data for report {report_id}")
+    LOGGER.info(f"Exploring data for report {report_id}")
 
 
 async def wait_clarifications(
@@ -303,9 +380,9 @@ async def wait_clarifications(
     """
     # TODO implement this function
     # dummy print statement for now
-    print(f"Waiting for clarifications for report {report_id}")
+    LOGGER.info(f"Waiting for clarifications for report {report_id}")
     # sleep for a random amount of time to simulate work
-    await sleep(random.random() * 2)
+    await asyncio.sleep(random.random() * 2)
     return {"clarifications": "all clarifications addressed"}
 
 
@@ -325,9 +402,9 @@ async def predict(
     """
     # TODO implement this function
     # dummy print statement for now
-    print(f"Predicting for report {report_id}")
+    LOGGER.info(f"Predicting for report {report_id}")
     # sleep for a random amount of time to simulate work
-    await sleep(random.random() * 2)
+    await asyncio.sleep(random.random() * 2)
     return {"predictions": "predictions generated"}
 
 
@@ -347,9 +424,9 @@ async def optimize(
     """
     # TODO implement this function
     # dummy print statement for now
-    print(f"Optimizing for report {report_id}")
+    LOGGER.info(f"Optimizing for report {report_id}")
     # sleep for a random amount of time to simulate work
-    await sleep(random.random() * 2)
+    await asyncio.sleep(random.random() * 2)
     return {"optimization": "optimization completed"}
 
 
@@ -369,7 +446,7 @@ async def export(
     """
     # TODO implement this function
     # dummy print statement for now
-    print(f"Exporting for report {report_id}")
+    LOGGER.info(f"Exporting for report {report_id}")
     # sleep for a random amount of time to simulate work
-    await sleep(random.random() * 2)
+    await asyncio.sleep(random.random() * 2)
     return {"export": "report exported"}
