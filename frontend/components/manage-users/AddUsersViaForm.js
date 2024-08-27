@@ -71,9 +71,8 @@ const AddUsersViaForm = ({ loading, context, getUserDets }) => {
               />
             </Form.Item>
             <Form.Item
-              label="Password"
+              label="Password (leave blank for SSO users)"
               name={`password${index}`}
-              required
               className="w-1/3"
             >
               <Input.Password

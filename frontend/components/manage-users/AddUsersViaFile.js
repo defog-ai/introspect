@@ -57,10 +57,7 @@ const AddUsersViaFile = ({ loading, context, getUserDets }) => {
   const handleSubmit = async (values) => {
     // this assumes user has chosen one of the two options: googleSheetsUrl or upload CSV file
     try {
-      const endpoint =
-        csvString.trim() !== "username,password,user_type"
-          ? "admin/add_users_csv"
-          : "admin/add_users";
+      const endpoint = "admin/add_users";
 
       const payload =
         csvString.trim() !== "username,password,user_type"
@@ -115,7 +112,7 @@ const AddUsersViaFile = ({ loading, context, getUserDets }) => {
           label={
             isFileUploaded
               ? ""
-              : "Expected columns in the file: username,password,user_type"
+              : "Expected columns in the file: username,password,user_type. For users that must login via SSO, please set the password column to blank."
           }
         >
           <Upload
