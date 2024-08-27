@@ -1,17 +1,13 @@
 import logging
 import os
-import trace
 import traceback
-from fastapi import FastAPI, WebSocket, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
-from starlette.websockets import WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
-from agents.planner_executor.execute_tool import execute_tool
 from agents.planner_executor.planner_executor_agent_rest import RESTExecutor
 from oracle.setup import setup_dir
 import doc_endpoints
-from uuid import uuid4
 from utils import make_request
 
 from db_utils import (

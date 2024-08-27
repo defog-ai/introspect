@@ -2,13 +2,13 @@ from datetime import datetime
 import os
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert, select
 
 from db_utils import OracleReports, engine, validate_user
 from generic_utils import get_api_key_from_key_name, make_request
-from oracle.core import TASK_TYPES, begin_generation_task
+from oracle.core import TASK_TYPES, begin_generation_task, get_report_file_path
 
 router = APIRouter()
 
@@ -215,8 +215,26 @@ async def download_report(req: Request):
     Given a report_id, this endpoint will return the report pdf file to the user.
     """
     body = await req.json()
-    # TODO: Implement this endpoint
-    return JSONResponse(status_code=501, content={"error": "Not Implemented"})
+    key_name = body.pop("key_name")
+    token = body.pop("token")
+    username = validate_user(token, user_type=None, get_username=True)
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+    api_key = get_api_key_from_key_name(key_name)
+    if "report_id" not in body:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Bad Request", "message": "Missing 'report_id' field"},
+        )
+    report_id = body["report_id"]
+    report_path = get_report_file_path(api_key, report_id)
+    return FileResponse(report_path, media_type="application/pdf", filename=report_path)
 
 
 @router.post("/oracle/delete_report")

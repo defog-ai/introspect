@@ -72,3 +72,6 @@ oracle/reports
 # golden queries
 backend/golden_queries.csv
 backend/bq.json
+
+# oracle reports
+backend/oracle/reports

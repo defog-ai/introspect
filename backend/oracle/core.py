@@ -11,6 +11,7 @@ from typing import Any, Dict, List
 from celery.utils.log import get_task_logger
 from db_utils import OracleReports, OracleSources, engine
 from generic_utils import make_request
+from markdown_pdf import MarkdownPdf, Section
 from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
 from utils_logging import LOG_LEVEL, save_and_log, save_timing
@@ -444,11 +445,39 @@ async def export(
     This function will export the final report, by consolidating all the
     information gathered, explored, predicted, and optimized.
     Side Effects:
-    - Final report will be saved as a PDF file in the report_id's directory.
+    - Final report will be saved as a PDF file in the api_key's directory.
     """
-    # TODO implement this function
-    # dummy print statement for now
-    LOGGER.info(f"Exporting for report {report_id}")
-    # sleep for a random amount of time to simulate work
-    await asyncio.sleep(random.random() * 2)
-    return {"export": "report exported"}
+    LOGGER.debug(f"Exporting for report {report_id}")
+    json_data = {
+        "api_key": api_key,
+        "task_type": task_type,
+        "inputs": inputs,
+        "outputs": outputs
+    }
+    response = await make_request(DEFOG_BASE_URL + "/oracle/generate_report", json_data)
+    mdx = response.get("mdx")
+    if mdx is None:
+        LOGGER.error("No MDX returned from backend.")
+    else:
+        LOGGER.debug(f"MDX generated for report {report_id}\n{mdx}")
+    pdf = MarkdownPdf(toc_level=2)
+    pdf.add_section(Section(mdx))
+    report_file_path = get_report_file_path(api_key, report_id)
+    pdf.meta["author"] = "Oracle"
+    pdf.save(report_file_path)
+    LOGGER.debug(f"Exported report {report_id} to {report_file_path}")
+    return {"mdx": mdx, "report_file_path": report_file_path}
+
+
+def get_report_file_path(api_key: str, report_id: str) -> str:
+    """
+    Helper function for getting the report file path based on the api_key and report_id.
+    Reports are organized in the following directory structure:
+    oracle/reports/{api_key}/report_{report_id}.pdf
+    """
+    report_dir = f"oracle/reports/{api_key}"
+    if not os.path.exists(report_dir):
+        os.makedirs(report_dir, exist_ok=True)
+        LOGGER.debug(f"Created directory {report_dir}")
+    report_file_path = f"{report_dir}/report_{report_id}.pdf"
+    return report_file_path

@@ -10,6 +10,7 @@ google-cloud-bigquery
 google-cloud-storage
 httpx
 hypercorn
+markdown-pdf
 matplotlib
 mysql-connector-python
 numpy
