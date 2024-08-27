@@ -140,7 +140,7 @@ async def send_email(
             },
             Source=os.environ.get("FROM_EMAIL"),
         )
-        print(response, flush=True)
+        success = True
     elif EMAIL_OPTION == "DEFOG":
         import httpx
 
