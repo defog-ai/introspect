@@ -524,3 +524,63 @@ async def create_new_step(request: Request):
         logging.error("Error creating new step: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
+
+
+@router.post("/edit_chart")
+async def edit_chart(request: Request):
+    """
+    This is called when a user wants to edit a chart, via the search bar in the chart container.
+
+    Sends a request to the backend with the current chart state, user's request, and the columns in the data.
+    """
+    try:
+        data = await request.json()
+        # what the user wants to change in the chart
+        user_request = data.get("user_request")
+        # the columns in the data
+        columns = data.get("columns")
+        current_chart_state = data.get("current_chart_state")
+
+        # verify column structure
+        if columns is None or type(columns) != list:
+            raise Exception("Invalid columns provided.")
+
+        if len(columns) == 0:
+            raise Exception("Please provide columns.")
+
+        if not user_request or user_request == "":
+            raise Exception("Invalid user request provided.")
+
+        if current_chart_state is None or type(current_chart_state) != dict:
+            raise Exception("Invalid chart state provided.")
+
+        # send this to the main defog python backend
+        edit_chart_url = (
+            os.getenv("DEFOG_BASE_URL", "https://api.defog.ai") + "/edit_chart"
+        )
+
+        logging.info(f"Editing chart with request: {user_request}")
+        logging.info(f"Columns: {columns}")
+        logging.info(f"Current chart state: {current_chart_state}")
+
+        res = await make_request(
+            url=edit_chart_url,
+            json={
+                "user_request": user_request,
+                "columns": [
+                    {"title": c["title"], "col_type": c["col_type"]} for c in columns
+                ],
+                "current_chart_state": current_chart_state,
+            },
+        )
+        chart_state_edits = res["chart_state_edits"]
+
+        if not chart_state_edits or type(chart_state_edits) != dict:
+            raise Exception("Error editing chart.")
+
+        return {"success": True, "chart_state_edits": chart_state_edits}
+
+    except Exception as e:
+        logging.error("Error creating chart state: " + str(e))
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
