@@ -1,5 +1,9 @@
 from fastapi import APIRouter, Request, HTTPException
-from auth_utils import login_user, reset_password, get_hashed_password
+from auth_utils import (
+    login_user,
+    reset_password,
+    get_hashed_username,
+)
 from db_utils import validate_user
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -45,7 +49,7 @@ async def validate_google_token(token: str):
         user_id = idinfo["sub"]
         # You can also get other information from the token, like the user's email:
         user_email = idinfo.get("email")
-        hashed_password = get_hashed_password(user_email, "defog_" + user_email)
+        hashed_password = get_hashed_username(user_email)
 
         # Check if user exists
         if validate_user(hashed_password):

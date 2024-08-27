@@ -44,6 +44,10 @@ def get_hashed_password(username, password):
     return hashlib.sha256((username + SALT + password).encode()).hexdigest()
 
 
+def get_hashed_username(username):
+    return hashlib.sha256((username + SALT).encode()).hexdigest()
+
+
 def validate_user_email(email):
     with engine.begin() as conn:
         user = conn.execute(select(Users).where(Users.username == email)).fetchone()
