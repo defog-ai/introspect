@@ -108,17 +108,8 @@ const AddUsersViaFile = ({ loading, context, getUserDets }) => {
       </h1>
 
       <Form layout="vertical" disabled={loading} onFinish={handleSubmit}>
-        <Title level={4}>Option 1: Paste Google Sheets URL</Title>
-        <Form.Item label="Google Sheets URL" name="gsheets_url">
-          <Input
-            className="pd-2"
-            value={googleSheetsUrl}
-            onChange={(e) => setGoogleSheetsUrl(e.target.value)}
-          />
-        </Form.Item>
-
         <Title level={4} className="mt-6">
-          Option 2: Upload CSV File
+          Upload CSV File
         </Title>
         <Form.Item
           label={
@@ -137,6 +128,17 @@ const AddUsersViaFile = ({ loading, context, getUserDets }) => {
               {isFileUploaded ? "Uploaded" : "Upload CSV"}
             </Button>
           </Upload>
+        </Form.Item>
+
+        <Title level={4}>
+          Or a paste publicly accessible Google Sheets URL
+        </Title>
+        <Form.Item label="Google Sheets URL" name="gsheets_url">
+          <Input
+            className="pd-2"
+            value={googleSheetsUrl}
+            onChange={(e) => setGoogleSheetsUrl(e.target.value)}
+          />
         </Form.Item>
 
         {isFileUploaded && (
