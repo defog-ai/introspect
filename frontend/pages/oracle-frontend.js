@@ -47,6 +47,7 @@ function OracleDashboard() {
   const [userTask, setUserTask] = useState("");
   const [clarifications, setClarifications] = useState([]);
   const [waitClarifications, setWaitClarifications] = useState(false);
+  const [dismissedClarifications, setDismissedClarifications] = useState([]);
   const [taskType, setTaskType] = useState("");
   const [sources, setSources] = useState([]);
   const [waitSources, setWaitSources] = useState(false);
@@ -56,6 +57,7 @@ function OracleDashboard() {
   const getClarifications = async () => {
     setWaitClarifications(true);
     const token = localStorage.getItem("defogToken");
+    console.log("dismissed clarifications:", dismissedClarifications);
     const res = await fetch(setupBaseUrl("http", `oracle/clarify_question`), {
       method: "POST",
       headers: {
@@ -65,6 +67,7 @@ function OracleDashboard() {
         token: token,
         key_name: apiKeyName,
         user_question: userTask,
+        dismissed_clarifications: dismissedClarifications,
       }),
     });
     setWaitClarifications(false);
@@ -83,6 +86,12 @@ function OracleDashboard() {
   };
 
   const deleteClarification = (index) => {
+    // add the clarification to the dismissed clarifications
+    setDismissedClarifications((prevClarifications) => [
+      ...prevClarifications,
+      clarifications[index],
+    ]);
+    // remove the clarification from the list of clarifications
     setClarifications((prevClarifications) =>
       prevClarifications.filter((_, i) => i !== index)
     );
@@ -244,7 +253,8 @@ function OracleDashboard() {
     // generate a report
     const token = localStorage.getItem("defogToken");
     const selectedSources = sources.filter((source) => source.selected);
-    console.log(selectedSources);
+    // reset clarifications
+    setClarifications([]);
     const res = await fetch(setupBaseUrl("http", `oracle/begin_generation`), {
       method: "POST",
       headers: {
