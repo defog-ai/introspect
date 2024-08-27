@@ -1516,6 +1516,19 @@ async def delete_tool(function_name):
         return err
 
 
+async def delete_all_tools():
+    err = None
+    try:
+        with engine.begin() as conn:
+            conn.execute(delete(Tools))
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        err = str(e)
+    finally:
+        return err
+
+
 async def get_analysis_versions(root_analysis_id):
     # get all versions of an analysis
     # get ids that end with -v1, -v2, -v3..

@@ -1,10 +1,16 @@
 from agents.planner_executor.tool_helpers.all_tools import tools
-from db_utils import add_tool
+from db_utils import add_tool, delete_all_tools
 import os
 import asyncio
 
 
 async def main():
+    # if DELETE_EXISTING_TOOLS is set to yes, delete all existing tools in the db
+    # this is to help users "nuke" old tools without having to manually go inside the db container
+    # this will be disabled by default
+    if os.environ.get("DELETE_EXISTING_TOOLS") == "yes":
+        delete_all_tools()
+
     # initialise basic tools in db
     for key in tools:
         tool = tools[key]
