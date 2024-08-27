@@ -3,6 +3,7 @@ from db_utils import engine, Users
 from sqlalchemy import (
     select,
     update,
+    or_,
 )
 from fastapi.responses import JSONResponse
 
@@ -11,9 +12,15 @@ SALT = "TOMMARVOLORIDDLE"
 
 def login_user(username, password):
     hashed_password = hashlib.sha256((username + SALT + password).encode()).hexdigest()
+    hashed_username = hashlib.sha256((username + SALT).encode()).hexdigest()
     with engine.begin() as conn:
         user = conn.execute(
-            select(Users).where(Users.hashed_password == hashed_password)
+            select(Users).where(
+                or_(
+                    Users.hashed_password == hashed_password,
+                    Users.hashed_password == hashed_username,
+                )
+            )
         ).fetchone()
 
     if user:

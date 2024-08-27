@@ -13,8 +13,8 @@ const AddUsersViaForm = ({ loading, context, getUserDets }) => {
 
   useEffect(() => {
     const csv = users
-      .filter((user) => user.username && user.password && user.userType)
-      .map((user) => `${user.username},${user.password},${user.userType}`)
+      .filter((user) => user.username && user.userType)
+      .map((user) => `${user.username},${user.password || ""},${user.userType}`)
       .join("\n");
     setCsvString(`username,password,user_type\n${csv}`);
   }, [users]);
@@ -26,7 +26,7 @@ const AddUsersViaForm = ({ loading, context, getUserDets }) => {
   };
 
   const handleSubmit = async () => {
-    const res = await fetch(setupBaseUrl("http", `admin/add_users_csv`), {
+    const res = await fetch(setupBaseUrl("http", `admin/add_users`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ users_csv: csvString, token: context.token }),

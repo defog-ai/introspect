@@ -24,7 +24,7 @@ async def add_user(request: Request):
     params = await request.json()
     token = params.get("token")
     gsheets_url = params.get("gsheets_url")
-    user_dets_csv = params.get("user_dets_csv")
+    user_dets_csv = params.get("users_csv")
     if not validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
@@ -50,7 +50,9 @@ async def add_user(request: Request):
 
     # get the users from the csv
     try:
-        users = pd.read_csv(StringIO(user_dets_csv)).to_dict(orient="records")
+        users = (
+            pd.read_csv(StringIO(user_dets_csv)).fillna("").to_dict(orient="records")
+        )
         print(users, flush=True)
     except:
         return {
@@ -71,10 +73,12 @@ async def add_user(request: Request):
     with engine.begin() as conn:
         for dets in userdets:
             if dets["password"]:
+                print(f"using password {dets['password']}", flush=True)
                 hashed_password = hashlib.sha256(
-                    (dets["username"] + SALT + "defog_" + dets["username"]).encode()
+                    (dets["username"] + SALT + dets["password"]).encode()
                 ).hexdigest()
             else:
+                print("using username hash as password", flush=True)
                 hashed_password = hashlib.sha256(
                     (dets["username"] + SALT).encode()
                 ).hexdigest()
