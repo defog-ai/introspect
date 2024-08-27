@@ -1,9 +1,9 @@
 import asyncio
 import json
-import logging
 import os
 import random
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Dict, List
@@ -92,13 +92,15 @@ async def begin_generation_async_task(
                 report.outputs = outputs
                 session.commit()
         except Exception as e:
+            LOGGER.error(f"Error occurred in stage {stage}:\n{e}")
+            # print traceback of exception
+            LOGGER.error(traceback.format_exc())
             # update the status of the report
             with Session(engine) as session:
                 stmt = select(OracleReports).where(OracleReports.report_id == report_id)
                 result = session.execute(stmt)
                 report = result.scalar_one()
                 report.status = "error"
-                LOGGER.error(f"Error occurred in stage {stage}:\n{e}")
                 session.commit()
             continue_generation = False
         
@@ -246,7 +248,7 @@ async def gather_context(
     - variables: List[str]. A list of decision variables that the user can control.
     """
     LOGGER.debug(f"Gathering context for report {report_id}")
-    question = inputs["question"]
+    user_question = inputs["user_question"]
     LOGGER.debug("Got the following sources:")
     sources = []
     for source in inputs["sources"]:
@@ -256,7 +258,7 @@ async def gather_context(
         LOGGER.debug(f"{source}")
     json_data = {
         "api_key": api_key,
-        "question": question,
+        "user_question": user_question,
         "sources": sources,
     }
     # each source now contains "text" and "summary" keys
@@ -309,7 +311,7 @@ async def gather_context(
         sources_summary.append(source_summary)
     json_data = {
         "api_key": api_key,
-        "question": question,
+        "user_question": user_question,
         "task_type": task_type,
         "sources": sources_summary,
     }

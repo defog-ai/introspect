@@ -62,7 +62,7 @@ function OracleDashboard() {
       body: JSON.stringify({
         token: token,
         key_name: apiKeyName,
-        question: userTask,
+        user_question: userTask,
       }),
     });
     setWaitClarifications(false);
@@ -99,7 +99,7 @@ function OracleDashboard() {
         body: JSON.stringify({
           token: token,
           key_name: apiKeyName,
-          question: userTask,
+          user_question: userTask,
         }),
       }
     );
@@ -200,7 +200,7 @@ function OracleDashboard() {
       body: JSON.stringify({
         token,
         key_name: apiKeyName,
-        question: userTask,
+        user_question: userTask,
         sources: selectedSources,
         task_type: taskType,
       }),

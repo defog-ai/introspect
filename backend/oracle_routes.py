@@ -40,10 +40,10 @@ async def clarify_question(req: Request):
             },
         )
     body["api_key"] = get_api_key_from_key_name(key_name)
-    if "question" not in body:
+    if "user_question" not in body:
         return JSONResponse(
             status_code=400,
-            content={"error": "Bad Request", "message": "Missing 'question' field"},
+            content={"error": "Bad Request", "message": "Missing 'user_question' field"},
         )
     response = await make_request(DEFOG_BASE_URL + "/oracle/clarify_task_type", body)
     task_type = response.get("task_type", "")
@@ -73,10 +73,10 @@ async def suggest_web_sources(req: Request):
             },
         )
     body["api_key"] = get_api_key_from_key_name(key_name)
-    if "question" not in body:
+    if "user_question" not in body:
         return JSONResponse(
             status_code=400,
-            content={"error": "Bad Request", "message": "Missing 'question' field"},
+            content={"error": "Bad Request", "message": "Missing 'user_question' field"},
         )
     response = await make_request(DEFOG_BASE_URL + "/unstructured_data/search", body)
     return JSONResponse(content=response)
@@ -102,10 +102,10 @@ async def begin_generation(req: Request):
             },
         )
     api_key = get_api_key_from_key_name(key_name)
-    if "question" not in body:
+    if "user_question" not in body:
         return JSONResponse(
             status_code=400,
-            content={"error": "Bad Request", "message": "Missing 'question' field"},
+            content={"error": "Bad Request", "message": "Missing 'user_question' field"},
         )
     if "task_type" not in body:
         return JSONResponse(
