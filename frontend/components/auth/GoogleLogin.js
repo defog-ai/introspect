@@ -1,14 +1,12 @@
-import React, { useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { Alert, message } from "antd";
 import { useRouter } from "next/router";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { UserContext } from "$components/context/UserContext";
 
-const clientId =
-  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "REPLACE_WITH_GOOGLE_CLIENT_ID";
-
 const GoogleLoginButton = () => {
+  const [clientId, setClientId] = useState("");
   const [context, setContext] = useContext(UserContext);
   const router = useRouter();
   const onSuccess = async (response) => {
@@ -48,6 +46,22 @@ const GoogleLoginButton = () => {
     }
   };
 
+  useEffect(() => {
+    const fetchClientId = async () => {
+      const res = await fetch(setupBaseUrl("http", "get_google_client_id"), {
+        method: "POST",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.google_client_id) {
+          setClientId(data.google_client_id);
+        }
+      }
+    };
+
+    fetchClientId();
+  }, []);
+
   const onFailure = (response) => {
     console.error("Login Failed: ", response); // Handle login failure
     <Alert message={"Login Failed"} type="error" />;
@@ -55,14 +69,16 @@ const GoogleLoginButton = () => {
 
   return (
     <div>
-      <GoogleOAuthProvider clientId={clientId}>
-        <GoogleLogin
-          buttonText="Log In with Google"
-          onSuccess={onSuccess}
-          onFailure={onFailure}
-          cookiePolicy={"single_host_origin"}
-        />
-      </GoogleOAuthProvider>
+      {clientId ? (
+        <GoogleOAuthProvider clientId={clientId}>
+          <GoogleLogin
+            buttonText="Log In with Google"
+            onSuccess={onSuccess}
+            onFailure={onFailure}
+            cookiePolicy={"single_host_origin"}
+          />
+        </GoogleOAuthProvider>
+      ) : null}
     </div>
   );
 };

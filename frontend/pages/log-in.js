@@ -4,7 +4,7 @@ import { message } from "antd";
 import Meta from "$components/layout/Meta";
 import { UserContext } from "$components/context/UserContext";
 import Scaffolding from "$components/layout/Scaffolding";
-// import GoogleLoginButton from "$components/auth/GoogleLogin";
+import GoogleLoginButton from "$components/auth/GoogleLogin";
 
 const LogIn = () => {
   const [context, setContext] = useContext(UserContext);
@@ -121,9 +121,9 @@ const LogIn = () => {
               </div>
             </form>
 
-            {/* <div className="mt-4">
-            <GoogleLoginButton />
-            </div> */}
+            <div className="mt-4">
+              <GoogleLoginButton />
+            </div>
 
             <p className="mt-10 text-center text-sm text-gray-500">
               Don't have an API key?{" "}
