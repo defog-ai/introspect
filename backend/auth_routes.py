@@ -27,6 +27,13 @@ async def login(request: Request):
     return dets
 
 
+@router.post("/get_google_client_id")
+async def get_google_client_id(request: Request):
+    if GOOGLE_CLIENT_ID is None or GOOGLE_CLIENT_ID == "":
+        return {"error": "Google client ID not set"}
+    return {"google_client_id": GOOGLE_CLIENT_ID}
+
+
 async def validate_google_token(token: str):
     try:
         # Specify the CLIENT_ID of the app that accesses the backend:
