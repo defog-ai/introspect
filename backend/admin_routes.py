@@ -73,12 +73,10 @@ async def add_user(request: Request):
     with engine.begin() as conn:
         for dets in userdets:
             if dets["password"]:
-                print(f"using password {dets['password']}", flush=True)
                 hashed_password = hashlib.sha256(
                     (dets["username"] + SALT + dets["password"]).encode()
                 ).hexdigest()
             else:
-                print("using username hash as password", flush=True)
                 hashed_password = hashlib.sha256(
                     (dets["username"] + SALT).encode()
                 ).hexdigest()
