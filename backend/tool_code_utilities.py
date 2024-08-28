@@ -76,9 +76,6 @@ async def fetch_query_into_df(
         execute_query, sql_query, api_key, db_type, db_creds, retries=2, temp=temp
     )
 
-    if len(data) == 0:
-        data = [["no data found" for _ in colnames]]
-
     # again, make sure new query that was run is safe
     # make sure not unsafe
     if not safe_sql(new_sql_query):
