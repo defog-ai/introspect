@@ -25,7 +25,7 @@ from uuid import uuid4
 router = APIRouter()
 
 import os
-
+import re
 import redis
 
 REDIS_HOST = os.getenv("REDIS_INTERNAL_HOST", "agents-redis")
@@ -123,6 +123,18 @@ async def generate_step(request: Request):
 
         if sql_only:
             # if sql_only is true, just call the sql generation function and return, while saving the step
+            if assignment_understanding is not None:
+                # remove any numbers, like "1. " from the beginning of assignment understanding
+                if re.match(r"^\d+\.\s", assignment_understanding):
+                    assignment_understanding = re.sub(
+                        r"^\d+\.\s", "", assignment_understanding
+                    )
+
+                question = question + ". Note: " + assignment_understanding
+                print(
+                    f"*******\nQuestion with assignment understanding:\n{question}\n*******",
+                    flush=True,
+                )
             inputs = {
                 "question": question,
                 "global_dict": {
