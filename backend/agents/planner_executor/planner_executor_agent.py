@@ -311,6 +311,7 @@ async def run_step(
                     }
                     analysis_execution_cache[outputs_storage_keys[0]] = output_df
                 except Exception as e:
+                    traceback.print_exc()
                     results = {
                         "error_message": "Could not run the sql query. Is it correct?"
                     }
