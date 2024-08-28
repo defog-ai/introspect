@@ -34,7 +34,9 @@ async def login(request: Request):
 @router.post("/get_google_client_id")
 async def get_google_client_id(request: Request):
     if GOOGLE_CLIENT_ID is None or GOOGLE_CLIENT_ID == "":
-        return {"error": "Google client ID not set"}
+        return JSONResponse(
+            content={"error": "Google client ID not set"}, status_code=400
+        )
     return {"google_client_id": GOOGLE_CLIENT_ID}
 
 
