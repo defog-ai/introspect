@@ -1,6 +1,7 @@
 # the executor converts the user's task to steps and maps those steps to tools.
 # also runs those steps
 from copy import deepcopy
+import traceback
 from uuid import uuid4
 
 from colorama import Fore, Style
@@ -310,7 +311,9 @@ async def run_step(
                     }
                     analysis_execution_cache[outputs_storage_keys[0]] = output_df
                 except Exception as e:
-                    results = {"error_message": str(e)}
+                    results = {
+                        "error_message": "Could not run the sql query. Is it correct?"
+                    }
             else:
                 info(
                     "Question has changed. Re-running the tool to fetch the sql for the new question."
