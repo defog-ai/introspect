@@ -133,26 +133,29 @@ const AlignModel = () => {
   };
 
   const updateGoldenQueries = async () => {
-    setIsUpdatingGoldenQueries(true);
-    const res = await fetch(
-      setupBaseUrl("http", `integration/update_golden_queries`),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token,
-          golden_queries: goldenQueries,
-          dev: devMode,
-          key_name: apiKeyName,
-        }),
+    if (token) {
+      setIsUpdatingGoldenQueries(true);
+      const res = await fetch(
+        setupBaseUrl("http", `integration/update_golden_queries`),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            golden_queries: goldenQueries,
+            dev: devMode,
+            key_name: apiKeyName,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      setIsUpdatingGoldenQueries(false);
+      if (data.status === "success") {
+        message.success("Golden queries updated successfully!");
       }
-    );
-    const data = await res.json();
-    setIsUpdatingGoldenQueries(false);
-    if (data.status === "success") {
-      message.success("Golden queries updated successfully!");
     }
   };
 

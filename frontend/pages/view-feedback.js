@@ -74,7 +74,35 @@ const ViewFeedback = () => {
     setLoading(false);
   };
 
-  const fetchCurrentGlossaryAndGoldenQueries = async (token, apiKeyName) => {
+  const fetchDynamicGlossary = async (question, token, apiKeyName) => {
+    const res = await fetch(
+      setupBaseUrl("http", `integration/get_dynamic_glossary`),
+      {
+        method: "POST",
+        body: JSON.stringify({
+          question: question,
+          token: token,
+          key_name: apiKeyName,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    const data = await res.json();
+    return data;
+  };
+
+  const getCurrentGlossary = async (question) => {
+    if (!token || !apiKeyName) {
+      return;
+    }
+    const dets = await fetchDynamicGlossary(question, token, apiKeyName);
+    const glossary = dets["pruned_glossary"];
+    return glossary;
+  };
+
+  const fetchGoldenQueries = async (token, apiKeyName) => {
     const res = await fetch(
       setupBaseUrl("http", `integration/get_glossary_golden_queries`),
       {
@@ -89,31 +117,14 @@ const ViewFeedback = () => {
       }
     );
     const data = await res.json();
-    return {
-      glossary: data["glossary"] || "",
-      goldenQueries: data["golden_queries"] || "",
-    };
-  };
-
-  const getCurrentGlossary = async () => {
-    if (!token || !apiKeyName) {
-      return;
-    }
-    const { glossary } = await fetchCurrentGlossaryAndGoldenQueries(
-      token,
-      apiKeyName
-    );
-    return glossary;
+    return data["golden_queries"];
   };
 
   const getGoldenQueries = async () => {
     if (!token || !apiKeyName) {
       return;
     }
-    const { goldenQueries } = await fetchCurrentGlossaryAndGoldenQueries(
-      token,
-      apiKeyName
-    );
+    const { goldenQueries } = await fetchGoldenQueries(token, apiKeyName);
     setGoldenQueries(goldenQueries);
   };
 

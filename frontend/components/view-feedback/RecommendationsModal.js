@@ -96,7 +96,7 @@ const RecommendationsModal = ({
     }
   };
 
-  const updateGlossary = async (newGlossary) => {
+  const appendToGlossary = async (newGlossary) => {
     const res = await fetch(
       setupBaseUrl("http", `integration/update_glossary`),
       {
@@ -104,7 +104,8 @@ const RecommendationsModal = ({
         body: JSON.stringify({
           token: token,
           key_name: apiKeyName,
-          glossary: newGlossary,
+          new_instructions: newGlossary,
+          append: true,
         }),
         headers: {
           "Content-Type": "application/json",
@@ -117,10 +118,20 @@ const RecommendationsModal = ({
 
   const reRunWithUpdatedInstructions = async () => {
     setIsRunning(true);
-    const currentGlossary = await getCurrentGlossary();
+    const currentGlossary = await getCurrentGlossary(currentQuestion);
+    console.log(currentGlossary);
+
+    let updatedGlossary;
 
     // momentarily, add the recommendedInstructions to the glossary
-    const updatedGlossary = currentGlossary.concat(recommendedInstructions);
+    try {
+      updatedGlossary = currentGlossary + "\n" + recommendedInstructions;
+    } catch (error) {
+      console.error(
+        "Failed to append instructions to glossary:",
+        error.message
+      );
+    }
 
     // run query for the question with the updated glossary
     const res = await fetch(setupBaseUrl("http", `query`), {
@@ -130,7 +141,7 @@ const RecommendationsModal = ({
         key_name: apiKeyName,
         question: currentQuestion,
         previous_context: [],
-        dev_body: false,
+        dev: false,
         ignore_cache: true,
         glossary: updatedGlossary,
       }),
@@ -149,11 +160,7 @@ const RecommendationsModal = ({
   };
 
   const permanentlyAddInstructions = async () => {
-    const currentGlossary = await getCurrentGlossary();
-    const updatedGlossary = currentGlossary.concat(
-      "\n" + recommendedInstructions // adding on the next line
-    );
-    updateGlossary(updatedGlossary);
+    appendToGlossary(recommendedInstructions);
     setRecommendedInstructions("");
     setPermanentlyUpdatedGlossary(true);
   };
@@ -266,7 +273,13 @@ const RecommendationsModal = ({
         </div>
         {!populatingInstructions && updatedQuery && (
           <>
-            <div style={{ width: "95%", paddingLeft: "1.1em", marginBottom: "2em" }}>
+            <div
+              style={{
+                width: "95%",
+                paddingLeft: "1.1em",
+                marginBottom: "2em",
+              }}
+            >
               <h2
                 className="text-xl mt-4 mb-3"
                 style={{
