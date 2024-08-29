@@ -419,11 +419,28 @@ async def get_glossary_golden_queries(request: Request):
     defog.base_url = DEFOG_BASE_URL
 
     # get glossary
-    glossary = await asyncio.to_thread(defog.get_glossary, dev=dev)
+    url = DEFOG_BASE_URL + "/get_glossary"
+    resp = await make_request(url, {"api_key": api_key, "dev": dev})
 
     # get golden queries
     golden_queries = await asyncio.to_thread(defog.get_golden_queries, dev=dev)
-    return {"glossary": glossary, "golden_queries": golden_queries}
+
+    # for backwards compatibility
+    glossary = resp.get("glossary", "")
+    glossary_compulsory = resp.get("glossary_compulsory", "")
+    glossary_prunable_units = resp.get("glossary_prunable_units", [])
+    glossary_prunable_units = "\n".join(glossary_prunable_units)
+
+    # for backwards compatibility
+    # if `glossary` is non empty and glossary compulsory is empty, set glossary compulsory to glossary
+    if glossary_compulsory == "" and glossary != "":
+        glossary_compulsory = glossary
+
+    return {
+        "glossary_compulsory": glossary_compulsory,
+        "glossary_prunable_units": glossary_prunable_units,
+        "golden_queries": golden_queries,
+    }
 
 
 @router.post("/integration/update_glossary")
@@ -447,14 +464,23 @@ async def update_glossary(request: Request):
     else:
         return {"error": "no db creds found"}
 
-    glossary = params.get("glossary")
+    glossary_compulsory = params.get("glossary_compulsory")
+    glossary_prunable_units = params.get("glossary_prunable_units")
     dev = params.get("dev", False)
+
+    if glossary_prunable_units:
+        glossary_prunable_units = glossary_prunable_units.split("\n")
 
     defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
     defog.base_url = DEFOG_BASE_URL
 
     # update glossary
-    r = await asyncio.to_thread(defog.update_glossary, glossary, dev=dev)
+    r = await asyncio.to_thread(
+        defog.update_glossary,
+        glossary_compulsory=glossary_compulsory,
+        glossary_prunable_units=glossary_prunable_units,
+        dev=dev,
+    )
     return r
 
 
