@@ -11,7 +11,8 @@ import { Row, Col, Select } from "antd";
 
 const AlignModel = () => {
   const [devMode, setDevMode] = useState(false);
-  const [glossary, setGlossary] = useState("");
+  const [compulsoryGlossary, setCompulsoryGlossary] = useState("");
+  const [prunableGlossary, setPrunableGlossary] = useState("");
   const [goldenQueries, setGoldenQueries] = useState([]); // [ { question: "", sql: "" }, ... ]
   const [token, setToken] = useState("");
 
@@ -89,7 +90,8 @@ const AlignModel = () => {
         }
       );
       const data = await res.json();
-      setGlossary(data.glossary);
+      setCompulsoryGlossary(data.glossary_compulsory);
+      setPrunableGlossary(data.glossary_prunable_units);
       setGoldenQueries(data.golden_queries);
       setIsLoading(false);
     } catch (e) {
@@ -101,7 +103,11 @@ const AlignModel = () => {
     }
   };
 
-  const updateGlossary = async (glossary, setLoading) => {
+  const updateGlossary = async (
+    compulsoryGlossary,
+    prunableGlossary,
+    setLoading
+  ) => {
     setLoading(true);
     const res = await fetch(
       setupBaseUrl("http", `integration/update_glossary`),
@@ -111,7 +117,8 @@ const AlignModel = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          glossary,
+          glossary_compulsory: compulsoryGlossary,
+          glossary_prunable_units: prunableGlossary,
           token,
           dev: devMode,
           key_name: apiKeyName,
@@ -216,19 +223,21 @@ const AlignModel = () => {
           </p>
         </div>
         <div className="flex flex-col p-1 border border-gray-3200 rounded-lg">
-          {!!glossary && goldenQueries.length > 0 ? (
+          {/* {!!compulsoryGlossary && goldenQueries.length > 0 ? (
             <IMGO
               token={token}
               apiKeyName={apiKeyName}
               updateGlossary={updateGlossary}
               updateMetadata={updateMetadata}
             />
-          ) : null}
+          ) : null} */}
           <Instructions
             title="Glossary"
             description="This the information about your data that the model considers when generating your SQL queries. Feel free to edit these instructions to get the best results."
-            glossary={glossary}
-            setGlossary={setGlossary}
+            compulsoryGlossary={compulsoryGlossary}
+            setCompulsoryGlossary={setCompulsoryGlossary}
+            prunableGlossary={prunableGlossary}
+            setPrunableGlossary={setPrunableGlossary}
             updateGlossary={updateGlossary}
             updateGlossaryLoadingFunction={setIsUpdatingInstructions}
             isLoading={isLoading}
