@@ -15,6 +15,7 @@ from markdown_pdf import MarkdownPdf, Section
 from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
 from utils_logging import LOG_LEVEL, save_and_log, save_timing
+from utils_md import mk_create_table_ddl
 
 from .celery_app import celery_app
 
@@ -228,6 +229,10 @@ async def gather_context(
     This function will gather the context for the report, by consolidating
     information from the glossary, metadata, and unstructured data sources,
     which are relevant to the question and metric_sql provided.
+
+    One of the key side effects is that it will save the tables from the parsed
+    sources into the database, creating new tables, and updating the metadata
+    in the backend with the new metadata.
     
     Returns a dictionary with the following outputs:
     
@@ -248,6 +253,7 @@ async def gather_context(
     - constraints: List[str]. A list of constraints for the formulation.
     - variables: List[str]. A list of decision variables that the user can control.
     """
+    ts, timings = time.time(), []
     LOGGER.debug(f"Gathering context for report {report_id}")
     user_question = inputs["user_question"]
     LOGGER.debug("Got the following sources:")
@@ -300,9 +306,62 @@ async def gather_context(
                 session.execute(stmt)
                 LOGGER.debug(f"Updated source {source['link']} in the database.")
         session.commit()
+    LOGGER.debug(f"Inserted {len(sources_to_insert)} sources into the database.")
+    ts = save_timing(ts, "Sources parsed", timings)
+
+    tables = [table for source in sources_parsed if "tables" in source for table in source["tables"]]
+    parse_table_tasks = []
+    for table in tables:
+        table_data = {
+            "api_key": api_key,
+            "all_rows": [table["column_names"]] + table["rows"],
+            "previous_text": table.get("previous_text"),
+        }
+        parse_table_tasks.append(make_request(DEFOG_BASE_URL + "/unstructured_data/infer_table_properties", table_data))
+    parsed_tables = await asyncio.gather(*parse_table_tasks)
+    inserted_tables = {}
+    with engine.connect() as connection:
+        for parsed_table in parsed_tables:
+            try:
+                if "table_name" not in parsed_table:
+                    LOGGER.error("No table name found in parsed table.")
+                    continue
+                table_name = parsed_table["table_name"]
+                if "columns" not in parsed_table:
+                    LOGGER.error(f"No columns found in parsed table {table_name}.")
+                    continue
+                columns = parsed_table["columns"]
+                column_names = [column["column_name"] for column in columns]
+                num_cols = len(columns)
+                if "rows" not in parsed_table:
+                    LOGGER.error(f"No rows found in parsed table {table_name}.")
+                    continue
+                rows = parsed_table["rows"] # 2D list of data
+                create_table_ddl = mk_create_table_ddl(table_name, columns)
+                connection.execute(create_table_ddl)
+                LOGGER.info(f"Created table {table_name} in the database.")
+                insert_stmt = f"INSERT INTO {table_name} ({', '.join(column_names)}) VALUES ({', '.join(['%s'] * num_cols)})"
+                for i, row in enumerate(rows):
+                    # check if the row has the correct number of columns
+                    if len(row) != num_cols:
+                        LOGGER.error(f"Row {i} has {len(row)} columns, but expected {num_cols}. Skipping row.\n{row}")
+                connection.execute(insert_stmt, rows)
+                LOGGER.info(f"Inserted {len(rows)} rows into table {table_name}.")
+                inserted_tables[table_name] = columns
+            except Exception as e:
+                LOGGER.error(f"Error occurred in parsing table: {e}\n{traceback.format_exc()}")
+    ts = save_timing(ts, "Tables saved", timings)
+    # get and update metadata
+    response = await make_request(DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key})
+    md = response.get("table_metadata", {})
+    md.update(inserted_tables)
+    response = await make_request(DEFOG_BASE_URL + "/update_metadata", {"api_key": api_key, "table_metadata": md})
+    LOGGER.info(f"Updated metadata for api_key {api_key}")
+    ts = save_timing(ts, "Metadata updated", timings)
+
+    
     # summarize all sources. we only need the title, type, and summary
     sources_summary = []
-    
     for source in sources_parsed:
         source_summary = {
             "title": source.get("title", ""),
@@ -346,6 +405,7 @@ async def gather_context(
         if "variables" not in combined_summary:
             LOGGER.error("No variables found in combined summary.")
     LOGGER.debug(f"Context gathered for report {report_id}:\n{combined_summary}")
+    save_and_log(ts, "Combined summary", timings)
     return combined_summary
 
 
@@ -460,7 +520,7 @@ async def export(
         LOGGER.error("No MDX returned from backend.")
     else:
         LOGGER.debug(f"MDX generated for report {report_id}\n{mdx}")
-    pdf = MarkdownPdf(toc_level=2)
+    pdf = MarkdownPdf(toc_level=1)
     pdf.add_section(Section(mdx))
     report_file_path = get_report_file_path(api_key, report_id)
     pdf.meta["author"] = "Oracle"
