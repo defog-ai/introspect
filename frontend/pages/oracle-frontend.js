@@ -118,12 +118,13 @@ function OracleDashboard() {
     if (res.ok) {
       const data = await res.json();
       // we only use the list of organic search results, discarding the rest for now
-      const sources = data.organic;
+      const sourcesNew = data.organic;
       // add a selected field to each source
-      sources.forEach((source) => {
+      sourcesNew.forEach((source) => {
         source.selected = false;
+        source.key = source.link;
       });
-      setSources(sources);
+      setSources(sourcesNew);
     } else {
       console.error("Failed to fetch sources");
     }
@@ -253,6 +254,8 @@ function OracleDashboard() {
     // generate a report
     const token = localStorage.getItem("defogToken");
     const selectedSources = sources.filter((source) => source.selected);
+    console.log("Selected sources:", selectedSources);
+
     // reset clarifications
     setClarifications([]);
     const res = await fetch(setupBaseUrl("http", `oracle/begin_generation`), {

@@ -28,7 +28,7 @@ const SourceCard = ({ source, setSources }) => {
     setSelected(!selected);
     setSources((prevSources) =>
       prevSources.map((prevSource) => {
-        if (prevSource.position === source.position) {
+        if (prevSource.link === source.link) {
           return { ...prevSource, selected: !selected };
         }
         return prevSource;
