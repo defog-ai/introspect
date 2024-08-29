@@ -421,6 +421,7 @@ async def get_glossary_golden_queries(request: Request):
     # get glossary
     url = DEFOG_BASE_URL + "/get_glossary"
     resp = await make_request(url, {"api_key": api_key, "dev": dev})
+    resp = resp.get("glossary", {})
 
     # get golden queries
     golden_queries = await asyncio.to_thread(defog.get_golden_queries, dev=dev)
@@ -430,7 +431,6 @@ async def get_glossary_golden_queries(request: Request):
     glossary_compulsory = resp.get("glossary_compulsory", "")
     glossary_prunable_units = resp.get("glossary_prunable_units", [])
     glossary_prunable_units = "\n".join(glossary_prunable_units)
-
     # for backwards compatibility
     # if `glossary` is non empty and glossary compulsory is empty, set glossary compulsory to glossary
     if glossary_compulsory == "" and glossary != "":
