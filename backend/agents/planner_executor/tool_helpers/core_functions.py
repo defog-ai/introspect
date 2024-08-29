@@ -19,7 +19,7 @@ if (
     or os.environ.get("OPENAI_API_KEY") == "None"
     or os.environ.get("OPENAI_API_KEY") == ""
 ):
-    print("OPENAI_API_KEY not found in env")
+    pass
 else:
     openai = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
