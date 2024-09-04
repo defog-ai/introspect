@@ -120,8 +120,6 @@ async def begin_generation_async_task(
 
 def next_stage(stage: str, task_type: str) -> str:
     if stage == "gather_context":
-        return "wait_clarifications"
-    elif stage == "wait_clarifications":
         return "explore"
     elif stage == "explore":
         if task_type == EXPLORATION:
@@ -168,15 +166,6 @@ async def execute_stage(
         )
     elif stage == "explore":
         stage_result = await explore_data(
-            api_key=api_key,
-            username=username,
-            report_id=report_id,
-            task_type=task_type,
-            inputs=inputs,
-            outputs=outputs,
-        )
-    elif stage == "wait_clarifications":
-        stage_result = await wait_clarifications(
             api_key=api_key,
             username=username,
             report_id=report_id,
@@ -591,27 +580,6 @@ async def explore_data(
 
     LOGGER.info(f"Final analyses count: {len(final_analyses)}\n{final_analyses}")
     return final_analyses
-
-
-async def wait_clarifications(
-    api_key: str,
-    username: str,
-    report_id: str,
-    task_type: str,
-    inputs: Dict[str, Any],
-    outputs: Dict[str, Any],
-):
-    """
-    This function will check the `clarifications` table in the SQLite3 database,
-    polling every x seconds to see if all the clarifications for a given
-    `report_id` have been addressed before proceeding to the next stage.
-    """
-    # TODO implement this function
-    # dummy print statement for now
-    LOGGER.info(f"Waiting for clarifications for report {report_id}")
-    # sleep for a random amount of time to simulate work
-    await asyncio.sleep(random.random() * 2)
-    return {"clarifications": "all clarifications addressed"}
 
 
 async def predict(
