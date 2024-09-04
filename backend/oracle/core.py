@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from celery.utils.log import get_task_logger
-from db_utils import OracleReports, OracleSources, ParsedTables, engine, get_db_type_creds
+from db_utils import OracleReports, OracleSources, ParsedTables, engine, get_db_type_creds, parsed_tables_engine
 from generic_utils import make_request
 from markdown_pdf import MarkdownPdf, Section
 from sqlalchemy import insert, select, update
@@ -347,9 +347,10 @@ async def gather_context(
                     LOGGER.debug(f"Table {table_name} already exists in the database.")
                     # get the existing table_name and drop it
                     table_name = result.scalar().table_name
-                    drop_stmt = f"DROP TABLE IF EXISTS {table_name}"
-                    connection.execute(drop_stmt)
-                    LOGGER.debug(f"Dropped table {table_name} from the database.")
+                    with parsed_tables_engine.connect() as parsed_tables_connection:
+                        drop_stmt = f"DROP TABLE IF EXISTS {table_name}"
+                        parsed_tables_connection.execute(drop_stmt)
+                        LOGGER.debug(f"Dropped table {table_name} from the database.")
                     # update the table_name and table_description using the new data
                     update_stmt = (
                         update(ParsedTables)
@@ -376,18 +377,22 @@ async def gather_context(
                     LOGGER.debug(f"Inserted table {table_name} into the database.")
 
                 # create the table and insert the rows
-                create_table_ddl = mk_create_table_ddl(table_name, columns)
-                connection.execute(create_table_ddl)
-                LOGGER.debug(f"Created table {table_name} in the database.")
-                insert_stmt = f"INSERT INTO {table_name} ({', '.join(column_names)}) VALUES ({', '.join(['%s'] * num_cols)})"
-                for i, row in enumerate(rows):
-                    # check if the row has the correct number of columns
-                    if len(row) != num_cols:
-                        LOGGER.error(
-                            f"Row {i} has {len(row)} columns, but expected {num_cols}. Skipping row.\n{row}"
-                        )
-                connection.execute(insert_stmt, rows)
-                LOGGER.debug(f"Inserted {len(rows)} rows into table {table_name}.")
+                with parsed_tables_engine.connect() as parsed_tables_connection:
+                    create_table_ddl = mk_create_table_ddl(table_name, columns)
+                    parsed_tables_connection.execute(create_table_ddl)
+                    LOGGER.debug(f"Created table {table_name} in the database.")
+                    insert_stmt = f"INSERT INTO {table_name} ({', '.join(column_names)}) VALUES ({', '.join(['%s'] * num_cols)})"
+                    rows_to_insert = []
+                    for i, row in enumerate(rows):
+                        # check if the row has the correct number of columns
+                        if len(row) != num_cols:
+                            LOGGER.error(
+                                f"Row {i} has {len(row)} columns, but expected {num_cols}. Skipping row.\n{row}"
+                            )
+                            continue
+                        rows_to_insert.append(tuple(row))
+                    parsed_tables_connection.execute(insert_stmt, rows)
+                    LOGGER.debug(f"Inserted {len(rows)} rows into table {table_name}.")
                 inserted_tables[table_name] = columns
             except Exception as e:
                 LOGGER.error(
@@ -396,12 +401,12 @@ async def gather_context(
     ts = save_timing(ts, "Tables saved", timings)
     # get and update metadata
     response = await make_request(
-        DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key}
+        DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "parsed": True}
     )
     md = response.get("table_metadata", {})
     md.update(inserted_tables)
     response = await make_request(
-        DEFOG_BASE_URL + "/update_metadata", {"api_key": api_key, "table_metadata": md}
+        DEFOG_BASE_URL + "/update_metadata", {"api_key": api_key, "table_metadata": md, "parsed": True}
     )
     LOGGER.info(f"Updated metadata for api_key {api_key}")
     ts = save_timing(ts, "Metadata updated", timings)

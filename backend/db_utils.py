@@ -27,6 +27,10 @@ if os.environ.get("INTERNAL_DB") == "sqlite":
     # if using sqlite
     connection_uri = "sqlite:///defog_local.db"
     engine = create_engine(connection_uri, connect_args={"timeout": 3})
+    parsed_tables_dbname = os.environ.get("PARSED_TABLES_DBNAME", "defog_local")
+    parsed_tables_engine = create_engine(
+        f"sqlite:///{parsed_tables_dbname}.db", connect_args={"timeout": 3}
+    )
 else:
     db_creds = {
         "user": os.environ.get("DBUSER", "postgres"),
@@ -40,6 +44,13 @@ else:
     print("using postgres as our internal db")
     connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
     engine = create_engine(connection_uri)
+    parsed_tables_dbname = os.environ.get("PARSED_TABLES_DBNAME", "postgres")
+    if parsed_tables_dbname == db_creds["database"]:
+        print(f"PARSED_TABLES_DBNAME is the same as the main database: {parsed_tables_dbname}. Please use a different database name.")
+        exit(1)
+    parsed_tables_engine = create_engine(
+        f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{parsed_tables_dbname}"
+    )
 
 Base = automap_base()
 

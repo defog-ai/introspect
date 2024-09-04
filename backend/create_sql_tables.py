@@ -1,5 +1,6 @@
 # read a sql file, and create tables in sqlite database
 
+import psycopg2
 from sqlalchemy import (
     create_engine,
     MetaData,
@@ -235,6 +236,24 @@ def create_postgres_tables():
     # Create tables in the database
     metadata.create_all(engine)
 
+    parsed_tables_db = os.environ.get("PARSED_TABLES_DBNAME", "postgres")
+    print(f"Creating database {parsed_tables_db}")
+    # create psycopg2 connection
+    conn = psycopg2.connect(
+        dbname=db_creds["database"],
+        user=db_creds["user"],
+        password=db_creds["password"],
+        host=db_creds["host"],
+        port=db_creds["port"],
+    )
+    conn.autocommit = True
+    try:
+        cur = conn.cursor()
+        cur.execute(f"CREATE DATABASE {parsed_tables_db}")
+        print(f"Created database {parsed_tables_db}")
+    except psycopg2.errors.DuplicateDatabase:
+        print(f"Database {parsed_tables_db} already exists")
+    conn.close()
 
 # see from the command line arg if we are creating tables in sqlite or postgres
 if __name__ == "__main__":
