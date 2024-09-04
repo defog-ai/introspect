@@ -153,7 +153,7 @@ defog_db_creds = Table(
 oracle_reports = Table(
     "oracle_reports",
     metadata,
-    Column("report_id", Text, primary_key=True),
+    Column("report_id", Integer, primary_key=True, autoincrement=True),
     Column("report_name", Text),
     Column("status", Text),
     Column("created_ts", DateTime),
