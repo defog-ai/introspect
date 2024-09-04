@@ -1,9 +1,7 @@
 version: "3"
 services:
   agents-postgres:
-    build:
-      context: .
-      dockerfile: dockerfile.agents-postgres
+    image: postgres:16-alpine
     networks:
       - agents-network
     environment:
