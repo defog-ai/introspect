@@ -59,6 +59,7 @@ DbCreds = Base.classes.defog_db_creds
 OracleSources = Base.classes.oracle_sources
 OracleClarifications = Base.classes.oracle_clarifications
 OracleReports = Base.classes.oracle_reports
+ParsedTables = Base.classes.parsed_tables
 
 
 def save_csv_to_db(table_name, data):

@@ -206,3 +206,13 @@ CREATE TABLE IF NOT EXISTS oracle_reports (
     outputs JSONB,
     feedback TEXT
 );
+
+-- this table keeps track of the mapping between the table's source url + position
+-- within it and the table's name and description
+CREATE TABLE IF NOT EXISTS parsed_tables (
+    table_url TEXT,
+    table_position INT,
+    table_name TEXT,
+    table_description TEXT,
+    PRIMARY KEY (table_url, table_position)
+);

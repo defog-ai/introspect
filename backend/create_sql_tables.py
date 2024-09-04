@@ -188,6 +188,15 @@ oracle_sources = Table(
     Column("text_summary", Text),
 )
 
+parsed_tables = Table(
+    "parsed_tables",
+    metadata,
+    Column("table_url", Text, primary_key=True),
+    Column("table_position", Integer, primary_key=True),
+    Column("table_name", Text),
+    Column("table_description", Text),
+)
+
 
 def create_sqlite_tables():
     """

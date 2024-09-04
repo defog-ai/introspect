@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from celery.utils.log import get_task_logger
-from db_utils import OracleReports, OracleSources, engine, get_db_type_creds
+from db_utils import OracleReports, OracleSources, ParsedTables, engine, get_db_type_creds
 from generic_utils import make_request
 from markdown_pdf import MarkdownPdf, Section
 from sqlalchemy import insert, select, update
@@ -107,7 +107,7 @@ async def begin_generation_async_task(
                 report.status = "error"
                 session.commit()
             continue_generation = False
-        
+
         if stage == "done":
             continue_generation = False
         # perform logging for current stage
@@ -152,7 +152,7 @@ async def execute_stage(
     function to handle the stage. The stage functions will perform the necessary
     actions to complete the stage and return the result.
     We prefer explicit function references rather than calling `exec` or `eval`
-    over the same set of input arguments to facilitate easier reading and also 
+    over the same set of input arguments to facilitate easier reading and also
     for security reasons.
     """
     if stage == "gather_context":
@@ -224,9 +224,9 @@ async def gather_context(
     One of the key side effects is that it will save the tables from the parsed
     sources into the database, creating new tables, and updating the metadata
     in the backend with the new metadata.
-    
+
     Returns a dictionary with the following outputs:
-    
+
     Always present across task types:
     - problem_statement: str. The summarized brief of the problem at hand to solve. first to be generated.
     - context: str. The context of the problem, described qualitatively. second to be generated.
@@ -300,24 +300,33 @@ async def gather_context(
     LOGGER.debug(f"Inserted {len(sources_to_insert)} sources into the database.")
     ts = save_timing(ts, "Sources parsed", timings)
 
-    tables = [table for source in sources_parsed if "tables" in source for table in source["tables"]]
     parse_table_tasks = []
-    for table in tables:
-        table_data = {
-            "api_key": api_key,
-            "all_rows": [table["column_names"]] + table["rows"],
-            "previous_text": table.get("previous_text"),
-        }
-        parse_table_tasks.append(make_request(DEFOG_BASE_URL + "/unstructured_data/infer_table_properties", table_data))
+    table_keys = []
+    for source in sources_parsed:
+        for i, table in enumerate(source.get("tables", [])):
+            table_data = {
+                "api_key": api_key,
+                "all_rows": [table["column_names"]] + table["rows"],
+                "previous_text": table.get("previous_text"),
+            }
+            table_keys.append((source["link"], i))
+            parse_table_tasks.append(
+                make_request(
+                    DEFOG_BASE_URL + "/unstructured_data/infer_table_properties",
+                    table_data,
+                )
+            )
     parsed_tables = await asyncio.gather(*parse_table_tasks)
     inserted_tables = {}
     with engine.connect() as connection:
-        for parsed_table in parsed_tables:
+        for (url, table_index), parsed_table in zip(table_keys, parsed_tables):
             try:
+                # input validation
                 if "table_name" not in parsed_table:
                     LOGGER.error("No table name found in parsed table.")
                     continue
                 table_name = parsed_table["table_name"]
+                table_description = parsed_table.get("table_description", None)
                 if "columns" not in parsed_table:
                     LOGGER.error(f"No columns found in parsed table {table_name}.")
                     continue
@@ -327,30 +336,76 @@ async def gather_context(
                 if "rows" not in parsed_table:
                     LOGGER.error(f"No rows found in parsed table {table_name}.")
                     continue
-                rows = parsed_table["rows"] # 2D list of data
+                rows = parsed_table["rows"]  # 2D list of data
+                # check if url and table_index already exist in parsed_tables
+                stmt = select(ParsedTables).where(
+                    ParsedTables.table_url == url,
+                    ParsedTables.table_position == table_index,
+                )
+                result = connection.execute(stmt)
+                if result.scalar() is not None:
+                    LOGGER.debug(f"Table {table_name} already exists in the database.")
+                    # get the existing table_name and drop it
+                    table_name = result.scalar().table_name
+                    drop_stmt = f"DROP TABLE IF EXISTS {table_name}"
+                    connection.execute(drop_stmt)
+                    LOGGER.debug(f"Dropped table {table_name} from the database.")
+                    # update the table_name and table_description using the new data
+                    update_stmt = (
+                        update(ParsedTables)
+                        .where(
+                            ParsedTables.table_url == url,
+                            ParsedTables.table_position == table_index,
+                        )
+                        .values(
+                            table_name=table_name, table_description=table_description
+                        )
+                    )
+                    connection.execute(update_stmt)
+                    LOGGER.debug(f"Updated table {table_name} in the database.")
+                else:
+                    # insert the table's info into parsed_tables
+                    table_data = {
+                        "table_url": url,
+                        "table_position": table_index,
+                        "table_name": table_name,
+                        "table_description": table_description,
+                    }
+                    stmt = insert(ParsedTables).values(table_data)
+                    connection.execute(stmt)
+                    LOGGER.debug(f"Inserted table {table_name} into the database.")
+
+                # create the table and insert the rows
                 create_table_ddl = mk_create_table_ddl(table_name, columns)
                 connection.execute(create_table_ddl)
-                LOGGER.info(f"Created table {table_name} in the database.")
+                LOGGER.debug(f"Created table {table_name} in the database.")
                 insert_stmt = f"INSERT INTO {table_name} ({', '.join(column_names)}) VALUES ({', '.join(['%s'] * num_cols)})"
                 for i, row in enumerate(rows):
                     # check if the row has the correct number of columns
                     if len(row) != num_cols:
-                        LOGGER.error(f"Row {i} has {len(row)} columns, but expected {num_cols}. Skipping row.\n{row}")
+                        LOGGER.error(
+                            f"Row {i} has {len(row)} columns, but expected {num_cols}. Skipping row.\n{row}"
+                        )
                 connection.execute(insert_stmt, rows)
-                LOGGER.info(f"Inserted {len(rows)} rows into table {table_name}.")
+                LOGGER.debug(f"Inserted {len(rows)} rows into table {table_name}.")
                 inserted_tables[table_name] = columns
             except Exception as e:
-                LOGGER.error(f"Error occurred in parsing table: {e}\n{traceback.format_exc()}")
+                LOGGER.error(
+                    f"Error occurred in parsing table: {e}\n{traceback.format_exc()}"
+                )
     ts = save_timing(ts, "Tables saved", timings)
     # get and update metadata
-    response = await make_request(DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key})
+    response = await make_request(
+        DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key}
+    )
     md = response.get("table_metadata", {})
     md.update(inserted_tables)
-    response = await make_request(DEFOG_BASE_URL + "/update_metadata", {"api_key": api_key, "table_metadata": md})
+    response = await make_request(
+        DEFOG_BASE_URL + "/update_metadata", {"api_key": api_key, "table_metadata": md}
+    )
     LOGGER.info(f"Updated metadata for api_key {api_key}")
     ts = save_timing(ts, "Metadata updated", timings)
 
-    
     # summarize all sources. we only need the title, type, and summary
     sources_summary = []
     for source in sources_parsed:
@@ -370,7 +425,9 @@ async def gather_context(
         DEFOG_BASE_URL + "/unstructured_data/combine_summaries", json_data
     )
     if "error" in combined_summary:
-        LOGGER.error(f"Error occurred in combining summaries: {combined_summary['error']}")
+        LOGGER.error(
+            f"Error occurred in combining summaries: {combined_summary['error']}"
+        )
         return
 
     # validate response from backend
@@ -645,7 +702,7 @@ async def export(
         "api_key": api_key,
         "task_type": task_type,
         "inputs": inputs,
-        "outputs": outputs
+        "outputs": outputs,
     }
     response = await make_request(DEFOG_BASE_URL + "/oracle/generate_report", json_data)
     mdx = response.get("mdx")
