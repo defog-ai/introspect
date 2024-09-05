@@ -237,6 +237,8 @@ def create_postgres_tables():
     metadata.create_all(engine)
 
     parsed_tables_db = os.environ.get("PARSED_TABLES_DBNAME", "postgres")
+    if parsed_tables_db == "":
+        parsed_tables_db = "postgres"
     print(f"Creating database {parsed_tables_db}")
     # create psycopg2 connection
     conn = psycopg2.connect(
@@ -254,6 +256,7 @@ def create_postgres_tables():
     except psycopg2.errors.DuplicateDatabase:
         print(f"Database {parsed_tables_db} already exists")
     conn.close()
+
 
 # see from the command line arg if we are creating tables in sqlite or postgres
 if __name__ == "__main__":
