@@ -11,7 +11,7 @@ DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
 async def make_request(url, json):
     print(url)
     print(json, flush=True)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(verify=False) as client:
         r = await client.post(
             url,
             json=json,
@@ -53,6 +53,8 @@ def format_date_string(iso_date_string):
     """
     Formats date string to be more readable
     """
+    if not iso_date_string:
+        return ""
     date = datetime.strptime(iso_date_string, "%Y-%m-%dT%H:%M:%S.%f")
     return date.strftime("%Y-%m-%d %H:%M")
 

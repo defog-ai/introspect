@@ -144,7 +144,7 @@ async def send_email(
     elif EMAIL_OPTION == "DEFOG":
         import httpx
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False) as client:
             r = await client.post(
                 url=os.getenv("DEFOG_BASE_URL", "https://api.defog.ai")
                 + "/email_data_report",

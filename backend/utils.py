@@ -152,7 +152,7 @@ class SqlExecutionError(Exception):
 
 async def make_request(url, payload, verbose=False):
     print(f"Making request to {url}")
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(verify=False) as client:
         r = await client.post(
             url,
             json=payload,
