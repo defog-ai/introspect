@@ -636,7 +636,11 @@ async def generate_single_step(
         # "similar_plans": similar_plans[:2],
     }
 
-    res = (await asyncio.to_thread(requests.post, llm_calls_url, json=payload)).json()
+    res = (
+        await asyncio.to_thread(
+            requests.post, llm_calls_url, json=payload, verify=False
+        )
+    ).json()
     step_yaml = res["generated_step"]
     info("Generated step yaml:")
     info(step_yaml)
