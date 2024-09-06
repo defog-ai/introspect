@@ -6,10 +6,15 @@ import re
 
 from utils_logging import LOGGER
 
-DEFOG_API_KEYS = os.environ["DEFOG_API_KEYS"]
+DEFOG_API_KEYS = os.environ.get("DEFOG_API_KEYS")
 if not DEFOG_API_KEYS:
-    DEFOG_API_KEYS = os.environ.get("DEFOG_API_KEY") # default to old env var for backwards compatibility
-    LOGGER.warning(f"DEFOG_API_KEYS not set. Defaulting to DEFOG_API_KEY: {DEFOG_API_KEYS}")
+    DEFOG_API_KEYS = os.environ.get(
+        "DEFOG_API_KEY"
+    )  # default to old env var for backwards compatibility
+
+    LOGGER.warning(
+        f"DEFOG_API_KEYS not set. Defaulting to DEFOG_API_KEY: {DEFOG_API_KEYS}"
+    )
 DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
 
 
