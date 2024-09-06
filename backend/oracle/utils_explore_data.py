@@ -165,7 +165,7 @@ async def gen_data_analysis(
         LOGGER.error(
             f"Data too large to generate analysis for question: {generated_qn}"
         )
-        return {"title": None, "summary": None}
+        return {"table_description": None, "image_description": None, "title": None, "summary": None}
 
     # convert data df to csv
     data_csv = data_df.to_csv(float_format="%.3f", header=True)
@@ -190,5 +190,5 @@ async def gen_data_analysis(
     )
     if "error" in resp:
         LOGGER.error(f"Error occurred in generating data analysis: {resp['error']}")
-        return {"title": None, "summary": None}
+        return {"table_description": None, "image_description": None, "title": None, "summary": None}
     return resp

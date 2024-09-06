@@ -482,6 +482,7 @@ async def explore_data(
     - artifacts: List[Dict[str, str]]
         - artifact_type: str, e.g. table csv, image
         - artifact_content: str, e.g. csv content, image path
+        - artifact_description: str, e.g. table of prices, scatter plot of x vs y
     - working: Dict[str, str]
         - generated_sql: str
         - reason_for_qn: str
@@ -584,10 +585,12 @@ async def explore_data(
                         {
                             "artifact_type": "table csv",
                             "artifact_content": data.to_csv(float_format="%.3f", header=True),
+                            "artifact_description": data_analysis["table_description"],
                         },
                         {
                             "artifact_type": "image",
                             "artifact_location": chart_path,
+                            "artifact_description": data_analysis["image_description"],
                         },
                     ],
                     "working": {
