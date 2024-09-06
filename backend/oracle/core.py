@@ -304,6 +304,11 @@ async def gather_context(
     table_keys = []
     for source in sources_parsed:
         for i, table in enumerate(source.get("tables", [])):
+            column_names = table.get("column_names")
+            rows = table.get("rows")
+            if not column_names or not rows:
+                LOGGER.error(f"No column names or rows found in table {i}. Skipping table:\n{table}")
+                continue
             table_data = {
                 "api_key": api_key,
                 "all_rows": [table["column_names"]] + table["rows"],
@@ -399,17 +404,20 @@ async def gather_context(
                     f"Error occurred in parsing table: {e}\n{traceback.format_exc()}"
                 )
     ts = save_timing(ts, "Tables saved", timings)
-    # get and update metadata
-    response = await make_request(
-        DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "parsed": True}
-    )
-    md = response.get("table_metadata", {})
-    md.update(inserted_tables)
-    response = await make_request(
-        DEFOG_BASE_URL + "/update_metadata", {"api_key": api_key, "table_metadata": md, "parsed": True}
-    )
-    LOGGER.info(f"Updated metadata for api_key {api_key}")
-    ts = save_timing(ts, "Metadata updated", timings)
+    # get and update metadata if inserted_tables is not empty
+    if inserted_tables:
+        response = await make_request(
+            DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "parsed": True}
+        )
+        md = response.get("table_metadata", {})
+        md.update(inserted_tables)
+        response = await make_request(
+            DEFOG_BASE_URL + "/update_metadata", {"api_key": api_key, "table_metadata": md, "parsed": True}
+        )
+        LOGGER.info(f"Updated metadata for api_key {api_key}")
+        ts = save_timing(ts, "Metadata updated", timings)
+    else:
+        LOGGER.error("No parsed tables to save.")
 
     # summarize all sources. we only need the title, type, and summary
     sources_summary = []
@@ -547,14 +555,14 @@ async def explore_data(
         # fetch data in dataframes for each SQL query concurrently
         exec_sql_tasks = [execute_sql(api_key, db_type, db_creds, q["question"], sql) for q, sql in zip(topk_qns, topk_sqls)] #TODO: add execute_sql within db_utils instead of using defog python library
         topk_data = await asyncio.gather(*exec_sql_tasks)
-        LOGGER.info(f"Data fetched from client's DB: {topk_data}\n")
+        LOGGER.debug(f"Data fetched from client's DB: {topk_data}\n")
         # filter out questions/sql/data where data is not an empty dataframe
         filtered_data = [(q, sql, data) for q, sql, data in zip(topk_qns, topk_sqls, topk_data) if data is not None and not data.empty]
         if filtered_data:
             topk_qns, topk_sqls, topk_data = zip(*filtered_data)
         else:
             continue
-
+        LOGGER.debug("Filtered Data fetched from client's DB:" + "\n".join(str(data) for data in topk_data) + "\n")
         # choose appropriate visualization for each question
         get_chart_type_tasks = [get_chart_type(api_key, data.columns.to_list(),  q["question"]) for q, data in zip(topk_qns, topk_data)]
         topk_chart_types = await asyncio.gather(*get_chart_type_tasks)

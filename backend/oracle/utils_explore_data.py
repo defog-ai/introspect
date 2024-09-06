@@ -1,4 +1,5 @@
 import os
+from typing import Dict, Optional
 import pandas as pd
 import base64
 
@@ -6,7 +7,7 @@ from celery.utils.log import get_task_logger
 from utils_logging import LOG_LEVEL
 from defog import Defog
 from defog.query import execute_query
-from generic_utils import make_request, normalize_sql
+from generic_utils import is_sorry, make_request, normalize_sql
 from agents.planner_executor.execute_tool import execute_tool
 
 
@@ -44,14 +45,17 @@ async def gen_sql(api_key: str, db_type: str, question: str, glossary: str) -> s
 async def execute_sql(
     api_key: str,
     db_type: str,
-    db_creds: dict,
+    db_creds: Dict,
     question: str,
     sql: str,
-) -> dict:
+) -> Optional[Dict]:
     """
     Run the SQL query on the database and return the results as a dataframe using the execute_query method in the Defog Python library
     """
     if sql:
+        if is_sorry(sql):
+            LOGGER.error(f"Couldn't answer with a valid SQL query for question {question}")
+            return None
         try:
             colnames, data, _ = execute_query(
                 query=sql,

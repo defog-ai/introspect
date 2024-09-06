@@ -19,8 +19,8 @@ DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
 
 
 async def make_request(url, json):
-    print(url)
-    print(json, flush=True)
+    LOGGER.debug(f"Making request to: {url}")
+    LOGGER.debug(f"Request body: {json}")
     async with httpx.AsyncClient(verify=False) as client:
         r = await client.post(
             url,
@@ -107,3 +107,10 @@ def normalize_sql(sql: str) -> str:
     sql = re.sub(r"nullif\(", "NULLIF(", sql)
     sql = re.sub(r"extract\(", "EXTRACT(", sql)
     return sql
+
+
+def is_sorry(sql: str) -> bool:
+    """
+    Check if the SQL query is a sorry query
+    """
+    return "sorry" in sql.lower()
