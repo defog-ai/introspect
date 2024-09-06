@@ -26,8 +26,8 @@ def validate_column(df, col_name):
 
 async def boxplot(
     full_data: pd.DataFrame,
-    boxplot_x_column: DBColumn,
-    boxplot_y_column: DBColumn,
+    x_column: DBColumn,
+    y_column: DBColumn,
     facet: bool = False,
     facet_column: DBColumn = None,
     color: DropdownSingleSelect = ListWithDefault(
@@ -80,15 +80,15 @@ async def boxplot(
         opacity = 0.3
 
     # if any of x or y column is None, set that to "label" and create a new column "label" with empty string
-    if boxplot_x_column is None:
-        boxplot_x_column = "label"
+    if x_column is None:
+        x_column = "label"
         full_data["label"] = ""
-    if boxplot_y_column is None:
-        boxplot_y_column = "label"
+    if y_column is None:
+        y_column = "label"
         # in this case, we don't want a label column to be on the y axis
         # but on the x axis
         # so we will swap the x and y columns
-        boxplot_x_column, boxplot_y_column = boxplot_y_column, boxplot_x_column
+        x_column, y_column = y_column, x_column
         full_data["label"] = ""
 
     outputs = []
@@ -97,12 +97,12 @@ async def boxplot(
     plt.xticks(rotation=45)
     if facet:
         full_data = full_data.dropna(
-            subset=[boxplot_x_column, boxplot_y_column] + [facet_column], how="any"
+            subset=[x_column, y_column] + [facet_column], how="any"
         )
         # use catplot from seaborn
         g = sns.catplot(
-            x=boxplot_x_column,
-            y=boxplot_y_column,
+            x=x_column,
+            y=y_column,
             data=full_data,
             col=facet_column,
             kind="box",
@@ -112,8 +112,8 @@ async def boxplot(
         # boxplot with white boxes
         g.map(
             sns.boxplot,
-            boxplot_x_column,
-            boxplot_y_column,
+            x_column,
+            y_column,
             color=color,
             fill=False,
         )
@@ -122,8 +122,8 @@ async def boxplot(
         # small size dots
         g.map(
             sns.stripplot,
-            boxplot_x_column,
-            boxplot_y_column,
+            x_column,
+            y_column,
             color=color,
             alpha=opacity,
             s=2,
@@ -138,19 +138,19 @@ async def boxplot(
     else:
         # drop rows with missing values
         full_data = full_data.dropna(
-            subset=[boxplot_x_column, boxplot_y_column], how="any"
+            subset=[x_column, y_column], how="any"
         )
         sns.boxplot(
-            x=boxplot_x_column,
-            y=boxplot_y_column,
+            x=x_column,
+            y=y_column,
             data=full_data,
             ax=ax,
             color=color,
             fill=False,
         )
         sns.stripplot(
-            x=boxplot_x_column,
-            y=boxplot_y_column,
+            x=x_column,
+            y=y_column,
             data=full_data,
             color=color,
             alpha=opacity,

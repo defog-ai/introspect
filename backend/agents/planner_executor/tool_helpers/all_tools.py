@@ -320,14 +320,14 @@ tool_name_dict = tools = {
                 "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
-            "boxplot_x_column": {
-                "name": "boxplot_x_column",
+            "x_column": {
+                "name": "x_column",
                 "default": None,
                 "description": "boxplot x column",
                 "type": "DBColumn",
             },
-            "boxplot_y_column": {
-                "name": "boxplot_y_column",
+            "y_column": {
+                "name": "y_column",
                 "default": None,
                 "description": "boxplot y column",
                 "type": "DBColumn",
