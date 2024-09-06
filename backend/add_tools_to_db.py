@@ -21,7 +21,7 @@ async def main():
         toolbox = tool["toolbox"]
         input_metadata = tool["input_metadata"]
         output_metadata = tool["output_metadata"]
-        api_keys = os.environ["DEFOG_API_KEY"].split(",")
+        api_keys = os.environ["DEFOG_API_KEYS"].split(",")
         # create embedding for the tool name + description
 
         for api_key in api_keys:

@@ -4,7 +4,7 @@ import sqlparse
 from datetime import datetime
 import re
 
-DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]  # replace with your DEFOG_API_KEY
+DEFOG_API_KEYS = os.environ["DEFOG_API_KEYS"]  # replace with your DEFOG_API_KEY
 DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
 
 
@@ -36,9 +36,9 @@ def convert_nested_dict_to_list(table_metadata):
 def get_api_key_from_key_name(key_name):
     if key_name and key_name in DEFOG_API_KEY_NAMES:
         idx = DEFOG_API_KEY_NAMES.split(",").index(key_name)
-        api_key = DEFOG_API_KEY.split(",")[idx]
+        api_key = DEFOG_API_KEYS.split(",")[idx]
     else:
-        api_key = DEFOG_API_KEY.split(",")[0]
+        api_key = DEFOG_API_KEYS.split(",")[0]
     return api_key
 
 
