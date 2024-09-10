@@ -14,7 +14,7 @@ router = APIRouter()
 async def check_basic_readiness(request: Request):
     params = await request.json()
     token = params.get("token")
-    dev = params.get("dev")
+    dev = params.get("dev", False)
     if not validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
@@ -59,7 +59,7 @@ async def check_basic_readiness(request: Request):
 async def check_golden_queries_validity(request: Request):
     params = await request.json()
     token = params.get("token")
-    dev = params.get("dev")
+    dev = params.get("dev", False)
     if not validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,

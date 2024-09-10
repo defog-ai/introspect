@@ -486,6 +486,7 @@ async def update_glossary(request: Request):
             dev=dev,
         )
     else:
+        dev = params.get("dev", False)
         # first, get the existing glossary
         url = DEFOG_BASE_URL + "/get_glossary"
         resp = await make_request(url, {"api_key": api_key, "dev": dev})
@@ -502,7 +503,6 @@ async def update_glossary(request: Request):
         if new_instructions:
             glossary_prunable_units += new_instructions.split("\n")
 
-        dev = params.get("dev", False)
 
         defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
         defog.base_url = DEFOG_BASE_URL
