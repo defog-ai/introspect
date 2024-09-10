@@ -1,7 +1,6 @@
 import asyncio
 import json
 import os
-import pandas as pd
 import random
 import time
 import traceback
@@ -9,10 +8,11 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Dict, List
 
+import pdfkit
 from celery.utils.log import get_task_logger
 from db_utils import OracleReports, OracleSources, ParsedTables, engine, get_db_type_creds, parsed_tables_engine
 from generic_utils import make_request
-from markdown_pdf import MarkdownPdf, Section
+from markdown2 import Markdown
 from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
 from utils_logging import LOG_LEVEL, save_and_log, save_timing
@@ -726,11 +726,10 @@ async def export(
         LOGGER.error("No MDX returned from backend.")
     else:
         LOGGER.debug(f"MDX generated for report {report_id}\n{mdx}")
-    pdf = MarkdownPdf(toc_level=1)
-    pdf.add_section(Section(mdx))
+    markdowner = Markdown(extras=["tables"])
+    html_string = markdowner.convert(mdx)
     report_file_path = get_report_file_path(api_key, report_id)
-    pdf.meta["author"] = "Oracle"
-    pdf.save(report_file_path)
+    pdfkit.from_string(html_string, report_file_path, options={"enable-local-file-access": ""})
     LOGGER.debug(f"Exported report {report_id} to {report_file_path}")
     return {"mdx": mdx, "report_file_path": report_file_path}
 

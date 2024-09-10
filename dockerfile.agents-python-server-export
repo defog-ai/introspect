@@ -33,7 +33,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   gnupg \
   curl \
   ca-certificates \
-  unixodbc-dev
+  unixodbc-dev \
+  wkhtmltopdf
 
 # Add the Microsoft repository key and repository
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \

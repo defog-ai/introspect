@@ -11,13 +11,14 @@ google-cloud-bigquery
 google-cloud-storage
 httpx
 hypercorn
-markdown-pdf
+markdown2[all]==2.5.0
 matplotlib
 mysql-connector-python
 numpy
 openai
 pandas
 pandasql
+pdfkit==1.0.0
 pgvector
 pika
 psycopg2-binary
