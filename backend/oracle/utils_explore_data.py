@@ -85,6 +85,13 @@ async def get_chart_type(api_key: str, columns: list, question: str) -> str:
         "api_key": api_key,
         "question": question,
         "columns": columns,
+        "chart_types": [
+            "Table",
+            "Line Chart",
+            "Boxplot",
+            "Heatmap",
+            "Scatter Plot",
+        ]
     }
     resp = await make_request(
         f"{DEFOG_BASE_URL}/get_chart_type",
@@ -118,6 +125,9 @@ async def plot_chart(
     elif "heat" in chart_type.lower():
         tool_name = "heatmap"
         folder_name = "heatmaps"
+    elif "scatter" in chart_type.lower():
+        tool_name = "scatter_plot"
+        folder_name = "scatterplots"
     else:
         tool_name = "table"
     if tool_name == "table":

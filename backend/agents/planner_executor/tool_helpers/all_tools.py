@@ -7,7 +7,7 @@ from ..toolboxes.plots.tools import *
 
 import inspect
 
-tool_name_dict = tools = {
+tools = {
     "data_fetcher_and_aggregator": {
         "function_name": "data_fetcher_and_aggregator",
         "tool_name": "Fetch data from database",
@@ -605,6 +605,78 @@ tool_name_dict = tools = {
             {
                 "name": "output_df",
                 "description": "output df",
+                "type": "pandas.core.frame.DataFrame",
+            }
+        ],
+    },
+    "scatter_plot": {
+        "function_name": "scatter_plot",
+        "fn": scatter_plot,
+        "code": inspect.getsource(scatter_plot),
+        "tool_name": "Scatter Plot",
+        "description": "Generates a scatter plot using python's seaborn library. Also accepts faceting columns.",
+        "input_metadata": {
+            "full_data": {
+                "name": "full_data",
+                "default": None,
+                "description": "global_dict.<input_df_name>",
+                "type": "pandas.core.frame.DataFrame",
+            },
+            "x_column": {
+                "name": "x_column",
+                "default": None,
+                "description": "(exactly a single column - often a datetime or string)",
+                "type": "DBColumn",
+            },
+            "y_column": {
+                "name": "y_column",
+                "default": None,
+                "description": "(exactly a single column - always a numerical value)",
+                "type": "DBColumn",
+            },
+            "color_column": {
+                "name": "color_column",
+                "default": None,
+                "description": "column name to use for point color or None",
+                "type": "DBColumn",
+            },
+            "size_column": {
+                "name": "size_column",
+                "default": None,
+                "description": "column name to use for point size or None",
+                "type": "DBColumn",
+            },
+            "facet_column": {
+                "name": "facet_column",
+                "default": None,
+                "description": "column name to use for faceting or None",
+                "type": "DBColumn",
+            },
+            "color": {
+                "name": "color",
+                "description": "color to use for the scatter plot",
+                "default": [
+                    "#000000",
+                    "#009D94",
+                    "#0057CF",
+                    "#FFBD00",
+                    "#FF5C1C",
+                    "#691A6B",
+                ],
+                "type": "DropdownSingleSelect",
+            },
+            "opacity": {
+                "name": "opacity",
+                "default": [0.1, 0.2, 0.3, 0.4, 0.5],
+                "description": "numerical value between 0 and 1",
+                "type": "DropdownSingleSelect",
+            },
+        },
+        "toolbox": "plots",
+        "output_metadata": [
+            {
+                "name": "output_df",
+                "description": "pandas dataframe",
                 "type": "pandas.core.frame.DataFrame",
             }
         ],

@@ -1,3 +1,4 @@
+from uuid import uuid4
 from tool_code_utilities import available_colors
 
 import seaborn as sns
@@ -9,10 +10,7 @@ from agents.planner_executor.tool_helpers.tool_param_types import (
     DBColumn,
     DropdownSingleSelect,
     ListWithDefault,
-    db_column_list_type_creator,
 )
-
-import yaml
 
 
 def validate_column(df, col_name):
@@ -442,6 +440,87 @@ async def line_plot(
                 "chart_images": [
                     {
                         "type": "lineplot",
+                        "path": chart_path,
+                    }
+                ],
+            }
+        ],
+    }
+
+
+async def scatter_plot(
+    full_data: pd.DataFrame,
+    x_column: DBColumn,
+    y_column: DBColumn,
+    color_column: DBColumn = None,
+    size_column: DBColumn = None,
+    facet_column: DBColumn = None,
+    color: DropdownSingleSelect = ListWithDefault(
+        [
+            "#000000",
+            "#009D94",
+            "#0057CF",
+            "#FFBD00",
+            "#FF5C1C",
+            "#691A6B",
+        ],
+        default_value="#000000",
+    ),
+    opacity: DropdownSingleSelect = ListWithDefault(
+        [0.1, 0.2, 0.3, 0.4, 0.5], default_value=0.3
+    ),
+    global_dict: dict = {},
+    **kwargs,
+):
+    """
+    Generates a scatter plot using python's seaborn library. Also accepts faceting columns.
+    """
+    import matplotlib.pyplot as plt
+
+    analysis_assets_dir = global_dict.get(
+        "analysis_assets_dir", "/agents-assets/analysis-assets"
+    )
+
+    if facet_column is None:
+        plot = sns.scatterplot(
+            data=full_data,
+            x=x_column,
+            y=y_column,
+            hue=color_column,
+            size=size_column,
+            palette=color,
+            alpha=opacity,
+        )
+        plt.xticks(rotation=45)
+    else:
+        plot = sns.relplot(
+            data=full_data,
+            x=x_column,
+            y=y_column,
+            hue=color_column,
+            size=size_column,
+            kind="scatter",
+            col=facet_column,
+            palette=color,
+            alpha=opacity,
+            col_wrap=4,
+        )
+        for ax in plot.axes.flatten():
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+    chart_path = f"scatterplots/scatterplot-{uuid4()}.png"
+    plt.savefig(
+        f"{analysis_assets_dir}/{chart_path}", dpi=300, bbox_inches="tight"
+    )
+    plt.clf()
+    plt.close()
+    return {
+        "outputs": [
+            {
+                "data": full_data,
+                "chart_images": [
+                    {
+                        "type": "scatter_plot",
                         "path": chart_path,
                     }
                 ],
