@@ -77,6 +77,13 @@ async def begin_generation_async_task(
         # call the control function with the current stage
         try:
             LOGGER.info(f"Executing stage {stage} for report {report_id}")
+            with Session(engine) as session:
+                # update status of the report
+                stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+                result = session.execute(stmt)
+                report = result.scalar_one()
+                report.status = stage
+                session.commit()
             stage_result = await execute_stage(
                 api_key=api_key,
                 username=username,

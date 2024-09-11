@@ -1,14 +1,18 @@
 import os
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 import pandas as pd
 import base64
 
 from celery.utils.log import get_task_logger
 from utils_logging import LOG_LEVEL
-from defog import Defog
 from defog.query import execute_query
 from generic_utils import is_sorry, make_request, normalize_sql
-from agents.planner_executor.execute_tool import execute_tool
+from agents.planner_executor.toolboxes.plots.tools import (
+    line_plot,
+    boxplot,
+    heatmap,
+    scatter_plot,
+)
 
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
@@ -54,7 +58,9 @@ async def execute_sql(
     """
     if sql:
         if is_sorry(sql):
-            LOGGER.error(f"Couldn't answer with a valid SQL query for question {question}")
+            LOGGER.error(
+                f"Couldn't answer with a valid SQL query for question {question}"
+            )
             return None
         try:
             colnames, data, _ = execute_query(
@@ -91,7 +97,7 @@ async def get_chart_type(api_key: str, columns: list, question: str) -> str:
             "Boxplot",
             "Heatmap",
             "Scatter Plot",
-        ]
+        ],
     }
     resp = await make_request(
         f"{DEFOG_BASE_URL}/get_chart_type",
@@ -107,9 +113,9 @@ async def plot_chart(
     report_id: int,
     df: pd.DataFrame,
     chart_type: str,
-    x_column: list,
-    y_column: list,
-) -> str:
+    x_column: List[str],
+    y_column: List[str],
+) -> Optional[str]:
     """
     Plot the chart for the given dataframe and chart type using execute_tool in agents/planner_executor/execute_tool.py
     Only line plots, boxplots, and heat maps are supported now.
@@ -117,27 +123,20 @@ async def plot_chart(
     """
     # get the appropriate tool name and folder name for the chart type
     if "line" in chart_type.lower():
-        tool_name = "line_plot"
+        plotting_fn = line_plot
         folder_name = "linecharts"
     elif "box" in chart_type.lower():
-        tool_name = "boxplot"
+        plotting_fn = boxplot
         folder_name = "boxplots"
     elif "heat" in chart_type.lower():
-        tool_name = "heatmap"
+        plotting_fn = heatmap
         folder_name = "heatmaps"
     elif "scatter" in chart_type.lower():
-        tool_name = "scatter_plot"
+        plotting_fn = scatter_plot
         folder_name = "scatterplots"
     else:
-        tool_name = "table"
-    if tool_name == "table":
+        LOGGER.info(f"Unsupported chart type: {chart_type}")
         return None
-    else:
-        tool_function_inputs = {
-            "full_data": df,
-            "x_column": x_column[0],
-            "y_column": y_column[0],
-        }
 
     # create the directory to save the chart
     current_dir = os.getcwd()
@@ -152,13 +151,30 @@ async def plot_chart(
     }
 
     # execute the tool
-    resp = await execute_tool(tool_name, tool_function_inputs, global_dict=global_dict)
-    if "error_message" in resp[0]:
-        LOGGER.error(f"Error occurred in plotting chart: {resp[0]['error_message']}")
+    if isinstance(x_column, list) and len(x_column) > 0:
+        x_column = x_column[0]
+    if isinstance(y_column, list) and len(y_column) > 0:
+        y_column = y_column[0]
+    try:
+        resp = await plotting_fn(
+            full_data=df, x_column=x_column, y_column=y_column, global_dict=global_dict
+        )
+        # includes folder_name e.g. linecharts/xxxx.png
+        chart_filename = resp["outputs"][0]["chart_images"][0]["path"]
+    except Exception as e:
+
+        LOGGER.error(f"Error occurred in plotting chart: {str(e)}")
+        LOGGER.debug(f"Plotting function: {plotting_fn}")
+        LOGGER.debug(
+            f"df: {df}\nchart_type: {chart_type}\nx_column: {x_column}\ny_column: {y_column}"
+        )
+        LOGGER.debug(
+            f"Global dict: {global_dict}\nCurrent dir: {os.getcwd()}\nReport dir: {report_chart_dir}"
+        )
+        import traceback
+
+        LOGGER.debug(traceback.format_exc())
         return None
-    chart_filename = resp[0]["outputs"][0]["chart_images"][0][
-        "path"
-    ]  # includes folder_name e.g. linecharts/xxxx.png
     full_chart_path = f"{report_chart_dir}/{chart_filename}"
     return full_chart_path
 
@@ -179,7 +195,12 @@ async def gen_data_analysis(
         LOGGER.error(
             f"Data too large to generate analysis for question: {generated_qn}"
         )
-        return {"table_description": None, "image_description": None, "title": None, "summary": None}
+        return {
+            "table_description": None,
+            "image_description": None,
+            "title": None,
+            "summary": None,
+        }
 
     # convert data df to csv
     data_csv = data_df.to_csv(float_format="%.3f", header=True)
@@ -204,5 +225,10 @@ async def gen_data_analysis(
     )
     if "error" in resp:
         LOGGER.error(f"Error occurred in generating data analysis: {resp['error']}")
-        return {"table_description": None, "image_description": None, "title": None, "summary": None}
+        return {
+            "table_description": None,
+            "image_description": None,
+            "title": None,
+            "summary": None,
+        }
     return resp

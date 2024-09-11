@@ -13,6 +13,12 @@ from agents.planner_executor.tool_helpers.tool_param_types import (
 )
 
 
+# TODO shift out of agents once deprecated from agents functionality
+# TODO convert from async to normal functions since none of these functions are async
+# TODO remove global_dict from all functions and pass in analysis_assets_dir explicitly
+
+
+
 def validate_column(df, col_name):
     """
     Checks if a column exists in a dataframe.
@@ -50,7 +56,6 @@ async def boxplot(
     import seaborn as sns
     from uuid import uuid4
     import matplotlib.pyplot as plt
-    import pandas as pd
 
     # if there's not an index column, create one
     if "index" not in full_data.columns:
@@ -89,7 +94,6 @@ async def boxplot(
         x_column, y_column = y_column, x_column
         full_data["label"] = ""
 
-    outputs = []
     boxplot_path = f"boxplots/boxplot-{uuid4()}.png"
     fig, ax = plt.subplots()
     plt.xticks(rotation=45)
