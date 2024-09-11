@@ -48,7 +48,7 @@ async def execute_sql(
     db_creds: Dict,
     question: str,
     sql: str,
-) -> Optional[Dict]:
+) -> Optional[pd.DataFrame]:
     """
     Run the SQL query on the database and return the results as a dataframe using the execute_query method in the Defog Python library
     """
