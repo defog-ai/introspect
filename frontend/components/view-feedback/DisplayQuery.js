@@ -1,13 +1,6 @@
 function DisplayQuery({ query }) {
   return (
-    <div
-      style={{
-        backgroundColor: "#f4f4f4",
-        padding: "10px",
-        borderRadius: "5px",
-        fontFamily: "monospace",
-      }}
-    >
+    <div className="bg-gray-100 p-4 rounded-md font-mono max-h-48 overflow-auto">
       <pre>{query}</pre>
     </div>
   );

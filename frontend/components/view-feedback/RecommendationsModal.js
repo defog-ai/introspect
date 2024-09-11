@@ -8,12 +8,12 @@ import LineBlock from "../layout/LineBlock";
 const { TextArea } = Input;
 import {
   BulbOutlined,
-  SyncOutlined,
   PlayCircleOutlined,
   PlusCircleOutlined,
   StarOutlined,
   MessageOutlined,
   QuestionCircleOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 
 const RecommendationsModal = ({
@@ -38,6 +38,7 @@ const RecommendationsModal = ({
 
   const [populatingInstructions, setPopulatingInstructions] = useState(true); // generating intelligent recommendations
   const [isRunning, setIsRunning] = useState(false); // running defog with updated instructions
+  const [loading, setLoading] = useState(false); // updating glossary
   const [permanentlyUpdatedGlossary, setPermanentlyUpdatedGlossary] =
     useState(false); // permanently added instructions into glossary
 
@@ -51,6 +52,7 @@ const RecommendationsModal = ({
     setUpdatedData([]);
     setUpdatedColumns([]);
     setIsModalVisible(false);
+    setPermanentlyUpdatedGlossary(false);
   };
 
   const populateInstructions = async () => {
@@ -97,6 +99,7 @@ const RecommendationsModal = ({
   };
 
   const appendToGlossary = async (newGlossary) => {
+    setLoading(true);
     const res = await fetch(
       setupBaseUrl("http", `integration/update_glossary`),
       {
@@ -113,6 +116,7 @@ const RecommendationsModal = ({
       }
     );
     const data = await res.json();
+    setLoading(false);
     return data;
   };
 
@@ -160,9 +164,12 @@ const RecommendationsModal = ({
   };
 
   const permanentlyAddInstructions = async () => {
-    appendToGlossary(recommendedInstructions);
+    await appendToGlossary(recommendedInstructions);
     setRecommendedInstructions("");
     setPermanentlyUpdatedGlossary(true);
+    setUpdatedQuery("");
+    setUpdatedData([]);
+    setUpdatedColumns([]);
   };
 
   return (
@@ -229,9 +236,11 @@ const RecommendationsModal = ({
                 margin: "1em",
                 minHeight: "150px",
               }}
+              className="text-base"
             />
           )}
         </div>
+
         <LineBlock
           helperText={
             <>
@@ -245,15 +254,19 @@ const RecommendationsModal = ({
           onUpdate={(text) => setCurrentQuestion(text)}
           isEditable={!populatingInstructions && !isRunning}
         />
-        <div>
+        <p style={{ paddingLeft: "1.1em", fontSize: "1.1em" }}>
+          Please use the section below to see how the instructions above improve
+          your answer to the question.
+        </p>
+        <div className="flex justify-center">
           <Button
             onClick={reRunWithUpdatedInstructions}
             // type="primary"
             type="dashed"
             style={{
               minWidth: "23%",
-              padding: "1.2em",
-              paddingBottom: "1.1em",
+              padding: "1em",
+              paddingBottom: "1em",
               margin: "1em",
               marginBottom: "0.5em",
               marginTop: "0.5em",
@@ -280,21 +293,7 @@ const RecommendationsModal = ({
                 marginBottom: "2em",
               }}
             >
-              <h2
-                className="text-xl mt-4 mb-3"
-                style={{
-                  textAlign: "left",
-                }}
-              >
-                {" "}
-                <SyncOutlined
-                  style={{ fontSize: "24px", marginRight: "8px" }}
-                />{" "}
-                Updated Results Using Instructions
-              </h2>
-              <h3 className="text-lg mt-2 mb-1 text-left">
-                Generated SQL Query
-              </h3>
+              <h3 className="text-lg mt-2 mb-1 text-left">Generated Query</h3>
               <DisplayQuery query={updatedQuery} />
               <h3 className="text-lg mt-2 mb-1 text-left">Query Results</h3>
               <DisplayDataFrame
@@ -309,49 +308,61 @@ const RecommendationsModal = ({
                     style={{ fontSize: "16px", color: "##FFFAF0" }}
                   />
                 }
-                mainText="Did this improve your results? If yes, consider adding those instructions to the glossary permanently to tailor it for the future."
+                mainText="Did this improve your results? If yes, consider adding those instructions to the glossary permanently using the green button above to tailor it for the future."
                 onUpdate={() => {}}
                 isEditable={false}
               />
-
-              <Button
-                onClick={permanentlyAddInstructions}
-                // type="primary"
-                type="dashed"
-                style={{
-                  minWidth: "23%",
-                  padding: "1.2em",
-                  paddingBottom: "1.2em",
-                  margin: "1em",
-                  marginBottom: "0.5em",
-                  marginTop: "0.5em",
-                  height: "auto",
-                }}
-              >
-                <PlusCircleOutlined
-                  style={{ fontSize: "20px", marginRight: "8px" }}
-                />
-                Add Recommendations to Glossary
-              </Button>
-              {permanentlyUpdatedGlossary && (
-                <p style={{ paddingLeft: "1em", marginTop: "1em" }}>
-                  Instructions have been added to {""}
-                  <span
-                    style={{
-                      cursor: "pointer",
-                      color: "#1890ff",
-                      textDecoration: "underline",
-                      fontWeight: "bold",
-                    }}
-                    onClick={() => router.push("/align-model")}
-                  >
-                    glossary
-                  </span>{" "}
-                  successfully.
-                </p>
-              )}
             </div>
           </>
+        )}
+        <div className="flex justify-center">
+          <button
+            onClick={permanentlyAddInstructions}
+            className={`mt-1 mb-1 px-6 py-3 font-semibold rounded-lg shadow-md flex items-center justify-center transition duration-300 ease-in-out ${
+              recommendedInstructions === ""
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-lime-600 hover:bg-lime-700 text-white"
+            }`}
+            disabled={recommendedInstructions === ""}
+          >
+            <PlusCircleOutlined
+              className={`mr-3 text-xl ${
+                recommendedInstructions === "" ? "text-gray-400" : "text-white"
+              }`}
+            />
+            Add Recommended Instructions
+          </button>
+        </div>
+
+        {loading && (
+          <div className="flex flex-col justify-center items-center space-y-4">
+            <Spin
+              size="default"
+              tip="Updating the glossary."
+              className="text-lime-600 mt-2"
+            />
+            <p className="text-center text-base text-gray-700">
+              Updating your existing glossary with the new instructions.
+            </p>
+          </div>
+        )}
+
+        {permanentlyUpdatedGlossary && (
+          <p className="text-center mt-4 mb-4 flex items-center justify-center text-base">
+            <CheckCircleOutlined className="text-green-500 text-xl mr-2" />
+            <span
+              style={{
+                cursor: "pointer",
+                color: "#1890ff",
+                textDecoration: "underline",
+                fontWeight: "bold",
+              }}
+              onClick={() => router.push("/align-model")}
+            >
+              Instructions
+            </span>
+            &nbsp;have been updated successfully.
+          </p>
         )}
       </>
     </Modal>
