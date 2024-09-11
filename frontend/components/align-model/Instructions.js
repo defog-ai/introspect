@@ -23,27 +23,27 @@ const Instructions = ({
           : "Loading Instructions"
       }
     >
-      <h3 className="text-lg font-semibold">Compulsory Glossary</h3>
+      <h3 className="text-lg font-semibold">Compulsory Instructions</h3>
       <p className="text-sm text-gray-700 mb-2">
         These are the instructions that the model is given for every single SQL
         query that it generates.
       </p>
       <textarea
-        className="w-full h-40 p-2 border rounded border-gray-300 shadow-sm focus:border-gray-500 focus:ring focus:ring-gray-200 transition duration italic"
+        className="w-full min-h-40 p-2 border rounded border-gray-300 shadow-sm focus:border-gray-500 focus:ring focus:ring-gray-200 transition duration italic resize-y"
         value={compulsoryGlossary}
         onChange={(e) => setCompulsoryGlossary(e.target.value)}
         rows={8}
         disabled={isLoading}
       />
-
-      <h3 className="text-lg font-semibold mt-4">Prunable Glossary</h3>
+      
+      <h3 className="text-lg font-semibold mt-4">Supplementary Instructions</h3>
       <p className="text-sm text-gray-700 mb-2">
         These are the instructions that are specific to only specific kinds of
         questions.
       </p>
 
       <textarea
-        className="w-full h-40 p-2 border rounded border-gray-300 shadow-sm focus:border-gray-500 focus:ring focus:ring-gray-200 transition duration italic"
+        className="w-full min-h-40 p-2 border rounded border-gray-300 shadow-sm focus:border-gray-500 focus:ring focus:ring-gray-200 transition duration italic resize-y"
         value={prunableGlossary}
         onChange={(e) => setPrunableGlossary(e.target.value)}
         rows={8}

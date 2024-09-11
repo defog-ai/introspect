@@ -235,7 +235,7 @@ const AlignModel = () => {
             />
           ) : null} */}
           <Instructions
-            title="Glossary"
+            title="Instructions"
             description="This the information about your data that the model considers when generating your SQL queries. Feel free to edit these instructions to get the best results."
             compulsoryGlossary={compulsoryGlossary}
             setCompulsoryGlossary={setCompulsoryGlossary}
