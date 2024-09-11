@@ -11,6 +11,7 @@ import {
   CloseOutlined,
   DownloadOutlined,
   DeleteOutlined,
+  CloseCircleOutlined,
 } from "@ant-design/icons";
 
 function OracleDashboard() {
@@ -44,6 +45,10 @@ function OracleDashboard() {
     const token = localStorage.getItem("defogToken");
     getApiKeyNames(token);
   }, []);
+  const [dbCreds, setDbCreds] = useState({});
+  const [dbType, setDbType] = useState("");
+  const [dataConnReady, setDataConnReady] = useState(false);
+  const [dataConnErrorMsg, setDataConnErrorMsg] = useState("");
   const [userTask, setUserTask] = useState("");
   const [clarifications, setClarifications] = useState([]);
   const [waitClarifications, setWaitClarifications] = useState(false);
@@ -54,9 +59,73 @@ function OracleDashboard() {
   const [ready, setReady] = useState(false);
   const [reports, setReports] = useState([]);
 
+  const checkDBReady = async () => {
+    const token = localStorage.getItem("defogToken");
+    const resCreds = await fetch(
+      setupBaseUrl("http", `integration/get_tables_db_creds`),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+          key_name: apiKeyName,
+        }),
+      }
+    );
+    if (resCreds.ok) {
+      const data = await resCreds.json();
+      console.log("DB credentials fetched successfully");
+      console.log(data);
+      setDbCreds(data.db_creds);
+      setDbType(data.db_type);
+      const resConn = await fetch(
+        setupBaseUrl("http", `integration/validate_db_connection`),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: token,
+            key_name: apiKeyName,
+            db_creds: data.db_creds,
+            db_type: data.db_type,
+          }),
+        }
+      );
+      if (resConn.ok) {
+        setDataConnReady(true);
+        return true;
+      } else {
+        const data = await resConn.json();
+        setDataConnReady(false);
+        setDataConnErrorMsg(data.message);
+        console.error("Failed to validate DB connection");
+        return false;
+      }
+    } else {
+      setDataConnReady(false);
+      setDataConnErrorMsg(
+        "Failed to fetch DB credentials. Please verify that your token is valid."
+      );
+      console.error("Failed to fetch DB credentials");
+      return false;
+    }
+  };
+
   const getClarifications = async () => {
     setWaitClarifications(true);
     const token = localStorage.getItem("defogToken");
+    // check if the DB is ready
+    const ready = checkDBReady();
+    if (!ready) {
+      console.log("DB not ready yet, not fetching clarifications");
+      setWaitClarifications(false);
+      return;
+    }
+
     console.log("dismissed clarifications:", dismissedClarifications);
     const res = await fetch(setupBaseUrl("http", `oracle/clarify_question`), {
       method: "POST",
@@ -296,6 +365,8 @@ function OracleDashboard() {
   }, [userTask]);
 
   useEffect(() => {
+    // check DB readiness
+    checkDBReady();
     // get reports when the component mounts
     getReports();
 
@@ -350,7 +421,10 @@ function OracleDashboard() {
                 <Spin />
               ) : (
                 userTask &&
-                (ready ? (
+                userTask.length >= 5 &&
+                (!dataConnReady ? (
+                  <CloseCircleOutlined style={{ color: "#b80617" }} />
+                ) : ready ? (
                   <CheckCircleOutlined style={{ color: "green" }} />
                 ) : (
                   <ExclamationCircleOutlined style={{ color: "#808080" }} />
@@ -358,6 +432,12 @@ function OracleDashboard() {
               )}
             </div>
           </div>
+
+          {!dataConnReady && (
+            <div className="bg-light-red rounded-lg p-2 my-1">
+              <p className="text-red">{dataConnErrorMsg}</p>
+            </div>
+          )}
 
           {clarifications.length > 0 && (
             // show clarifications only when there are some

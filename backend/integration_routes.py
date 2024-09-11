@@ -165,10 +165,13 @@ async def validate_db_connection(request: Request):
         return {"status": "success"}
     except Exception as e:
         print(e, flush=True)
-        return {
-            "status": "error",
-            "message": "Could not connect to the database within 10 seconds. Please verify that the DB credentials are correct.",
-        }
+        return JSONResponse(
+            {
+                "status": "error",
+                "message": "Could not connect to the database within 10 seconds. Please verify that the DB credentials are correct.",
+            },
+            status_code=400,
+        )
 
 
 @router.post("/integration/update_db_creds")
