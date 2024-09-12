@@ -73,7 +73,7 @@ async def get_feedback(request: Request):
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
     url = DEFOG_BASE_URL + "/get_feedback"
-    res = await make_request(url, json={"api_key": api_key})
+    res = await make_request(url, data={"api_key": api_key})
     data = res["data"]
     for idx, item in enumerate(data):
         # first item is created_at
@@ -131,7 +131,7 @@ async def get_instructions_recommendation(request: Request):
 
     r = await make_request(
         url=url,
-        json={
+        data={
             "api_key": api_key,
             "question": question,
             "sql_generated": sql_generated,
@@ -165,5 +165,5 @@ async def send_feedback(params_obj):
 
     """
     url = DEFOG_BASE_URL + "/feedback"
-    res = await make_request(url, json=params_obj)
+    res = await make_request(url, data=params_obj)
     return res

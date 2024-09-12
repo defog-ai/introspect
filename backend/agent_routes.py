@@ -205,7 +205,7 @@ async def generate_step(request: Request):
                     )
                     unified_question = await make_request(
                         url=question_unifier_url,
-                        json={
+                        data={
                             "api_key": api_key,
                             "question": question,
                             "previous_context": prev_questions,
@@ -569,7 +569,7 @@ async def edit_chart(request: Request):
 
         res = await make_request(
             url=edit_chart_url,
-            json={
+            data={
                 "user_request": user_request,
                 "columns": [
                     {"title": c["title"], "col_type": c["col_type"]} for c in columns

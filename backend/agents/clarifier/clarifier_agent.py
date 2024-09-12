@@ -7,7 +7,7 @@ import asyncio
 import requests
 import os
 
-from utils import make_request
+from generic_utils import make_request
 
 default_values_formatted = {
     "multi select": [],
@@ -38,7 +38,7 @@ async def turn_into_statements(clarification_questions, dfg_api_key):
         ],
         "api_key": dfg_api_key,
     }
-    r = await make_request(url, payload=payload)
+    r = await make_request(url, data=payload)
     statements = r.json()["statements"]
     return statements
 
@@ -78,7 +78,7 @@ async def get_clarification(question, api_key, dev=False, temp=False):
 
     r = await make_request(
         llm_calls_url,
-        payload=payload,
+        data=payload,
     )
 
     if r.status_code == 200:

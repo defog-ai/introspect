@@ -341,7 +341,7 @@ async def update_metadata(request: Request):
     # update on API server
     r = await make_request(
         DEFOG_BASE_URL + "/update_metadata",
-        json={
+        data={
             "api_key": api_key,
             "table_metadata": table_metadata,
             "db_type": db_type,
@@ -368,7 +368,7 @@ async def copy_prod_to_dev(request: Request):
     api_key = get_api_key_from_key_name(key_name)
 
     r = await make_request(
-        DEFOG_BASE_URL + "/copy_prod_to_dev", json={"api_key": api_key}
+        DEFOG_BASE_URL + "/copy_prod_to_dev", data={"api_key": api_key}
     )
 
     return r
@@ -390,7 +390,7 @@ async def copy_prod_to_dev(request: Request):
     api_key = get_api_key_from_key_name(key_name)
 
     r = await make_request(
-        DEFOG_BASE_URL + "/copy_dev_to_prod", json={"api_key": api_key}
+        DEFOG_BASE_URL + "/copy_dev_to_prod", data={"api_key": api_key}
     )
 
     return r
@@ -625,7 +625,7 @@ async def upload_csv(request: Request):
 
     resp = await make_request(
         DEFOG_BASE_URL + "/update_metadata",
-        json={
+        data={
             "api_key": api_key,
             "table_metadata": schema,
             "db_type": db_type,

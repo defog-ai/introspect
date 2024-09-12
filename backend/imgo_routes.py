@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Request
 from generic_utils import (
     make_request,
@@ -44,7 +45,7 @@ async def send_imgo_request(
         payload.update(additional_payload)
 
     url = f"{DEFOG_BASE_URL}/{endpoint}"
-    return await make_request(url, json=payload)
+    return await make_request(url, data=payload)
 
 
 @router.post("/generate_golden_queries_from_questions")
@@ -120,5 +121,5 @@ async def check_task_status(request: Request):
     url = f"{DEFOG_BASE_URL}/check_imgo_task_status"
     return await make_request(
         url,
-        json={"api_key": api_key, "task_id": task_id},
+        data={"api_key": api_key, "task_id": task_id},
     )

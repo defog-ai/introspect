@@ -26,7 +26,7 @@ async def gen_sql(api_key: str, db_type: str, question: str, glossary: str) -> s
     """
     resp = await make_request(
         f"{DEFOG_BASE_URL}/generate_query_chat",
-        json={
+        data={
             "api_key": api_key,
             "dev": False,
             "db_type": db_type,
@@ -101,7 +101,7 @@ async def get_chart_type(api_key: str, columns: list, question: str) -> str:
     }
     resp = await make_request(
         f"{DEFOG_BASE_URL}/get_chart_type",
-        json=json_data,
+        data=json_data,
     )
     if "chart_type" in resp:
         return resp
@@ -218,7 +218,7 @@ async def gen_data_analysis(
         "sampled": sampled,
     }
     resp = await make_request(
-        f"{DEFOG_BASE_URL}/oracle/gen_explorer_data_analysis", json=json_data
+        f"{DEFOG_BASE_URL}/oracle/gen_explorer_data_analysis", data=json_data
     )
     if "error" in resp:
         LOGGER.error(f"Error occurred in generating data analysis: {resp['error']}")

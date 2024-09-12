@@ -149,19 +149,6 @@ class SqlExecutionError(Exception):
         # Now for your custom code...
         self.sql = sql
 
-
-async def make_request(url, payload, verbose=False):
-    print(f"Making request to {url}")
-    async with httpx.AsyncClient(verify=False) as client:
-        r = await client.post(
-            url,
-            json=payload,
-        )
-        if verbose:
-            print(f"Response: {r.text}")
-    return r
-
-
 def deduplicate_columns(df: pd.DataFrame):
     # de-duplicate column names
     # if the same column name exists more than once, add a suffix

@@ -18,10 +18,10 @@ from sqlalchemy import (
 from sqlalchemy.schema import DropTable
 from sqlalchemy.ext.automap import automap_base
 from utils_logging import LOGGER
-from utils_md import mk_create_table_ddl
 
 import asyncio
-from utils import warn_str, YieldList, make_request
+from utils import warn_str, YieldList
+from generic_utils import make_request
 import os
 
 analysis_assets_dir = os.environ.get(
@@ -1545,7 +1545,7 @@ async def add_tool(
         asyncio.create_task(
             make_request(
                 url=f"{os.environ.get('DEFOG_BASE_URL', 'https://api.defog.ai')}/update_tool",
-                payload={
+                data={
                     "api_key": api_key,
                     "tool_name": tool_name,
                     "function_name": function_name,
@@ -1559,7 +1559,6 @@ async def add_tool(
                     "cannot_delete": cannot_delete,
                     "cannot_disable": cannot_disable,
                 },
-                verbose=True,
             )
         )
     except ValueError as e:

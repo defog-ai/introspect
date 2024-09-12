@@ -1,3 +1,4 @@
+import json
 import httpx
 import os
 import sqlparse
@@ -18,17 +19,23 @@ if not DEFOG_API_KEYS:
 DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
 
 
-async def make_request(url, json):
+async def make_request(url, data):
     LOGGER.debug(f"Making request to: {url}")
-    LOGGER.debug(f"Request body: {json}")
+    # avoid excessively long logs (e.g. for base64 encoded images)
+    data_str = json.dumps(data)[:500] + "..." if len(json.dumps(data)) > 500 else json.dumps(data)
+    LOGGER.debug(f"Request body: {data_str}")
     async with httpx.AsyncClient(verify=False) as client:
         r = await client.post(
             url,
-            json=json,
+            json=data,
             timeout=60,
         )
-
-    return r.json()
+    response = r.json()
+    if r.status_code != 200:
+        LOGGER.error(f"Error in request: {response}")
+        return None
+    LOGGER.debug(f"Response: {response}")
+    return response
 
 
 def convert_nested_dict_to_list(table_metadata):

@@ -79,7 +79,7 @@ async def check_golden_queries_validity(request: Request):
 
     resp = await make_request(
         f"{DEFOG_BASE_URL}/check_gold_queries_valid",
-        json={"api_key": api_key, "db_type": db_type, "dev": dev},
+        data={"api_key": api_key, "db_type": db_type, "dev": dev},
     )
     return resp
 
@@ -103,7 +103,7 @@ async def check_glossary_consistency(request: Request):
 
     resp = await make_request(
         f"{DEFOG_BASE_URL}/check_glossary_consistency",
-        json={"api_key": api_key, "dev": dev},
+        data={"api_key": api_key, "dev": dev},
     )
     return resp
 
@@ -132,6 +132,6 @@ async def check_golden_query_coverage(request: Request):
 
     resp = await make_request(
         f"{DEFOG_BASE_URL}/get_golden_queries_coverage",
-        json={"api_key": api_key, "dev": dev, "db_type": db_type},
+        data={"api_key": api_key, "dev": dev, "db_type": db_type},
     )
     return resp

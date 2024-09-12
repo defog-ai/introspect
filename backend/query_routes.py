@@ -87,6 +87,6 @@ async def get_chart_types(request: Request):
 
     res = await make_request(
         "https://api.defog.ai/get_chart_type",
-        json={"api_key": api_key, "columns": columns, "question": question},
+        data={"api_key": api_key, "columns": columns, "question": question},
     )
     return res

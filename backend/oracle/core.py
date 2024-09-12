@@ -488,7 +488,7 @@ async def explore_data(
     problem_statement = gather_context.get("problem_statement", "")
     glossary_dict = await make_request(
         DEFOG_BASE_URL + "/prune_glossary",
-        json={"question": user_question, "api_key": api_key},
+        data={"question": user_question, "api_key": api_key},
     )
     glossary = f"{glossary_dict.get('glossary_compulsory', '')}\n{glossary_dict.get('glossary', '')}\n{context}"
     db_type, db_creds = get_db_type_creds(api_key)
@@ -670,7 +670,7 @@ async def explore_data(
                 "final_summaries_str": final_summaries_str,
             }
             resp = await make_request(
-                f"{DEFOG_BASE_URL}/oracle/eval_explorer_data_analysis", json=json_data
+                f"{DEFOG_BASE_URL}/oracle/eval_explorer_data_analysis", data=json_data
             )
             if "error" in resp:
                 LOGGER.error(f"Error occurred in evaluating analysis: {resp['error']}")

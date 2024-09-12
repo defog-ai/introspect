@@ -8,14 +8,13 @@ from connection_manager import ConnectionManager
 from agents.planner_executor.planner_executor_agent_rest import RESTExecutor
 from oracle.setup import setup_dir
 import doc_endpoints
-from utils import make_request
 
 from db_utils import (
     get_all_analyses,
     get_analysis_data,
     initialise_analysis,
 )
-from generic_utils import get_api_key_from_key_name
+from generic_utils import get_api_key_from_key_name, make_request
 import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes, agent_routes, oracle_routes, imgo_routes, data_connector_routes
 
 logging.basicConfig(level=logging.INFO)
@@ -73,7 +72,7 @@ edit_request_types_and_prop_names = {
 async def get_classification(question, api_key, debug=False):
     r = await make_request(
         f"{os.environ.get('DEFOG_BASE_URL', 'https://api.defog.ai')}/update_agent_feedback",
-        payload={"question": question, "api_key": api_key},
+        data={"question": question, "api_key": api_key},
     )
     if r.status_code == 200:
         return r.json()

@@ -90,7 +90,7 @@ class RESTExecutor:
                 "llm_server_url": os.environ.get("LLM_SERVER_ENDPOINT", None),
                 "model_name": os.environ.get("LLM_MODEL_NAME", None),
             }
-            ans = await make_request(llm_calls_url, json=payload)
+            ans = await make_request(llm_calls_url, data=payload)
 
             ans = ans["generated_step"]
             self.previous_responses.append(ans)
