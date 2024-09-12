@@ -183,6 +183,7 @@ async def gen_data_analysis(
     api_key: str,
     user_question: str,
     generated_qn: str,
+    sql: str,
     data_df: pd.DataFrame,
     chart_path: str,
 ) -> str:
@@ -191,19 +192,13 @@ async def gen_data_analysis(
     this will generate a title and summary of the key insights.
     Returns a dictionary with the title and summary.
     """
+    sampled = False
     if len(data_df) > 50 and not chart_path:
-        LOGGER.error(
-            f"Data too large to generate analysis for question: {generated_qn}"
-        )
-        return {
-            "table_description": None,
-            "image_description": None,
-            "title": None,
-            "summary": None,
-        }
+        data_df = data_df.sample(50)
+        sampled = True
 
     # convert data df to csv
-    data_csv = data_df.to_csv(float_format="%.3f", header=True)
+    data_csv = data_df.to_csv(float_format="%.3f", header=True, index=False)
 
     # convert chart to base64
     if chart_path:
@@ -217,8 +212,10 @@ async def gen_data_analysis(
         "api_key": api_key,
         "user_question": user_question,
         "generated_qn": generated_qn,
+        "sql": sql,
         "data_csv": data_csv,
         "chart": base64_image,
+        "sampled": sampled,
     }
     resp = await make_request(
         f"{DEFOG_BASE_URL}/oracle/gen_explorer_data_analysis", json=json_data

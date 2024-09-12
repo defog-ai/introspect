@@ -35,6 +35,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+backend/*key.json
 cloud-storage-creds.json
 genmab_sample.sql
 defog-llm-cloud-function.py
