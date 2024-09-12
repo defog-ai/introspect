@@ -531,3 +531,77 @@ async def scatter_plot(
             }
         ],
     }
+
+
+async def bar_plot(
+    full_data: pd.DataFrame,
+    x_column: DBColumn,
+    y_column: DBColumn,
+    color_column: DBColumn = None,
+    facet_column: DBColumn = None,
+    color: DropdownSingleSelect = ListWithDefault(
+        [
+            "#000000",
+            "#009D94",
+            "#0057CF",
+            "#FFBD00",
+            "#FF5C1C",
+            "#691A6B",
+        ],
+        default_value="#000000",
+    ),
+    global_dict: dict = {},
+    **kwargs,
+):
+    """
+    Generates a bar plot using python's seaborn library. Also accepts faceting columns.
+    """
+    import matplotlib.pyplot as plt
+
+    analysis_assets_dir = global_dict.get(
+        "analysis_assets_dir", "/agents-assets/analysis-assets"
+    )
+
+    if facet_column is None:
+        plot = sns.barplot(
+            data=full_data,
+            x=x_column,
+            y=y_column,
+            hue=color_column,
+            palette=color,
+            alpha=opacity,
+        )
+        plt.xticks(rotation=45)
+    else:
+        plot = sns.catplot(
+            data=full_data,
+            x=x_column,
+            y=y_column,
+            hue=color_column,
+            kind="bar",
+            col=facet_column,
+            palette=color,
+            col_wrap=4,
+        )
+        for ax in plot.axes.flatten():
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+    chart_path = f"barplots/barplot-{uuid4()}.png"
+    plt.savefig(
+        f"{analysis_assets_dir}/{chart_path}", dpi=300, bbox_inches="tight"
+    )
+    plt.clf()
+    plt.close()
+    return {
+        "outputs": [
+            {
+                "data": full_data,
+                "chart_images": [
+                    {
+                        "type": "bar_plot",
+                        "path": chart_path,
+                    }
+                ],
+            }
+        ],
+    }

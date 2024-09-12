@@ -8,6 +8,7 @@ from utils_logging import LOG_LEVEL
 from defog.query import execute_query
 from generic_utils import is_sorry, make_request, normalize_sql
 from agents.planner_executor.toolboxes.plots.tools import (
+    bar_plot,
     line_plot,
     boxplot,
     heatmap,
@@ -83,7 +84,7 @@ async def execute_sql(
 async def get_chart_type(api_key: str, columns: list, question: str) -> str:
     """
     Get the appropriate chart type for the given dataframe and question.
-    Only viz types 'Table', 'Bar Chart', 'Line Chart', 'Pie Chart', 'Boxplot', 'Heatmap', 'Scatter Plot' are supported now.
+    Only viz types 'Table', 'Bar Chart', 'Line Chart', 'Boxplot', 'Heatmap', 'Scatter Plot' are supported now.
     Prompt in DEFOG_BASE_URL/get_chart_type must be modified for additional chart types.
     Returns a dictionary with the chart type and the x and y axis columns.
     """
@@ -92,6 +93,7 @@ async def get_chart_type(api_key: str, columns: list, question: str) -> str:
         "question": question,
         "columns": columns,
         "chart_types": [
+            "Bar Chart",
             "Table",
             "Line Chart",
             "Boxplot",
@@ -122,7 +124,10 @@ async def plot_chart(
     Returns the path to the chart image. Unsupported chart types or tables will return None.
     """
     # get the appropriate tool name and folder name for the chart type
-    if "line" in chart_type.lower():
+    if "bar" in chart_type.lower():
+        plotting_fn = bar_plot
+        folder_name = "barcharts"
+    elif "line" in chart_type.lower():
         plotting_fn = line_plot
         folder_name = "linecharts"
     elif "box" in chart_type.lower():
