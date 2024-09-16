@@ -17,7 +17,7 @@ services:
     networks:
       - agents-network
     ports:
-      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_PORT:-15672}:5672"
     volumes:
       - agents-rabbitmq:/var/lib/rabbitmq
     deploy:
@@ -58,7 +58,7 @@ services:
       - GOOGLE_ANALYTICS_CREDS_PATH=${GOOGLE_ANALYTICS_CREDS_PATH}
       - GOOGLE_ANALYTICS_PROPERTY_IDS=${GOOGLE_ANALYTICS_PROPERTY_IDS}
       - RABBITMQ_HOST=${RABBITMQ_HOST}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - RABBITMQ_PORT=${RABBITMQ_PORT:-15672}
 
 
       # Email configuration
