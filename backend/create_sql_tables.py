@@ -243,8 +243,10 @@ def create_postgres_tables():
     print(f"Creating database {imported_tables_db}")
     if imported_tables_db != db_creds["database"]:
         # create a new database if it doesn't exist
+
+        # first, connect to the default database
         conn = psycopg2.connect(
-            dbname=imported_tables_db,
+            dbname=db_creds["database"],
             user=db_creds["user"],
             password=db_creds["password"],
             host=db_creds["host"],

@@ -4,7 +4,7 @@ boto3
 celery[redis]
 colorama
 databricks-sql-connector
-defog==0.65.16
+defog==0.65.19
 fastapi
 google-auth
 google-cloud-bigquery
