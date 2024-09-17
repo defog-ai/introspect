@@ -37,6 +37,7 @@ fi
 
 # Start consumers in the background
 python3 consumer_google_analytics.py &
+python3 consumer_stripe.py &
 
 # Wait for all background jobs to finish
 wait
