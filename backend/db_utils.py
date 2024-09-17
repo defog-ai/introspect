@@ -100,7 +100,9 @@ OracleReports = Base.classes.oracle_reports
 ImportedTables = Base.classes.imported_tables
 
 
-def update_imported_tables_db(table_name: str, data: list[list[str, str]], schema_name: str) -> bool:
+def update_imported_tables_db(
+    table_name: str, data: list[list[str, str]], schema_name: str
+) -> bool:
     """
     Updates the IMPORTED_TABLES_DBNAME database with the new schema and table.
     Removes table from IMPORTED_TABLES_DBNAME database if it already exists.
@@ -110,14 +112,23 @@ def update_imported_tables_db(table_name: str, data: list[list[str, str]], schem
         # create schema in imported_tables db if it doesn't exist
         try:
             if INTERNAL_DB == "postgres":
-                create_schema_stmt = f"CREATE SCHEMA IF NOT EXISTS {schema_name};"
-                imported_tables_connection.execute(create_schema_stmt)
-                LOGGER.info(f"Created schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database.")
+                # check if schema exists
+                inspector = sql_inspect(imported_tables_engine)
+                schema_names = inspector.get_schema_names()
+                schema_exists = schema_name in schema_names
+                if not schema_exists:
+                    create_schema_stmt = f"CREATE SCHEMA IF NOT EXISTS {schema_name};"
+                    imported_tables_connection.execute(create_schema_stmt)
+                    LOGGER.info(
+                        f"Created schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database."
+                    )
             else:
                 LOGGER.error(f"INTERNAL_DB is not postgres. Cannot create schema.")
                 return False
         except Exception as e:
-            LOGGER.error(f"Error creating schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database: {e}")
+            LOGGER.error(
+                f"Error creating schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database: {e}"
+            )
             return False
 
         # check if table already exists in imported_tables database
@@ -127,18 +138,54 @@ def update_imported_tables_db(table_name: str, data: list[list[str, str]], schem
             table = Table(table_name, MetaData(), schema=schema_name)
             drop_stmt = DropTable(table, if_exists=True)
             imported_tables_connection.execute(drop_stmt)
-            LOGGER.info(f"Dropped existing table `{table_name}` from {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`.")
+            LOGGER.info(
+                f"Dropped existing table `{table_name}` from {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`."
+            )
         try:
             # insert the table into imported_tables database
-            save_csv_to_db(table_name, data, db=IMPORTED_TABLES_DBNAME, schema_name=schema_name) 
-            LOGGER.info(f"Inserted table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`.")
+            save_csv_to_db(
+                table_name, data, db=IMPORTED_TABLES_DBNAME, schema_name=schema_name
+            )
+            LOGGER.info(
+                f"Inserted table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`."
+            )
             return True
         except Exception as e:
-            LOGGER.error(f"Error inserting table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`: {e}\n Data: {data}")
+            LOGGER.error(
+                f"Error inserting table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`: {e}\n Data: {data}"
+            )
             return False
 
 
-def update_imported_tables(url: str, table_index: int, table_name: str, table_description: str) -> bool:
+def convert_cols_to_jsonb(
+    table_name: str, json_cols: list[str], schema_name: str
+) -> bool:
+    """
+    Converts the columns in json_cols to jsonb in the table in the schema of the imported_tables database.
+    """
+    if INTERNAL_DB == "postgres":
+        try:
+            with imported_tables_engine.connect() as imported_tables_connection:
+                for col in json_cols:
+                    stmt = f"ALTER TABLE {schema_name}.{table_name} ALTER COLUMN {col} SET DATA TYPE JSONB USING {col}::JSONB;"
+                    imported_tables_connection.execute(stmt)
+                    LOGGER.info(
+                        f"Converted column `{col}` to jsonb in table `{table_name}` in schema `{schema_name}` of {IMPORTED_TABLES_DBNAME} database."
+                    )
+                return True
+        except Exception as e:
+            LOGGER.error(
+                f"Error converting column `{col}` to jsonb in table `{table_name}` in schema `{schema_name}` of {IMPORTED_TABLES_DBNAME} database: {e}"
+            )
+            return False
+    else:
+        LOGGER.error(f"INTERNAL_DB is not postgres. Cannot convert columns to jsonb.")
+        return False
+
+
+def update_imported_tables(
+    url: str, table_index: int, table_name: str, table_description: str
+) -> bool:
     """
     Updates the imported_tables table in the internal database with the table's info.
     Removes entry from imported_tables of the internal database if it already exists.
@@ -161,12 +208,12 @@ def update_imported_tables(url: str, table_index: int, table_name: str, table_de
                         ImportedTables.table_url == url,
                         ImportedTables.table_position == table_index,
                     )
-                    .values(
-                        table_name=table_name, table_description=table_description
-                    )
+                    .values(table_name=table_name, table_description=table_description)
                 )
                 conn.execute(update_stmt)
-                LOGGER.info(f"Updated entry `{table_name}` in imported_tables of the internal database.")
+                LOGGER.info(
+                    f"Updated entry `{table_name}` in imported_tables of the internal database."
+                )
                 return True
             except Exception as e:
                 LOGGER.error(
@@ -184,7 +231,9 @@ def update_imported_tables(url: str, table_index: int, table_name: str, table_de
                 }
                 stmt = insert(ImportedTables).values(table_data)
                 conn.execute(stmt)
-                LOGGER.info(f"Inserted entry `{table_name}` into imported_tables of the internal database.")
+                LOGGER.info(
+                    f"Inserted entry `{table_name}` into imported_tables of the internal database."
+                )
                 return True
             except Exception as e:
                 LOGGER.error(
@@ -193,7 +242,12 @@ def update_imported_tables(url: str, table_index: int, table_name: str, table_de
                 return False
 
 
-def save_csv_to_db(table_name: str, data: list[list[str, str]], db: str = INTERNAL_DB, schema_name: str = None) -> bool:
+def save_csv_to_db(
+    table_name: str,
+    data: list[list[str, str]],
+    db: str = INTERNAL_DB,
+    schema_name: str = None,
+) -> bool:
     """
     Saves a csv file to either the internal db or the imported_tables db.
     data is a list of lists where the first list consists of the column names and the rest are the rows.
@@ -204,7 +258,9 @@ def save_csv_to_db(table_name: str, data: list[list[str, str]], db: str = INTERN
     if db == IMPORTED_TABLES_DBNAME:
         engine = imported_tables_engine
     try:
-        df.to_sql(table_name, engine, if_exists="replace", index=False, schema=schema_name)
+        df.to_sql(
+            table_name, engine, if_exists="replace", index=False, schema=schema_name
+        )
         return True
     except Exception as e:
         print(e)
