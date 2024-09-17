@@ -1,7 +1,5 @@
 aiohttp
-airbyte
 boto3
-celery[redis]
 colorama
 databricks-sql-connector
 defog==0.65.19
@@ -10,13 +8,10 @@ google-auth
 google-cloud-bigquery
 httpx
 hypercorn
-markdown2[all]==2.5.0
 matplotlib
 mysql-connector-python
 numpy
 pandas
-pandasql
-pdfkit==1.0.0
 pgvector
 pika
 psycopg2-binary

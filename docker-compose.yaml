@@ -99,13 +99,13 @@ services:
       resources:
         limits:
           cpus: "1"
-          memory: 256M
+          memory: 128M
     command: >
-      redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+      redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
     environment:
-      - REDIS_MAXMEMORY=256mb
+      - REDIS_MAXMEMORY=128mb
 
 volumes:
   agents-postgres:
