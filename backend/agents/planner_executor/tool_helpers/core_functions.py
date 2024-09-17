@@ -8,20 +8,9 @@ import os
 # these are needed for the exec_code function
 import pandas as pd
 
-from openai import AsyncOpenAI
-
 # get OPENAI_API_KEY from env
 
 openai = None
-
-if (
-    os.environ.get("OPENAI_API_KEY") is None
-    or os.environ.get("OPENAI_API_KEY") == "None"
-    or os.environ.get("OPENAI_API_KEY") == ""
-):
-    pass
-else:
-    openai = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 analysis_assets_dir = os.environ.get(
     "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
@@ -114,74 +103,3 @@ async def analyse_data(
     if not openai:
         yield {"success": False, "model_analysis": "NONE"}
         return
-
-    if data is None:
-        yield {"success": False, "model_analysis": "No data found"}
-        return
-
-    if data.size > 50 and image_path is None:
-        yield {"success": False, "model_analysis": "NONE"}
-        return
-
-    if question is None or question == "":
-        yield {"success": False, "model_analysis": "No question provided"}
-        return
-
-    if image_path:
-        base64_image = encode_image(image_path)
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": f"An image was generated to answer this question: `{question}`. Please interpret the results of this image for me. Do not repeat the data in the image verbatim. Instead, focus on the key insights and takeaways. Assume that your audience is a non-technical stakeholder who is interested in high level insights but do not want the exact numbers in the image to be repeated.",
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/png;base64,{base64_image}",
-                            "detail": "low",
-                        },
-                    },
-                ],
-            },
-        ]
-    else:
-        df_csv = data.to_csv(float_format="%.3f", header=True)
-        user_analysis_prompt = f"""Generate a short summary of the results for the given qn: `{question}`\n\nand results:
-    {df_csv}\n\n```"""
-        analysis_prompt = f"""Here is the brief summary of how the results answer the given qn:\n\n```"""
-        # get comma separated list of col names
-        col_names = ",".join(data.columns)
-
-        messages = [
-            {
-                "role": "assistant",
-                "content": f"User has the following columns available to them:\n\n"
-                + col_names
-                + "\n\n",
-            },
-            {"role": "user", "content": user_analysis_prompt},
-            {
-                "role": "assistant",
-                "content": analysis_prompt,
-            },
-        ]
-
-    completion = await openai.chat.completions.create(
-        model="gpt-4o",
-        messages=messages,
-        temperature=0,
-        seed=42,
-        stream=True,
-        max_tokens=400,
-    )
-
-    async for chunk in completion:
-        ct = chunk.choices[0]
-
-        if ct.finish_reason == "stop":
-            return
-
-        yield {"success": True, "model_analysis": ct.delta.content}

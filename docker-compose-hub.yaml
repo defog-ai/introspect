@@ -34,7 +34,6 @@ services:
       - DEFOG_GENERATE_URL=${DEFOG_GENERATE_URL:-https://api.defog.ai/generate_query_chat}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANALYSIS_ASSETS_DIR=${ANALYSIS_ASSETS_DIR}
       - DBHOST=${DEFOG_DBHOST:-agents-postgres}
       - DBPORT=${DEFOG_DBPORT:-5432}

@@ -15,8 +15,6 @@ services:
       platforms:
         - linux/amd64
         - linux/arm64
-      args:
-        OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
 
   agents-nginx:
     build:

@@ -8,14 +8,12 @@ defog==0.65.19
 fastapi
 google-auth
 google-cloud-bigquery
-google-cloud-storage
 httpx
 hypercorn
 markdown2[all]==2.5.0
 matplotlib
 mysql-connector-python
 numpy
-openai
 pandas
 pandasql
 pdfkit==1.0.0
