@@ -15,7 +15,7 @@ from db_utils import (
     initialise_analysis,
 )
 from generic_utils import get_api_key_from_key_name, make_request
-import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes, agent_routes, oracle_routes, imgo_routes, data_connector_routes
+import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes, agent_routes, imgo_routes
 
 logging.basicConfig(level=logging.INFO)
 
@@ -33,8 +33,12 @@ app.include_router(feedback_routes.router)
 app.include_router(imgo_routes.router)
 app.include_router(slack_routes.router)
 app.include_router(agent_routes.router)
-app.include_router(oracle_routes.router) 
-app.include_router(data_connector_routes.router)
+
+if os.environ.get("ORACLE_ENABLED", "no") == "yes":
+    import oracle_routes, data_connector_routes
+
+    app.include_router(oracle_routes.router)
+    app.include_router(data_connector_routes.router)
 
 origins = ["*"]
 app.add_middleware(
