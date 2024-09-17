@@ -1,5 +1,4 @@
 from typing import Dict, List
-import tiktoken
 from datetime import date
 import pandas as pd
 import base64
@@ -44,24 +43,6 @@ def safe_sql(query):
         return False
 
     return True
-
-
-def estimate_tokens_left(messages: List[Dict], model: str) -> int:
-    """
-    Returns an estimate of the number of tokens left for generation based on the
-    messages generated so far and the model used.
-    """
-    encoding = tiktoken.encoding_for_model(model)
-    total_tokens = 0
-    for msg in messages:
-        num_tokens = len(encoding.encode(msg["content"]))
-        total_tokens += num_tokens
-    if model == "gpt-3.5-turbo":
-        return 4000 - total_tokens
-    elif "gpt-4" in model:
-        return 8000 - total_tokens
-    else:
-        raise ValueError(f"Unsupported model {model}")
 
 
 # resolves an input to a tool
