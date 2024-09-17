@@ -5,11 +5,17 @@ import asyncio
 import functools
 import airbyte as ab
 import pandas as pd
+from datetime import datetime
 import pika
+import csv
 from io import StringIO
 from utils_logging import LOGGER, save_and_log
 from utils_md import convert_data_type_postgres
-from db_utils import update_imported_tables_db, update_imported_tables
+from db_utils import (
+    update_imported_tables_db,
+    update_imported_tables,
+    convert_cols_to_jsonb,
+)
 from generic_utils import make_request
 
 
@@ -23,6 +29,7 @@ queue_name = "google_analytics"
 channel.queue_declare(queue=queue_name)
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
+INTERNAL_DB = os.environ.get("INTERNAL_DB", "postgres")
 STREAMS = [
     "pages",
     "traffic_sources",
@@ -38,6 +45,26 @@ STREAMS = [
     "demographic_age_report",
     "tech_browser_report",
 ]
+
+# Specify column names to drop from all streams
+COLS_TO_DROP = [
+    "_airbyte_raw_id",
+    "_airbyte_raw_id",
+    "_airbyte_meta",
+    "property_id",
+    "_airbyte_extracted_at",
+]
+# Leave empty to include all columns. Otherwise specify key-value pairs of stream name and list of columns to include.
+COLS_IN_STREAMS = {}
+
+# Leave empty to keep column names as is. Otherwise specify key-value pairs of stream name and dictionary mapping old column name to new column name.
+RENAMED_COLS = {}
+
+# Specify names of columns not containing 'date' that should be converted to datetime type
+DATE_COLS = []
+
+# Specify key-value pairs of stream name and list of columns that are json columns to be converted to dict type
+JSON_COLS = {}
 
 
 def get_google_analytics_data(
@@ -78,17 +105,19 @@ def get_google_analytics_data(
     # clean all streams
     for stream in STREAMS:
         df = cache.get_pandas_dataframe(stream)
+        if stream in COLS_IN_STREAMS:
+            try:
+                df = df[COLS_IN_STREAMS[stream]]
+            except KeyError as e:
+                LOGGER.error(
+                    f"Error in getting columns for stream {stream}: {str(e)}\nExisting columns: {df.columns}"
+                )
+        if stream in RENAMED_COLS:
+            df = df.rename(columns=RENAMED_COLS[stream])
         if df.empty:
             LOGGER.info(f"Empty dataframe for stream: {stream}")
             continue
-        cols_to_drop = [
-            "_airbyte_raw_id",
-            "_airbyte_raw_id",
-            "_airbyte_meta",
-            "property_id",
-            "_airbyte_extracted_at",
-        ]
-        existing_cols_to_drop = [col for col in cols_to_drop if col in df.columns]
+        existing_cols_to_drop = [col for col in COLS_TO_DROP if col in df.columns]
         df = df.drop(columns=existing_cols_to_drop)
         csv_dict[stream] = df.to_csv(index=False)
 
@@ -149,17 +178,67 @@ async def callback(ch, method, properties, body):
         # read csv data into a pandas dataframe
         df = pd.read_csv(StringIO(csv_data))
 
-        # convert date column to datetime
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"], format="%Y%m%d")
+        for col in df.columns:
+            # convert date columns to datetime
+            if "date" in col or col in DATE_COLS:
+                # check if column is string or int type
+                try:
+                    if "int" in str(df[col].dtype):
+                        LOGGER.info(
+                            f"Converting date of integer column `{col}` to datetime"
+                        )
+                        df[col] = df[col].apply(
+                            lambda x: datetime.fromtimestamp(x) if pd.notnull(x) else x
+                        )
+                    elif "object" in str(df[col].dtype):
+                        LOGGER.info(
+                            f"Converting date of string type column `{col}` to datetime"
+                        )
+                        df[col] = pd.to_datetime(df[col], format="%Y%m%d")
+                except Exception as e:
+                    LOGGER.error(f"Error in converting date column {col}: {str(e)}")
+                    continue
+            # convert json columns to dict
+            elif col in JSON_COLS.get(table_name, []):
+                LOGGER.info(f"Converting json column `{col}` to dict")
+                df[col] = df[col].apply(
+                    lambda x: json.loads(x) if pd.notnull(x) else None
+                )
 
         # get data types of columns
-        data_types = df.dtypes.astype(str).to_list()
-        data_types = [convert_data_type_postgres(dtype) for dtype in data_types]
+        data_types = {}
+        for col in df.columns:
+            if df[col].dtype == "object":
+                first_non_null = df[col].dropna().iloc[0]
+                if isinstance(first_non_null, str):
+                    data_types[col] = "string"
+                elif isinstance(first_non_null, dict):
+                    data_types[col] = "jsonb"
+                    # convert dict back to json string for insertion into db
+                    df[col] = df[col].apply(
+                        lambda x: json.dumps(x) if pd.notnull(x) else None
+                    )
+                else:
+                    data_types[col] = type(first_non_null).__name__
+            else:
+                data_types[col] = df[col].dtype.name
+        LOGGER.info(f"Data types:{data_types}")
 
-        # convert csv string to list
-        csv_data = csv_data.split("\n")
-        csv_data = [row.split(",") for row in csv_data]
+        data_types_list = [data_types[col] for col in df.columns]
+        if INTERNAL_DB == "postgres":
+            data_types_list = [
+                convert_data_type_postgres(dtype) for dtype in data_types_list
+            ]
+        else:
+            LOGGER.error(
+                f"Conversion of data types currently only supported for postgres. Received data types: {data_types_list}"
+            )
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
+
+        # convert df to list of lists by row with headers as the first list
+        csv_data = df.values.tolist()
+        csv_data.insert(0, df.columns.tolist())
 
         # update imported_tables database with the ga schema and tables
         schema_name = "ga"
@@ -167,8 +246,16 @@ async def callback(ch, method, properties, body):
         schema_table_name = f"{schema_name}.{table_name}"
         inserted_tables[schema_table_name] = [
             {"data_type": data_type, "column_name": col_name, "column_description": ""}
-            for data_type, col_name in zip(data_types, df.columns)
+            for data_type, col_name in zip(data_types_list, df.columns)
         ]
+
+        # convert inserted JSON columns in imported_tables database to jsonb type
+        jsonb_cols = JSON_COLS.get(table_name, [])
+        if jsonb_cols:
+            jsonb_cols = [
+                col for col in jsonb_cols if col in df.columns
+            ]  # only convert columns that exist in the dataframe
+            convert_cols_to_jsonb(table_name, jsonb_cols, schema_name)
 
         # update imported_tables table entries in internal db
         url = "google_analytics"
