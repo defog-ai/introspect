@@ -569,7 +569,6 @@ async def bar_plot(
             y=y_column,
             hue=color_column,
             palette=color,
-            alpha=opacity,
         )
         plt.xticks(rotation=45)
     else:

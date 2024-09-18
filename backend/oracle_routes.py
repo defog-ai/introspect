@@ -6,9 +6,15 @@ from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert, select
 
+from oracle.explore import explore_data
 from db_utils import OracleReports, engine, validate_user
 from generic_utils import get_api_key_from_key_name, make_request
-from oracle.core import TASK_TYPES, begin_generation_task, get_report_file_path
+from oracle.core import (
+    EXPLORATION,
+    TASK_TYPES,
+    begin_generation_task,
+    get_report_file_path,
+)
 
 router = APIRouter()
 
@@ -43,7 +49,10 @@ async def clarify_question(req: Request):
     if "user_question" not in body:
         return JSONResponse(
             status_code=400,
-            content={"error": "Bad Request", "message": "Missing 'user_question' field"},
+            content={
+                "error": "Bad Request",
+                "message": "Missing 'user_question' field",
+            },
         )
     response = await make_request(DEFOG_BASE_URL + "/oracle/clarify_task_type", body)
     task_type = response.get("task_type", "")
@@ -76,7 +85,10 @@ async def suggest_web_sources(req: Request):
     if "user_question" not in body:
         return JSONResponse(
             status_code=400,
-            content={"error": "Bad Request", "message": "Missing 'user_question' field"},
+            content={
+                "error": "Bad Request",
+                "message": "Missing 'user_question' field",
+            },
         )
     response = await make_request(DEFOG_BASE_URL + "/unstructured_data/search", body)
     return JSONResponse(content=response)
@@ -105,7 +117,10 @@ async def begin_generation(req: Request):
     if "user_question" not in body:
         return JSONResponse(
             status_code=400,
-            content={"error": "Bad Request", "message": "Missing 'user_question' field"},
+            content={
+                "error": "Bad Request",
+                "message": "Missing 'user_question' field",
+            },
         )
     if "task_type" not in body:
         return JSONResponse(
@@ -295,21 +310,6 @@ async def feedback_report(req: Request):
     return JSONResponse(status_code=501, content={"error": "Not Implemented"})
 
 
-@router.post("/oracle/get_clarifications")
-async def get_clarifications(req: Request):
-    """
-    This endpoint will return a list of clarifications that have
-    been flagged by the oracle so far and have not been addressed.
-    This will be a list of dictionaries, each containing:
-    - report_id
-    - user_question
-    - clarification_question
-    """
-    body = await req.json()
-    # TODO: Implement this endpoint
-    return JSONResponse(status_code=501, content={"error": "Not Implemented"})
-
-
 @router.post("/oracle/clarify_report")
 async def clarify_report(req: Request):
     """
@@ -323,3 +323,38 @@ async def clarify_report(req: Request):
     body = await req.json()
     # TODO: Implement this endpoint
     return JSONResponse(status_code=501, content={"error": "Not Implemented"})
+
+
+@router.post("/oracle/test_stage")
+async def oracle_test_stage(req: Request):
+    """
+    [TEST ROUTE]: this route is only for testing purposes and should not be used in production.
+    Given the question / objective statement provided by the user, this endpoint
+    will return a summary of the data, including a table and chart.
+    """
+    body = await req.json()
+    for field in ["api_key", "inputs", "outputs"]:
+        if field not in body:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Bad Request", "message": f"Missing '{field}' field"},
+            )
+    stage = body.get("stage", "explore")
+    if stage == "explore":
+        response = await explore_data(
+            api_key=body["api_key"],
+            username=body.get("username", ""),
+            report_id=int(body.get("report_id", "1")),
+            task_type=body.get("task_type", EXPLORATION),
+            inputs=body.get("inputs", {}),
+            outputs=body.get("outputs", {}),
+        )
+        return JSONResponse(response)
+    else:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Bad Request",
+                "message": f"Invalid 'stage' field. Must be one of: ['explore']",
+            },
+        )
