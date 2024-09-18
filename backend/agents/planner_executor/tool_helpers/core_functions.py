@@ -78,7 +78,7 @@ async def analyse_data(question: str, data_csv: str, sql: str, api_key: str) -> 
         return ""
     else:
         analysis = await make_request(
-            url=DEFOG_BASE_URL + "oracle/gen_explorer_data_analysis",
+            url=DEFOG_BASE_URL + "/oracle/gen_explorer_data_analysis",
             data={
                 "api_key": api_key,
                 "user_question": question,
