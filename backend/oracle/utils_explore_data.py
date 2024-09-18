@@ -95,6 +95,32 @@ async def execute_sql(
     return None
 
 
+async def retry_sql_gen(
+    api_key: str, question: str, sql: str, error: str, db_type: str
+) -> Optional[str]:
+    """
+    Fix the error that occurred while generating SQL / executing the query.
+    Returns the fixed sql query if successful, else None.
+    """
+    json_data = {
+        "api_key": api_key,
+        "question": question,
+        "previous_query": sql,
+        "error": error,
+        "db_type": db_type,
+    }
+    try:
+        response = await make_request(
+            f"{DEFOG_BASE_URL}/retry_query_after_error",
+            data=json_data,
+        )
+        new_query = response["new_query"]
+        return new_query
+    except Exception as e:
+        LOGGER.error(f"Error occurred in retrying SQL generation: {str(e)}")
+        return None
+
+
 async def get_chart_type(api_key: str, columns: list, question: str) -> Dict[str, str]:
     """
     Get the appropriate chart type for the given dataframe and question.

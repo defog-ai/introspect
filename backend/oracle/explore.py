@@ -15,10 +15,14 @@ from oracle.utils_explore_data import (
     get_chart_type,
     plot_chart,
     gen_data_analysis,
+    retry_sql_gen,
 )
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-
+NUM_GEN_QNS = 10
+MAX_ANALYSES = 5
+MAX_ROUNDS = 2
+RETRY_DATA_FETCH = 1
 
 async def explore_data(
     api_key: str,
@@ -79,7 +83,7 @@ async def explore_data(
     json_data = {
         "api_key": api_key,
         "user_question": user_question,
-        "n_gen_qns": 10,
+        "n_gen_qns": inputs.get("n_gen_qns", NUM_GEN_QNS),
         "task_type": task_type,
         "gather_context": gather_context,
     }
@@ -105,10 +109,15 @@ async def explore_data(
     )  # sort questions by relevancy score
 
     final_analyses = []
-    max_analyses = 5
+    max_analyses = inputs.get("max_analyses", MAX_ANALYSES)
+    # increments by 1 for each round of while loop
+    max_rounds = inputs.get("max_rounds", MAX_ROUNDS)
     qn_id = 0
+    round_count = 0
     while (
-        len(final_analyses) < max_analyses and len(generated_qns) > 0
+        len(final_analyses) < max_analyses
+        and len(generated_qns) > 0
+        and round_count < max_rounds
     ):  # terminated when max_analyses is reached or all generated_qns are exhausted
         # get the top k questions from generated_qns
         k = min(max_analyses, len(generated_qns), max_analyses - len(final_analyses))
@@ -127,6 +136,7 @@ async def explore_data(
                     db_type,
                     db_creds,
                     report_chart_dir,
+                    inputs.get("retry_data_fetch", RETRY_DATA_FETCH),
                 )
             )
             qn_id += 1
@@ -137,7 +147,11 @@ async def explore_data(
 
         # evaluate the analyses sequentially
         final_summaries = []
+        unfit_analyses = []
         for analysis in analyses_for_eval:
+            if "summary" not in analysis:
+                unfit_analyses.append(analysis)
+                continue
             final_summaries_str = "\n".join(
                 f"{i + 1}. {summary}" for i, summary in enumerate(final_summaries)
             )
@@ -147,10 +161,9 @@ async def explore_data(
                 "user_question": user_question,
                 "problem_statement": problem_statement,
                 "generated_qn": analysis["generated_qn"],
+                "summary": analysis["summary"],
                 "final_summaries_str": final_summaries_str,
             }
-            if "summary" in analysis:
-                json_data["summary"] = analysis["summary"]
             resp = await make_request(
                 f"{DEFOG_BASE_URL}/oracle/eval_explorer_data_analysis", data=json_data
             )
@@ -180,8 +193,12 @@ async def explore_data(
 
         # TODO evaluate quality and quantity of information gathered so far and
         # add more questions for processing if needed
+        # TODO refine questions which returned empty data based on what has been
+        # gathered so far
+        round_count += 1
+        LOGGER.debug(f"Round count: {round_count}")
 
-    LOGGER.info(f"Final analyses count: {len(final_analyses)}\n{final_analyses}")
+    LOGGER.debug(f"Final analyses count: {len(final_analyses)}\n{final_analyses}")
     return final_analyses
 
 
@@ -194,6 +211,7 @@ async def explore_generated_question(
     db_type: str,
     db_creds: Dict[str, str],
     report_chart_dir: str,
+    retry_data_fetch: int,
 ) -> Dict[str, Any]:
     """
     Given a generated question, this function will attempt to get and run the
@@ -223,48 +241,51 @@ async def explore_generated_question(
 
     Error handling policy:
     If any tool fails to generate the answer, we will log the error and the
-    function will return None (for easy downstream filtering). We err on the side
-    of
+    function will return None (for easy downstream filtering) if there isn't
+    sufficiently informative data to return.
+
+    If the data returned is empty, we will log a warning and return the minimal
+    outputs for the caller to iterate on improving the generated question.
     """
     LOGGER.info(f"[Explore] {qn_id}: {generated_qn}")
     ts, timings = time.time(), []
-    # generate SQL
-    try:
-        sql = await gen_sql(api_key, db_type, generated_qn, glossary)
-    except Exception as e:
-        LOGGER.error(f"Error occurred in generating SQL: {str(e)}")
-        LOGGER.error(traceback.format_exc())
-        sql = None
-    if not sql:
-        return None
-    # fetch data
-    ts = save_timing(ts, f"{qn_id}) SQL generation", timings)
 
-    # TODO generate SQL across multiple DB's and stitch them together with pandas
-
-    try:
-        data = await execute_sql(api_key, db_type, db_creds, generated_qn, sql)
-    except Exception as e:
-        LOGGER.error(f"Error occurred in fetching data: {str(e)}")
-        LOGGER.error(traceback.format_exc())
-        data = None
+    err_msg, sql, data = None, None, None
+    retry_count = 0
+    while retry_count < retry_data_fetch:
+        # TODO: DEF-540 generate SQL across multiple DB's and stitch them together with pandas
+        # generate SQL
+        try:
+            if retry_count == 0:
+                sql = await gen_sql(api_key, db_type, generated_qn, glossary)
+            else:
+                LOGGER.debug(f"Retrying SQL generation for {qn_id}: {generated_qn}")
+                sql = await retry_sql_gen(api_key, generated_qn, sql, err_msg, db_type)
+            err_msg = None
+        except Exception as e:
+            LOGGER.error(f"Error occurred in generating SQL: {str(e)}")
+            LOGGER.error(traceback.format_exc())
+            err_msg = str(e)
+            sql = None
+        if sql:
+            # fetch data
+            ts = save_timing(
+                ts, f"{qn_id}) SQL generation (try {retry_count})", timings
+            )
+            try:
+                data = await execute_sql(api_key, db_type, db_creds, generated_qn, sql)
+                err_msg = None
+                break
+            except Exception as e:
+                LOGGER.error(f"Error occurred in fetching data: {str(e)}")
+                LOGGER.error(traceback.format_exc())
+                err_msg = str(e)
+                data = None
+        retry_count += 1
     if data is None:
+        LOGGER.error(f"Data fetching failed for {qn_id}: {generated_qn}")
         return None
     ts = save_timing(ts, f"{qn_id}) Data fetching", timings)
-
-    # TODO add retries for SQL gen + data fetching based on error type/empty data
-    # we will have to wrap the SQL gen and data fetching in a retry loop
-
-    # choose appropriate visualization
-    try:
-        chart_type = await get_chart_type(api_key, data.columns.to_list(), generated_qn)
-    except Exception as e:
-        LOGGER.error(f"Error occurred in getting chart type: {str(e)}")
-        LOGGER.error(traceback.format_exc())
-        chart_type = None
-    if not chart_type:
-        return None
-    ts = save_timing(ts, f"{qn_id}) Get chart type", timings)
 
     # Consolidate outputs thus far for the given generated question.
     # This is the minimal output required to return, should any of the subsequent
@@ -282,6 +303,21 @@ async def explore_generated_question(
         "artifacts": artifacts,
         "working": {"generated_sql": sql},
     }
+
+    if data.empty:
+        LOGGER.error(f"No data fetched for {qn_id}: {generated_qn}")
+        return outputs
+
+    # choose appropriate visualization
+    try:
+        chart_type = await get_chart_type(api_key, data.columns.to_list(), generated_qn)
+    except Exception as e:
+        LOGGER.error(f"Error occurred in getting chart type: {str(e)}")
+        LOGGER.error(traceback.format_exc())
+        chart_type = None
+    if not chart_type:
+        return None
+    ts = save_timing(ts, f"{qn_id}) Get chart type", timings)
 
     # generate chart
     try:
