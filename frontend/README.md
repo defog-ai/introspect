@@ -28,3 +28,25 @@ When we ship Defog to a customer, they access both the frontend and the backend 
 When developing locally, we want to iteratively make changes while having the frontend app respond in close to real time to those changes. To this end, we do not want to export every single time.
 
 Instead, we can just use `npm run dev` to develop the app iteratively. This will spin up a node server at `localhost:1236` that will serve the frontend app. This server will automatically reload the app when changes are made to the code.
+
+## Testing
+
+We use `playwright` for running end-to-end tests. With playwright, we can record our tests in a UI and then run them. If you have not installed `playwright` yet, you must run `npm run i` first.
+
+### Running a test
+To run a test, go to the `frontend` directory. Then run `npx playwright test --ui`. Once you do, a UI will open up.
+
+![alt text](readme-images/playwright.png)
+
+In this UI, click on the "play" button next to the test you want to run. That's it! You can then see the tests being automatically run in the UI.
+
+Note that tests can sometimes fail for no real reason. If that happens, just run it again.
+
+### Recording a test
+To record a test, install the [Playwright extension for VS Code](https://playwright.dev/docs/getting-started-vscode).
+
+Once installed, you will see a "Testing" icon on the left, in the same place as where the Copilot chat icon resides.
+
+You can then click on the Testing icon, and record a test in the UI using the instructions [here](https://playwright.dev/docs/getting-started-vscode#record-a-new-test).
+
+Once done, a new test will be created in the `tests` folder. You can then modify it manually as needed.
