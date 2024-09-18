@@ -37,10 +37,11 @@ async def explore_data(
     Outputs a list of data analyses, each containing the following keys:
     - analysis_id: int
     - generated_qn: str
-    - artifacts: List[Dict[str, str]]
-        - artifact_type: str, e.g. table csv, image
-        - artifact_content: str, e.g. csv content, image path
-        - artifact_description: str, e.g. table of prices, scatter plot of x vs y
+    - artifacts: Dict[str, Dict[str, str]]
+        - (outer key) artifact_type: str, one of table_csv, image
+            - (inner key) artifact_content: str, e.g. csv content, image path
+            - (inner value) artifact_description: str, e.g. table of prices,
+                scatter plot of x vs y
     - working: Dict[str, str]
         - generated_sql: str
         - reason_for_qn: str
