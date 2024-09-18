@@ -1,8 +1,7 @@
 from typing import Dict, List
-from datetime import date
-import pandas as pd
 import base64
 import os
+from generic_utils import make_request
 
 # these are needed for the exec_code function
 import pandas as pd
@@ -75,12 +74,19 @@ def resolve_input(inp, global_dict):
         return inp
 
 
-async def analyse_data(
-    question: str, data: pd.DataFrame, image_path: str = None
-) -> str:
+async def analyse_data(question: str, data_csv: str, sql: str, api_key: str) -> str:
     """
     Generate a short summary of the results for the given qn.
     """
-    if not openai:
-        yield {"success": False, "model_analysis": "NONE"}
-        return
+    analysis = await make_request(
+        url="https://api.defog.ai/oracle/gen_explorer_data_analysis",
+        data={
+            "api_key": api_key,
+            "user_question": question,
+            "generated_qn": question,
+            "sql": sql,
+            "data_csv": data_csv,
+            "sampled": False,
+        },
+    )
+    return analysis.get("summary", "")

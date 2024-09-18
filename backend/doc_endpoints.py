@@ -223,57 +223,19 @@ async def get_analyses(request: Request):
         return {"success": False, "error_message": "Unable to parse your request."}
 
 
-# setup an analyse_data websocket endpoint
-@router.websocket("/analyse_data")
-async def analyse_data_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            data = await websocket.receive_json()
-            if "ping" in data:
-                # don't do anything
-                continue
-            if data.get("question") is None:
-                await manager.send_personal_message(
-                    {"success": False, "error_message": "No question"}, websocket
-                )
-                continue
-
-            if data.get("data") is None:
-                await manager.send_personal_message(
-                    {"success": False, "error_message": "No data"}, websocket
-                )
-                continue
-
-            df = pd.DataFrame(
-                data["data"]["data"],
-            )
-            for col in ["key", "index"]:
-                if col in df.columns:
-                    del df[col]
-
-            # read data from the csv
-            image_path = data.get("image")
-
-            async for chunk in analyse_data(
-                data.get("question"), df, image_path=image_path
-            ):
-                await manager.send_personal_message(chunk, websocket)
-
-    except WebSocketDisconnect as e:
-        # logging.info("Disconnected. Error: " +  str(e))
-        # traceback.print_exc()
-        manager.disconnect(websocket)
-        await websocket.close()
-    except Exception as e:
-        # logging.info("Disconnected. Error: " +  str(e))
-        traceback.print_exc()
-        await manager.send_personal_message(
-            {"success": False, "error_message": str(e)[:300]}, websocket
-        )
-        # other reasons for disconnect, like websocket being closed or a timeout
-        manager.disconnect(websocket)
-        await websocket.close()
+# setup an analyse_data endpoint
+@router.post("/analyse_data")
+async def analyse_data_endpoint(request: Request):
+    params = await request.json()
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    question = params.get("question")
+    data_csv = params.get("data_csv")
+    sql = params.get("sql")
+    model_analysis = await analyse_data(
+        question=question, data_csv=data_csv, sql=sql, api_key=api_key
+    )
+    return {"success": True, "model_analysis": model_analysis}
 
 
 # download csv using step_id and output_storage_key
