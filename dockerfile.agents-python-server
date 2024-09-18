@@ -6,9 +6,11 @@ WORKDIR /backend
 # need cmake for scikit
 RUN apt-get update && apt-get install -y python3-pip cmake netcat-openbsd wkhtmltopdf
 
-COPY ./backend/requirements.txt ./requirements.txt
+COPY ./backend/requirements_export.txt /root/requirements_export.txt
+COPY ./backend/requirements_oracle.txt /root/requirements_oracle.txt
 
-RUN pip install -r ./requirements.txt
+RUN pip install -r /root/requirements_export.txt
+RUN pip install -r /root/requirements_oracle.txt
 
 # expose python server port
 EXPOSE 1235
