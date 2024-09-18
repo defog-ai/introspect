@@ -8,7 +8,7 @@ test('test', async ({ page }) => {
   await page.getByLabel('Username').fill('admin');
   await page.getByLabel('Username').press('Tab');
   await page.getByLabel('Password').fill('admin');
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.keyboard.press('Enter');
 
   // TEST ADD DB CREDENTIALS
   await page.getByText('PostgreSQL').click();
@@ -39,8 +39,8 @@ test('test', async ({ page }) => {
 
   // TEST INITIAL QUERYING
   await page.waitForTimeout(1000);
-  await page.getByText('Restaurants').click();
-  await page.getByPlaceholder('Type your question here').click();
+  // get the first database that is selected
+  await page.locator('div.flex-row div.rounded-md span.rounded-full').first().click();
   await page.getByPlaceholder('Type your question here').fill('what is the average rating by city?');
   await page.getByRole('button', { name: 'Ask' }).click();
   // see if a clarifying question is asked after 3 seconds
@@ -69,7 +69,8 @@ test('test', async ({ page }) => {
   await page.getByRole('link', { name: 'Query Data' }).click();
   // wait for 1 second
   await page.waitForTimeout(1000);
-  await page.getByText('Restaurants').click();
+  // get the first database that is selected
+  await page.locator('div.flex-row div.rounded-md span.rounded-full').first().click();
   await page.getByPlaceholder('Type your question here').click();
   await page.getByPlaceholder('Type your question here').fill('what is the average rating by city?');
   await page.getByRole('button', { name: 'Ask' }).click();
