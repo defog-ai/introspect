@@ -2,13 +2,7 @@ from typing import Dict, List
 import base64
 import os
 from generic_utils import make_request
-
-# these are needed for the exec_code function
-import pandas as pd
-
-# get OPENAI_API_KEY from env
-
-openai = None
+import os
 
 analysis_assets_dir = os.environ.get(
     "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
@@ -78,15 +72,18 @@ async def analyse_data(question: str, data_csv: str, sql: str, api_key: str) -> 
     """
     Generate a short summary of the results for the given qn.
     """
-    analysis = await make_request(
-        url="https://api.defog.ai/oracle/gen_explorer_data_analysis",
-        data={
-            "api_key": api_key,
-            "user_question": question,
-            "generated_qn": question,
-            "sql": sql,
-            "data_csv": data_csv,
-            "sampled": False,
-        },
-    )
-    return analysis.get("summary", "")
+    if os.environ.get("ANALYZE_DATA", "no") != "yes":
+        return ""
+    else:
+        analysis = await make_request(
+            url="https://api.defog.ai/oracle/gen_explorer_data_analysis",
+            data={
+                "api_key": api_key,
+                "user_question": question,
+                "generated_qn": question,
+                "sql": sql,
+                "data_csv": data_csv,
+                "sampled": False,
+            },
+        )
+        return analysis.get("summary", "")

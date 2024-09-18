@@ -55,6 +55,7 @@ services:
       - GOOGLE_ANALYTICS_PROPERTY_IDS=${GOOGLE_ANALYTICS_PROPERTY_IDS}
       - RABBITMQ_HOST=${RABBITMQ_HOST:-agents-rabbitmq}
       - ORACLE_ENABLED=yes
+      - ANALYZE_DATA=${ANALYZE_DATA:-no}
 
       # Email configuration
       - EMAIL_OPTION=${EMAIL_OPTION:-DEFOG}
