@@ -105,7 +105,6 @@ async def add_user(request: Request):
                         token=INTERNAL_API_KEY,
                         user_type=dets["user_type"],
                         allowed_dbs=dets["allowed_dbs"],
-                        is_premium=True,
                     )
                 )
 

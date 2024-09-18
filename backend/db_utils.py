@@ -1,5 +1,4 @@
 import inspect
-import json
 import logging
 import traceback
 import datetime
@@ -261,7 +260,7 @@ def save_csv_to_db(
         )
         return True
     except Exception as e:
-        print(e)
+        LOGGER.error(e)
         return False
 
 
@@ -271,7 +270,7 @@ def get_db_type_creds(api_key):
             select(DbCreds.db_type, DbCreds.db_creds).where(DbCreds.api_key == api_key)
         ).fetchone()
 
-    print(row)
+    LOGGER.debug(row)
 
     return row
 

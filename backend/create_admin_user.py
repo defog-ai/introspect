@@ -1,9 +1,7 @@
-import time
+import hashlib
 
 from db_utils import engine, Users
 from sqlalchemy import select, insert
-import hashlib
-import time
 
 SALT = "TOMMARVOLORIDDLE"
 INTERNAL_API_KEY = "dummy_api_key"
@@ -30,7 +28,6 @@ else:
                 hashed_password=hashed_password,
                 token=INTERNAL_API_KEY,
                 user_type="admin",
-                is_premium=True,
             )
         )
     print("Admin user created.")

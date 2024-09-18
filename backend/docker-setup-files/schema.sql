@@ -106,10 +106,8 @@ CREATE TABLE public.defog_users (
     hashed_password text,
     token text NOT NULL,
     user_type text NOT NULL,
-    csv_tables text,
-    is_premium boolean,
     created_at timestamp without time zone,
-    is_verified boolean
+    allowed_dbs text
 );
 
 ALTER TABLE public.defog_users OWNER TO postgres;
