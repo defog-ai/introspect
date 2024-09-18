@@ -8,6 +8,8 @@ analysis_assets_dir = os.environ.get(
     "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
 )
 
+DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
+
 
 def encode_image(image_path):
     """
@@ -76,7 +78,7 @@ async def analyse_data(question: str, data_csv: str, sql: str, api_key: str) -> 
         return ""
     else:
         analysis = await make_request(
-            url="https://api.defog.ai/oracle/gen_explorer_data_analysis",
+            url=DEFOG_BASE_URL + "oracle/gen_explorer_data_analysis",
             data={
                 "api_key": api_key,
                 "user_question": question,
