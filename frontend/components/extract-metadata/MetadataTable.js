@@ -28,6 +28,8 @@ const MetadataTable = ({
   const [filter, setFilter] = useState([]); // list of table names to filter
   const [form] = Form.useForm();
 
+  const [pageSize, setPageSize] = useState(10);
+
   const hasNonEmptyDescriptionFunction = (metadata) => {
     return metadata.some(
       (item) => item.column_description && item.column_description.trim() !== ""
@@ -361,8 +363,16 @@ const MetadataTable = ({
           <Table
             columns={columns}
             dataSource={tableData}
-            pagination={{ pageSize: 10, position: ["bottomCenter"] }}
-            scroll={{ y: 700 }}
+            pagination={{
+              pageSize: pageSize,
+              pageSizeOptions: ["10", "20", "50", "100"],
+              showSizeChanger: true,
+              position: ["bottomCenter"], // Position of the pagination
+            }}
+            scroll={{ y: 1200 }}
+            onChange={(pagination) => {
+              setPageSize(pagination.pageSize);
+            }}
           />
         </>
       )}
