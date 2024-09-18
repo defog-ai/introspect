@@ -177,13 +177,13 @@ const DbCredentialsForm = ({
                     ? "Leave blank if you want to query multiple databases inside the same server"
                     : placeholders?.[field] || `Enter ${field}`
                 }
-                className="w-full p-2 border rounded bg-gray-50 text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border rounded bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
               />
             ) : (
               <Input.TextArea
                 placeholder="Paste the contents of your credentials file here"
-                className="w-full p-2 border rounded bg-gray-50 text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border rounded bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
                 rows={10}
               />
