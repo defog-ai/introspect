@@ -6,7 +6,7 @@ from defog.query import execute_query
 import re
 from fastapi.responses import JSONResponse
 from uuid import uuid4
-import sqlparse
+from generic_utils import format_sql
 
 from db_utils import (
     validate_user,
@@ -413,7 +413,7 @@ async def get_glossary_golden_queries(request: Request):
     resp = await make_request(url, {"api_key": api_key, "dev": dev})
     golden_queries = resp.get("golden_queries", [])
     for item in golden_queries:
-        item["sql"] = sqlparse.format(item["sql"], reindent=True, keyword_case="upper")
+        item["sql"] = format_sql(item["sql"])
 
     return {
         "glossary_compulsory": glossary_compulsory,
