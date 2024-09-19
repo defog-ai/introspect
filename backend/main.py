@@ -6,7 +6,6 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
 from agents.planner_executor.planner_executor_agent_rest import RESTExecutor
-from oracle.setup import setup_dir
 import doc_endpoints
 
 from db_utils import (
@@ -41,6 +40,12 @@ if os.environ.get("ORACLE_ENABLED", "no") == "yes":
     app.include_router(oracle_routes.router)
     app.include_router(data_connector_routes.router)
 
+    from oracle.setup import setup_dir
+
+    # check if the oracle directory structure exists and create if not
+    setup_dir(os.getcwd())
+
+
 origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
@@ -55,9 +60,6 @@ analysis_assets_dir = os.environ.get(
     "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
 )
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
-
-# check if the oracle directory structure exists and create if not
-setup_dir(os.getcwd())
 
 
 @app.get("/ping")
