@@ -1,3 +1,4 @@
+import copy
 import json
 import httpx
 import os
@@ -5,7 +6,7 @@ import sqlparse
 from datetime import datetime
 import re
 
-from utils_logging import LOGGER
+from utils_logging import LOGGER, LOG_LEVEL
 
 DEFOG_API_KEYS = os.environ.get("DEFOG_API_KEYS")
 if not DEFOG_API_KEYS:
@@ -20,10 +21,14 @@ DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
 
 
 async def make_request(url, data):
-    LOGGER.debug(f"Making request to: {url}")
-    # avoid excessively long logs (e.g. for base64 encoded images)
-    data_str = json.dumps(data)[:500] + "..." if len(json.dumps(data)) > 500 else json.dumps(data)
-    LOGGER.debug(f"Request body: {data_str}")
+    if LOG_LEVEL == "DEBUG":
+        LOGGER.debug(f"Making request to: {url}")
+        # avoid excessively long logs (e.g. for base64 encoded images)
+        data_copy = copy.deepcopy(data)
+        if isinstance(data_copy, dict) and "chart" in data_copy:
+            data_copy["chart"] = "<base64 image data>"
+        data_str = json.dumps(data_copy, indent=2)
+        LOGGER.debug(f"Request body:\n{data_str}")
     async with httpx.AsyncClient(verify=False) as client:
         r = await client.post(
             url,
@@ -31,10 +36,11 @@ async def make_request(url, data):
             timeout=60,
         )
     response = r.json()
+    response_str = json.dumps(response, indent=2)
     if r.status_code != 200:
-        LOGGER.error(f"Error in request: {response}")
+        LOGGER.error(f"Error in request:\n{response_str}")
         return None
-    LOGGER.debug(f"Response: {response}")
+    LOGGER.debug(f"Response:\n{response_str}")
     return response
 
 

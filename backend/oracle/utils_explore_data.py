@@ -6,7 +6,7 @@ import base64
 from celery.utils.log import get_task_logger
 from utils_logging import LOG_LEVEL
 from defog.query import execute_query
-from generic_utils import is_sorry, make_request, normalize_sql
+from generic_utils import format_sql, is_sorry, make_request, normalize_sql
 from agents.planner_executor.tools.plotting import (
     bar_plot,
     line_plot,
@@ -48,10 +48,11 @@ async def gen_sql(api_key: str, db_type: str, question: str, glossary: str) -> s
             "glossary": glossary,
         },
     )
-    if resp.get("ran_successfully", False) == True:
+    # anything that returns a status code other than 200 will return None
+    if resp:
         gen_sql = resp["sql"]
         gen_sql = normalize_sql(gen_sql)
-        LOGGER.info(f"Generated SQL: {gen_sql}")
+        LOGGER.debug(f"Generated SQL: {format_sql(gen_sql)}")
         return gen_sql
     else:
         LOGGER.error(

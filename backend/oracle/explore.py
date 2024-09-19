@@ -19,10 +19,10 @@ from oracle.utils_explore_data import (
 )
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-NUM_GEN_QNS = 10
 MAX_ANALYSES = 5
 MAX_ROUNDS = 2
 RETRY_DATA_FETCH = 1
+
 
 async def explore_data(
     api_key: str,
@@ -83,7 +83,7 @@ async def explore_data(
     json_data = {
         "api_key": api_key,
         "user_question": user_question,
-        "n_gen_qns": inputs.get("n_gen_qns", NUM_GEN_QNS),
+        "n_gen_qns": inputs.get("max_analyses", MAX_ANALYSES),
         "task_type": task_type,
         "gather_context": gather_context,
     }
@@ -99,7 +99,7 @@ async def explore_data(
 
     # TODO add additional input format checks and retries
     generated_qns = generated_qns.get("generated_questions", [])
-    LOGGER.info(f"Generated questions: {generated_qns}\n")
+    LOGGER.debug(f"Generated questions: {generated_qns}\n")
 
     generated_qns = [
         q for q in generated_qns if q.get("data_available", False) and "question" in q
@@ -109,6 +109,7 @@ async def explore_data(
     )  # sort questions by relevancy score
 
     final_analyses = []
+    final_summaries = []
     max_analyses = inputs.get("max_analyses", MAX_ANALYSES)
     # increments by 1 for each round of while loop
     max_rounds = inputs.get("max_rounds", MAX_ROUNDS)
@@ -118,20 +119,21 @@ async def explore_data(
         len(final_analyses) < max_analyses
         and len(generated_qns) > 0
         and round_count < max_rounds
-    ):  # terminated when max_analyses is reached or all generated_qns are exhausted
-        # get the top k questions from generated_qns
-        k = min(max_analyses, len(generated_qns), max_analyses - len(final_analyses))
-        topk_qns = generated_qns[:k]
-
-        # explore the top k questions
+    ):
         tasks = []
-        for q in topk_qns:
+        for q in generated_qns:
+            # question used by 1st round question generation
+            if "question" in q:
+                qn = q["question"]
+            else:
+                LOGGER.error(f"Question not found in {q}")
+                continue
             tasks.append(
                 explore_generated_question(
                     api_key,
                     user_question,
                     qn_id,
-                    q["question"],
+                    qn,
                     glossary,
                     db_type,
                     db_creds,
@@ -145,8 +147,7 @@ async def explore_data(
         analyses_for_eval = [ans for ans in topk_answers if ans is not None]
         LOGGER.debug(f"Analyses for evaluation count: {len(analyses_for_eval)}")
 
-        # evaluate the analyses sequentially
-        final_summaries = []
+        # evaluate the analyses sequentially to check for usefulness and newness
         unfit_analyses = []
         for analysis in analyses_for_eval:
             if "summary" not in analysis:
@@ -173,7 +174,7 @@ async def explore_data(
             reason = resp.get("reason", "")
             usefulness = resp.get("usefulness", False)
             newness = resp.get("newness", False)
-            LOGGER.info(
+            LOGGER.debug(
                 f"Generated question: {analysis['generated_qn']}, Reason: {reason}, Usefulness: {usefulness}, Newness: {newness}\n"
             )
             if usefulness and newness:
@@ -184,17 +185,33 @@ async def explore_data(
                 analysis["working"]["reason_for_analysis_eval"] = reason
                 final_summaries.append(analysis["summary"])
                 final_analyses.append(analysis)
-                if len(final_analyses) >= max_analyses:
+            else:
+                unfit_analyses.append(analysis)
+
+        # break if we have achieved the number of analyses required
+        if len(final_analyses) >= max_analyses:
+            break
+
+        # generate more questions if needed
+        json_data = {
+            "api_key": api_key,
+            "user_question": user_question,
+            "task_type": task_type,
+            "previous_questions": final_analyses + unfit_analyses,
+            "gather_context": gather_context,
+        }
+        resp = await make_request(
+            f"{DEFOG_BASE_URL}/oracle/regen_explorer_qns", data=json_data
+        )
+        answered_questions = resp.get("answered_questions", [])
+        final_analyses_ordered = []
+        for q in answered_questions:
+            for ans in final_analyses:
+                if ans["generated_qn"] == q:
+                    final_analyses_ordered.append(ans)
                     break
-
-        # add analysis_id to final_analyses
-        for i, analysis in enumerate(final_analyses):
-            analysis["analysis_id"] = i + 1
-
-        # TODO evaluate quality and quantity of information gathered so far and
-        # add more questions for processing if needed
-        # TODO refine questions which returned empty data based on what has been
-        # gathered so far
+        final_analyses = final_analyses_ordered
+        generated_qns = resp.get("refined_questions", [])
         round_count += 1
         LOGGER.debug(f"Round count: {round_count}")
 
@@ -336,7 +353,7 @@ async def explore_generated_question(
         return outputs  # return minimal outputs if chart generation fails
     ts = save_timing(ts, f"{qn_id}) Plot chart", timings)
 
-    # TODO add retries for chart plotting based on error type and if chart
+    # TODO: DEF-552 add retries for chart plotting based on error type and if chart
     # visuals are not meaningful (e.g. axis labels overlap, no data points, etc)
 
     # add chart to outputs
