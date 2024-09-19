@@ -108,11 +108,11 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
 
             exec(code, globals())
             fn = globals()[function_name]
-            tool_function_inputs["global_dict"] = tool_function_inputs.get(
-                "global_dict", {}
-            )
 
-            tool_function_inputs["global_dict"].update(global_dict)
+            if tool_function_inputs.get("global_dict"):
+                tool_function_inputs["global_dict"].update(global_dict)
+            else:
+                tool_function_inputs["global_dict"] = global_dict
 
             filtered_inputs, _ = filter_function_inputs(fn, tool_function_inputs)
 
