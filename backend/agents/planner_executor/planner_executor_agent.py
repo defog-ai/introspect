@@ -5,9 +5,6 @@ from io import StringIO
 import traceback
 from uuid import uuid4
 
-from colorama import Fore, Style
-from regex import D
-
 from agents.planner_executor.execute_tool import execute_tool
 from agents.clarifier.clarifier_agent import turn_into_statements
 from tool_code_utilities import fetch_query_into_df
