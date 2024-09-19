@@ -69,7 +69,7 @@ def format_sql(sql):
     """
     Formats SQL query to be more readable
     """
-    return sqlparse.format(sql, reindent=True, keyword_case="upper")
+    return sqlparse.format(sql, reindent_aligned=True)
 
 
 def format_date_string(iso_date_string):
