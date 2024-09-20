@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { Alert, Form, Select, Input, Button, Table, message, Spin } from "antd";
-import { EditOutlined, SaveOutlined, TableOutlined } from "@ant-design/icons";
+import {
+  EditOutlined,
+  SaveOutlined,
+  TableOutlined,
+  DownloadOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
 const MetadataTable = ({
@@ -49,52 +55,41 @@ const MetadataTable = ({
     setFilteredMetadata(initialMetadata);
   }, [initialMetadata]);
 
-  useEffect(() => {
-    if (isUpdatedMetadata) {
-      const updateMetadata = async () => {
-        try {
-          setLoading(true);
-          const res = await fetch(
-            setupBaseUrl("http", `integration/update_metadata`),
-            {
-              method: "POST",
-              body: JSON.stringify({
-                metadata: metadata,
-                token: token,
-                key_name: apiKeyName,
-              }),
-            }
-          );
-          const data = await res.json();
-          setLoading(false);
-          if (data.error) {
-            message.error(data.error || "Error updating metadata");
-          } else {
-            if (data.suggested_joins) {
-              document.getElementById("allowed-joins").value =
-                data.suggested_joins;
-            }
-            if (data.detail) {
-              message.error(data.detail);
-            } else {
-              message.success("Metadata updated successfully!");
-              setColumnDescriptionCheck(
-                hasNonEmptyDescriptionFunction(metadata)
-              );
-            }
-          }
-        } catch (error) {
-          console.error("Error saving data:", error);
-          message.error("Error saving data");
-          setLoading(false);
+  const updateMetadata = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(
+        setupBaseUrl("http", `integration/update_metadata`),
+        {
+          method: "POST",
+          body: JSON.stringify({
+            metadata: metadata,
+            token: token,
+            key_name: apiKeyName,
+          }),
         }
-      };
-
-      updateMetadata();
-      setIsUpdatedMetadata(false);
-      setEditingKeys({});
+      );
+      const data = await res.json();
+      setLoading(false);
+      if (data.error) {
+        message.error(data.error || "Error updating metadata");
+      } else {
+        if (data.suggested_joins) {
+          document.getElementById("allowed-joins").value = data.suggested_joins;
+        }
+        if (data.detail) {
+          message.error(data.detail);
+        } else {
+          message.success("Metadata updated successfully!");
+          setColumnDescriptionCheck(hasNonEmptyDescriptionFunction(metadata));
+        }
+      }
+    } catch (error) {
+      console.error("Error saving data:", error);
+      message.error("Error saving data");
+      setLoading(false);
     }
-  }, [isUpdatedMetadata]);
+  };
 
   const toggleEdit = (key) => {
     setEditingKeys((prev) => ({
@@ -275,6 +270,75 @@ const MetadataTable = ({
     form.setFieldsValue({ tables: [] });
   };
 
+  const downloadMetadata = async () => {
+    // download metadata as a CSV
+    const response = await fetch(
+      setupBaseUrl("http", `integration/get_metadata`),
+      {
+        method: "POST",
+        body: JSON.stringify({
+          token: token,
+          key_name: apiKeyName,
+          format: "csv",
+        }),
+      }
+    );
+    const resp = await response.json();
+    if (resp.error) {
+      message.error(resp.error);
+    } else {
+      const url = window.URL.createObjectURL(new Blob([resp.metadata]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "metadata.csv");
+      document.body.appendChild(link);
+      link.click();
+      // remove the link
+      document.body.removeChild(link);
+    }
+  };
+
+  const uploadMetadata = async () => {
+    // upload a file containing metadata
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = ".csv";
+
+    fileInput.onchange = async (e) => {
+      const file = e.target.files[0];
+      // get the file content as a text file
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const metadataCsv = e.target.result;
+        const response = await fetch(
+          setupBaseUrl("http", `integration/upload_metadata`),
+          {
+            method: "POST",
+            body: JSON.stringify({
+              token: token,
+              key_name: apiKeyName,
+              metadata_csv: metadataCsv,
+            }),
+          }
+        );
+        if (!response.ok) {
+          message.error("Error uploading metadata");
+          return;
+        } else {
+          const resp = await response.json();
+          message.success("Metadata uploaded successfully!");
+          setMetadata(resp.metadata || []);
+          setFilteredMetadata(resp.metadata || []);
+        }
+      };
+
+      reader.readAsText(file);
+    };
+
+    fileInput.click();
+  };
+
   return (
     <div className="mx-auto bg-white shadow-md rounded-md p-6">
       <div className="flex flex-col items-center text-2xl mb-10">
@@ -334,32 +398,44 @@ const MetadataTable = ({
           Extract Table Metadata
         </Button>
       </Form>
-      <Alert
-        message="This table is a preview for your changes. Please hit 'Save Changes' to update metadata on the defog server."
-        type="info"
-        showIcon
-        className="mb-4"
-      />
       {loading ? (
         <div className="flex justify-center items-center">
           <Spin size="large" tip="Fetching metadata..." />
         </div>
       ) : (
         <>
-          <div className="flex justify-center mt-4">
+          <div className="flex justify-center my-4 gap-4">
             <Button
-              type="primary"
+              className="rounded bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               loading={loading}
-              onClick={() => setIsUpdatedMetadata(true)}
-              style={{
-                backgroundColor: "#4CAF50", // Darker shade of green
-                borderColor: "#4CAF50",
-                color: "#fff",
-              }}
+              onClick={updateMetadata}
             >
               Save Changes
             </Button>
+
+            <Button
+              className="rounded px-2 py-1 text-xs font-semibold text-black shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              loading={loading}
+              onClick={downloadMetadata}
+            >
+              Download <DownloadOutlined />
+            </Button>
+
+            <Button
+              className="rounded px-2 py-1 text-xs font-semibold text-black shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              loading={loading}
+              onClick={uploadMetadata}
+            >
+              Upload <UploadOutlined />
+            </Button>
           </div>
+          <Alert
+            message="This table is a preview for your changes. Please hit 'Save Changes' to update metadata on the defog server, or upload your metadata as a CSV"
+            type="info"
+            showIcon
+            className="mb-4"
+          />
+
           <Table
             columns={columns}
             dataSource={tableData}
