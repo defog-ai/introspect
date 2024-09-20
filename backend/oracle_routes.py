@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert, select
 
 from oracle.explore import explore_data
+from oracle.core import gather_context
 from db_utils import OracleReports, engine, validate_user
 from generic_utils import get_api_key_from_key_name, make_request
 from oracle.core import (
@@ -340,7 +341,17 @@ async def oracle_test_stage(req: Request):
                 content={"error": "Bad Request", "message": f"Missing '{field}' field"},
             )
     stage = body.get("stage", "explore")
-    if stage == "explore":
+    if stage == "gather_context":
+        response = await gather_context(
+            api_key=body["api_key"],
+            username=body.get("username", ""),
+            inputs=body.get("inputs", {}),
+            report_id=int(body.get("report_id", "1")),
+            task_type=body.get("task_type", EXPLORATION),
+            outputs=body.get("outputs", {}),
+        )
+        return JSONResponse(response)
+    elif stage == "explore":
         response = await explore_data(
             api_key=body["api_key"],
             username=body.get("username", ""),
@@ -355,6 +366,6 @@ async def oracle_test_stage(req: Request):
             status_code=400,
             content={
                 "error": "Bad Request",
-                "message": f"Invalid 'stage' field. Must be one of: ['explore']",
+                "message": f"Invalid 'stage' field. Must be one of: ['gather_context', 'explore']",
             },
         )
