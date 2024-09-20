@@ -13,7 +13,7 @@ const MetadataTable = ({
   token,
   apiKeyName,
   tablesData,
-  metadata: initialMetadata,
+  initialMetadata,
   setColumnDescriptionCheck,
 }) => {
   // all tables from the database
@@ -53,6 +53,33 @@ const MetadataTable = ({
     setMetadata(initialMetadata);
     setFilteredMetadata(initialMetadata);
   }, [initialMetadata]);
+
+  useEffect(() => {
+    setFilteredMetadata(metadata);
+  }, [metadata]);
+
+  const fetchMetadata = async () => {
+    setLoading(true);
+    const res = await fetch(setupBaseUrl("http", `integration/get_metadata`), {
+      method: "POST",
+      body: JSON.stringify({
+        token,
+        key_name: apiKeyName,
+      }),
+    });
+    // check if the response has status 200
+    if (res.status === 401) {
+      message.error("Your credentials are incorrect. Please log in again.");
+      return;
+    }
+    const data = await res.json();
+    setLoading(false);
+    if (!data.error) {
+      setMetadata(data.metadata || []);
+    } else {
+      setMetadata([]);
+    }
+  };
 
   const updateMetadata = async () => {
     try {
@@ -141,11 +168,6 @@ const MetadataTable = ({
       if (data.error) {
         message.error("Error fetching metadata");
       } else {
-        data.metadata.forEach((item) => {
-          if (desc[item.column_name]) {
-            item.column_description = desc[item.column_name];
-          }
-        });
         setMetadata(data.metadata || []);
         setFilteredMetadata(data.metadata || []);
       }
@@ -325,7 +347,10 @@ const MetadataTable = ({
           message.error("Error uploading metadata");
           return;
         } else {
-          message.success("Metadata uploaded successfully!");
+          message.success("Metadata uploaded successfully! Reloading...");
+
+          // reload metadata
+          await fetchMetadata();
         }
       };
 
