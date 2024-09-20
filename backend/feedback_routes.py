@@ -10,6 +10,7 @@ import os
 import pandas as pd
 from fastapi.responses import JSONResponse
 from datetime import datetime
+from db_utils import get_db_type_creds
 
 router = APIRouter()
 
@@ -128,6 +129,12 @@ async def get_instructions_recommendation(request: Request):
     sql_generated = params.get("sql_generated")
     user_feedback = params.get("user_feedback")
     url = DEFOG_BASE_URL + "/reflect_on_error"
+    res = get_db_type_creds(api_key)
+
+    if res:
+        db_type, db_creds = res
+    else:
+        return {"error": "no db creds found"}
 
     r = await make_request(
         url=url,
@@ -136,6 +143,7 @@ async def get_instructions_recommendation(request: Request):
             "question": question,
             "sql_generated": sql_generated,
             "error": user_feedback,
+            "db_type": db_type,
         },
     )
     return r
