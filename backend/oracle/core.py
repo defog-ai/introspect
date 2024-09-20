@@ -261,9 +261,11 @@ async def gather_context(
     LOGGER.debug("Got the following sources:")
     sources = []
     for source in inputs["sources"]:
-        if "link" in source:
+        if "http" in source:
             source["type"] = "webpage"
-            sources.append(source)
+        elif ".pdf" in source:
+            source["type"] = "pdf"
+        sources.append(source)
         LOGGER.debug(f"{source}")
     json_data = {
         "api_key": api_key,
@@ -327,7 +329,10 @@ async def gather_context(
                 "all_rows": [table["column_names"]] + table["rows"],
                 "previous_text": table.get("previous_text"),
             }
-            table_keys.append((source["link"], i))
+            if table.get("table_page", None):
+                table_keys.append((source["link"], table["table_page"])) # use table page as index if available
+            else:
+                table_keys.append((source["link"], i))
             parse_table_tasks.append(
                 make_request(
                     DEFOG_BASE_URL + "/unstructured_data/infer_table_properties",
@@ -337,7 +342,7 @@ async def gather_context(
     parsed_tables = await asyncio.gather(*parse_table_tasks)
     inserted_tables = {}
     with engine.connect() as connection:
-        for (url, table_index), parsed_table in zip(table_keys, parsed_tables):
+        for (link, table_index), parsed_table in zip(table_keys, parsed_tables):
             try:
                 # input validation
                 if "table_name" not in parsed_table:
@@ -362,12 +367,12 @@ async def gather_context(
                 schema_name = "parsed"
                 schema_table_name = f"{schema_name}.{table_name}"
                 update_imported_tables(
-                    url, table_index, schema_table_name, table_description
+                    link, table_index, schema_table_name, table_description
                 )
 
                 # create the table and insert the data into imported_tables database, parsed schema
                 update_imported_tables_db(table_name, data, schema_name)
-
+                [column.pop("fn", None) for column in columns] # remove "fn" key if present before updating metadata
                 inserted_tables[schema_table_name] = columns
             except Exception as e:
                 LOGGER.error(
@@ -379,7 +384,7 @@ async def gather_context(
         response = await make_request(
             DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "imported": True}
         )
-        md = response.get("table_metadata", {})
+        md = response.get("table_metadata", {}) if response else {}
         md.update(inserted_tables)
         response = await make_request(
             DEFOG_BASE_URL + "/update_metadata",
