@@ -701,5 +701,4 @@ async def upload_metadata(request: Request):
         },
     )
 
-    r["metadata"] = metadata
     return r

@@ -29,7 +29,6 @@ const MetadataTable = ({
   const [editingKeys, setEditingKeys] = useState({});
 
   const [loading, setLoading] = useState(false);
-  const [isUpdatedMetadata, setIsUpdatedMetadata] = useState(false);
   const [desc, setDesc] = useState({});
   const [filter, setFilter] = useState([]); // list of table names to filter
   const [form] = Form.useForm();
@@ -326,17 +325,16 @@ const MetadataTable = ({
           message.error("Error uploading metadata");
           return;
         } else {
-          const resp = await response.json();
           message.success("Metadata uploaded successfully!");
-          setMetadata(resp.metadata || []);
-          setFilteredMetadata(resp.metadata || []);
         }
       };
 
       reader.readAsText(file);
     };
 
+    setLoading(true);
     fileInput.click();
+    setLoading(false);
   };
 
   return (
