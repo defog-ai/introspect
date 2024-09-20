@@ -14,7 +14,7 @@
     "@ant-design/icons": "^5.4.0",
     "@azure/msal-browser": "^3.7.1",
     "@azure/msal-react": "^2.0.10",
-    "@defogdotai/agents-ui-components": "^0.0.41",
+    "@defogdotai/agents-ui-components": "^0.0.42",
     "@dotlottie/react-player": "^1.6.12",
     "@marsidev/react-turnstile": "^0.4.1",
     "@notionhq/client": "^2.2.14",
