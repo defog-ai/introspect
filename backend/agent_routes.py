@@ -134,6 +134,26 @@ async def generate_step(request: Request):
         else:
             assignment_understanding = None
 
+        # unify questions if there are previous questions
+        if len(prev_questions) > 0:
+            # make a request to combine the previous questions and the current question
+
+            question_unifier_url = (
+                os.getenv("DEFOG_BASE_URL", "https://api.defog.ai")
+                + "/convert_question_to_single"
+            )
+            unified_question = await make_request(
+                url=question_unifier_url,
+                data={
+                    "api_key": api_key,
+                    "question": question,
+                    "previous_context": prev_questions,
+                },
+            )
+            question = unified_question.get("rephrased_question", question)
+            print(question)
+            print(f"*******\nUnified question: {question}\n********", flush=True)
+
         if sql_only:
             # if sql_only is true, just call the sql generation function and return, while saving the step
             if type(assignment_understanding) == str:
@@ -143,7 +163,7 @@ async def generate_step(request: Request):
                         r"^\d+\.\s", "", assignment_understanding
                     )
 
-                question = question + ". Note: " + assignment_understanding
+                question = question + " (" + assignment_understanding + ")"
                 print(
                     f"*******\nQuestion with assignment understanding:\n{question}\n*******",
                     flush=True,
@@ -199,40 +219,6 @@ async def generate_step(request: Request):
 
         else:
             question = question.strip()
-            if len(prev_questions) > 0:
-                # make a request to combine the previous questions and the current question
-
-                if (
-                    redis_client.exists(f"unified_question:{analysis_id}")
-                    or analysis_id in question_cache
-                ):
-                    if redis_available:
-                        question = redis_client.get(f"unified_question:{analysis_id}")
-                    else:
-                        question = question_cache.get(analysis_id)
-                else:
-                    question_unifier_url = (
-                        os.getenv("DEFOG_BASE_URL", "https://api.defog.ai")
-                        + "/convert_question_to_single"
-                    )
-                    unified_question = await make_request(
-                        url=question_unifier_url,
-                        data={
-                            "api_key": api_key,
-                            "question": question,
-                            "previous_context": prev_questions,
-                        },
-                    )
-                    question = unified_question.get("rephrased_question", question)
-                    if redis_available:
-                        redis_client.setex(
-                            f"unified_question:{analysis_id}", 3600, question
-                        )
-                    else:
-                        question_cache[analysis_id] = question
-
-                print(f"*******\nUnified question: {question}\n********", flush=True)
-
             # make sure the extra tools don't already exist in the db
             for tool in extra_tools:
                 tool_name = tool.get("tool_name", "")
