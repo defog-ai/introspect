@@ -7,6 +7,8 @@ import re
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 from generic_utils import format_sql
+import pandas as pd
+from io import StringIO
 
 from db_utils import (
     validate_user,
@@ -103,6 +105,7 @@ async def get_metadata(request: Request):
     params = await request.json()
     token = params.get("token")
     is_temp = params.get("temp", False)
+    format = params.get("format", "json")
     if not validate_user(token):
         return JSONResponse(
             status_code=401,
@@ -122,6 +125,10 @@ async def get_metadata(request: Request):
         table_metadata = md["table_metadata"]
 
         metadata = convert_nested_dict_to_list(table_metadata)
+        if format == "csv":
+            metadata = pd.DataFrame(metadata)[
+                ["table_name", "column_name", "data_type", "column_description"]
+            ].to_csv(index=False)
         return {"metadata": metadata}
     except:
         return {"error": "no metadata found"}
@@ -640,4 +647,59 @@ async def get_dynamic_glossary(request: Request):
         {"question": question, "api_key": api_key, "dev": dev},
     )
 
+    return r
+
+
+@router.post("/integration/upload_metadata")
+async def upload_metadata(request: Request):
+    params = await request.json()
+    token = params.get("token")
+    if not validate_user(token, user_type="admin"):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    key_name = params.get("key_name")
+    dev = params.get("dev", False)
+    api_key = get_api_key_from_key_name(key_name)
+    res = get_db_type_creds(api_key)
+    if res:
+        db_type, _ = res
+    else:
+        return {"error": "no db creds found"}
+
+    metadata_csv = params.get("metadata_csv")
+    metadata = pd.read_csv(StringIO(metadata_csv)).fillna("").to_dict(orient="records")
+
+    # convert metadata to nested dictionary
+    table_metadata = {}
+    for item in metadata:
+        table_name = item["table_name"]
+        if table_name not in table_metadata:
+            table_metadata[table_name] = []
+
+        table_metadata[table_name].append(
+            {
+                "column_name": item["column_name"],
+                "data_type": item["data_type"],
+                "column_description": item.get("column_description", ""),
+            }
+        )
+
+    # update on API server
+    r = await make_request(
+        DEFOG_BASE_URL + "/update_metadata",
+        {
+            "api_key": api_key,
+            "table_metadata": table_metadata,
+            "db_type": db_type,
+            "dev": dev,
+        },
+    )
+
+    r["metadata"] = metadata
     return r
