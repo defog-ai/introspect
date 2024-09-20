@@ -190,7 +190,7 @@ const ExtractMetadata = () => {
             token={token}
             apiKeyName={apiKeyName}
             tablesData={tablesData}
-            metadata={metadata} // Pass metadata as
+            initialMetadata={metadata} // Pass metadata as
             setColumnDescriptionCheck={setColumnDescriptionCheck}
           />
         ),
