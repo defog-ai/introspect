@@ -7,6 +7,7 @@ from sqlalchemy import (
     Table,
     Column,
     Integer,
+    Float,
     Text,
     Boolean,
     DateTime,
@@ -187,8 +188,8 @@ oracle_sources = Table(
 imported_tables = Table(
     "imported_tables",
     metadata,
-    Column("table_url", Text, primary_key=True),
-    Column("table_position", Integer, primary_key=True),
+    Column("table_link", Text, primary_key=True),
+    Column("table_position", Float, primary_key=True),
     Column("table_name", Text),
     Column("table_description", Text),
 )
