@@ -181,16 +181,16 @@ def convert_cols_to_jsonb(
 
 
 def update_imported_tables(
-    url: str, table_index: int, table_name: str, table_description: str
+    link: str, table_index: int, table_name: str, table_description: str
 ) -> bool:
     """
     Updates the imported_tables table in the internal database with the table's info.
     Removes entry from imported_tables of the internal database if it already exists.
     """
     with engine.connect() as conn:
-        # check if url and table_index already exist in imported_tables of internal database
+        # check if link and table_index already exist in imported_tables of internal database
         stmt = select(ImportedTables).where(
-            ImportedTables.table_url == url,
+            ImportedTables.table_link == link,
             ImportedTables.table_position == table_index,
         )
         result = conn.execute(stmt)
@@ -202,7 +202,7 @@ def update_imported_tables(
                 update_stmt = (
                     update(ImportedTables)
                     .where(
-                        ImportedTables.table_url == url,
+                        ImportedTables.table_link == link,
                         ImportedTables.table_position == table_index,
                     )
                     .values(table_name=table_name, table_description=table_description)
@@ -221,7 +221,7 @@ def update_imported_tables(
             try:
                 # insert the table's info into imported_tables of the internal database
                 table_data = {
-                    "table_url": url,
+                    "table_link": link,
                     "table_position": table_index,
                     "table_name": table_name,
                     "table_description": table_description,
