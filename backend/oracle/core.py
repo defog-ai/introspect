@@ -363,7 +363,7 @@ async def gather_context(
                     "rows"
                 ]  # 2D list of data TODO: fix parsing of rows. currently splits on commas even if comma is within the same sentence or there's comma in value e.g. $10,000
                 data = [column_names] + rows
-                # check if url and table_index already exist in imported_tables table and update if necessary
+                # check if link and table_index already exist in imported_tables table and update if necessary
                 schema_name = "parsed"
                 schema_table_name = f"{schema_name}.{table_name}"
                 update_imported_tables(

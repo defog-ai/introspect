@@ -258,9 +258,9 @@ async def callback(ch, method, properties, body):
             convert_cols_to_jsonb(table_name, jsonb_cols, schema_name)
 
         # update imported_tables table entries in internal db
-        url = "google_analytics"
+        link = "google_analytics"
         update_imported_tables(
-            url, table_index, schema_table_name, table_description=None
+            link, table_index, schema_table_name, table_description=None
         )
 
     # get and update metadata for {api_key}-imported
