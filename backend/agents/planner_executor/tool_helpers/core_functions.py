@@ -95,7 +95,7 @@ async def analyse_data(question: str, data_csv: str, sql: str, api_key: str) -> 
             import boto3
 
             bedrock = boto3.client(service_name="bedrock-runtime")
-            model_id = "meta.llama3-70b-instruct-v1:0"
+            model_id = "meta.llama3-1-70b-instruct-v1:0"
             accept = "application/json"
             contentType = "application/json"
 
