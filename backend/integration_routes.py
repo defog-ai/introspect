@@ -257,7 +257,6 @@ async def generate_metadata(request: Request):
     md = await make_request(
         f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key, "dev": dev}
     )
-    print("here 3")
     try:
         existing_metadata = md["table_metadata"]
     except:
@@ -279,6 +278,9 @@ async def generate_metadata(request: Request):
                         )
 
     metadata = convert_nested_dict_to_list(table_metadata)
+
+    # sort metadata dict by table name
+    metadata = sorted(metadata, key=lambda x: x["table_name"])
     return {"metadata": metadata}
 
 
