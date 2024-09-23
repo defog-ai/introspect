@@ -347,22 +347,11 @@ async def clarify(request: Request):
         question = params.get("user_question")
         previous_questions = params.get("previous_questions", [])
         if len(previous_questions) > 0:
-            previous_questions = previous_questions[:-1]
-
-        prev_questions = []
-        for item in previous_questions:
-            prev_question = item.get("user_question")
-            prev_steps = (
-                item.get("analysisManager", {})
-                .get("analysisData", {})
-                .get("gen_steps", {})
-                .get("steps", [])
-            )
-            if len(prev_steps) > 0:
-                for step in prev_steps:
-                    if "sql" in step:
-                        prev_questions.append(prev_question)
-                        break
+            return {
+                "success": True,
+                "done": True,
+                "clarification_questions": "No clarification is needed as this is a follow on question.",
+            }
 
         # if key name or question is none or blank, return error
         if not key_name or key_name == "":
@@ -382,7 +371,6 @@ async def clarify(request: Request):
         clarification_questions = await get_clarification(
             question=question,
             api_key=api_key,
-            previous_questions=prev_questions,
             dev=dev,
             temp=temp,
         )

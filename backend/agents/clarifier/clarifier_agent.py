@@ -67,14 +67,11 @@ def parse_q(q):
         return []
 
 
-async def get_clarification(
-    question, api_key, previous_questions=[], dev=False, temp=False
-):
+async def get_clarification(question, api_key, dev=False, temp=False):
     payload = {
         "request_type": "clarify_task",
         "question": question,
         "api_key": api_key,
-        "previous_questions": previous_questions,
         "dev": dev,
         "temp": temp,
     }
