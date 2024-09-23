@@ -63,11 +63,6 @@ async def explore_data(
     gather_context = outputs["gather_context"]
     context = gather_context.get("context", "")
     problem_statement = gather_context.get("problem_statement", "")
-    glossary_dict = await make_request(
-        DEFOG_BASE_URL + "/prune_glossary",
-        data={"question": user_question, "api_key": api_key},
-    )
-    glossary = f"{glossary_dict.get('glossary_compulsory', '')}\n{glossary_dict.get('glossary', '')}\n{context}"
     db_type, db_creds = get_db_type_creds(api_key)
     LOGGER.info(f"DB type: {db_type}")
     LOGGER.info(f"DB creds: {db_creds}")
@@ -134,7 +129,7 @@ async def explore_data(
                     user_question,
                     qn_id,
                     qn,
-                    glossary,
+                    context,
                     db_type,
                     db_creds,
                     report_chart_dir,
@@ -224,7 +219,7 @@ async def explore_generated_question(
     user_question: str,
     qn_id: int,
     generated_qn: str,
-    glossary: str,
+    context: str,
     db_type: str,
     db_creds: Dict[str, str],
     report_chart_dir: str,
@@ -266,6 +261,13 @@ async def explore_generated_question(
     """
     LOGGER.info(f"[Explore] {qn_id}: {generated_qn}")
     ts, timings = time.time(), []
+
+    glossary_dict = await make_request(
+        DEFOG_BASE_URL + "/prune_glossary",
+        data={"question": generated_qn, "api_key": api_key},
+    )
+    glossary = f"{glossary_dict.get('glossary_compulsory', '')}\n{glossary_dict.get('glossary', '')}\n{context}"
+    ts = save_timing(ts, f"{qn_id}) Glossary", timings)
 
     err_msg, sql, data = None, None, None
     retry_count = 0
