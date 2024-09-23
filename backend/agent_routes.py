@@ -311,8 +311,10 @@ async def generate_follow_on_questions(request: Request):
                 "question": question,
             },
         )
-
-        follow_on_questions = follow_on_questions.get("follow_on_questions", [])
+        if follow_on_questions:
+            follow_on_questions = follow_on_questions.get("follow_on_questions", [])
+        else:
+            follow_on_questions = []
 
         return {
             "success": True,
