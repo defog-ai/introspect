@@ -351,27 +351,33 @@ async def gather_context(
                 table_name = parsed_table["table_name"]
                 table_description = parsed_table.get("table_description", None)
                 if "columns" not in parsed_table:
-                    LOGGER.error(f"No columns found in parsed table {table_name}.")
+                    LOGGER.error(f"No columns found in parsed table `{table_name}`.")
                     continue
                 columns = parsed_table["columns"]
                 column_names = [column["column_name"] for column in columns]
                 num_cols = len(columns)
                 if "rows" not in parsed_table:
-                    LOGGER.error(f"No rows found in parsed table {table_name}.")
+                    LOGGER.error(f"No rows found in parsed table `{table_name}`.")
                     continue
                 rows = parsed_table[
                     "rows"
-                ]  # 2D list of data TODO: fix parsing of rows. currently splits on commas even if comma is within the same sentence or there's comma in value e.g. $10,000
+                ]  # 2D list of data TODO: fix parsing of rows in self-hosted: infer_table_properties. currently splits on commas even if comma is within the same sentence or there's comma in value e.g. $10,000
                 data = [column_names] + rows
-                # check if link and table_index already exist in imported_tables table and update if necessary
+                # check data has correct number of columns passed for each row
+                if not all(len(row) == len(data[0]) for row in data):
+                    LOGGER.error(
+                        f"Unable to insert table `{table_name}.` Data has mismatched number of columns for each row. Header has {len(data[0])} columns: {data[0]}, but data has {len(data[1])} columns: {data[1]}."
+                    )
+                    continue
+
                 schema_name = "parsed"
                 schema_table_name = f"{schema_name}.{table_name}"
+                # create the table and insert the data into imported_tables database, parsed schema
+                update_imported_tables_db(link, table_index, table_name, data, schema_name)
+                # update the imported_tables table in internal db
                 update_imported_tables(
                     link, table_index, schema_table_name, table_description
-                )
-
-                # create the table and insert the data into imported_tables database, parsed schema
-                update_imported_tables_db(table_name, data, schema_name)
+                )    
                 [column.pop("fn", None) for column in columns] # remove "fn" key if present before updating metadata
                 inserted_tables[schema_table_name] = columns
             except Exception as e:
