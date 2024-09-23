@@ -30,6 +30,7 @@ channel.queue_declare(queue=queue_name)
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 INTERNAL_DB = os.environ.get("INTERNAL_DB", "postgres")
+STRIPE_SCHEMA = "stripe" # schema name to store the stripe data
 STREAMS = [
     "customers",
     "persons",
@@ -384,10 +385,9 @@ async def callback(ch, method, properties, body):
         csv_data.insert(0, df.columns.tolist())
 
         # update imported_tables database with the ga schema and tables
-        schema_name = "stripe"
         link = "stripe"
-        update_imported_tables_db(link, table_index, table_name, csv_data, schema_name)
-        schema_table_name = f"{schema_name}.{table_name}"
+        update_imported_tables_db(link, table_index, table_name, csv_data, STRIPE_SCHEMA)
+        schema_table_name = f"{STRIPE_SCHEMA}.{table_name}"
         inserted_tables[schema_table_name] = [
             {"data_type": data_type, "column_name": col_name, "column_description": ""}
             for data_type, col_name in zip(data_types_list, df.columns)
@@ -399,7 +399,7 @@ async def callback(ch, method, properties, body):
             jsonb_cols = [
                 col for col in jsonb_cols if col in df.columns
             ]  # only convert columns that exist in the dataframe
-            convert_cols_to_jsonb(table_name, jsonb_cols, schema_name)
+            convert_cols_to_jsonb(table_name, jsonb_cols, STRIPE_SCHEMA)
 
         # update imported_tables table entries in internal db
         update_imported_tables(

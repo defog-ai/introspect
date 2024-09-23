@@ -34,6 +34,7 @@ TASK_TYPES = [
     OPTIMIZATION,
 ]
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
+PARSED_SCHEMA = "parsed" # schema name to store parsed tables
 # celery requires a different logger object. we can still reuse utils_logging
 # which just assumes a LOGGER object is defined
 LOGGER = get_task_logger(__name__)
@@ -261,9 +262,9 @@ async def gather_context(
     LOGGER.debug("Got the following sources:")
     sources = []
     for source in inputs["sources"]:
-        if "http" in source:
+        if source.startswith("http"):
             source["type"] = "webpage"
-        elif ".pdf" in source:
+        elif source.endswith(".pdf"):
             source["type"] = "pdf"
         sources.append(source)
         LOGGER.debug(f"{source}")
@@ -370,10 +371,9 @@ async def gather_context(
                     )
                     continue
 
-                schema_name = "parsed"
-                schema_table_name = f"{schema_name}.{table_name}"
+                schema_table_name = f"{PARSED_SCHEMA}.{table_name}"
                 # create the table and insert the data into imported_tables database, parsed schema
-                update_imported_tables_db(link, table_index, table_name, data, schema_name)
+                update_imported_tables_db(link, table_index, table_name, data, PARSED_SCHEMA)
                 # update the imported_tables table in internal db
                 update_imported_tables(
                     link, table_index, schema_table_name, table_description
