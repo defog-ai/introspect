@@ -479,6 +479,7 @@ async def generate_assignment_understanding(
     And stores in the defog_analyses table.
     """
     # get the assignment understanding aka answers to clarification questions
+    err = None
     assignment_understanding = None
     reset_indent_level()
 
@@ -489,18 +490,14 @@ async def generate_assignment_understanding(
             assignment_understanding = await turn_into_statements(
                 clarification_questions, dfg_api_key
             )
-        except Exception as e:
-            warn(
-                "Could not generate understanding. The answers might not be what the user wants. Resorting to blank string"
+            err = update_assignment_understanding(
+                analysis_id=analysis_id, understanding=assignment_understanding
             )
+        except Exception as e:
             error(e)
-            assignment_understanding = []
+            assignment_understanding = None
 
     info(f"Assignment understanding: {assignment_understanding}")
-
-    err = update_assignment_understanding(
-        analysis_id=analysis_id, understanding=assignment_understanding
-    )
 
     return err, assignment_understanding
 

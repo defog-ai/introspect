@@ -84,7 +84,10 @@ async def generate_step(request: Request):
         planner_question_suffix = params.get("planner_question_suffix", None)
 
         if len(previous_questions) > 0:
+            original_analysis_id = previous_questions[0].get("analysisId", "")
             previous_questions = previous_questions[:-1]
+        else:
+            original_analysis_id = analysis_id
 
         # if key name or question is none or blank, return error
         if not key_name or key_name == "":
@@ -93,9 +96,31 @@ async def generate_step(request: Request):
         if not question or question == "":
             raise Exception("Invalid request. Must have a question.")
 
+        api_key = get_api_key_from_key_name(key_name)
+
+        if not api_key:
+            raise Exception("Invalid API key name.")
+
+        # check if the assignment_understanding exists in the db for this analysis_id
+        err, assignment_understanding = get_assignment_understanding(
+            analysis_id=original_analysis_id
+        )
+
+        # if assignment understanding does not exist, so try to generate it
+        if assignment_understanding is None:
+            _, assignment_understanding = await generate_assignment_understanding(
+                analysis_id=original_analysis_id,
+                clarification_questions=clarification_questions,
+                dfg_api_key=api_key,
+            )
+
         prev_questions = []
-        for item in previous_questions:
-            prev_question = item.get("user_question")
+        for idx, item in enumerate(previous_questions):
+            prev_question = item.get("user_question", "")
+            if idx == 0:
+                # if assignment understanding exists, add it to the first question and the first question only
+                if assignment_understanding:
+                    prev_question += " (" + assignment_understanding + ")"
             prev_steps = (
                 item.get("analysisManager", {})
                 .get("analysisData", {})
@@ -109,30 +134,6 @@ async def generate_step(request: Request):
                         prev_questions.append(prev_question)
                         prev_questions.append(prev_sql)
                         break
-
-        api_key = get_api_key_from_key_name(key_name)
-
-        if not api_key:
-            raise Exception("Invalid API key name.")
-
-        if len(clarification_questions) > 0:
-            # this means that the user has answered the clarification questions
-            # so we can generate the assignment understanding (which is just a statement of the user's clarifications)
-
-            # check if the assignment_understanding exists in the db for this analysis_id
-            err, assignment_understanding = get_assignment_understanding(
-                analysis_id=analysis_id
-            )
-
-            # if it doesn't exist, then `assignment_understanding` will be None
-            if assignment_understanding is None:
-                _, assignment_understanding = await generate_assignment_understanding(
-                    analysis_id=analysis_id,
-                    clarification_questions=clarification_questions,
-                    dfg_api_key=api_key,
-                )
-        else:
-            assignment_understanding = None
 
         # unify questions if there are previous questions
         if len(prev_questions) > 0:
@@ -156,7 +157,7 @@ async def generate_step(request: Request):
 
         if sql_only:
             # if sql_only is true, just call the sql generation function and return, while saving the step
-            if type(assignment_understanding) == str:
+            if type(assignment_understanding) == str and len(prev_questions) == 0:
                 # remove any numbers, like "1. " from the beginning of assignment understanding
                 if re.match(r"^\d+\.\s", assignment_understanding):
                     assignment_understanding = re.sub(
@@ -164,10 +165,6 @@ async def generate_step(request: Request):
                     )
 
                 question = question + " (" + assignment_understanding + ")"
-                print(
-                    f"*******\nQuestion with assignment understanding:\n{question}\n*******",
-                    flush=True,
-                )
             inputs = {
                 "question": question,
                 "global_dict": {
@@ -346,11 +343,11 @@ async def clarify(request: Request):
         key_name = params.get("key_name")
         question = params.get("user_question")
         previous_questions = params.get("previous_questions", [])
-        if len(previous_questions) > 0:
+        if len(previous_questions) > 1:
             return {
                 "success": True,
                 "done": True,
-                "clarification_questions": "No clarification is needed as this is a follow on question.",
+                "clarification_questions": [],
             }
 
         # if key name or question is none or blank, return error
