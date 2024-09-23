@@ -274,6 +274,57 @@ async def generate_step(request: Request):
                 LOGGER.error(f"Error deleting tool {function_name}: {err}")
 
 
+@router.post("/generate_follow_on_questions")
+async def generate_follow_on_questions(request: Request):
+    """
+    Function that returns follow on questions for a given question.
+
+    This is called by the front end's lib/components/agent/analysis/analysisManager.js from inside the `submit` function.
+
+    Rendered by lib/components/agent/analysis/analysisManager.js
+
+    The mandatory inputs are a valid key_name and question.
+    """
+    try:
+        LOGGER.info("Generating follow on questions")
+        params = await request.json()
+        key_name = params.get("key_name")
+        question = params.get("user_question")
+
+        # if key name or question is none or blank, return error
+        if not key_name or key_name == "":
+            raise Exception("Invalid request. Must have API key name.")
+
+        if not question or question == "":
+            raise Exception("Invalid request. Must have a question.")
+
+        api_key = get_api_key_from_key_name(key_name)
+
+        if not api_key:
+            raise Exception("Invalid API key name.")
+
+        follow_on_questions = await make_request(
+            url=os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
+            + "/generate_follow_on_questions",
+            data={
+                "api_key": api_key,
+                "question": question,
+            },
+        )
+
+        follow_on_questions = follow_on_questions.get("follow_on_questions", [])
+
+        return {
+            "success": True,
+            "done": True,
+            "follow_on_questions": follow_on_questions,
+        }
+
+    except Exception as e:
+        LOGGER.error(e)
+        return {"success": False, "error_message": str(e) or "Incorrect request"}
+
+
 @router.post("/clarify")
 async def clarify(request: Request):
     """
