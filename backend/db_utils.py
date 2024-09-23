@@ -98,12 +98,14 @@ ImportedTables = Base.classes.imported_tables
 
 
 def update_imported_tables_db(
-    table_name: str, data: list[list[str, str]], schema_name: str
+    link: str, table_index: int, new_table_name: str, data: list[list[str, str]], schema_name: str
 ) -> bool:
     """
     Updates the IMPORTED_TABLES_DBNAME database with the new schema and table.
-    Removes table from IMPORTED_TABLES_DBNAME database if it already exists.
+    Replaces table from IMPORTED_TABLES_DBNAME database if it already exists.
     data is a list of lists where the first list consists of the column names and the rest are the rows.
+    This function should always precede `update_imported_tables` as it first retrieves the old table name if the 
+    table (defined by its link/index) already exists in the internal database.
     """
     with imported_tables_engine.connect() as imported_tables_connection:
         # create schema in imported_tables db if it doesn't exist
@@ -128,28 +130,44 @@ def update_imported_tables_db(
             )
             return False
 
-        # check if table already exists in imported_tables database
-        inspector = sql_inspect(imported_tables_engine)
-        table_exists = inspector.has_table(table_name, schema=schema_name)
-        if table_exists:
-            table = Table(table_name, MetaData(), schema=schema_name)
-            drop_stmt = DropTable(table, if_exists=True)
-            imported_tables_connection.execute(drop_stmt)
-            LOGGER.info(
-                f"Dropped existing table `{table_name}` from {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`."
+         # check if link and table_index already exist in imported_tables of internal database
+        with engine.connect() as conn:
+            stmt = select(ImportedTables.table_name).where(
+                ImportedTables.table_link == link,
+                ImportedTables.table_position == table_index,
             )
+            result = conn.execute(stmt)
+            scalar_result = result.scalar()
+
+            if scalar_result is not None:
+                LOGGER.info(f"Entry `{link}` in position `{table_index}` already exists in imported_tables of the internal database.")
+                # get old table name without schema
+                table_name = scalar_result
+                table_name = table_name.split(".")[-1]
+                LOGGER.info(f"Previous table name: `{table_name}`, New table name:  `{new_table_name}`")
+
+                # drop old table name if it already exists in imported_tables database
+                inspector = sql_inspect(imported_tables_engine)
+                table_exists = inspector.has_table(table_name, schema=schema_name)
+                if table_exists:
+                    table = Table(table_name, MetaData(), schema=schema_name)
+                    drop_stmt = DropTable(table, if_exists=True)
+                    imported_tables_connection.execute(drop_stmt)
+                    LOGGER.info(
+                        f"Dropped existing table `{table_name}` from {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`."
+                    )
         try:
-            # insert the table into imported_tables database
+            # insert the new table into imported_tables database
             save_csv_to_db(
-                table_name, data, db=IMPORTED_TABLES_DBNAME, schema_name=schema_name
+                new_table_name, data, db=IMPORTED_TABLES_DBNAME, schema_name=schema_name
             )
             LOGGER.info(
-                f"Inserted table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`."
+                f"Inserted table `{new_table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`."
             )
             return True
         except Exception as e:
             LOGGER.error(
-                f"Error inserting table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`: {e}\n Data: {data}"
+                f"Error inserting table `{new_table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`: {e}\n Data: {data}"
             )
             return False
 

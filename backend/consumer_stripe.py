@@ -385,7 +385,8 @@ async def callback(ch, method, properties, body):
 
         # update imported_tables database with the ga schema and tables
         schema_name = "stripe"
-        update_imported_tables_db(table_name, csv_data, schema_name)
+        link = "stripe"
+        update_imported_tables_db(link, table_index, table_name, csv_data, schema_name)
         schema_table_name = f"{schema_name}.{table_name}"
         inserted_tables[schema_table_name] = [
             {"data_type": data_type, "column_name": col_name, "column_description": ""}
@@ -401,7 +402,6 @@ async def callback(ch, method, properties, body):
             convert_cols_to_jsonb(table_name, jsonb_cols, schema_name)
 
         # update imported_tables table entries in internal db
-        link = "stripe"
         update_imported_tables(
             link, table_index, schema_table_name, table_description=None
         )
