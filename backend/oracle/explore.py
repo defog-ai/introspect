@@ -1,8 +1,12 @@
 import asyncio
+import copy
+import io
 import os
 import time
 import traceback
 from typing import Any, Dict
+
+import pandas as pd
 
 from db_utils import get_db_type_creds
 from generic_utils import make_request
@@ -187,6 +191,28 @@ async def explore_data(
         if len(final_analyses) >= max_analyses:
             break
 
+        # sample data if more than 20 rows
+        analyses_with_sampled_data = []
+        for analysis in final_analyses + unfit_analyses:
+            if "artifacts" in analysis and TABLE_CSV in analysis["artifacts"]:
+                data_df_csv = analysis["artifacts"][TABLE_CSV]["artifact_content"]
+                data_df = pd.read_csv(io.StringIO(data_df_csv))
+                if len(data_df) > 20:
+                    # sample data if more than 20 rows
+                    analysis_copy = copy.deepcopy(analysis)
+                    analysis_copy["artifacts"][TABLE_CSV]["nrows"] = len(data_df)
+                    analysis_copy["artifacts"][TABLE_CSV]["artifact_content"] = (
+                        data_df.head(n=20).to_csv(
+                            float_format="%.3f", header=True, index=False
+                        )
+                    )
+                    analysis_copy["artifacts"][TABLE_CSV]["sampled"] = True
+                    analyses_with_sampled_data.append(analysis_copy)
+                else:
+                    analyses_with_sampled_data.append(analysis)
+            else:
+                analyses_with_sampled_data.append(analysis)
+
         # generate more questions if needed
         json_data = {
             "api_key": api_key,
@@ -198,7 +224,7 @@ async def explore_data(
         resp = await make_request(
             f"{DEFOG_BASE_URL}/oracle/regen_explorer_qns", data=json_data
         )
-        answered_questions = resp.get("answered_questions", [])
+        answered_questions = resp.get("answered_questions", []) if resp else []
         final_analyses_ordered = []
         for q in answered_questions:
             for ans in final_analyses:
