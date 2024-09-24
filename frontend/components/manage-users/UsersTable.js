@@ -19,11 +19,12 @@ const UsersTable = ({
       className: "w-1/3",
       onOk: async () => {
         setLoading(true);
+        const token = localStorage.getItem("defogToken");
         const res = await fetch(setupBaseUrl("http", `admin/delete_user`), {
           method: "POST",
           body: JSON.stringify({
             username: username,
-            token: context.token,
+            token: token,
           }),
           headers: { "Content-Type": "application/json" },
         });

@@ -1,35 +1,26 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
-import { UserContext } from "$components/context/UserContext";
 import Scaffolding from "$components/layout/Scaffolding";
 import { Spin } from "antd";
 
 const QueryDatabase = () => {
   const [userType, setUserType] = useState("");
-  const [context, setContext] = useContext(UserContext);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    let userType = context.userType;
-    if (!userType) {
-      // load from local storage and set context
-      const user = localStorage.getItem("defogUser");
-      const token = localStorage.getItem("defogToken");
-      userType = localStorage.getItem("defogUserType");
+    // load from local storage and set context
+    const user = localStorage.getItem("defogUser");
+    const token = localStorage.getItem("defogToken");
+    const userType = localStorage.getItem("defogUserType");
 
-      if (!user || !token || !userType) {
-        // redirect to login page
-        router.push("/log-in");
-        return;
-      }
-      setContext({
-        user: user,
-        token: token,
-        userType: userType,
-      });
+    if (!user || !token || !userType) {
+      // redirect to login page
+      router.push("/log-in");
+      return;
     }
+
     setUserType(userType);
     setLoading(false);
     if (userType === "admin") {

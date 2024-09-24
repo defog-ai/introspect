@@ -1,8 +1,7 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
-import { UserContext } from "$components/context/UserContext";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import AddUsersViaFile from "components/manage-users/AddUsersViaFile";
 import AddUsersViaForm from "components/manage-users/AddUsersViaForm";
@@ -13,19 +12,23 @@ import { TeamOutlined } from "@ant-design/icons";
 const ManageUsers = () => {
   const [loading, setLoading] = useState(false);
   const [userDets, setUserDets] = useState([]);
-  const [context, setContext] = useContext(UserContext);
 
   const router = useRouter();
 
   const getUserDets = async () => {
     setLoading(true);
-    if (!context.token) {
+    const token = localStorage.getItem("defogToken");
+    if (!token) {
+      setLoading(false);
+      message.error(
+        "It seems like there was no token found in your session. Please try to log in again."
+      );
       return;
     }
 
     const res = await fetch(setupBaseUrl("http", "admin/get_users"), {
       method: "POST",
-      body: JSON.stringify({ token: context.token }),
+      body: JSON.stringify({ token: token }),
       headers: { "Content-Type": "application/json" },
     });
     const data = await res.json();
@@ -40,31 +43,23 @@ const ManageUsers = () => {
   };
 
   useEffect(() => {
-    let token = context.token;
-    let userType = context.userType;
-    if (!userType) {
-      // load from local storage and set context
-      const user = localStorage.getItem("defogUser");
-      token = localStorage.getItem("defogToken");
-      userType = localStorage.getItem("defogUserType");
+    // load from local storage
+    const user = localStorage.getItem("defogUser");
+    const token = localStorage.getItem("defogToken");
+    const userType = localStorage.getItem("defogUserType");
 
-      if (!user || !token || !userType) {
-        // redirect to login page
-        router.push("/log-in");
-        return;
-      }
-      setContext({
-        user: user,
-        token: token,
-        userType: userType,
-      });
+    if (!user || !token || !userType) {
+      // redirect to login page
+      router.push("/log-in");
+      return;
     }
+
     if (!token) {
       router.push("/log-in");
     } else {
       getUserDets();
     }
-  }, [context, context.token]);
+  }, []);
 
   return (
     <>
@@ -79,25 +74,16 @@ const ManageUsers = () => {
         <div className="flex justify-center items-center flex-col p-1">
           <UsersTable
             userDets={userDets}
-            context={context}
             getUserDets={getUserDets}
             loading={loading}
             setLoading={setLoading}
           />
         </div>
         <div className="flex justify-center items-center flex-col p-1 w-full">
-          <AddUsersViaFile
-            loading={loading}
-            context={context}
-            getUserDets={getUserDets}
-          />
+          <AddUsersViaFile loading={loading} getUserDets={getUserDets} />
         </div>
         <div className="flex justify-center items-center flex-col p-1 w-full mt-4 mb-4">
-          <AddUsersViaForm
-            loading={loading}
-            context={context}
-            getUserDets={getUserDets}
-          />
+          <AddUsersViaForm loading={loading} getUserDets={getUserDets} />
         </div>
       </Scaffolding>
     </>

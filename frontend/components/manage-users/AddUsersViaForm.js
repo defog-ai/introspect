@@ -56,10 +56,11 @@ const AddUsersViaForm = ({ loading, context, getUserDets }) => {
   };
 
   const handleSubmit = async () => {
+    const token = localStorage.getItem("defogToken");
     const res = await fetch(setupBaseUrl("http", `admin/add_users`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ users_csv: csvString, token: context.token }),
+      body: JSON.stringify({ users_csv: csvString, token: token }),
     });
     const data = await res.json();
     if (data.status === "success") {
