@@ -7,6 +7,7 @@ import {
   LoadingOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  ArrowUpOutlined,
 } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
@@ -27,6 +28,9 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
   const [newMetadata, setNewMetadata] = useState(null);
 
   const [updatingInstructions, setUpdatingInstructions] = useState(false);
+
+  const [showScrollToTop, setShowScrollToTop] = useState(false);
+  const modalContentRef = useRef(null); // Ref for modal scrollable content
 
   const iterations = [
     {
@@ -291,15 +295,41 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
     optimizedMetadataRef.current = null;
   };
 
+  // Handle scroll inside the modal
+  const handleScroll = () => {
+    const scrollTop = modalContentRef.current?.scrollTop || 0;
+    if (scrollTop > 200) {
+      setShowScrollToTop(true);
+    } else {
+      setShowScrollToTop(false);
+    }
+  };
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    modalContentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (modalContentRef.current) {
+      modalContentRef.current.addEventListener("scroll", handleScroll);
+    }
+    return () => {
+      if (modalContentRef.current) {
+        modalContentRef.current.removeEventListener("scroll", handleScroll);
+      }
+    };
+  }, [modalVisible]);
+
   return (
     <>
       <Button onClick={() => setModalVisible(true)} className="w-full">
-        Iterative Metadata and Glossary Optimisation
+        Magic Finetune
       </Button>
       <Modal
         title={
           <div className="text-2xl font-semibold text-center mt-2 mb-5">
-            Recommendations for Improving Glossary and Metadata
+            Recommendations for Improving Instructions and Metadata
           </div>
         }
         onCancel={onClose}
@@ -308,11 +338,15 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
             Close
           </Button>,
         ]}
-        width="75%"
-        className="max-h-full overflow-y-auto"
+        width="80%"
+        // className="max-h-full overflow-y-auto"
         open={modalVisible}
       >
-        <div className="space-y-4">
+        <div
+          className="space-y-4"
+          ref={modalContentRef}
+          style={{ maxHeight: "80vh", overflowY: "auto" }}
+        >
           {recommendations ? (
             <Card title="Results" className="bg-white shadow-md">
               <p className="mb-2 font-semibold">
@@ -320,7 +354,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
               </p>
               {recommendations.is_glossary_optimization_recommended && (
                 <Instructions
-                  title="Optimized Glossary"
+                  title="Optimized Instructions"
                   description="These are the optimized glossary recommendations. You can edit them below before accepting changes."
                   glossary={newGlossary}
                   setGlossary={setNewGlossary}
@@ -431,6 +465,26 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
             </div>
           ))}
         </div>
+        {/* Scroll-to-top message and arrow inside modal */}
+        {showScrollToTop && (
+          <div className="fixed bottom-10 right-10 flex flex-col items-center">
+            {recommendations && (
+              <div className="bg-gray-200 text-black p-2 mb-4 rounded shadow">
+                Results are ready!
+              </div>
+            )}
+            <div
+              onClick={scrollToTop}
+              className={`p-3 text-white rounded-full cursor-pointer shadow-lg transition ${
+                recommendations
+                  ? "bg-lime-600 hover:bg-green-400 animate-bounce"
+                  : "bg-gray-800 hover:bg-gray-600"
+              }`}
+            >
+              <ArrowUpOutlined className="text-xl" />
+            </div>
+          </div>
+        )}
       </Modal>
     </>
   );
