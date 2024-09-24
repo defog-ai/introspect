@@ -58,11 +58,12 @@ const AddUsersViaFile = ({ loading, context, getUserDets }) => {
     // this assumes user has chosen one of the two options: googleSheetsUrl or upload CSV file
     try {
       const endpoint = "admin/add_users";
+      const token = localStorage.getItem("defogToken");
 
       const payload =
         csvString.trim() !== "username,password,user_type"
-          ? { users_csv: csvString, token: context.token }
-          : { ...values, token: context.token };
+          ? { users_csv: csvString, token: token }
+          : { ...values, token: token };
 
       const res = await fetch(setupBaseUrl("http", endpoint), {
         method: "POST",
