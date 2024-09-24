@@ -11,7 +11,7 @@ const QueryDataPage = () => {
   const [user, setUser] = useState("");
   const [userType, setUserType] = useState("");
   const [devMode, setDevMode] = useState(false);
-  const [apiKeyNames, setApiKeyNames] = useState([]);
+  const [apiKeyNames, setApiKeyNames] = useState(["Default DB"]);
 
   const getApiKeyNames = async (token) => {
     const res = await fetch(
@@ -75,7 +75,10 @@ const QueryDataPage = () => {
               <TestDrive
                 token={token}
                 devMode={devMode}
-                dbs={apiKeyNames.map((name) => {
+                dbs={(apiKeyNames.length > 0
+                  ? apiKeyNames
+                  : ["Default DB"]
+                ).map((name) => {
                   return {
                     name: name,
                     keyName: name,
@@ -95,7 +98,7 @@ const QueryDataPage = () => {
                                 "What is the count of number of queries by db type in the last 30 days, except for queries made by jp@defog.ai?",
                                 "Which users have the most queries?",
                               ]
-                            : ["Show me any 5 rows from the dataset"],
+                            : ["Show me any 5 rows from the first table"],
                   };
                 })}
               />
