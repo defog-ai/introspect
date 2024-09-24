@@ -198,17 +198,5 @@ async def plan_and_execute(request: Request):
 @app.post("/get_api_key_names")
 async def get_api_key_names(request: Request):
     DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
-    params = await request.json()
-    token = params.get("token")
-
-    api_key_names = get_user_key_names(token)
-
-    if api_key_names == "Invalid token":
-        return {"error": "Invalid token"}
-
-    if not api_key_names:
-        api_key_names = DEFOG_API_KEY_NAMES.split(",")
-    else:
-        api_key_names = api_key_names.split(",")
-
+    api_key_names = DEFOG_API_KEY_NAMES.split(",")
     return {"api_key_names": api_key_names}
