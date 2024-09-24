@@ -127,11 +127,9 @@ async def get_users(request: Request):
     with engine.begin() as conn:
         users = conn.execute(select(Users)).fetchall()
 
+    users = pd.DataFrame(users)[["username", "user_type"]]
     users["allowed_dbs"] = ""
-
-    users = pd.DataFrame(users)[["username", "user_type", "allowed_dbs"]].to_dict(
-        orient="records"
-    )
+    users = users.to_dict(orient="records")
     return {"users": users}
 
 
