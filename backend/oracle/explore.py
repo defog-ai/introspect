@@ -292,7 +292,7 @@ async def explore_generated_question(
                 ts, f"{qn_id}) SQL generation (try {retry_count})", timings
             )
             try:
-                data = await execute_sql(api_key, db_type, db_creds, generated_qn, sql)
+                data = await execute_sql(db_type, db_creds, generated_qn, sql)
                 err_msg = None
                 break
             except Exception as e:

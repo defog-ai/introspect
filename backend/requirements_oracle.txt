@@ -2,3 +2,7 @@ airbyte==0.17.7
 celery[redis]==5.4.0
 markdown2[all]==2.5.0
 pdfkit==1.0.0
+asyncpg
+aiomysql
+aiosqlite
+aioodbc
