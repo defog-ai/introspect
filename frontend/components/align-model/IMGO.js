@@ -323,8 +323,8 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
 
   return (
     <>
-      <Button onClick={() => setModalVisible(true)} className="w-full">
-        Magic Finetune
+      <Button type="dashed" onClick={() => setModalVisible(true)} className="w-full mx-auto block">
+        Magic Finetune - Smart Optimization of Instructions and Metadata
       </Button>
       <Modal
         title={
