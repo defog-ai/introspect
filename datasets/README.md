@@ -35,7 +35,7 @@ You can launch a mysql container for easy testing and copy over the dataset like
 
 ```shell
 # pull and launch mysql container
-docker run --name mysql -e MYSQL_ROOT_PASSWORD=password -p 3306:3306 -d mysql:9.0.1
+docker run --name mysql -e MYSQL_ROOT_PASSWORD=password -v ~/appdata/mysql:/app/mysql -p 3306:3306 -d mysql:9.0.1
 
 # copy over mysql dataset (from defog-self-hosted into mysql docker image)
 docker cp datasets/housing_mysql.sql mysql:/housing_mysql.sql
@@ -48,4 +48,21 @@ mysql> CREATE DATABASE housing;
 mysql> USE housing;
 Database changed
 mysql> SOURCE /housing_mysql.sql;
+```
+
+If you would like to build a smaller docker image for mysql (290MB vs 609MB), you can do the following:
+
+```shell
+docker build --load -t defog/alpine-mysql:latest -f datasets/mysql/mysql.dockerfile datasets/mysql
+
+# launch mysql container with the smaller image
+docker run -it --name mysql -p 3306:3306 -v ~/appdata/mysql:/app/mysql -e MYSQL_DATABASE=housing  -e MYSQL_USER=root -e MYSQL_ROOT_PASSWORD=password -d defog/alpine-mysql:latest
+
+# copy over mysql dataset (from defog-self-hosted into mysql docker image)
+docker cp datasets/housing_mysql.sql mysql:/housing_mysql.sql
+
+# launch mysql cli (just hit enter when prompted, no password needed):
+docker exec -it mysql mysql -u root -p
+
+# the rest of the mysql cli commands are the same as above
 ```
