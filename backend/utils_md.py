@@ -79,6 +79,8 @@ def mk_create_ddl(md: Dict[str, List[Dict[str, str]]]) -> str:
             if schema_name not in available_schemas:
                 md_create += f"CREATE SCHEMA IF NOT EXISTS {schema_name};\n"
                 available_schemas.add(schema_name)
+        else:
+            table_name = table
         table_dict = contents
         md_create += mk_create_table_ddl(table_name, table_dict)
     return md_create

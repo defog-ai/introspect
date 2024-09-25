@@ -26,6 +26,7 @@ seaborn
 slack_sdk
 snowflake-connector-python
 sqlalchemy
+sqlglot
 sqlparse
 statsmodels
 tabulate

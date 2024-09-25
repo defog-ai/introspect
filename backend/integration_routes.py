@@ -329,7 +329,6 @@ async def update_metadata(request: Request):
         return JSONResponse(
             {
                 "status": "error",
-                "message": f"Metadata is not valid for the given database type. {md_err}",
                 "error": f"Metadata is not valid for the given database type. {md_err}",
             },
             status_code=400,

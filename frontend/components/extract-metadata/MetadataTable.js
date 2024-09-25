@@ -98,13 +98,13 @@ const MetadataTable = ({
       const data = await res.json();
       setLoading(false);
       if (data.error) {
-        message.error(data.error || "Error updating metadata");
+        message.error(data.error || "Error updating metadata", 10);
       } else {
         if (data.suggested_joins) {
           document.getElementById("allowed-joins").value = data.suggested_joins;
         }
         if (data.detail) {
-          message.error(data.detail);
+          message.error(data.detail, 3);
         } else {
           message.success("Metadata updated successfully!");
           setColumnDescriptionCheck(hasNonEmptyDescriptionFunction(metadata));
@@ -344,7 +344,9 @@ const MetadataTable = ({
           }
         );
         if (!response.ok) {
-          message.error("Error uploading metadata");
+          // get the JSON response
+          const resp = await response.json();
+          message.error(resp.error || "Error uploading metadata", 10);
           return;
         } else {
           message.success("Metadata uploaded successfully! Reloading...");
