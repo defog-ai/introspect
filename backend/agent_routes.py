@@ -152,7 +152,6 @@ async def generate_step(request: Request):
                 },
             )
             question = unified_question.get("rephrased_question", question)
-            print(question)
             print(f"*******\nUnified question: {question}\n********", flush=True)
 
         if sql_only:
