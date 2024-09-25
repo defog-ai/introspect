@@ -9,6 +9,7 @@ from uuid import uuid4
 from generic_utils import format_sql
 import pandas as pd
 from io import StringIO
+from utils_md import metadata_error
 
 from db_utils import (
     validate_user,
@@ -320,6 +321,18 @@ async def update_metadata(request: Request):
                 "data_type": item["data_type"],
                 "column_description": item["column_description"],
             }
+        )
+
+    # check if metadata is valid
+    md_err = metadata_error(table_metadata=table_metadata, db_type=db_type)
+    if md_err:
+        return JSONResponse(
+            {
+                "status": "error",
+                "message": f"Metadata is not valid for the given database type. {md_err}",
+                "error": f"Metadata is not valid for the given database type. {md_err}",
+            },
+            status_code=400,
         )
 
     # update on API server
@@ -690,6 +703,18 @@ async def upload_metadata(request: Request):
                 "data_type": item["data_type"],
                 "column_description": item.get("column_description", ""),
             }
+        )
+
+    # check if metadata is valid
+    md_err = metadata_error(table_metadata=table_metadata, db_type=db_type)
+    if md_err:
+        return JSONResponse(
+            {
+                "status": "error",
+                "message": f"Metadata is not valid for the given database type. {md_err}",
+                "error": f"Metadata is not valid for the given database type. {md_err}",
+            },
+            status_code=400,
         )
 
     # update on API server
