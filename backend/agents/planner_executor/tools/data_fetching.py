@@ -9,12 +9,13 @@ async def data_fetcher_and_aggregator(
 ):
     """
     This function generates a SQL query and runs it to get the answer.
+
+    IMPORTANT NOTE: Changing this function directly will NOT change the behavior of the tool immediately. You will have to rebuild the docker image to see changes in effect. This is because the tool code is compiled into a string that lives inside a postgres database, and that code string is then run to execute the tool.
     """
     import os
-    import asyncio
     import pandas as pd
+    from generic_utils import make_request
     from tool_code_utilities import safe_sql, fetch_query_into_df
-    from defog import Defog
     from utils import SqlExecutionError
     from db_utils import get_db_type_creds
 
@@ -23,38 +24,41 @@ async def data_fetcher_and_aggregator(
 
     api_key = global_dict.get("dfg_api_key", "")
     res = get_db_type_creds(api_key)
-    db_type, db_creds = res
+    db_type, _ = res
 
-    dev = global_dict.get("dev", False)
     temp = global_dict.get("temp", False)
-    print(f"Dev: {dev}")
     print(f"Global dict currently has keys: {list(global_dict.keys())}")
     print(f"Previous context: {previous_context}", flush=True)
 
     # send the data to the Defog, and get a response from it
-    defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
-    defog.base_url = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-    defog.generate_query_url = os.environ.get(
-        "DEFOG_GENERATE_URL", defog.base_url + "/generate_query_chat"
+    generate_query_url = os.environ.get(
+        "DEFOG_GENERATE_URL",
+        os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
+        + "/generate_query_chat",
     )
     # make async request to the url, using the appropriate library
-    try:
-        res = await asyncio.to_thread(
-            defog.get_query,
-            question=question,
-            previous_context=previous_context,
-            dev=dev,
-            temp=temp,
-        )
-        query = res["query_generated"]
-        print(query, flush=True)
-    except:
+    res = await make_request(
+        url=generate_query_url,
+        data={
+            "api_key": api_key,
+            "question": question,
+            "previous_context": previous_context,
+            "db_type": db_type,
+        },
+    )
+
+    print(generate_query_url, flush=True)
+
+    reference_queries = res.get("reference_queries", [])
+    instructions_used = res.get("pruned_instructions", "")
+    query = res.get("sql")
+
+    if query is None:
         return {
             "error_message": "There was an error in generating the query. Please try again."
         }
 
     if not safe_sql(query):
-        success = False
         print("Unsafe SQL Query")
         return {
             "outputs": [
@@ -64,6 +68,8 @@ async def data_fetcher_and_aggregator(
                 }
             ],
             "sql": query.strip(),
+            "reference_queries": reference_queries,
+            "instructions_used": instructions_used,
         }
 
     print(f"Running query: {query}")
@@ -80,6 +86,8 @@ async def data_fetcher_and_aggregator(
     return {
         "outputs": [{"data": df, "analysis": analysis}],
         "sql": sql_query.strip(),
+        "reference_queries": reference_queries,
+        "instructions_used": instructions_used,
     }
 
 
@@ -90,6 +98,9 @@ async def send_email(
     global_dict: dict = {},
     **kwargs,
 ):
+    """
+    This tool is used to send email.
+    """
     import os
 
     success = False

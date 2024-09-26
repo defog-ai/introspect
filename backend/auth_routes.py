@@ -55,7 +55,6 @@ async def validate_google_token(token: str):
 
         # Check if user exists
         if validate_user(hashed_password):
-            print("User exists", flush=True)
             dets = login_user(user_email, "")
             dets["user_email"] = user_email
             return dets

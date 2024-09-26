@@ -34,7 +34,8 @@ TASK_TYPES = [
     OPTIMIZATION,
 ]
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-PARSED_SCHEMA = "parsed"  # schema name to store parsed tables
+PARSED_SCHEMA = "parsed" # schema name to store parsed tables
+INTERNAL_DB = os.environ.get("INTERNAL_DB", "postgres") 
 # celery requires a different logger object. we can still reuse utils_logging
 # which just assumes a LOGGER object is defined
 LOGGER = get_task_logger(__name__)
@@ -262,10 +263,9 @@ async def gather_context(
     LOGGER.debug("Got the following sources:")
     sources = []
     for source in inputs["sources"]:
-        link = source.get("link", "")
-        if link.startswith("http"):
+        if source["link"].startswith("http"):
             source["type"] = "webpage"
-        elif link.endswith(".pdf"):
+        elif source["link"].endswith(".pdf"):
             source["type"] = "pdf"
         sources.append(source)
         LOGGER.debug(f"{source}")
@@ -401,7 +401,7 @@ async def gather_context(
         md.update(inserted_tables)
         response = await make_request(
             DEFOG_BASE_URL + "/update_metadata",
-            {"api_key": api_key, "table_metadata": md, "imported": True},
+            {"api_key": api_key, "table_metadata": md, "db_type": INTERNAL_DB, "imported": True} ,
         )
         LOGGER.info(f"Updated metadata for api_key {api_key}")
         ts = save_timing(ts, "Metadata updated", timings)

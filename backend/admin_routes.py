@@ -53,7 +53,6 @@ async def add_user(request: Request):
         users = (
             pd.read_csv(StringIO(user_dets_csv)).fillna("").to_dict(orient="records")
         )
-        print(users, flush=True)
     except:
         return {
             "error": "could not parse the file successfully - are you sure it's a valid CSV?"

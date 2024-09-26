@@ -1,8 +1,9 @@
 import os
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request
 from generic_utils import get_api_key_from_key_name, make_request
 import pandas as pd
 from io import StringIO
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -161,4 +162,66 @@ async def generate_query_csv(request: Request):
             "previous_context": prev_questions,
         },
     )
+    return r
+
+
+@router.post("/retry_query_csv")
+async def generate_query_csv(request: Request):
+    """
+    Generates a CSV file with the results of a query
+    Expects a query string
+    Return a CSV file with the results of the query
+    This is done by sending a POST request to the /generate_query_csv endpoint
+    """
+    params = await request.json()
+    key_name = params.get("key_name", None)
+    question = params.get("question", None)
+    metadata = params.get(
+        "metadata", None
+    )  # metadata should be a list of dictionaries with keys 'table_name', 'column_name', 'data_type', and 'column_description'
+    previous_query = params.get("previous_query", None)
+    error = params.get("error", None)
+
+    if not key_name:
+        return JSONResponse(content={"error": "no key name provided"}, status_code=400)
+    if not question:
+        return JSONResponse(content={"error": "no question provided"}, status_code=400)
+    if not metadata:
+        return JSONResponse(content={"error": "no metadata provided"}, status_code=400)
+    if not previous_query:
+        return JSONResponse(
+            content={"error": "no previous query provided"}, status_code=400
+        )
+    if not error:
+        return JSONResponse(content={"error": "no error provided"}, status_code=400)
+
+    api_key = get_api_key_from_key_name(key_name)
+
+    # convert metadata to a dictionary
+    metadata_dict = {}
+    for element in metadata:
+        table_name = element["table_name"]
+        if table_name not in metadata_dict:
+            metadata_dict[table_name] = []
+        metadata_dict[table_name].append(
+            {
+                "column_name": element["column_name"],
+                "data_type": element["data_type"],
+                "column_description": element.get("column_description"),
+            }
+        )
+
+    r = await make_request(
+        f"{DEFOG_BASE_URL}/retry_query_after_error",
+        {
+            "api_key": api_key,
+            "question": question,
+            "metadata": metadata_dict,
+            "db_type": "sqlite",
+            "previous_query": previous_query,
+            "error": error,
+        },
+    )
+    r["sql"] = r["new_query"]
+    del r["new_query"]
     return r
