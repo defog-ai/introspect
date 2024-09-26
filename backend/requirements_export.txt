@@ -8,7 +8,7 @@ google-auth
 google-cloud-bigquery
 httpx
 hypercorn
-matplotlib
+matplotlib==3.9.2
 mysql-connector-python
 numpy
 pandas
@@ -22,7 +22,7 @@ redshift_connector
 requests
 resend
 scipy
-seaborn
+seaborn==0.13.2
 slack_sdk
 snowflake-connector-python
 sqlalchemy

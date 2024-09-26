@@ -34,7 +34,7 @@ TASK_TYPES = [
     OPTIMIZATION,
 ]
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-PARSED_SCHEMA = "parsed" # schema name to store parsed tables
+PARSED_SCHEMA = "parsed"  # schema name to store parsed tables
 # celery requires a different logger object. we can still reuse utils_logging
 # which just assumes a LOGGER object is defined
 LOGGER = get_task_logger(__name__)
@@ -262,9 +262,10 @@ async def gather_context(
     LOGGER.debug("Got the following sources:")
     sources = []
     for source in inputs["sources"]:
-        if source.startswith("http"):
+        link = source.get("link", "")
+        if link.startswith("http"):
             source["type"] = "webpage"
-        elif source.endswith(".pdf"):
+        elif link.endswith(".pdf"):
             source["type"] = "pdf"
         sources.append(source)
         LOGGER.debug(f"{source}")
@@ -331,7 +332,9 @@ async def gather_context(
                 "previous_text": table.get("previous_text"),
             }
             if table.get("table_page", None):
-                table_keys.append((source["link"], table["table_page"])) # use table page as index if available
+                table_keys.append(
+                    (source["link"], table["table_page"])
+                )  # use table page as index if available
             else:
                 table_keys.append((source["link"], i))
             parse_table_tasks.append(
@@ -373,12 +376,16 @@ async def gather_context(
 
                 schema_table_name = f"{PARSED_SCHEMA}.{table_name}"
                 # create the table and insert the data into imported_tables database, parsed schema
-                update_imported_tables_db(link, table_index, table_name, data, PARSED_SCHEMA)
+                update_imported_tables_db(
+                    link, table_index, table_name, data, PARSED_SCHEMA
+                )
                 # update the imported_tables table in internal db
                 update_imported_tables(
                     link, table_index, schema_table_name, table_description
-                )    
-                [column.pop("fn", None) for column in columns] # remove "fn" key if present before updating metadata
+                )
+                [
+                    column.pop("fn", None) for column in columns
+                ]  # remove "fn" key if present before updating metadata
                 inserted_tables[schema_table_name] = columns
             except Exception as e:
                 LOGGER.error(

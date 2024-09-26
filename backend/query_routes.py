@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 from defog import Defog
 from db_utils import validate_user, get_db_type_creds
 import pandas as pd
 import asyncio
 import os
 from generic_utils import make_request, get_api_key_from_key_name
-from fastapi.responses import JSONResponse
+from utils_logging import LOGGER
 
 router = APIRouter()
 
@@ -78,7 +79,11 @@ async def query(request: Request):
 
 @router.post("/get_chart_types")
 async def get_chart_types(request: Request):
-    print("CALLED GET CHART TYPES", flush=True)
+    """
+    For the front-end to get the most suitable visualization / chart types for 
+    the given data.
+    """
+    LOGGER.info("CALLED GET CHART TYPES")
     body = await request.json()
     columns = body.get("columns")
     question = body.get("question")

@@ -12,16 +12,17 @@ from oracle.utils_explore_data import (
     IMAGE,
     gen_sql,
     execute_sql,
-    get_chart_type,
-    plot_chart,
+    get_chart_fn,
     gen_data_analysis,
     retry_sql_gen,
+    run_chart_fn,
 )
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 MAX_ANALYSES = 5
 MAX_ROUNDS = 2
 RETRY_DATA_FETCH = 1
+RETRY_CHART_GEN = 1
 
 
 async def explore_data(
@@ -94,7 +95,6 @@ async def explore_data(
 
     # TODO add additional input format checks and retries
     generated_qns = generated_qns.get("generated_questions", [])
-    LOGGER.debug(f"Generated questions: {generated_qns}\n")
 
     generated_qns = [
         q for q in generated_qns if q.get("data_available", False) and "question" in q
@@ -102,6 +102,8 @@ async def explore_data(
     generated_qns = sorted(
         generated_qns, key=lambda x: x["relevancy_score"], reverse=True
     )  # sort questions by relevancy score
+
+    LOGGER.debug(f"Generated questions with data: {len(generated_qns)}")
 
     final_analyses = []
     final_summaries = []
@@ -115,6 +117,7 @@ async def explore_data(
         and len(generated_qns) > 0
         and round_count < max_rounds
     ):
+        LOGGER.debug(f"Round {round_count} started")
         tasks = []
         for q in generated_qns:
             # question used by 1st round question generation
@@ -207,8 +210,8 @@ async def explore_data(
                     break
         final_analyses = final_analyses_ordered
         generated_qns = resp.get("refined_questions", [])
+        LOGGER.debug(f"Round {round_count} end")
         round_count += 1
-        LOGGER.debug(f"Round count: {round_count}")
 
     LOGGER.debug(f"Final analyses count: {len(final_analyses)}\n{final_analyses}")
     return final_analyses
@@ -327,33 +330,27 @@ async def explore_generated_question(
         LOGGER.error(f"No data fetched for {qn_id}: {generated_qn}")
         return outputs
 
-    # choose appropriate visualization
+    # choose appropriate visualization and generate chart
+    chart_path = os.path.join(report_chart_dir, f"q{qn_id}.png")
+    error_str = None
     try:
-        chart_type = await get_chart_type(api_key, data.columns.to_list(), generated_qn)
+        chart_fn_params = await get_chart_fn(api_key, generated_qn, data)
+        run_chart_fn(chart_fn_params, data, chart_path)
+        # TODO inspect the chart visually by sending it to a VLM for ensuring
+        # that the chart is meaningful (not too cluttered, too many categories
+        # in the legend, etc)
     except Exception as e:
-        LOGGER.error(f"Error occurred in getting chart type: {str(e)}")
-        LOGGER.error(traceback.format_exc())
-        chart_type = None
-    if not chart_type:
-        return None
-    ts = save_timing(ts, f"{qn_id}) Get chart type", timings)
+        error_str = str(e) + "\n" + traceback.format_exc()
+        LOGGER.error(f"Error occurred in during chart generation: {error_str}")
+    tries = 0
+    while error_str and tries < RETRY_CHART_GEN:
+        # TODO call retry chart generation endpoint, update chart_fn_params, retry run_chart_fn
+        tries += 1
+    if not os.path.exists(chart_path):
+        LOGGER.error(f"Chart could not be generated for {qn_id}: {generated_qn}")
+        return outputs
 
-    # generate chart
-    try:
-        chart_path = await plot_chart(
-            report_chart_dir,
-            data,
-            chart_type["chart_type"],
-            chart_type.get("xAxisColumns", []),
-            chart_type.get("yAxisColumns", []),
-        )
-    except Exception as e:
-        LOGGER.error(f"Error occurred in plotting chart: {str(e)}")
-        LOGGER.error(traceback.format_exc())
-        chart_path = None
-    if not chart_path:
-        return outputs  # return minimal outputs if chart generation fails
-    ts = save_timing(ts, f"{qn_id}) Plot chart", timings)
+    ts = save_timing(ts, f"{qn_id}) Get and Plot chart", timings)
 
     # TODO: DEF-552 add retries for chart plotting based on error type and if chart
     # visuals are not meaningful (e.g. axis labels overlap, no data points, etc)
