@@ -278,7 +278,7 @@ async def callback(ch, method, properties, body):
     try:
         response = await make_request(
             DEFOG_BASE_URL + "/update_metadata",
-            {"api_key": api_key, "table_metadata": md, "imported": True},
+            {"api_key": api_key, "table_metadata": md, "db_type": INTERNAL_DB, "imported": True},
         )
         if response.get("status") == "success":
             LOGGER.info(
