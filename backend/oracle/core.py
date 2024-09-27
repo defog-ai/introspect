@@ -136,11 +136,13 @@ def next_stage(stage: str, task_type: str) -> str:
         return "explore"
     elif stage == "explore":
         if task_type == EXPLORATION:
-            return "export"
+            return "recommendations"
         elif task_type == PREDICTION:
             return "predict"
         elif task_type == OPTIMIZATION:
             return "optimize"
+    elif stage == "recommendations":
+        return "export"
     elif stage == "predict" and task_type == PREDICTION:
         return "export"
     elif stage == "optimize" and task_type == OPTIMIZATION:
@@ -179,6 +181,15 @@ async def execute_stage(
         )
     elif stage == "explore":
         stage_result = await explore_data(
+            api_key=api_key,
+            username=username,
+            report_id=report_id,
+            task_type=task_type,
+            inputs=inputs,
+            outputs=outputs,
+        )
+    elif stage == "recommendations":
+        stage_result = await get_recommendations(
             api_key=api_key,
             username=username,
             report_id=report_id,
@@ -457,6 +468,17 @@ async def gather_context(
     LOGGER.debug(f"Context gathered for report {report_id}:\n{combined_summary}")
     save_and_log(ts, "Combined summary", timings)
     return combined_summary
+
+
+async def get_recommendations(
+    api_key: str,
+    username: str,
+    report_id: str,
+    task_type: str,
+    inputs: Dict[str, Any],
+    outputs: Dict[str, Any],
+):
+    pass
 
 
 async def predict(
