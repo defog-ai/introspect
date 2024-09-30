@@ -214,12 +214,11 @@ async def compare_query_results(
     api_key: str,
     db_type: str,
     db_creds: Dict[str, str],
-) -> Tuple[bool, bool, bool]:
+) -> Dict[str, bool]:
     """
-    Compares the results of two queries and returns a tuple of booleans:
-    - the first element is True if the results are exactly the same
-    - the second element is True if the results of the generated query are a
-      subset of the golden query
+    Compares the results of two queries and returns a dictionary with the keys:
+    'correct' and 'subset' indicating if the queries are correct and if the result of the
+    generated query is a subset of the golden query.
     """
     correct, subset = False, False
     try:
@@ -237,4 +236,4 @@ async def compare_query_results(
     finally:
         if "dfg" in locals():
             del dfg
-        return correct, subset
+        return {"correct": correct, "subset": subset}

@@ -26,7 +26,7 @@ async def validate_golden_queries(
     validated_golden_queries = []
     for golden_query in golden_queries:
         sql_gen = await gen_sql(api_key, db_type, golden_query["question"], None)
-        (correct, subset) = await compare_query_results(
+        result = await compare_query_results(
             golden_query["sql"],
             sql_gen,
             golden_query["question"],
@@ -34,8 +34,10 @@ async def validate_golden_queries(
             db_type,
             db_creds,
         )
-        num_correct += int(correct)
-        num_subset += int(subset)
+        correct = int(result.get("correct", 0))
+        subset = int(result.get("subset", 0))
+        num_correct += correct
+        num_subset += subset
         gq = {
             "question": golden_query["question"],
             "sql_golden": golden_query["sql"],
