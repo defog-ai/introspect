@@ -55,7 +55,7 @@ async def data_fetcher_and_aggregator(
 
     if query is None:
         return {
-            "error_message": "There was an error in generating the query. Please try again."
+            "error_message": f"There was an error in generating the query. The error was: {res.get('error')}",
         }
 
     if not safe_sql(query):
