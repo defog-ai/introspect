@@ -376,7 +376,7 @@ async def gather_context(
                     continue
                 rows = parsed_table[
                     "rows"
-                ]  # 2D list of data TODO: fix parsing of rows in self-hosted: infer_table_properties. currently splits on commas even if comma is within the same sentence or there's comma in value e.g. $10,000
+                ]  # 2D list of data 
                 data = [column_names] + rows
                 # check data has correct number of columns passed for each row
                 if not all(len(row) == len(data[0]) for row in data):
