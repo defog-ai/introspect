@@ -50,10 +50,7 @@ async def gen_sql(api_key: str, db_type: str, question: str, glossary: str) -> s
         LOGGER.debug(f"Generated SQL: {format_sql(gen_sql)}")
         return gen_sql
     else:
-        LOGGER.error(
-            f"Error occurred in generating SQL for question: {resp}\nQuestion: {question}"
-        )
-        return None
+        raise Exception(f"Error in making request to /generate_query_chat")
 
 
 async def execute_sql(
@@ -66,12 +63,10 @@ async def execute_sql(
     Asynchronously run the SQL query on the user's database using SQLAlchemy and return the results as a dataframe.
     """
     if not sql:
-        LOGGER.error(f"No SQL generated to execute for question {question}")
-        return None
+        raise Exception("No SQL generated to execute")
 
     if is_sorry(sql):
-        LOGGER.error(f"Couldn't answer with a valid SQL query for question {question}")
-        return None
+        raise Exception(f"No valid SQL query generated for question {question}")
 
     if db_type == "postgres":
         connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
@@ -86,24 +81,17 @@ async def execute_sql(
         connection_uri = f"mssql+aioodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
         async_engine = create_async_engine(connection_uri)
     else:
-        LOGGER.error(
-            f"Unsupported db_type for executing query: {db_type}. Must be one of 'postgres', 'sqlite', 'mysql', 'sqlserver'"
-        )
-        return None
+        raise Exception(f"Unsupported db_type for executing query: {db_type}. Must be one of 'postgres', 'sqlite', 'mysql', 'sqlserver'")
     LOGGER.debug(f"db_type: {db_type}, connection_uri: {connection_uri}")
-    try:
-        async with async_engine.connect() as conn:
-            result = await conn.execute(text(sql))
-            data = result.all()
-            colnames = list(result.keys())
-            LOGGER.info(
-                f"Query successfully executed. Col names: {colnames}, Data: {data}\nSQL: {sql}"
-            )
-    except Exception as e:
-        LOGGER.error(f"Error occurred in running SQL: {e}\nSQL: {sql}")
-        return None
-    finally:
-        await async_engine.dispose()
+    async with async_engine.connect() as conn:
+        result = await conn.execute(text(sql))
+        data = result.all()
+        colnames = list(result.keys())
+        LOGGER.info(
+            f"Query successfully executed. Col names: {colnames}, Data (first 3 rows): {data[:2]}\nSQL: {sql}"
+        )    
+    
+    await async_engine.dispose()
 
     df = pd.DataFrame(data, columns=colnames)
     return df
@@ -123,16 +111,15 @@ async def retry_sql_gen(
         "error": error,
         "db_type": db_type,
     }
-    try:
-        response = await make_request(
-            f"{DEFOG_BASE_URL}/retry_query_after_error",
-            data=json_data,
-        )
+    response = await make_request(
+        f"{DEFOG_BASE_URL}/retry_query_after_error",
+        data=json_data,
+    )
+    if response:
         new_query = response["new_query"]
         return new_query
-    except Exception as e:
-        LOGGER.error(f"Error occurred in retrying SQL generation: {str(e)}")
-        return None
+    else:
+        raise Exception(f"Error in making request to /retry_query_after_error")
 
 
 async def get_chart_fn(
@@ -183,33 +170,28 @@ def run_chart_fn(
     - chart_path (str): The file path to save the chart.
     """
     if not chart_fn_params:
-        LOGGER.error("No chart function provided")
-        return None
-    try:
-        chart_fn = chart_fn_params["name"]
-        kwargs = chart_fn_params.get("arguments", {})
-        # replace "" in value with None
-        for key, value in kwargs.items():
-            if value == "":
-                kwargs[key] = None
+        raise Exception("No chart function provided")
+    chart_fn = chart_fn_params["name"]
+    kwargs = chart_fn_params.get("arguments", {})
+    # replace "" in value with None
+    for key, value in kwargs.items():
+        if value == "":
+            kwargs[key] = None
 
-        plt.figure(figsize=figsize)  # Initialize a new figure
+    plt.figure(figsize=figsize)  # Initialize a new figure
 
-        # Run the sns plotting function on the data
-        if chart_fn == "relplot":
-            sns.relplot(data, **kwargs)
-        elif chart_fn == "displot":
-            sns.displot(data, **kwargs)
-        elif chart_fn == "catplot":
-            sns.catplot(data, **kwargs)
+    # Run the sns plotting function on the data
+    if chart_fn == "relplot":
+        sns.relplot(data, **kwargs)
+    elif chart_fn == "displot":
+        sns.displot(data, **kwargs)
+    elif chart_fn == "catplot":
+        sns.catplot(data, **kwargs)
 
-        # Save the figure to the specified path
-        plt.savefig(chart_path)
-        plt.close()  # Close the figure to free memory
-
-    except Exception as e:
-        LOGGER.error(f"Error occurred in running sns plotting function: {str(e)}")
-        return None
+    # Save the figure to the specified path
+    plt.savefig(chart_path)
+    plt.close()  # Close the figure to free memory
+\
 
 
 async def gen_data_analysis(
@@ -253,12 +235,7 @@ async def gen_data_analysis(
     resp = await make_request(
         f"{DEFOG_BASE_URL}/oracle/gen_explorer_data_analysis", data=json_data
     )
-    if "error" in resp:
-        LOGGER.error(f"Error occurred in generating data analysis: {resp['error']}")
-        return {
-            "table_description": None,
-            "image_description": None,
-            "title": None,
-            "summary": None,
-        }
-    return resp
+    if resp:
+        return resp
+    else:
+        raise Exception(f"Error in making request to /oracle/gen_explorer_data_analysis")
