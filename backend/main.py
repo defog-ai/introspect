@@ -76,18 +76,6 @@ edit_request_types_and_prop_names = {
 }
 
 
-async def get_classification(question, api_key, debug=False):
-    r = await make_request(
-        f"{os.environ.get('DEFOG_BASE_URL', 'https://api.defog.ai')}/update_agent_feedback",
-        data={"question": question, "api_key": api_key},
-    )
-    if r.status_code == 200:
-        return r.json()
-    else:
-        print(f"Error getting question classification: {r.status_code}")
-        print(r.text)
-
-
 @app.post("/get_analyses")
 async def all_analyses(request: Request):
     params = await request.json()
