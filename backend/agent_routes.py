@@ -785,8 +785,9 @@ async def generate_or_edit_tool_code(request: Request):
                     payload,
                 )
 
-                if resp.get("error_message"):
-                    raise Exception(resp.get("error_message"))
+                error = resp.get("error", resp.get("error_message"))
+                if error:
+                    raise Exception(error)
 
                 tool_code = resp["tool_code"]
                 messages = resp["messages"]
