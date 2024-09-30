@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 import os
-from utils_validation import validate_golden_queries
+from utils_validation import validate_queries
 from db_utils import validate_user, get_db_type_creds
 from generic_utils import make_request, get_api_key_from_key_name
 from fastapi.responses import JSONResponse
@@ -143,12 +143,13 @@ async def check_golden_queries_with_generated_queries(request: Request):
     Takes in the api key and for each golden query, regenerates the SQL
     and compares it with the golden query SQL, sending back the results.
     The output contains the average correct rate, the average subset correct rate,
-    and `golden_queries`, which is a list of dictionaries, each containing:
+    and `reference_queries`, which is a list of dictionaries, each containing:
     - question: str
     - sql_golden: str (the golden SQL)
     - sql_gen: str (the generated SQL)
     - correct: bool (whether the generated SQL produced the exact same results as the golden SQL)
     - subset: bool (whether the generated SQL produced a subset of the results of the golden SQL)
+    - source: str (either "golden" or "feedback")
     """
     params = await request.json()
     token = params.get("token")
@@ -171,11 +172,11 @@ async def check_golden_queries_with_generated_queries(request: Request):
             status_code=400,
         )
 
-    (correct, subset, golden_queries) = await validate_golden_queries(
+    (correct, subset, reference_queries) = await validate_queries(
         api_key, db_type, db_creds
     )
     return {
         "correct": correct,
         "subset": subset,
-        "golden_queries": golden_queries,
+        "reference_queries": reference_queries,
     }
