@@ -1,10 +1,7 @@
-from datetime import datetime
 import inspect
 import re
 import json
 from colorama import Fore, Style
-import httpx
-import os
 
 import pandas as pd
 import logging
@@ -150,6 +147,7 @@ class SqlExecutionError(Exception):
 
         # Now for your custom code...
         self.sql = sql
+
 
 def deduplicate_columns(df: pd.DataFrame):
     # de-duplicate column names

@@ -90,7 +90,7 @@ async def execute_sql(
             f"Unsupported db_type for executing query: {db_type}. Must be one of 'postgres', 'sqlite', 'mysql', 'sqlserver'"
         )
         return None
-
+    LOGGER.debug(f"db_type: {db_type}, connection_uri: {connection_uri}")
     try:
         async with async_engine.connect() as conn:
             result = await conn.execute(text(sql))
