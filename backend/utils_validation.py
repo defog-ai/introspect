@@ -25,6 +25,8 @@ async def validate_golden_queries(
     num_subset = 0
     validated_golden_queries = []
     for golden_query in golden_queries:
+        if not golden_query.get("user_validated", False):
+            continue
         sql_gen = await gen_sql(api_key, db_type, golden_query["question"], None)
         result = await compare_query_results(
             golden_query["sql"],
