@@ -39,7 +39,7 @@ async def make_request(url, data):
     response_str = json.dumps(response, indent=2)
     if r.status_code != 200:
         LOGGER.error(f"Error in request:\n{response_str}")
-        return None
+        return response
     LOGGER.debug(f"Response:\n{response_str}")
     return response
 
