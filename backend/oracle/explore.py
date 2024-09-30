@@ -145,6 +145,10 @@ async def explore_data(
         analyses_for_eval = [ans for ans in topk_answers if ans is not None]
         LOGGER.debug(f"Analyses for evaluation count: {len(analyses_for_eval)}")
 
+        if len(analyses_for_eval) == 0:
+            LOGGER.error("No valid analyses. Exiting explore stage.")
+            return None
+
         # evaluate the analyses sequentially to check for usefulness and newness
         unfit_analyses = []
         for analysis in analyses_for_eval:
