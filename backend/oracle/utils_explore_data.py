@@ -66,7 +66,7 @@ async def execute_sql(
         raise Exception("No SQL generated to execute")
 
     if is_sorry(sql):
-        raise Exception(f"No valid SQL query generated for question {question}")
+        raise Exception(f"Obtained Sorry SQL query for question {question}")
 
     if db_type == "postgres":
         connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
