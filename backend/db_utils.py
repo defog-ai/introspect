@@ -1,4 +1,5 @@
 import inspect
+import re
 import logging
 import traceback
 import datetime
@@ -257,6 +258,24 @@ def update_imported_tables(
                 return False
 
 
+def determine_date_format(value):
+    """
+    Determines the format of the date string.
+    """
+    date_pattern = r'^\d{4}-\d{2}-\d{2}$'
+    time_pattern = r'^\d{2}:\d{2}:\d{2}$'
+    datetime_pattern = r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
+
+    if re.match(datetime_pattern, value):
+        return 'datetime'
+    elif re.match(date_pattern, value):
+        return 'date'
+    elif re.match(time_pattern, value):
+        return 'time'
+    else:
+        return 'string'
+
+
 def save_csv_to_db(
     table_name: str,
     data: list[list[str, str]],
@@ -268,8 +287,22 @@ def save_csv_to_db(
     data is a list of lists where the first list consists of the column names and the rest are the rows.
     """
     df = pd.DataFrame(data[1:], columns=data[0])
+    # remove empty columns
     if "" in df.columns:
         del df[""]
+    # convert date, time, and datetime columns to their respective types
+    for col in df.columns:
+        if df[col].dtype == "object":
+            # Check format of the first non-null item
+            nonnull_val = df[col].dropna().iloc[0]
+            format_type = determine_date_format(nonnull_val)
+            if format_type == 'datetime':
+                df[col] = pd.to_datetime(df[col])
+            elif format_type == 'date':
+                df[col] = pd.to_datetime(df[col]).dt.date
+            elif format_type == 'time':
+                df[col] = pd.to_datetime(df[col], format='%H:%M:%S').dt.time
+
     if db == IMPORTED_TABLES_DBNAME:
         engine = imported_tables_engine
     try:
