@@ -14,7 +14,7 @@ from sqlalchemy import (
     inspect as sql_inspect,
     Table,
     MetaData,
-    text
+    text,
 )
 from sqlalchemy.schema import DropTable
 from sqlalchemy.ext.automap import automap_base
@@ -89,9 +89,11 @@ elif INTERNAL_DB == "sqlserver":
     )
 
 Base = automap_base()
-
 # reflect the tables
 Base.prepare(autoload_with=engine)
+
+ImportedTablesBase = automap_base()
+ImportedTablesBase.prepare(autoload_with=imported_tables_engine)
 
 Docs = Base.classes.defog_docs
 RecentlyViewedDocs = Base.classes.defog_recently_viewed_docs
@@ -104,7 +106,8 @@ DbCreds = Base.classes.defog_db_creds
 OracleSources = Base.classes.oracle_sources
 OracleClarifications = Base.classes.oracle_clarifications
 OracleReports = Base.classes.oracle_reports
-ImportedTables = Base.classes.imported_tables
+
+ImportedTables = ImportedTablesBase.classes.imported_tables
 
 
 def update_imported_tables_db(
@@ -144,8 +147,8 @@ def update_imported_tables_db(
             )
             return False
 
-         # check if link and table_index already exist in imported_tables of internal database
-        with engine.begin() as conn:
+        # check if link and table_index already exist in imported_tables of internal database
+        with imported_tables_engine.begin() as conn:
             stmt = select(ImportedTables.table_name).where(
                 ImportedTables.table_link == link,
                 ImportedTables.table_position == table_index,
@@ -223,7 +226,7 @@ def update_imported_tables(
     Updates the imported_tables table in the internal database with the table's info.
     Removes entry from imported_tables of the internal database if it already exists.
     """
-    with engine.begin() as conn:
+    with imported_tables_engine.begin() as conn:
         # check if link and table_index already exist in imported_tables of internal database
         stmt = select(ImportedTables).where(
             ImportedTables.table_link == link,
@@ -279,18 +282,18 @@ def determine_date_format(value):
     """
     Determines the format of the date string.
     """
-    date_pattern = r'^\d{4}-\d{2}-\d{2}$'
-    time_pattern = r'^\d{2}:\d{2}:\d{2}$'
-    datetime_pattern = r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
+    date_pattern = r"^\d{4}-\d{2}-\d{2}$"
+    time_pattern = r"^\d{2}:\d{2}:\d{2}$"
+    datetime_pattern = r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$"
 
     if re.match(datetime_pattern, value):
-        return 'datetime'
+        return "datetime"
     elif re.match(date_pattern, value):
-        return 'date'
+        return "date"
     elif re.match(time_pattern, value):
-        return 'time'
+        return "time"
     else:
-        return 'string'
+        return "string"
 
 
 def save_csv_to_db(
@@ -313,12 +316,12 @@ def save_csv_to_db(
             # Check format of the first non-null item
             nonnull_val = df[col].dropna().iloc[0]
             format_type = determine_date_format(nonnull_val)
-            if format_type == 'datetime':
+            if format_type == "datetime":
                 df[col] = pd.to_datetime(df[col])
-            elif format_type == 'date':
+            elif format_type == "date":
                 df[col] = pd.to_datetime(df[col]).dt.date
-            elif format_type == 'time':
-                df[col] = pd.to_datetime(df[col], format='%H:%M:%S').dt.time
+            elif format_type == "time":
+                df[col] = pd.to_datetime(df[col], format="%H:%M:%S").dt.time
 
     if db == IMPORTED_TABLES_DBNAME:
         engine = imported_tables_engine
