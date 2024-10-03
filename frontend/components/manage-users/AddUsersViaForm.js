@@ -5,7 +5,7 @@ import setupBaseUrl from "$utils/setupBaseUrl";
 
 const { Option } = Select;
 
-const AddUsersViaForm = ({ loading, context, getUserDets }) => {
+const AddUsersViaForm = ({ loading, getUserDets }) => {
   const [users, setUsers] = useState([
     { username: "", password: "", userType: "", userDb: [] },
   ]);

@@ -6,7 +6,7 @@ import Papa from "papaparse";
 
 const { Title } = Typography;
 
-const AddUsersViaFile = ({ loading, context, getUserDets }) => {
+const AddUsersViaFile = ({ loading, getUserDets }) => {
   const [users, setUsers] = useState([
     { username: "", password: "", userType: "" },
   ]);

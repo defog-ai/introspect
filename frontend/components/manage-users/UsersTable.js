@@ -2,13 +2,7 @@ import { Table, Space, message, Button, Modal, Spin } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
-const UsersTable = ({
-  userDets,
-  context,
-  getUserDets,
-  loading,
-  setLoading,
-}) => {
+const UsersTable = ({ userDets, getUserDets, loading, setLoading }) => {
   const showDeleteConfirm = (username) => {
     Modal.confirm({
       title: "Are you sure you want to delete this user?",
