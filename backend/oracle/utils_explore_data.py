@@ -52,50 +52,6 @@ async def gen_sql(api_key: str, db_type: str, question: str, glossary: str) -> s
         raise Exception(f"Error in making request to /generate_query_chat")
 
 
-async def execute_sql(
-    db_type: str,
-    db_creds: Dict,
-    question: str,
-    sql: str,
-) -> Optional[pd.DataFrame]:
-    """
-    Asynchronously run the SQL query on the user's database using SQLAlchemy and return the results as a dataframe.
-    """
-    if not sql:
-        raise Exception("No SQL generated to execute")
-
-    if is_sorry(sql):
-        raise Exception(f"Obtained Sorry SQL query for question {question}")
-
-    if db_type == "postgres":
-        connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
-        async_engine = create_async_engine(connection_uri)
-    elif db_type == "sqlite":
-        connection_uri = f"sqlite+aiosqlite:///{db_creds['database']}"
-        async_engine = create_async_engine(connection_uri)
-    elif db_type == "mysql":
-        connection_uri = f"mysql+aiomysql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
-        async_engine = create_async_engine(connection_uri)
-    elif db_type == "sqlserver":
-        connection_uri = f"mssql+aioodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
-        async_engine = create_async_engine(connection_uri)
-    else:
-        raise Exception(f"Unsupported db_type for executing query: {db_type}. Must be one of 'postgres', 'sqlite', 'mysql', 'sqlserver'")
-    LOGGER.debug(f"db_type: {db_type}, connection_uri: {connection_uri}")
-    async with async_engine.connect() as conn:
-        result = await conn.execute(text(sql))
-        data = result.all()
-        colnames = list(result.keys())
-        LOGGER.info(
-            f"Query successfully executed. Col names: {colnames}, Data (first 3 rows): {data[:2]}\nSQL: {sql}"
-        )    
-    
-    await async_engine.dispose()
-
-    df = pd.DataFrame(data, columns=colnames)
-    return df
-
-
 async def retry_sql_gen(
     api_key: str, question: str, sql: str, error: str, db_type: str
 ) -> Optional[str]:
