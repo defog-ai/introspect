@@ -14,6 +14,7 @@ from sqlalchemy import (
     inspect as sql_inspect,
     Table,
     MetaData,
+    text
 )
 from sqlalchemy.schema import DropTable
 from sqlalchemy.ext.automap import automap_base
@@ -120,7 +121,7 @@ def update_imported_tables_db(
     This function should always precede `update_imported_tables` as it first retrieves the old table name if the
     table (defined by its link/index) already exists in the internal database.
     """
-    with imported_tables_engine.connect() as imported_tables_connection:
+    with imported_tables_engine.begin() as imported_tables_connection:
         # create schema in imported_tables db if it doesn't exist
         try:
             if INTERNAL_DB == "postgres":
@@ -129,8 +130,8 @@ def update_imported_tables_db(
                 schema_names = inspector.get_schema_names()
                 schema_exists = schema_name in schema_names
                 if not schema_exists:
-                    create_schema_stmt = f"CREATE SCHEMA IF NOT EXISTS {schema_name};"
-                    imported_tables_connection.execute(create_schema_stmt)
+                    create_schema_stmt = f"CREATE SCHEMA {schema_name};"
+                    imported_tables_connection.execute(text(create_schema_stmt))
                     LOGGER.info(
                         f"Created schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database."
                     )
@@ -143,8 +144,8 @@ def update_imported_tables_db(
             )
             return False
 
-        # check if link and table_index already exist in imported_tables of internal database
-        with engine.connect() as conn:
+         # check if link and table_index already exist in imported_tables of internal database
+        with engine.begin() as conn:
             stmt = select(ImportedTables.table_name).where(
                 ImportedTables.table_link == link,
                 ImportedTables.table_position == table_index,
@@ -197,10 +198,10 @@ def convert_cols_to_jsonb(
     """
     if INTERNAL_DB == "postgres":
         try:
-            with imported_tables_engine.connect() as imported_tables_connection:
+            with imported_tables_engine.begin() as imported_tables_connection:
                 for col in json_cols:
                     stmt = f"ALTER TABLE {schema_name}.{table_name} ALTER COLUMN {col} SET DATA TYPE JSONB USING {col}::JSONB;"
-                    imported_tables_connection.execute(stmt)
+                    imported_tables_connection.execute(text(stmt))
                     LOGGER.info(
                         f"Converted column `{col}` to jsonb in table `{table_name}` in schema `{schema_name}` of {IMPORTED_TABLES_DBNAME} database."
                     )
@@ -222,7 +223,7 @@ def update_imported_tables(
     Updates the imported_tables table in the internal database with the table's info.
     Removes entry from imported_tables of the internal database if it already exists.
     """
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         # check if link and table_index already exist in imported_tables of internal database
         stmt = select(ImportedTables).where(
             ImportedTables.table_link == link,

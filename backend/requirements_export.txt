@@ -18,6 +18,7 @@ scipy
 seaborn==0.13.2
 slack_sdk
 sqlalchemy
+sqlalchemy-utils
 sqlglot
 sqlparse
 statsmodels

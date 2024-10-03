@@ -11,8 +11,10 @@ from sqlalchemy import (
     Text,
     Boolean,
     DateTime,
+    text,
 )
 from sqlalchemy.dialects.sqlite import JSON
+from sqlalchemy_utils import create_database, database_exists
 import os
 
 # Initialize MetaData object
@@ -247,7 +249,9 @@ def create_postgres_tables():
     column_exists = True
     with engine.connect() as conn:
         result = conn.execute(
-            f"SELECT column_name FROM information_schema.columns WHERE table_name = 'defog_users' AND column_name = 'allowed_dbs';"
+            text(
+                f"SELECT column_name FROM information_schema.columns WHERE table_name = 'defog_users' AND column_name = 'allowed_dbs';"
+            )
         )
         if not result.fetchone():
             column_exists = False
@@ -266,23 +270,19 @@ def create_postgres_tables():
             # create a new database if it doesn't exist
 
             # first, connect to the default database
-            conn = psycopg2.connect(
-                dbname=db_creds["database"],
-                user=db_creds["user"],
-                password=db_creds["password"],
-                host=db_creds["host"],
-                port=db_creds["port"],
-            )
-            conn.autocommit = True
-            try:
-                cur = conn.cursor()
-                cur.execute(f"CREATE DATABASE {imported_tables_db};")
+            imported_tables_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{imported_tables_db}"
+            if not database_exists(imported_tables_uri):
+                create_database(imported_tables_uri)
                 print(f"Created database {imported_tables_db}")
-            except psycopg2.errors.DuplicateDatabase:
+            else:
                 print(f"Database {imported_tables_db} already exists")
-            cur.close()
-            conn.close()
-
+            
+            temp_tables_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/temp_tables"
+            if not database_exists(temp_tables_uri):
+                create_database(temp_tables_uri)
+                print(f"Created database temp_tables")
+            else:
+                print(f"Database temp_tables already exists")
 
 def create_sqlserver_tables():
     """
