@@ -8,7 +8,7 @@ httpx
 hypercorn
 matplotlib==3.9.2
 numpy
-pandas
+pandas==2.2.3
 pika
 pyyaml
 redis

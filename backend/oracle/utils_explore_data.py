@@ -5,7 +5,6 @@ import pandas as pd
 import base64
 
 from celery.utils.log import get_task_logger
-from db_utils import determine_date_format
 from generic_utils import format_sql, is_sorry, make_request, normalize_sql
 from utils_logging import LOG_LEVEL
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -85,10 +84,14 @@ async def get_chart_fn(
     """
     Get the most suitable chart function and arguments for the given data.
     """
+    LOGGER.debug(f"Getting sns chart for question: {question}")
+    LOGGER.debug(f"dtypes: {data.dtypes}")
     # the statistic names (e.g. count, mean, etc) are in the index after calling
     # `describe` so we need to keep it when exporting to csv
     non_numeric_columns = data.select_dtypes(include="object").columns
     numeric_columns = data.select_dtypes(exclude="object").columns
+    LOGGER.debug(f"Numeric columns: {numeric_columns}")
+    LOGGER.debug(f"Non-Numeric columns: {non_numeric_columns}")
     if not numeric_columns.empty:
         numeric_columns_summary = (
             data[numeric_columns].describe().to_csv(index=True, float_format="%.2f")

@@ -5,6 +5,7 @@ from typing import Dict
 import pandas as pd
 from pandas.testing import assert_frame_equal, assert_series_equal
 from sqlalchemy import text
+from db_utils import determine_date_format
 from utils_logging import LOGGER
 from sqlalchemy.ext.asyncio import create_async_engine
 from generic_utils import is_sorry
@@ -64,6 +65,27 @@ async def execute_sql(
         await async_engine.dispose()
 
     df = pd.DataFrame(data, columns=colnames)
+    # go through each column and attempt to convert to float / datetime
+    # async_engine returns Decimal instead of normal floats
+    # and object instead of datetime
+    # not converting it properly will affec the numeric vs non-numeric 
+    # column descriptions for the sns chart inference
+    for col in df.columns:
+        try:
+            df[col] = pd.to_numeric(df[col])
+            continue
+        except ValueError:
+            pass
+        if df[col].dtype == "object":
+            # Check format of the first non-null item
+            nonnull_val = df[col].dropna().iloc[0]
+            format_type = determine_date_format(nonnull_val)
+            if format_type == 'datetime':
+                df[col] = pd.to_datetime(df[col])
+            elif format_type == 'date':
+                df[col] = pd.to_datetime(df[col]).dt.date
+            elif format_type == 'time':
+                df[col] = pd.to_datetime(df[col], format='%H:%M:%S').dt.time
     return df
 
 
