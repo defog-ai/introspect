@@ -268,7 +268,6 @@ def create_postgres_tables():
         print(f"Creating database {imported_tables_db}")
         if imported_tables_db != db_creds["database"]:
             # create a new database if it doesn't exist
-
             # first, connect to the default database
             imported_tables_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{imported_tables_db}"
             if not database_exists(imported_tables_uri):
@@ -276,13 +275,14 @@ def create_postgres_tables():
                 print(f"Created database {imported_tables_db}")
             else:
                 print(f"Database {imported_tables_db} already exists")
-            
-            temp_tables_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/temp_tables"
-            if not database_exists(temp_tables_uri):
-                create_database(temp_tables_uri)
-                print(f"Created database temp_tables")
-            else:
-                print(f"Database temp_tables already exists")
+
+        temp_tables_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/temp_tables"
+        if not database_exists(temp_tables_uri):
+            create_database(temp_tables_uri)
+            print(f"Created database temp_tables")
+        else:
+            print(f"Database temp_tables already exists")
+
 
 def create_sqlserver_tables():
     """
