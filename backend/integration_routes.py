@@ -15,6 +15,7 @@ from db_utils import (
     validate_user,
     get_db_type_creds,
     update_db_type_creds,
+    redis_client,
 )
 import asyncio
 from generic_utils import (
@@ -781,3 +782,72 @@ async def upload_metadata(request: Request):
     )
 
     return r
+
+
+@router.post("/integration/get_bedrock_analysis_params")
+async def get_bedrock_analysis_params(request: Request):
+    params = await request.json()
+    token = params.get("token")
+    if not validate_user(token, user_type="admin"):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    bedrock_model_id = redis_client.get("bedrock_model_id")
+    bedrock_model_prompt = redis_client.get("bedrock_model_prompt")
+
+    if not bedrock_model_id:
+        bedrock_model_id = "meta.llama3-70b-instruct-v1:0"
+
+    if not bedrock_model_prompt:
+        bedrock_model_prompt = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+Can you please give me the high-level trends (as bullet points that start with a hyphen) of data in a CSV? Note that this CSV was generated to answer the question: `{question}`
+
+This was the SQL query used to generate the table:
+{sql}
+
+This was the data generated:
+{data_csv}
+
+Do not use too much math in your analysis. Just tell me, at a high level, what the key insights are. Give me the trends as bullet points. No preamble or anything else.<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+Here is a summary of the high-level trends in the data:
+"""
+
+    return {
+        "bedrock_model_id": bedrock_model_id,
+        "bedrock_model_prompt": bedrock_model_prompt,
+    }
+
+
+@router.post("/integration/set_bedrock_analysis_params")
+async def set_bedrock_analysis_params(request: Request):
+    params = await request.json()
+    token = params.get("token")
+    if not validate_user(token, user_type="admin"):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    bedrock_model_id = params.get("bedrock_model_id")
+    bedrock_model_prompt = params.get("bedrock_model_prompt")
+    redis_client.set(
+        f"bedrock_model_id",
+        bedrock_model_id,
+    )
+
+    redis_client.set(
+        f"bedrock_model_prompt",
+        bedrock_model_prompt,
+    )
+
+    return {"status": "success"}
