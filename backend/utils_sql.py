@@ -28,7 +28,7 @@ async def execute_sql(
         return None
 
     if is_sorry(sql):
-        LOGGER.error(f"Couldn't answer with a valid SQL query for question {question}")
+        LOGGER.error(f"Obtained Sorry SQL query for question {question}")
         return None
 
     if db_type == "postgres":
