@@ -1,6 +1,5 @@
 # read a sql file, and create tables in sqlite database
 
-import psycopg2
 from sqlalchemy import (
     create_engine,
     MetaData,
@@ -11,10 +10,9 @@ from sqlalchemy import (
     Text,
     Boolean,
     DateTime,
-    text,
 )
 from sqlalchemy.dialects.sqlite import JSON
-from sqlalchemy_utils import create_database, database_exists
+from sqlalchemy_utils import database_exists, create_database
 import os
 
 # Initialize MetaData object
@@ -95,7 +93,6 @@ defog_tool_runs = Table(
     Column("analysis_id", Text),
 )
 
-
 defog_tools = Table(
     "defog_tools",
     metadata,
@@ -149,6 +146,7 @@ defog_db_creds = Table(
     Column("db_creds", JSON),
 )
 
+
 oracle_reports = Table(
     "oracle_reports",
     metadata,
@@ -187,9 +185,12 @@ oracle_sources = Table(
     Column("text_summary", Text),
 )
 
+# Initialize Oracle MetaData object
+imported_metadata = MetaData()
+
 imported_tables = Table(
     "imported_tables",
-    metadata,
+    imported_metadata,
     Column("table_link", Text, primary_key=True),
     Column("table_position", Float, primary_key=True),
     Column("table_name", Text),
@@ -244,44 +245,32 @@ def create_postgres_tables():
     # Create tables in the database
     metadata.create_all(engine)
 
-    # using sqlalchemy, check if the column `allowed_dbs` exists in the table `defog_users`
-    # if not, add the column
-    column_exists = True
-    with engine.connect() as conn:
-        result = conn.execute(
-            text(
-                f"SELECT column_name FROM information_schema.columns WHERE table_name = 'defog_users' AND column_name = 'allowed_dbs';"
-            )
-        )
-        if not result.fetchone():
-            column_exists = False
-
-    if not column_exists:
-        add_column(engine, "defog_users", Column("allowed_dbs", Text, nullable=True))
-
-    # if oracle is enabled, create the oracle database
+    # do this only if oracle is enabled
+    # check if the IMPORTED_TABLES_DBNAME exists in the database
     if os.environ.get("ORACLE_ENABLED", "no") == "yes":
-        imported_tables_db = os.environ.get("IMPORTED_TABLES_DBNAME", "postgres")
-        if imported_tables_db == "" or imported_tables_db is None:
-            imported_tables_db = "postgres"
-        print("The imported tables db is", imported_tables_db, flush=True)
-        print(f"Creating database {imported_tables_db}")
-        if imported_tables_db != db_creds["database"]:
-            # create a new database if it doesn't exist
-            # first, connect to the default database
-            imported_tables_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{imported_tables_db}"
-            if not database_exists(imported_tables_uri):
-                create_database(imported_tables_uri)
-                print(f"Created database {imported_tables_db}")
-            else:
-                print(f"Database {imported_tables_db} already exists")
+        imported_tables_db = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tables")
+        imported_connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{imported_tables_db}"
 
-        temp_tables_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/temp_tables"
-        if not database_exists(temp_tables_uri):
-            create_database(temp_tables_uri)
-            print(f"Created database temp_tables")
+        print(f"Checking if {imported_tables_db} exists in the database")
+        if not database_exists(imported_connection_uri):
+            print(f"Creating {imported_tables_db} in the database")
+            create_database(imported_connection_uri)
         else:
-            print(f"Database temp_tables already exists")
+            print(f"{imported_tables_db} already exists in the database")
+
+        imported_engine = create_engine(imported_connection_uri, echo=True)
+        imported_metadata.create_all(imported_engine)
+
+    # # check if the temp_tables db exists in the database
+    # temp_tables_db = os.environ.get("TEMP_TABLES_DBNAME", "temp_tables")
+    # temp_tables_connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{temp_tables_db}"
+
+    # print(f"Checking if {temp_tables_db} exists in the database")
+    # if not database_exists(temp_tables_connection_uri):
+    #     print(f"Creating {temp_tables_db} in the database")
+    #     create_database(temp_tables_connection_uri)
+    # else:
+    #     print(f"{temp_tables_db} already exists in the database")
 
 
 def create_sqlserver_tables():
