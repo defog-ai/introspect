@@ -44,9 +44,10 @@ if INTERNAL_DB == "sqlite":
     # if using sqlite
     connection_uri = "sqlite:///defog_local.db"
     engine = create_engine(connection_uri, connect_args={"timeout": 3})
-    imported_tables_engine = create_engine(
-        f"sqlite:///{IMPORTED_TABLES_DBNAME}.db", connect_args={"timeout": 3}
-    )
+    if os.getenv("ORACLE_ENABLED") == "yes":
+        imported_tables_engine = create_engine(
+            f"sqlite:///{IMPORTED_TABLES_DBNAME}.db", connect_args={"timeout": 3}
+        )
 elif INTERNAL_DB == "postgres":
     db_creds = {
         "user": os.environ.get("DBUSER", "postgres"),
@@ -60,13 +61,15 @@ elif INTERNAL_DB == "postgres":
     print("using postgres as our internal db")
     connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
     engine = create_engine(connection_uri)
-    if IMPORTED_TABLES_DBNAME == db_creds["database"]:
-        print(
-            f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider use a different database name."
+
+    if os.getenv("ORACLE_ENABLED") == "yes":
+        if IMPORTED_TABLES_DBNAME == db_creds["database"]:
+            print(
+                f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider use a different database name."
+            )
+        imported_tables_engine = create_engine(
+            f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}"
         )
-    imported_tables_engine = create_engine(
-        f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}"
-    )
 elif INTERNAL_DB == "sqlserver":
     db_creds = {
         "user": os.environ.get("DBUSER", "sa"),
@@ -80,20 +83,18 @@ elif INTERNAL_DB == "sqlserver":
     connection_uri = f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server"
     engine = create_engine(connection_uri)
 
-    if IMPORTED_TABLES_DBNAME == db_creds["database"]:
-        print(
-            f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider using a different database name."
+    if os.getenv("ORACLE_ENABLED") == "yes":
+        if IMPORTED_TABLES_DBNAME == db_creds["database"]:
+            print(
+                f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider using a different database name."
+            )
+        imported_tables_engine = create_engine(
+            f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}?driver=ODBC+Driver+18+for+SQL+Server"
         )
-    imported_tables_engine = create_engine(
-        f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}?driver=ODBC+Driver+18+for+SQL+Server"
-    )
 
 Base = automap_base()
 # reflect the tables
 Base.prepare(autoload_with=engine)
-
-ImportedTablesBase = automap_base()
-ImportedTablesBase.prepare(autoload_with=imported_tables_engine)
 
 Docs = Base.classes.defog_docs
 RecentlyViewedDocs = Base.classes.defog_recently_viewed_docs
@@ -107,7 +108,10 @@ OracleSources = Base.classes.oracle_sources
 OracleClarifications = Base.classes.oracle_clarifications
 OracleReports = Base.classes.oracle_reports
 
-ImportedTables = ImportedTablesBase.classes.imported_tables
+if os.getenv("ORACLE_ENABLED") == "yes":
+    ImportedTablesBase = automap_base()
+    ImportedTablesBase.prepare(autoload_with=imported_tables_engine)
+    ImportedTables = ImportedTablesBase.classes.imported_tables
 
 
 def update_imported_tables_db(
