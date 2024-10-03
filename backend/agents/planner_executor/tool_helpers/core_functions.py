@@ -11,13 +11,9 @@ analysis_assets_dir = os.environ.get(
 )
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-BEDROCK_MODEL = redis_client.get("bedrock_model_id")
-if not BEDROCK_MODEL:
-    BEDROCK_MODEL = "meta.llama3-70b-instruct-v1:0"
+DEFAULT_BEDROCK_MODEL = "meta.llama3-70b-instruct-v1:0"
 
-BEDROCK_PROMPT = redis_client.get("bedrock_model_prompt")
-if not BEDROCK_PROMPT:
-    BEDROCK_PROMPT = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
+DEFAULT_BEDROCK_PROMPT = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
 
 Can you please give me the high-level trends (as bullet points that start with a hyphen) of data in a CSV? Note that this CSV was generated to answer the question: `{question}`
 
@@ -116,16 +112,19 @@ async def analyse_data(question: str, data_csv: str, sql: str, api_key: str) -> 
             import boto3
 
             bedrock = boto3.client(service_name="bedrock-runtime")
-            model_id = BEDROCK_MODEL
+            model_id = redis_client.get("bedrock_model_id")
             if model_id is None or model_id == "":
                 LOGGER.warning("BEDROCK_MODEL not set, skipping data analysis")
-                return ""
+                model_id = DEFAULT_BEDROCK_MODEL
             accept = "application/json"
             contentType = "application/json"
+            model_prompt = redis_client.get("bedrock_model_prompt")
+            if model_prompt is None or model_prompt == "":
+                model_prompt = DEFAULT_BEDROCK_PROMPT
 
             body = json.dumps(
                 {
-                    "prompt": BEDROCK_PROMPT.format(
+                    "prompt": model_prompt.format(
                         question=question, sql=sql, data_csv=data_csv
                     ),
                     "max_gen_len": 600,
