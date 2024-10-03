@@ -12,7 +12,6 @@ from sqlalchemy import (
     DateTime,
 )
 from sqlalchemy.dialects.sqlite import JSON
-from sqlalchemy_utils import database_exists, create_database
 import os
 
 # Initialize MetaData object
@@ -251,26 +250,8 @@ def create_postgres_tables():
         imported_tables_db = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tables")
         imported_connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{imported_tables_db}"
 
-        print(f"Checking if {imported_tables_db} exists in the database")
-        if not database_exists(imported_connection_uri):
-            print(f"Creating {imported_tables_db} in the database")
-            create_database(imported_connection_uri)
-        else:
-            print(f"{imported_tables_db} already exists in the database")
-
         imported_engine = create_engine(imported_connection_uri, echo=True)
         imported_metadata.create_all(imported_engine)
-
-    # # check if the temp_tables db exists in the database
-    # temp_tables_db = os.environ.get("TEMP_TABLES_DBNAME", "temp_tables")
-    # temp_tables_connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{temp_tables_db}"
-
-    # print(f"Checking if {temp_tables_db} exists in the database")
-    # if not database_exists(temp_tables_connection_uri):
-    #     print(f"Creating {temp_tables_db} in the database")
-    #     create_database(temp_tables_connection_uri)
-    # else:
-    #     print(f"{temp_tables_db} already exists in the database")
 
 
 def create_sqlserver_tables():
