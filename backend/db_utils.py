@@ -23,6 +23,14 @@ from utils import warn_str, YieldList
 from generic_utils import make_request
 import os
 
+import redis
+
+REDIS_HOST = os.getenv("REDIS_INTERNAL_HOST", "agents-redis")
+REDIS_PORT = os.getenv("REDIS_INTERNAL_PORT", 6379)
+redis_client = redis.Redis(
+    host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True
+)
+
 analysis_assets_dir = os.environ.get(
     "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
 )
@@ -98,13 +106,17 @@ ImportedTables = Base.classes.imported_tables
 
 
 def update_imported_tables_db(
-    link: str, table_index: int, new_table_name: str, data: list[list[str, str]], schema_name: str
+    link: str,
+    table_index: int,
+    new_table_name: str,
+    data: list[list[str, str]],
+    schema_name: str,
 ) -> bool:
     """
     Updates the IMPORTED_TABLES_DBNAME database with the new schema and table.
     Replaces table from IMPORTED_TABLES_DBNAME database if it already exists.
     data is a list of lists where the first list consists of the column names and the rest are the rows.
-    This function should always precede `update_imported_tables` as it first retrieves the old table name if the 
+    This function should always precede `update_imported_tables` as it first retrieves the old table name if the
     table (defined by its link/index) already exists in the internal database.
     """
     with imported_tables_engine.connect() as imported_tables_connection:
@@ -130,7 +142,7 @@ def update_imported_tables_db(
             )
             return False
 
-         # check if link and table_index already exist in imported_tables of internal database
+        # check if link and table_index already exist in imported_tables of internal database
         with engine.connect() as conn:
             stmt = select(ImportedTables.table_name).where(
                 ImportedTables.table_link == link,
@@ -140,11 +152,15 @@ def update_imported_tables_db(
             scalar_result = result.scalar()
 
             if scalar_result is not None:
-                LOGGER.info(f"Entry `{link}` in position `{table_index}` already exists in imported_tables of the internal database.")
+                LOGGER.info(
+                    f"Entry `{link}` in position `{table_index}` already exists in imported_tables of the internal database."
+                )
                 # get old table name without schema
                 table_name = scalar_result
                 table_name = table_name.split(".")[-1]
-                LOGGER.info(f"Previous table name: `{table_name}`, New table name:  `{new_table_name}`")
+                LOGGER.info(
+                    f"Previous table name: `{table_name}`, New table name:  `{new_table_name}`"
+                )
 
                 # drop old table name if it already exists in imported_tables database
                 inspector = sql_inspect(imported_tables_engine)

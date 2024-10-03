@@ -28,6 +28,7 @@ from db_utils import (
     get_analysis_data,
     get_assignment_understanding,
     update_analysis_data,
+    redis_client,
 )
 from generic_utils import get_api_key_from_key_name, make_request
 from uuid import uuid4
@@ -36,13 +37,6 @@ router = APIRouter()
 
 import os
 import re
-import redis
-
-REDIS_HOST = os.getenv("REDIS_INTERNAL_HOST", "agents-redis")
-REDIS_PORT = os.getenv("REDIS_INTERNAL_PORT", 6379)
-redis_client = redis.Redis(
-    host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True
-)
 
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 
