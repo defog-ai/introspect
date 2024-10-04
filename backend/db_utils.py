@@ -104,11 +104,11 @@ Tools = Base.classes.defog_tools
 Users = Base.classes.defog_users
 Feedback = Base.classes.defog_plans_feedback
 DbCreds = Base.classes.defog_db_creds
-OracleSources = Base.classes.oracle_sources
-OracleClarifications = Base.classes.oracle_clarifications
-OracleReports = Base.classes.oracle_reports
 
 if os.getenv("ORACLE_ENABLED") == "yes":
+    OracleSources = Base.classes.oracle_sources
+    OracleClarifications = Base.classes.oracle_clarifications
+    OracleReports = Base.classes.oracle_reports
     ImportedTablesBase = automap_base()
     ImportedTablesBase.prepare(autoload_with=imported_tables_engine)
     ImportedTables = ImportedTablesBase.classes.imported_tables
@@ -250,9 +250,7 @@ def update_imported_tables(
                     .values(table_name=table_name, table_description=table_description)
                 )
                 imported_tables_connection.execute(update_stmt)
-                LOGGER.info(
-                    f"Updated entry `{table_name}` in imported_tables table."
-                )
+                LOGGER.info(f"Updated entry `{table_name}` in imported_tables table.")
                 return True
             except Exception as e:
                 LOGGER.error(
