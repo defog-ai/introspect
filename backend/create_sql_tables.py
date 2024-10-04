@@ -10,6 +10,7 @@ from sqlalchemy import (
     Text,
     Boolean,
     DateTime,
+    text,
 )
 from sqlalchemy.dialects.sqlite import JSON
 import os
@@ -245,11 +246,25 @@ def create_postgres_tables():
     metadata.create_all(engine)
 
     # do this only if oracle is enabled
-    # check if the IMPORTED_TABLES_DBNAME exists in the database
+    
     if os.environ.get("ORACLE_ENABLED", "no") == "yes":
         imported_tables_db = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tables")
-        imported_connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{imported_tables_db}"
 
+        # check if the IMPORTED_TABLES_DBNAME database exists, if not create it
+        with engine.connect() as conn:
+            result = conn.execute(text(f"SELECT 1 FROM pg_database WHERE datname = '{imported_tables_db}'"))
+            if not result.fetchone():
+                raw_conn = engine.raw_connection() # use a raw connection to disable the transaction block
+                try:
+                    raw_conn.set_isolation_level(0)  # Set autocommit mode
+                    with raw_conn.cursor() as cursor:
+                        cursor.execute(f"CREATE DATABASE {imported_tables_db}")
+                    print(f"Created database {imported_tables_db}.")
+                finally:
+                    raw_conn.close()
+
+        # create tables in the imported tables database
+        imported_connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{imported_tables_db}"
         imported_engine = create_engine(imported_connection_uri, echo=True)
         imported_metadata.create_all(imported_engine)
 
