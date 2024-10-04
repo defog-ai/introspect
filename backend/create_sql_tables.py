@@ -6,7 +6,6 @@ from sqlalchemy import (
     Table,
     Column,
     Integer,
-    Float,
     Text,
     Boolean,
     DateTime,
@@ -185,28 +184,6 @@ oracle_sources = Table(
     Column("text_summary", Text),
 )
 
-# Initialize Oracle MetaData object
-imported_metadata = MetaData()
-
-imported_tables = Table(
-    "imported_tables",
-    imported_metadata,
-    Column("table_link", Text, primary_key=True),
-    Column("table_position", Float, primary_key=True),
-    Column("table_name", Text),
-    Column("table_description", Text),
-)
-
-
-def add_column(engine, table_name, column):
-    """
-    This function explicitly adds a column to a table in the database.
-    This is useful when the table already exists and you want to add a new column to it. For example, when you have released a new feature to Defog that requires that a new column be added to the database.
-    """
-    column_name = column.compile(dialect=engine.dialect)
-    column_type = column.type.compile(engine.dialect)
-    engine.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
-
 
 def create_sqlite_tables():
     """
@@ -245,29 +222,6 @@ def create_postgres_tables():
     # Create tables in the database
     metadata.create_all(engine)
 
-    # do this only if oracle is enabled
-    
-    if os.environ.get("ORACLE_ENABLED", "no") == "yes":
-        imported_tables_db = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tables")
-
-        # check if the IMPORTED_TABLES_DBNAME database exists, if not create it
-        with engine.connect() as conn:
-            result = conn.execute(text(f"SELECT 1 FROM pg_database WHERE datname = '{imported_tables_db}'"))
-            if not result.fetchone():
-                raw_conn = engine.raw_connection() # use a raw connection to disable the transaction block
-                try:
-                    raw_conn.set_isolation_level(0)  # Set autocommit mode
-                    with raw_conn.cursor() as cursor:
-                        cursor.execute(f"CREATE DATABASE {imported_tables_db}")
-                    print(f"Created database {imported_tables_db}.")
-                finally:
-                    raw_conn.close()
-
-        # create tables in the imported tables database
-        imported_connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{imported_tables_db}"
-        imported_engine = create_engine(imported_connection_uri, echo=True)
-        imported_metadata.create_all(imported_engine)
-
 
 def create_sqlserver_tables():
     """
@@ -289,19 +243,6 @@ def create_sqlserver_tables():
 
     # Create tables in the database
     metadata.create_all(engine)
-
-    # using sqlalchemy, check if the column `allowed_dbs` exists in the table `defog_users`
-    # if not, add the column
-    column_exists = True
-    with engine.connect() as conn:
-        result = conn.execute(
-            f"SELECT column_name FROM information_schema.columns WHERE table_name = 'defog_users' AND column_name = 'allowed_dbs';"
-        )
-        if not result.fetchone():
-            column_exists = False
-
-    if not column_exists:
-        add_column(engine, "defog_users", Column("allowed_dbs", Text, nullable=True))
 
 
 # see from the command line arg if we are creating tables in sqlite or postgres
