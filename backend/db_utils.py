@@ -126,7 +126,7 @@ def update_imported_tables_db(
     Replaces table from IMPORTED_TABLES_DBNAME database if it already exists.
     data is a list of lists where the first list consists of the column names and the rest are the rows.
     This function should always precede `update_imported_tables` as it first retrieves the old table name if the
-    table (defined by its link/index) already exists in the internal database.
+    table (defined by its link/index) already exists in the imported_tables table.
     """
     with imported_tables_engine.begin() as imported_tables_connection:
         # create schema in imported_tables db if it doesn't exist
@@ -151,36 +151,35 @@ def update_imported_tables_db(
             )
             return False
 
-        # check if link and table_index already exist in imported_tables of internal database
-        with imported_tables_engine.begin() as conn:
-            stmt = select(ImportedTables.table_name).where(
-                ImportedTables.table_link == link,
-                ImportedTables.table_position == table_index,
+        # check if link and table_index already exist in imported_tables table
+        stmt = select(ImportedTables.table_name).where(
+            ImportedTables.table_link == link,
+            ImportedTables.table_position == table_index,
+        )
+        result = imported_tables_connection.execute(stmt)
+        scalar_result = result.scalar()
+
+        if scalar_result is not None:
+            LOGGER.info(
+                f"Entry `{link}` in position `{table_index}` already exists in imported_tables table."
             )
-            result = conn.execute(stmt)
-            scalar_result = result.scalar()
+            # get old table name without schema
+            table_name = scalar_result
+            table_name = table_name.split(".")[-1]
+            LOGGER.info(
+                f"Previous table name: `{table_name}`, New table name:  `{new_table_name}`"
+            )
 
-            if scalar_result is not None:
+            # drop old table name if it already exists in imported_tables database
+            inspector = sql_inspect(imported_tables_engine)
+            table_exists = inspector.has_table(table_name, schema=schema_name)
+            if table_exists:
+                table = Table(table_name, MetaData(), schema=schema_name)
+                drop_stmt = DropTable(table, if_exists=True)
+                imported_tables_connection.execute(drop_stmt)
                 LOGGER.info(
-                    f"Entry `{link}` in position `{table_index}` already exists in imported_tables of the internal database."
+                    f"Dropped existing table `{table_name}` from {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`."
                 )
-                # get old table name without schema
-                table_name = scalar_result
-                table_name = table_name.split(".")[-1]
-                LOGGER.info(
-                    f"Previous table name: `{table_name}`, New table name:  `{new_table_name}`"
-                )
-
-                # drop old table name if it already exists in imported_tables database
-                inspector = sql_inspect(imported_tables_engine)
-                table_exists = inspector.has_table(table_name, schema=schema_name)
-                if table_exists:
-                    table = Table(table_name, MetaData(), schema=schema_name)
-                    drop_stmt = DropTable(table, if_exists=True)
-                    imported_tables_connection.execute(drop_stmt)
-                    LOGGER.info(
-                        f"Dropped existing table `{table_name}` from {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`."
-                    )
         try:
             # insert the new table into imported_tables database
             save_csv_to_db(
@@ -227,21 +226,21 @@ def update_imported_tables(
     link: str, table_index: int, table_name: str, table_description: str
 ) -> bool:
     """
-    Updates the imported_tables table in the internal database with the table's info.
-    Removes entry from imported_tables of the internal database if it already exists.
+    Updates the imported_tables table in the imported_tables database with the table's info.
+    Removes entry from imported_tables table if it already exists.
     """
-    with imported_tables_engine.begin() as conn:
-        # check if link and table_index already exist in imported_tables of internal database
+    with imported_tables_engine.begin() as imported_tables_connection:
+        # check if link and table_index already exist in imported_tables table
         stmt = select(ImportedTables).where(
             ImportedTables.table_link == link,
             ImportedTables.table_position == table_index,
         )
-        result = conn.execute(stmt)
+        result = imported_tables_connection.execute(stmt)
         scalar_result = result.scalar()
 
         if scalar_result is not None:
             try:
-                # update imported_tables of the internal database
+                # update imported_tables table
                 update_stmt = (
                     update(ImportedTables)
                     .where(
@@ -250,19 +249,19 @@ def update_imported_tables(
                     )
                     .values(table_name=table_name, table_description=table_description)
                 )
-                conn.execute(update_stmt)
+                imported_tables_connection.execute(update_stmt)
                 LOGGER.info(
-                    f"Updated entry `{table_name}` in imported_tables of the internal database."
+                    f"Updated entry `{table_name}` in imported_tables table."
                 )
                 return True
             except Exception as e:
                 LOGGER.error(
-                    f"Error occurred in updating entry `{table_name}` in imported_tables of the internal database.: {e}"
+                    f"Error occurred in updating entry `{table_name}` in imported_tables table.: {e}"
                 )
                 return False
         else:
             try:
-                # insert the table's info into imported_tables of the internal database
+                # insert the table's info into imported_tables table
                 table_data = {
                     "table_link": link,
                     "table_position": table_index,
@@ -270,14 +269,14 @@ def update_imported_tables(
                     "table_description": table_description,
                 }
                 stmt = insert(ImportedTables).values(table_data)
-                conn.execute(stmt)
+                imported_tables_connection.execute(stmt)
                 LOGGER.info(
-                    f"Inserted entry `{table_name}` into imported_tables of the internal database."
+                    f"Inserted entry `{table_name}` into imported_tables table."
                 )
                 return True
             except Exception as e:
                 LOGGER.error(
-                    f"Error occurred in inserting entry `{table_name}` into imported_tables of the internal database: {e}"
+                    f"Error occurred in inserting entry `{table_name}` into imported_tables table: {e}"
                 )
                 return False
 
