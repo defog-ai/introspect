@@ -80,7 +80,7 @@ async def query(request: Request):
 @router.post("/get_chart_types")
 async def get_chart_types(request: Request):
     """
-    For the front-end to get the most suitable visualization / chart types for 
+    For the front-end to get the most suitable visualization / chart types for
     the given data.
     """
     LOGGER.info("CALLED GET CHART TYPES")
@@ -91,7 +91,7 @@ async def get_chart_types(request: Request):
     api_key = get_api_key_from_key_name(key_name)
 
     res = await make_request(
-        "https://api.defog.ai/get_chart_type",
+        os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai") + "/get_chart_type",
         data={"api_key": api_key, "columns": columns, "question": question},
     )
     return res
