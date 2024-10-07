@@ -77,10 +77,13 @@ async def validate_queries(
     feedback_df = pd.DataFrame(
         feedback_response.get("data", []), columns=feedback_response.get("columns")
     )
+
     # keep the most recent feedback for each question, query pair
-    feedback_df = feedback_df.sort_values(
-        by="created_at", ascending=False
-    ).drop_duplicates(subset=["question", "query_generated"])
+    feedback_df = (
+        feedback_df[feedback_df["feedback_type"].str.lower() == "good"]
+        .sort_values(by="created_at", ascending=False)
+        .drop_duplicates(subset=["question", "query_generated"])
+    )
 
     # only test for some n queries after start_from
     # this is to avoid testing all queries at once, which can be very slow for users on the UI
