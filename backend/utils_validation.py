@@ -62,8 +62,8 @@ async def validate_queries(
 ) -> Dict[str, Any]:
     """
     Validate the thumbs up queries for the given api_key.
-    Returns the correct and subset-correct rates of the thumbs up queries along
-    with a list of thumbs up queries that were incorrect.
+    Returns the correct rates of the thumbs up queries along
+    with a list of all thumbs up queries and their status.
     """
     data = {"api_key": api_key}
     feedback_response = await make_request(
@@ -71,7 +71,6 @@ async def validate_queries(
         data,
     )
     num_correct = 0
-    num_subset = 0
     tasks = []
     # de-duplicate feedback, since we only want to test the most recent feedback (customers can sometimes give multiple pieces of feedback for the same question)
     feedback_df = pd.DataFrame(
@@ -104,14 +103,11 @@ async def validate_queries(
     # and run them together all at once
     results = await asyncio.gather(*tasks)
     for result in results:
-        if result["correct"]:
+        if result.get("correct"):
             num_correct += 1
-        if result["subset"]:
-            num_subset += 1
     return {
         "total": len(results),
         "correct": num_correct,
-        "subset": num_subset,
         "results": results,
         "remaining": len(feedback_df) - len(results),
     }

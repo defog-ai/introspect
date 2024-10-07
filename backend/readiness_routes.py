@@ -179,7 +179,6 @@ async def regression_results(request: Request):
     return {
         "total": query_validation_result["total"],
         "correct": query_validation_result["correct"],
-        "subset": query_validation_result["subset"],
         "regression_queries": query_validation_result["results"],
         "results_remaining": query_validation_result["remaining"],
     }

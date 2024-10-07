@@ -202,14 +202,7 @@ def compare_df(
         return is_equal
 
 
-def subset_df(
-    df_sub: pd.DataFrame,
-    df_super: pd.DataFrame,
-    question: str,
-    query_super: str = None,
-    query_sub: str = None,
-    verbose: bool = False,
-) -> bool:
+def subset_df(df_sub: pd.DataFrame, df_super: pd.DataFrame, question: str) -> bool:
     """
     Checks if df_sub is a subset of df_super.
     """
@@ -242,17 +235,15 @@ def subset_df(
                 continue
 
         if not col_match:
-            if verbose:
-                print(f"no match for {col_sub_name}")
             return False
 
-    df_sub_normalized = normalize_table(df_sub, question, query_sub)
+    df_sub_normalized = normalize_table(df_sub, question)
 
     # get matched columns from df_super, and rename them with columns from df_sub, then normalize
     df_super_matched = df_super[matched_columns].rename(
         columns=dict(zip(matched_columns, df_sub.columns))
     )
-    df_super_matched = normalize_table(df_super_matched, question, query_super)
+    df_super_matched = normalize_table(df_super_matched, question)
 
     try:
         assert_frame_equal(df_sub_normalized, df_super_matched, check_dtype=False)
@@ -280,11 +271,11 @@ async def compare_query_results(
         # check if df_gold is an empty dataframe
         # this is because the function errors out when df_gold is empty
         if df_gold.empty and df_gen.empty:
-            correct, subset = False, False
+            correct = False
         elif compare_df(df_gold, df_gen, question, query_gold, query_gen):
-            correct, subset = True, True
+            correct = True
         elif subset_df(df_gold, df_gen, question, query_gen, query_gold):
-            subset = True
+            correct = True
     except Exception as e:
         import traceback
 
@@ -293,4 +284,4 @@ async def compare_query_results(
     finally:
         if "dfg" in locals():
             del dfg
-        return {"correct": correct, "subset": subset}
+        return {"correct": correct}
