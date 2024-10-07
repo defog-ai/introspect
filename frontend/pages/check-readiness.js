@@ -58,6 +58,9 @@ const CheckReadiness = () => {
   const [totalRegressionQueriesValid, setTotalRegressionQueriesValid] =
     useState(0);
   const [regressionQueries, setRegressionQueries] = useState([]);
+  const [regressionStartFrom, setRegressionStartFrom] = useState(0);
+  const [regressionResultsRemaining, setRegressionResultsRemaining] =
+    useState(null);
 
   const [apiKeyNames, setApiKeyNames] = useState([]);
 
@@ -211,6 +214,7 @@ const CheckReadiness = () => {
         body: JSON.stringify({
           token: token,
           key_name: apiKeyName,
+          start_from: regressionStartFrom,
         }),
       }
     );
@@ -218,6 +222,8 @@ const CheckReadiness = () => {
     setTotalRegressionQueries(data.total);
     setTotalRegressionQueriesValid(data.correct);
     setRegressionQueries([...data.regression_queries]);
+    setRegressionStartFrom((prev) => prev + 5);
+    setRegressionResultsRemaining(data.results_remaining);
     setRegressionLoading(false);
   };
 
@@ -276,67 +282,6 @@ const CheckReadiness = () => {
             These checks help ensure that Defog can provide accurate results.
           </p>
         </div>
-        <Row
-          gutter={{
-            xs: 8,
-            sm: 16,
-            md: 24,
-            lg: 32,
-          }}
-        >
-          <BasicStatus
-            loading={loadingBasicStatus}
-            metadataUploaded={metadataUploaded}
-            glossaryUploaded={glossaryUploaded}
-            goldenQueriesUploaded={goldenQueriesUploaded}
-          />
-
-          <Col span={24} style={{ paddingTop: "1em" }}>
-            <h2
-              style={{ display: "flex", alignItems: "center" }}
-              className="text-lg font-semibold"
-            >
-              <Tooltip title="Do regular quality checks to keep defog fully customised for your database">
-                <AuditOutlined
-                  style={{
-                    marginRight: "0.5em",
-                    fontSize: "1.2em",
-                    color: "#1890ff",
-                    cursor: "pointer",
-                  }}
-                />
-              </Tooltip>
-              Quality Checks
-            </h2>
-
-            <GoldenQueriesValidity
-              loadingGoldenQueries={loadingGoldenQueries}
-              totalGoldenQueries={totalGoldenQueries}
-              totalGoldenQueriesValid={totalGoldenQueriesValid}
-              totalGoldenQueriesInvalid={totalGoldenQueriesInvalid}
-              invalidGoldenQueries={invalidGoldenQueries}
-              checkGoldenQueriesValidity={checkGoldenQueriesValidity}
-            />
-
-            <InstructionConsistency
-              loadingInstructionConsistency={loadingInstructionConsistency}
-              instructionConsistencyRating={instructionConsistencyRating}
-              inconsistentInstructions={inconsistentInstructions}
-              inconsistentReason={inconsistentReason}
-              checkInstructionConsistency={checkInstructionConsistency}
-            />
-
-            <GoldenQueryCoverage
-              loadingGoldenQueryCoverage={loadingGoldenQueryCoverage}
-              totalTables={totalTables}
-              totalColumns={totalColumns}
-              coveredTables={coveredTables}
-              coveredColumns={coveredColumns}
-              missingTables={missingTables}
-              checkGoldenQueryCoverage={checkGoldenQueryCoverage}
-            />
-          </Col>
-        </Row>
 
         <div className="flex justify-center items-center flex-col p-1 mt-1">
           <h1>
@@ -352,22 +297,27 @@ const CheckReadiness = () => {
             onClick={getRegressionResults}
             disabled={regressionLoading}
           >
-            Test for Regressions
+            {totalRegressionQueries === 0
+              ? "Test first 5 queries for regressions"
+              : "Test next 5 queries for regressions"}
           </button>
 
           {regressionLoading ? (
             <>
-              Loading, the regression test can take up to 5 minutes... <Spin />
+              Loading, the regression test can take up to 2 minutes... <Spin />
             </>
           ) : totalRegressionQueries > 0 ? (
             <div className="flex justify-center items-center flex-col p-1 mt-1">
               <p className="m-4">
-                Of the {totalRegressionQueries} queries that you have added as
-                golden queries or given feedback on, Defog got{" "}
+                Of the {totalRegressionQueries} queries that you just tested,
+                Defog got{" "}
                 {totalRegressionQueries === totalRegressionQueriesValid
-                  ? `all ${totalRegressionQueries}`
+                  ? "all"
                   : ""}{" "}
-                out of {totalRegressionQueriesValid} correct.
+                {totalRegressionQueriesValid} out of {totalRegressionQueries}{" "}
+                exactly right. Please review the queries below to see which ones
+                were not exactly right - some of them might be close enough to
+                be acceptable.
               </p>
 
               <h1 className="text-2xl mt-4">Queries</h1>
@@ -431,11 +381,6 @@ const CheckReadiness = () => {
                       );
                     },
                   },
-                  {
-                    title: "Source",
-                    dataIndex: "source",
-                    key: "source",
-                  },
                 ]}
               />
             </div>
@@ -447,6 +392,68 @@ const CheckReadiness = () => {
             </p>
           )}
         </div>
+
+        <Row
+          gutter={{
+            xs: 8,
+            sm: 16,
+            md: 24,
+            lg: 32,
+          }}
+        >
+          <BasicStatus
+            loading={loadingBasicStatus}
+            metadataUploaded={metadataUploaded}
+            glossaryUploaded={glossaryUploaded}
+            goldenQueriesUploaded={goldenQueriesUploaded}
+          />
+
+          <Col span={24} style={{ paddingTop: "1em" }}>
+            <h2
+              style={{ display: "flex", alignItems: "center" }}
+              className="text-lg font-semibold"
+            >
+              <Tooltip title="Do regular quality checks to keep defog fully customised for your database">
+                <AuditOutlined
+                  style={{
+                    marginRight: "0.5em",
+                    fontSize: "1.2em",
+                    color: "#1890ff",
+                    cursor: "pointer",
+                  }}
+                />
+              </Tooltip>
+              Quality Checks
+            </h2>
+
+            <GoldenQueriesValidity
+              loadingGoldenQueries={loadingGoldenQueries}
+              totalGoldenQueries={totalGoldenQueries}
+              totalGoldenQueriesValid={totalGoldenQueriesValid}
+              totalGoldenQueriesInvalid={totalGoldenQueriesInvalid}
+              invalidGoldenQueries={invalidGoldenQueries}
+              checkGoldenQueriesValidity={checkGoldenQueriesValidity}
+            />
+
+            <InstructionConsistency
+              loadingInstructionConsistency={loadingInstructionConsistency}
+              instructionConsistencyRating={instructionConsistencyRating}
+              inconsistentInstructions={inconsistentInstructions}
+              inconsistentReason={inconsistentReason}
+              checkInstructionConsistency={checkInstructionConsistency}
+            />
+
+            <GoldenQueryCoverage
+              loadingGoldenQueryCoverage={loadingGoldenQueryCoverage}
+              totalTables={totalTables}
+              totalColumns={totalColumns}
+              coveredTables={coveredTables}
+              coveredColumns={coveredColumns}
+              missingTables={missingTables}
+              checkGoldenQueryCoverage={checkGoldenQueryCoverage}
+            />
+          </Col>
+        </Row>
       </Scaffolding>
     </>
   );
