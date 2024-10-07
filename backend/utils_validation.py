@@ -57,25 +57,15 @@ async def validate_queries(
     api_key: str, db_type: str, db_creds: Dict[str, str]
 ) -> Tuple[float, float, List[Dict[str, Any]]]:
     """
-    Validate the golden queries for the given api_key.
-    Returns the correct and subset-correct rates of the golden queries along
-    with a list of golden queries that were incorrect.
+    Validate the thumbs up queries for the given api_key.
+    Returns the correct and subset-correct rates of the thumbs up queries along
+    with a list of thumbs up queries that were incorrect.
     """
     data = {"api_key": api_key}
-    golden_queries_task = make_request(
-        f"{DEFOG_BASE_URL}/get_golden_queries",
-        data,
-    )
-    feedback_task = make_request(
+    feedback_response = await make_request(
         f"{DEFOG_BASE_URL}/get_feedback",
         data,
     )
-
-    golden_queries_response, feedback_response = await asyncio.gather(
-        golden_queries_task, feedback_task
-    )
-    # create tasks from both the golden queries and the positive feedback
-    golden_queries = golden_queries_response.get("golden_queries", [])
     num_correct = 0
     num_subset = 0
     tasks = []
@@ -99,19 +89,6 @@ async def validate_queries(
                 source="feedback",
             )
             tasks.append(test_query_task)
-
-    for golden_query in golden_queries:
-        if not golden_query.get("user_validated", False):
-            continue
-        test_query_task = test_query(
-            api_key=api_key,
-            db_type=db_type,
-            db_creds=db_creds,
-            question=golden_query["question"],
-            original_sql=golden_query["sql"],
-            source="golden",
-        )
-        tasks.append(test_query_task)
 
     # and run them together all at once
     results = await asyncio.gather(*tasks)
