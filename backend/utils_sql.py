@@ -202,7 +202,14 @@ def compare_df(
         return is_equal
 
 
-def subset_df(df_sub: pd.DataFrame, df_super: pd.DataFrame, question: str) -> bool:
+def subset_df(
+    df_sub: pd.DataFrame,
+    df_super: pd.DataFrame,
+    question: str,
+    query_super: str = None,
+    query_sub: str = None,
+    verbose: bool = False,
+) -> bool:
     """
     Checks if df_sub is a subset of df_super.
     """
@@ -235,15 +242,17 @@ def subset_df(df_sub: pd.DataFrame, df_super: pd.DataFrame, question: str) -> bo
                 continue
 
         if not col_match:
+            if verbose:
+                print(f"no match for {col_sub_name}")
             return False
 
-    df_sub_normalized = normalize_table(df_sub, question)
+    df_sub_normalized = normalize_table(df_sub, question, query_sub)
 
     # get matched columns from df_super, and rename them with columns from df_sub, then normalize
     df_super_matched = df_super[matched_columns].rename(
         columns=dict(zip(matched_columns, df_sub.columns))
     )
-    df_super_matched = normalize_table(df_super_matched, question)
+    df_super_matched = normalize_table(df_super_matched, question, query_super)
 
     try:
         assert_frame_equal(df_sub_normalized, df_super_matched, check_dtype=False)
@@ -265,7 +274,7 @@ async def compare_query_results(
     'correct' and 'subset' indicating if the queries are correct and if the result of the
     generated query is a subset of the golden query.
     """
-    correct, subset = False, False
+    correct = False
     try:
         df_gold = await execute_sql(db_type, db_creds, question, query_gold)
         # check if df_gold is an empty dataframe
