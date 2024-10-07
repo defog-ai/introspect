@@ -54,8 +54,12 @@ async def test_query(
 
 
 async def validate_queries(
-    api_key: str, db_type: str, db_creds: Dict[str, str]
-) -> Tuple[float, float, List[Dict[str, Any]]]:
+    api_key: str,
+    db_type: str,
+    db_creds: Dict[str, str],
+    num_queries: int = 5,
+    start_from: int = 0,
+) -> Dict[str, Any]:
     """
     Validate the thumbs up queries for the given api_key.
     Returns the correct and subset-correct rates of the thumbs up queries along
@@ -77,6 +81,10 @@ async def validate_queries(
     feedback_df = feedback_df.sort_values(
         by="created_at", ascending=False
     ).drop_duplicates(subset=["question", "query_generated"])
+
+    # only test for some n queries after start_from
+    # this is to avoid testing all queries at once, which can be very slow for users on the UI
+    feedback_df = feedback_df.iloc[start_from:].head(num_queries)
 
     for feedback in feedback_df.to_dict(orient="records"):
         if str(feedback["feedback_type"]).lower() == "good":
@@ -102,4 +110,5 @@ async def validate_queries(
         "correct": num_correct,
         "subset": num_subset,
         "results": results,
+        "remaining": len(feedback_df) - len(results),
     }
