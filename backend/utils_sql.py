@@ -280,8 +280,8 @@ async def compare_query_results(
         # check if df_gold is an empty dataframe
         # this is because the function errors out when df_gold is empty
         if df_gold.empty and df_gen.empty:
-            return {"correct": False, "subset": False}
-        if compare_df(df_gold, df_gen, question, query_gold, query_gen):
+            correct, subset = False, False
+        elif compare_df(df_gold, df_gen, question, query_gold, query_gen):
             correct, subset = True, True
         elif subset_df(df_gold, df_gen, question, query_gen, query_gold):
             subset = True
