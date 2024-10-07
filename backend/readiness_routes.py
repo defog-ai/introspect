@@ -162,6 +162,7 @@ async def regression_results(request: Request):
             },
         )
     key_name = params.get("key_name")
+    start_from = params.get("start_from", 0)
     api_key = get_api_key_from_key_name(key_name)
     res = get_db_type_creds(api_key)
     if res:
@@ -172,10 +173,13 @@ async def regression_results(request: Request):
             status_code=400,
         )
 
-    query_validation_result = await validate_queries(api_key, db_type, db_creds)
+    query_validation_result = await validate_queries(
+        api_key=api_key, db_type=db_type, db_creds=db_creds, start_from=start_from
+    )
     return {
         "total": query_validation_result["total"],
         "correct": query_validation_result["correct"],
         "subset": query_validation_result["subset"],
         "regression_queries": query_validation_result["results"],
+        "results_remaining": query_validation_result["remaining"],
     }
