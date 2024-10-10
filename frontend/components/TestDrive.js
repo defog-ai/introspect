@@ -20,8 +20,7 @@ export function TestDrive({ token, dbs, devMode }) {
       token={token}
       // these are the ones that will be shown for new csvs uploaded
       uploadedCsvPredefinedQuestions={["Show me any 5 rows from the dataset"]}
-      searchBarDraggable={true}
-      // searchBarClasses="sticky bottom-2"
+      searchBarDraggable={false}
       dbs={dbs}
       disableMessages={false}
       devMode={devMode}
