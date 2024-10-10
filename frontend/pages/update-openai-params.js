@@ -82,7 +82,7 @@ const ManageUsers = () => {
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               className="border border-gray-300 p-1 w-full max-h-full"
-              rows={20}
+              rows={4}
             />
           </div>
           <div className="model-prompt">
