@@ -11,7 +11,8 @@ const Scaffolding = ({
   userType,
   children,
   rootClassNames = "",
-  contentClassNames = "",
+  contentClassNames = "max-h-full h-full",
+  containerClassNames = "flex flex-col md:min-h-screen relative container mx-auto",
 }) => {
   const [items, setItems] = useState([]);
   const [context, setContext] = useContext(UserContext);
@@ -122,16 +123,6 @@ const Scaffolding = ({
     setItems(items);
   }, [userType]);
 
-  // if current path is not /query-data, redirect to /query-data
-  const [containerClassNames, setContainerClassNames] = useState(
-    "flex flex-col md:min-h-screen relative container mx-auto"
-  );
-  useEffect(() => {
-    if (pathname === "/query-data") {
-      setContainerClassNames("flex flex-col md:min-h-screen relative");
-    }
-  }, [pathname]);
-
   return (
     <div className={twMerge(containerClassNames, rootClassNames)}>
       {items.length ? (
@@ -139,7 +130,7 @@ const Scaffolding = ({
       ) : (
         <></>
       )}
-      <div className={twMerge("grow", contentClassNames)}>{children}</div>
+      <div className={contentClassNames}>{children}</div>
     </div>
   );
 };

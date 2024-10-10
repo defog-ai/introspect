@@ -12,7 +12,6 @@ const QueryDataPage = () => {
   const [token, setToken] = useState("");
   const [user, setUser] = useState("");
   const [userType, setUserType] = useState("");
-  const [devMode, setDevMode] = useState(false);
   const [apiKeyNames, setApiKeyNames] = useState(["Default DB"]);
   const [loading, setLoading] = useState(false);
 
@@ -53,42 +52,25 @@ const QueryDataPage = () => {
   }, []);
 
   return (
-    <>
+    <div className="max-h-screen h-screen">
       <Meta />
       <Scaffolding
         id={"query-data"}
         userType={userType}
-        rootClassNames="h-screen relative"
+        containerClassNames="max-h-screen h-screen flex flex-col"
+        contentClassNames="h-full max-h-full"
       >
-        <div className="flex flex-col h-full">
-          {/* <div className=""> */}
-          {userType === "admin" ? (
-            <Toggle
-              rootClassNames="mx-auto p-2 absolute lg:fixed w-44 border bg-white rounded-md left-0 right-0 mx-auto top-2 lg:bottom-0 lg:top-auto lg:right-auto lg:shadow-md z-50"
-              title={"Environment"}
-              onLabel="Production"
-              offLabel="Development"
-              defaultOn={!devMode}
-              onToggle={(e) => {
-                setDevMode(!e);
-              }}
-            />
-          ) : null}
-          {/* </div> */}
-
-          {token ? (
-            loading ? (
-              <div className="w-full h-full flex justify-center items-center text-gray-400 text-sm">
-                Loading DBs <SpinningLoader classNames="ml-4" />
-              </div>
-            ) : (
-              <TestDrive
-                token={token}
-                devMode={devMode}
-                dbs={(apiKeyNames.length > 0
-                  ? apiKeyNames
-                  : ["Default DB"]
-                ).map((name) => {
+        {token ? (
+          loading ? (
+            <div className="w-full h-full flex justify-center items-center text-gray-400 text-sm">
+              Loading DBs <SpinningLoader classNames="ml-4" />
+            </div>
+          ) : (
+            <TestDrive
+              token={token}
+              devMode={false}
+              dbs={(apiKeyNames.length > 0 ? apiKeyNames : ["Default DB"]).map(
+                (name) => {
                   return {
                     name: name,
                     keyName: name,
@@ -110,13 +92,17 @@ const QueryDataPage = () => {
                               ]
                             : ["Show me any 5 rows from the first table"],
                   };
-                })}
-              />
-            )
-          ) : null}
-        </div>
+                }
+              )}
+            />
+          )
+        ) : (
+          <div className="w-full h-full flex justify-center items-center text-gray-400 text-sm">
+            No token found. Please log out and log back in.
+          </div>
+        )}
       </Scaffolding>
-    </>
+    </div>
   );
 };
 
