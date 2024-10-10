@@ -66,6 +66,9 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
       - DELETE_EXISTING_TOOLS=${DELETE_EXISTING_TOOLS:-no}
+
+      # for users that want to use OpenAI for narrative generation
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     build:
       context: .
       dockerfile: dockerfile.agents-python-server

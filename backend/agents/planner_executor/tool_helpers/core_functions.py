@@ -5,6 +5,13 @@ from generic_utils import make_request, LOGGER
 import os
 import json
 from db_utils import redis_client
+from .analysis_prompts import (
+    DEFAULT_BEDROCK_MODEL,
+    DEFAULT_BEDROCK_PROMPT,
+    DEFAULT_OPENAI_MODEL,
+    DEFAULT_OPENAI_SYSTEM_PROMPT,
+    DEFAULT_OPENAI_USER_PROMPT,
+)
 import asyncio
 
 analysis_assets_dir = os.environ.get(
@@ -12,22 +19,6 @@ analysis_assets_dir = os.environ.get(
 )
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-DEFAULT_BEDROCK_MODEL = "meta.llama3-70b-instruct-v1:0"
-
-DEFAULT_BEDROCK_PROMPT = """<|begin_of_text|><|start_header_id|>user<|end_header_id|>
-
-Can you please give me the high-level trends (as bullet points that start with a hyphen) of data in a CSV? Note that this CSV was generated to answer the question: `{question}`
-
-This was the SQL query used to generate the table:
-{sql}
-
-This was the data generated:
-{data_csv}
-
-Do not use too much math in your analysis. Just tell me, at a high level, what the key insights are. Give me the trends as bullet points. No preamble or anything else.<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-
-Here is a summary of the high-level trends in the data:
-"""
 
 
 def encode_image(image_path):
@@ -144,4 +135,42 @@ async def analyse_data(question: str, data_csv: str, sql: str, api_key: str) -> 
             model_response = json.loads(response["body"].read())
             LOGGER.info(model_response)
             generation = model_response["generation"]
+            return generation
+        elif os.environ.get("ANALYZE_DATA_MODEL") == "openai":
+            # if OPENAI_API_KEY is not set, return an error
+            if os.environ.get("OPENAI_API_KEY") is None:
+                return "You are using openai for analysing data, but OPENAI_API_KEY is not set. Please set it in the environment variables."
+            from openai import AsyncOpenAI
+
+            openai = AsyncOpenAI()
+            system_prompt = redis_client.get("openai_system_prompt")
+            if system_prompt is None or system_prompt == "":
+                system_prompt = DEFAULT_OPENAI_SYSTEM_PROMPT
+
+            user_prompt = redis_client.get("openai_user_prompt")
+            if user_prompt is None or user_prompt == "":
+                user_prompt = DEFAULT_OPENAI_USER_PROMPT
+
+            messages = [
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": user_prompt.format(
+                        question=question, sql=sql, data_csv=data_csv
+                    ),
+                },
+            ]
+
+            response = await openai.chat.completions.create(
+                model=DEFAULT_OPENAI_MODEL,
+                messages=messages,
+                temperature=0,
+                max_tokens=600,
+                seed=42,
+            )
+
+            generation = response.choices[0].message.content.strip()
             return generation
