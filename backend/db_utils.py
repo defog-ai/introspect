@@ -4,7 +4,6 @@ import logging
 import traceback
 import datetime
 import uuid
-import pandas as pd
 from sqlalchemy import (
     create_engine,
     select,
@@ -18,10 +17,11 @@ from sqlalchemy import (
 )
 from sqlalchemy.schema import DropTable
 from sqlalchemy.ext.automap import automap_base
+from utils_df import mk_df
 from utils_logging import LOGGER
 
 import asyncio
-from utils import warn_str, YieldList
+from utils import YieldList
 from generic_utils import make_request
 import os
 
@@ -310,23 +310,7 @@ def save_csv_to_db(
     Saves a csv file to either the internal db or the imported_tables db.
     data is a list of lists where the first list consists of the column names and the rest are the rows.
     """
-    df = pd.DataFrame(data[1:], columns=data[0])
-    # remove empty columns
-    if "" in df.columns:
-        del df[""]
-    # convert date, time, and datetime columns to their respective types
-    for col in df.columns:
-        if df[col].dtype == "object":
-            # Check format of the first non-null item
-            nonnull_val = df[col].dropna().iloc[0]
-            format_type = determine_date_format(nonnull_val)
-            if format_type == "datetime":
-                df[col] = pd.to_datetime(df[col])
-            elif format_type == "date":
-                df[col] = pd.to_datetime(df[col]).dt.date
-            elif format_type == "time":
-                df[col] = pd.to_datetime(df[col], format="%H:%M:%S").dt.time
-
+    df = mk_df(data[1:], data[0])
     if db == IMPORTED_TABLES_DBNAME:
         engine = imported_tables_engine
     try:
