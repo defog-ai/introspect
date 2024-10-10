@@ -70,7 +70,7 @@ const ManageUsers = () => {
         <div className="flex justify-left items-left flex-col p-1 mt-5 gap-4">
           <h1 className="text-2xl ">Update OpenAI Analysis Parameters</h1>
           <p>
-            Here you can update the parameters used for the bedrock analysis
+            Here you can update the parameters used for the OpenAI analysis
             model.
           </p>
           <div className="system-prompt">
@@ -133,18 +133,18 @@ const ManageUsers = () => {
                 );
                 if (res.ok) {
                   message.success(
-                    "Successfully updated bedrock analysis params!"
+                    "Successfully updated OpenAI analysis params!"
                   );
                 } else {
                   message.error(
-                    "There was an error updating the bedrock analysis params. Are you sure you are logged in?"
+                    "There was an error updating the OpenAI analysis params. Are you sure you are logged in?"
                   );
                 }
 
                 setLoading(false);
               }}
             >
-              {loading ? "Loading..." : "Update Bedrock Analysis Params"}
+              {loading ? "Loading..." : "Update OpenAI Analysis Params"}
             </button>
           </div>
         </div>
