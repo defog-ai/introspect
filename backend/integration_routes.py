@@ -851,3 +851,69 @@ async def set_bedrock_analysis_params(request: Request):
     )
 
     return {"status": "success"}
+
+
+@router.post("/integration/get_openai_analysis_params")
+async def get_openai_analysis_params(request: Request):
+    params = await request.json()
+    token = params.get("token")
+    if not validate_user(token, user_type="admin"):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    openai_system_prompt = redis_client.get("openai_system_prompt")
+    openai_user_prompt = redis_client.get("openai_user_prompt")
+
+    if not openai_system_prompt:
+        openai_system_prompt = """You are a data scientist. You have been given a CSV file with data. You need to analyze the data and provide a summary of the key insights. Please make sure that the summary is concise and to the point, and that you do not make any factual errors."""
+
+    if not openai_user_prompt:
+        openai_user_prompt = """A user asked me the question `{question}`. I created the following CSV file to answer the question:
+```csv
+{data_csv}
+```
+
+I also ran the following SQL query to generate the data for this CSV:
+```sql
+{sql}
+```
+
+Please analyze the data in the CSV file and provide a summary of the key insights. Make sure that the summary is concise and to the point, and that you do not make any factual errors. Please give rich, narrative insights that are easy to understand. Do not use too much math in your analysis. Just tell me, at a high level, what the key insights are."""
+
+    return {
+        "openai_system_prompt": openai_system_prompt,
+        "openai_user_prompt": openai_user_prompt,
+    }
+
+
+@router.post("/integration/set_openai_analysis_params")
+async def set_openai_analysis_params(request: Request):
+    params = await request.json()
+    token = params.get("token")
+    if not validate_user(token, user_type="admin"):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    openai_system_prompt = params.get("openai_system_prompt")
+    openai_user_prompt = params.get("openai_user_prompt")
+    redis_client.set(
+        "openai_system_prompt",
+        openai_system_prompt,
+    )
+
+    redis_client.set(
+        "openai_user_prompt",
+        openai_user_prompt,
+    )
+
+    return {"status": "success"}
