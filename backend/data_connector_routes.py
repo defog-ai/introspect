@@ -1,20 +1,19 @@
-import os
 import json
-import pandas as pd
+import os
+from datetime import datetime
+from typing import Optional
+
+from db_utils import ORACLE_ENABLED, validate_user
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from datetime import datetime
-from io import StringIO
-from pydantic import BaseModel, Field
-from typing import Optional
-from db_utils import validate_user
 from generic_utils import get_api_key_from_key_name
+from pydantic import BaseModel, Field
 from utils_queue import publish
 
 router = APIRouter()
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-if os.environ.get("ORACLE_ENABLED", "no") == "yes":
+if ORACLE_ENABLED:
     os.environ["RABBITMQ_PORT"] = "15672"
 
 

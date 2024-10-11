@@ -9,11 +9,11 @@ TYPE_STRING = "string"
 TYPE_INTEGER = "int64"
 TYPE_FLOAT = "float64"
 
-REGEX_DATE_PATTERN = r'^\d{4}-\d{2}-\d{2}$'
-REGEX_TIME_PATTERN = r'^\d{2}:\d{2}:\d{2}$'
-REGEX_DATETIME_PATTERN = r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
-REGEX_INTEGER_PATTERN = r'^\d+$'
-REGEX_FLOAT_PATTERN = r'^\d+(\.\d+)?$'
+REGEX_DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
+REGEX_TIME_PATTERN = r"^\d{2}:\d{2}:\d{2}$"
+REGEX_DATETIME_PATTERN = r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$"
+REGEX_INTEGER_PATTERN = r"^\d+$"
+REGEX_FLOAT_PATTERN = r"^\d+(\.\d+)?$"
 
 
 def determine_column_type(column: pd.Series) -> str:
@@ -60,22 +60,20 @@ def mk_df(data: List, columns: List[str]) -> pd.DataFrame:
 
     for col in df.columns:
         column_non_null = df[col].dropna()
-        print(f"Non-null values in {col}: {column_non_null.tolist()}")  # Debugging line
         format_type = determine_column_type(column_non_null)
-        print(f"Column: {col}, Format: {format_type}")
-        
+
         if format_type == TYPE_DATETIME:
-            df[col] = pd.to_datetime(df[col], errors='coerce')
+            df[col] = pd.to_datetime(df[col], errors="coerce")
         elif format_type == TYPE_DATE:
-            df[col] = pd.to_datetime(df[col], errors='coerce')
+            df[col] = pd.to_datetime(df[col], errors="coerce")
         elif format_type == TYPE_TIME:
             # note that the .dt.time accessor coerces the type to 'object'
-            df[col] = pd.to_datetime(df[col], format='%H:%M:%S', errors='coerce').dt.time 
+            df[col] = pd.to_datetime(
+                df[col], format="%H:%M:%S", errors="coerce"
+            ).dt.time
         elif format_type == TYPE_INTEGER:
-            df[col] = pd.to_numeric(df[col], errors='coerce').astype('int64')
+            df[col] = pd.to_numeric(df[col], errors="coerce").astype("int64")
         elif format_type == TYPE_FLOAT:
-            df[col] = pd.to_numeric(df[col], errors='coerce').astype('float64')
-        
-        print(f"Final Data Type for {col}: {df[col].dtype}")  # Check final data type
-    
+            df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+
     return df

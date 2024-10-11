@@ -21,7 +21,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 512M
 
   agents-python-server:
@@ -70,6 +70,7 @@ services:
       context: .
       dockerfile: dockerfile.agents-python-server
     restart: always
+    stop_grace_period: 1s
     ports:
       - "1235:1235"
     volumes:
@@ -117,4 +118,4 @@ volumes:
   agents-rabbitmq:
 
 networks:
-  agents-network: 
+  agents-network:

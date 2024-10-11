@@ -5,7 +5,6 @@ from typing import Dict
 import pandas as pd
 from pandas.testing import assert_frame_equal, assert_series_equal
 from sqlalchemy import text
-from db_utils import determine_date_format
 from utils_df import mk_df
 from utils_logging import LOGGER
 from sqlalchemy.ext.asyncio import create_async_engine

@@ -17,8 +17,6 @@ while ! nc -z agents-redis $REDIS_INTERNAL_PORT; do
   echo "Waiting for ${REDIS_INTERNAL_PORT} to be available..."
   sleep 1
 done
-celery -A oracle.celery_app.celery_app worker --loglevel=info &
-python3 -m hypercorn main:app -b 0.0.0.0:1235 --reload &
 
 # Test for the RabbitMQ server to be up before starting the consumers
 max_retries=30
@@ -40,5 +38,8 @@ fi
 python3 consumer_google_analytics.py &
 python3 consumer_stripe.py &
 
-# Wait for all background jobs to finish
-wait
+# Start celery worker
+celery -A oracle.celery_app.celery_app worker --loglevel=info &
+
+# Start the FastAPI server
+python3 -m hypercorn main:app -b 0.0.0.0:1235 --reload

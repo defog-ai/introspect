@@ -1,23 +1,19 @@
+import asyncio
+import functools
 import json
 import os
 import time
-import asyncio
-import functools
+from datetime import datetime
+from io import StringIO
+
 import airbyte as ab
 import pandas as pd
-from datetime import datetime
 import pika
-import csv
-from io import StringIO
+from db_utils import convert_cols_to_jsonb
+from generic_utils import make_request
+from utils_imported_data import update_imported_tables, update_imported_tables_db
 from utils_logging import LOGGER, save_and_log
 from utils_md import convert_data_type_postgres
-from db_utils import (
-    update_imported_tables_db,
-    update_imported_tables,
-    convert_cols_to_jsonb,
-)
-from generic_utils import make_request
-
 
 rabbitmq_host = os.environ.get("RABBITMQ_HOST", "localhost")
 parameters = pika.ConnectionParameters(host=rabbitmq_host)
@@ -30,7 +26,7 @@ channel.queue_declare(queue=queue_name)
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 INTERNAL_DB = os.environ.get("INTERNAL_DB", "postgres")
-STRIPE_SCHEMA = "stripe" # schema name to store the stripe data
+STRIPE_SCHEMA = "stripe"  # schema name to store the stripe data
 STREAMS = [
     "customers",
     "persons",
@@ -386,7 +382,15 @@ async def callback(ch, method, properties, body):
 
         # update imported_tables database with the ga schema and tables
         link = "stripe"
-        update_imported_tables_db(link, table_index, table_name, csv_data, STRIPE_SCHEMA)
+        success, old_table_name = update_imported_tables_db(
+            link, table_index, table_name, csv_data, STRIPE_SCHEMA
+        )
+        if not success:
+            LOGGER.error(
+                f"Error in updating imported tables database for table {table_name}"
+            )
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
         schema_table_name = f"{STRIPE_SCHEMA}.{table_name}"
         inserted_tables[schema_table_name] = [
             {"data_type": data_type, "column_name": col_name, "column_description": ""}
@@ -403,7 +407,7 @@ async def callback(ch, method, properties, body):
 
         # update imported_tables table entries in internal db
         update_imported_tables(
-            link, table_index, schema_table_name, table_description=None
+            link, table_index, old_table_name, schema_table_name, table_description=None
         )
 
     # get and update metadata for {api_key}-imported
@@ -421,7 +425,12 @@ async def callback(ch, method, properties, body):
     try:
         response = await make_request(
             DEFOG_BASE_URL + "/update_metadata",
-            {"api_key": api_key, "table_metadata": md, "db_type": INTERNAL_DB, "imported": True},
+            {
+                "api_key": api_key,
+                "table_metadata": md,
+                "db_type": INTERNAL_DB,
+                "imported": True,
+            },
         )
         if response.get("status") == "success":
             LOGGER.info(

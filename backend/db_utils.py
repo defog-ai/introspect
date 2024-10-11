@@ -1,31 +1,17 @@
-import inspect
-import re
-import logging
-import traceback
-import datetime
-import uuid
-from sqlalchemy import (
-    create_engine,
-    select,
-    update,
-    insert,
-    delete,
-    inspect as sql_inspect,
-    Table,
-    MetaData,
-    text,
-)
-from sqlalchemy.schema import DropTable
-from sqlalchemy.ext.automap import automap_base
-from utils_df import mk_df
-from utils_logging import LOGGER
-
 import asyncio
-from utils import YieldList
-from generic_utils import make_request
+import datetime
+import inspect
+import logging
 import os
+import traceback
+import uuid
 
 import redis
+from generic_utils import make_request
+from sqlalchemy import create_engine, delete, insert, select, text, update
+from sqlalchemy.ext.automap import automap_base
+from utils import YieldList
+from utils_logging import LOGGER
 
 REDIS_HOST = os.getenv("REDIS_INTERNAL_HOST", "agents-redis")
 REDIS_PORT = os.getenv("REDIS_INTERNAL_PORT", 6379)
@@ -38,13 +24,15 @@ analysis_assets_dir = os.environ.get(
 )
 INTERNAL_DB = os.environ.get("INTERNAL_DB", None)
 IMPORTED_TABLES_DBNAME = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tables")
+ORACLE_ENABLED: bool = (os.environ.get("ORACLE_ENABLED", "no") == "yes")
+LOGGER.info(f"ORACLE_ENABLED: {ORACLE_ENABLED}")
 
 if INTERNAL_DB == "sqlite":
     print("using sqlite as our internal db")
     # if using sqlite
     connection_uri = "sqlite:///defog_local.db"
     engine = create_engine(connection_uri, connect_args={"timeout": 3})
-    if os.getenv("ORACLE_ENABLED") == "yes":
+    if ORACLE_ENABLED:
         imported_tables_engine = create_engine(
             f"sqlite:///{IMPORTED_TABLES_DBNAME}.db", connect_args={"timeout": 3}
         )
@@ -62,7 +50,7 @@ elif INTERNAL_DB == "postgres":
     connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
     engine = create_engine(connection_uri)
 
-    if os.getenv("ORACLE_ENABLED") == "yes":
+    if ORACLE_ENABLED:
         if IMPORTED_TABLES_DBNAME == db_creds["database"]:
             print(
                 f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider use a different database name."
@@ -70,6 +58,7 @@ elif INTERNAL_DB == "postgres":
         imported_tables_engine = create_engine(
             f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}"
         )
+        LOGGER.info(f"Created imported tables engine for postgres: {imported_tables_engine}")
 elif INTERNAL_DB == "sqlserver":
     db_creds = {
         "user": os.environ.get("DBUSER", "sa"),
@@ -83,7 +72,7 @@ elif INTERNAL_DB == "sqlserver":
     connection_uri = f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server"
     engine = create_engine(connection_uri)
 
-    if os.getenv("ORACLE_ENABLED") == "yes":
+    if ORACLE_ENABLED:
         if IMPORTED_TABLES_DBNAME == db_creds["database"]:
             print(
                 f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider using a different database name."
@@ -105,7 +94,7 @@ Users = Base.classes.defog_users
 Feedback = Base.classes.defog_plans_feedback
 DbCreds = Base.classes.defog_db_creds
 
-if os.getenv("ORACLE_ENABLED") == "yes":
+if ORACLE_ENABLED:
     try:
         OracleSources = Base.classes.oracle_sources
         OracleClarifications = Base.classes.oracle_clarifications
@@ -115,88 +104,6 @@ if os.getenv("ORACLE_ENABLED") == "yes":
         ImportedTables = ImportedTablesBase.classes.imported_tables
     except Exception as e:
         LOGGER.debug(f"Error loading oracle tables: {e}")
-
-
-def update_imported_tables_db(
-    link: str,
-    table_index: int,
-    new_table_name: str,
-    data: list[list[str, str]],
-    schema_name: str,
-) -> bool:
-    """
-    Updates the IMPORTED_TABLES_DBNAME database with the new schema and table.
-    Replaces table from IMPORTED_TABLES_DBNAME database if it already exists.
-    data is a list of lists where the first list consists of the column names and the rest are the rows.
-    This function should always precede `update_imported_tables` as it first retrieves the old table name if the
-    table (defined by its link/index) already exists in the imported_tables table.
-    """
-    with imported_tables_engine.begin() as imported_tables_connection:
-        # create schema in imported_tables db if it doesn't exist
-        try:
-            if INTERNAL_DB == "postgres":
-                # check if schema exists
-                inspector = sql_inspect(imported_tables_engine)
-                schema_names = inspector.get_schema_names()
-                schema_exists = schema_name in schema_names
-                if not schema_exists:
-                    create_schema_stmt = f"CREATE SCHEMA {schema_name};"
-                    imported_tables_connection.execute(text(create_schema_stmt))
-                    LOGGER.info(
-                        f"Created schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database."
-                    )
-            else:
-                LOGGER.error(f"INTERNAL_DB is not postgres. Cannot create schema.")
-                return False
-        except Exception as e:
-            LOGGER.error(
-                f"Error creating schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database: {e}"
-            )
-            return False
-
-        # check if link and table_index already exist in imported_tables table
-        stmt = select(ImportedTables.table_name).where(
-            ImportedTables.table_link == link,
-            ImportedTables.table_position == table_index,
-        )
-        result = imported_tables_connection.execute(stmt)
-        scalar_result = result.scalar()
-
-        if scalar_result is not None:
-            LOGGER.info(
-                f"Entry `{link}` in position `{table_index}` already exists in imported_tables table."
-            )
-            # get old table name without schema
-            table_name = scalar_result
-            table_name = table_name.split(".")[-1]
-            LOGGER.info(
-                f"Previous table name: `{table_name}`, New table name:  `{new_table_name}`"
-            )
-
-            # drop old table name if it already exists in imported_tables database
-            inspector = sql_inspect(imported_tables_engine)
-            table_exists = inspector.has_table(table_name, schema=schema_name)
-            if table_exists:
-                table = Table(table_name, MetaData(), schema=schema_name)
-                drop_stmt = DropTable(table, if_exists=True)
-                imported_tables_connection.execute(drop_stmt)
-                LOGGER.info(
-                    f"Dropped existing table `{table_name}` from {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`."
-                )
-        try:
-            # insert the new table into imported_tables database
-            save_csv_to_db(
-                new_table_name, data, db=IMPORTED_TABLES_DBNAME, schema_name=schema_name
-            )
-            LOGGER.info(
-                f"Inserted table `{new_table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`."
-            )
-            return True
-        except Exception as e:
-            LOGGER.error(
-                f"Error inserting table `{new_table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`: {e}\n Data: {data}"
-            )
-            return False
 
 
 def convert_cols_to_jsonb(
@@ -222,104 +129,6 @@ def convert_cols_to_jsonb(
             return False
     else:
         LOGGER.error(f"INTERNAL_DB is not postgres. Cannot convert columns to jsonb.")
-        return False
-
-
-def update_imported_tables(
-    link: str, table_index: int, table_name: str, table_description: str
-) -> bool:
-    """
-    Updates the imported_tables table in the imported_tables database with the table's info.
-    Removes entry from imported_tables table if it already exists.
-    """
-    with imported_tables_engine.begin() as imported_tables_connection:
-        # check if link and table_index already exist in imported_tables table
-        stmt = select(ImportedTables).where(
-            ImportedTables.table_link == link,
-            ImportedTables.table_position == table_index,
-        )
-        result = imported_tables_connection.execute(stmt)
-        scalar_result = result.scalar()
-
-        if scalar_result is not None:
-            try:
-                # update imported_tables table
-                update_stmt = (
-                    update(ImportedTables)
-                    .where(
-                        ImportedTables.table_link == link,
-                        ImportedTables.table_position == table_index,
-                    )
-                    .values(table_name=table_name, table_description=table_description)
-                )
-                imported_tables_connection.execute(update_stmt)
-                LOGGER.info(f"Updated entry `{table_name}` in imported_tables table.")
-                return True
-            except Exception as e:
-                LOGGER.error(
-                    f"Error occurred in updating entry `{table_name}` in imported_tables table.: {e}"
-                )
-                return False
-        else:
-            try:
-                # insert the table's info into imported_tables table
-                table_data = {
-                    "table_link": link,
-                    "table_position": table_index,
-                    "table_name": table_name,
-                    "table_description": table_description,
-                }
-                stmt = insert(ImportedTables).values(table_data)
-                imported_tables_connection.execute(stmt)
-                LOGGER.info(
-                    f"Inserted entry `{table_name}` into imported_tables table."
-                )
-                return True
-            except Exception as e:
-                LOGGER.error(
-                    f"Error occurred in inserting entry `{table_name}` into imported_tables table: {e}"
-                )
-                return False
-
-
-def determine_date_format(value):
-    """
-    Determines the format of the date string.
-    """
-    date_pattern = r"^\d{4}-\d{2}-\d{2}$"
-    time_pattern = r"^\d{2}:\d{2}:\d{2}$"
-    datetime_pattern = r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$"
-
-    if re.match(datetime_pattern, value):
-        return "datetime"
-    elif re.match(date_pattern, value):
-        return "date"
-    elif re.match(time_pattern, value):
-        return "time"
-    else:
-        return "string"
-
-
-def save_csv_to_db(
-    table_name: str,
-    data: list[list[str, str]],
-    db: str = INTERNAL_DB,
-    schema_name: str = None,
-) -> bool:
-    """
-    Saves a csv file to either the internal db or the imported_tables db.
-    data is a list of lists where the first list consists of the column names and the rest are the rows.
-    """
-    df = mk_df(data[1:], data[0])
-    if db == IMPORTED_TABLES_DBNAME:
-        engine = imported_tables_engine
-    try:
-        df.to_sql(
-            table_name, engine, if_exists="replace", index=False, schema=schema_name
-        )
-        return True
-    except Exception as e:
-        LOGGER.error(e)
         return False
 
 

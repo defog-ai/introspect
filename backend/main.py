@@ -2,19 +2,19 @@ import logging
 import os
 import traceback
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
 from agents.planner_executor.planner_executor_agent_rest import RESTExecutor
 import doc_endpoints
 
 from db_utils import (
+    ORACLE_ENABLED,
     get_all_analyses,
     get_analysis_data,
     initialise_analysis,
-    get_user_key_names,
 )
-from generic_utils import get_api_key_from_key_name, make_request
+from generic_utils import get_api_key_from_key_name
 import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes, agent_routes, imgo_routes
 
 logging.basicConfig(level=logging.INFO)
@@ -34,11 +34,12 @@ app.include_router(imgo_routes.router)
 app.include_router(slack_routes.router)
 app.include_router(agent_routes.router)
 
-if os.environ.get("ORACLE_ENABLED", "no") == "yes":
-    import oracle_routes, data_connector_routes
+if ORACLE_ENABLED:
+    import data_connector_routes, imported_data_routes, oracle_routes
 
-    app.include_router(oracle_routes.router)
     app.include_router(data_connector_routes.router)
+    app.include_router(imported_data_routes.router)
+    app.include_router(oracle_routes.router)
 
     from oracle.setup import setup_dir
 

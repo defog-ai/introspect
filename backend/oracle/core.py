@@ -10,20 +10,19 @@ from typing import Any, Dict, List
 
 import pdfkit
 from celery.utils.log import get_task_logger
-from db_utils import (
-    OracleReports,
-    OracleSources,
-    engine,
+from db_utils import OracleReports, OracleSources, engine
+from generic_utils import make_request
+from markdown2 import Markdown
+from oracle.celery_app import celery_app
+from oracle.explore import explore_data
+from sqlalchemy import insert, select, update
+from sqlalchemy.orm import Session
+from utils_imported_data import (
+    IMPORTED_SCHEMA,
     update_imported_tables,
     update_imported_tables_db,
 )
-from generic_utils import make_request
-from markdown2 import Markdown
-from sqlalchemy import insert, select, update
-from sqlalchemy.orm import Session
 from utils_logging import LOG_LEVEL, save_and_log, save_timing
-from oracle.celery_app import celery_app
-from oracle.explore import explore_data
 
 EXPLORATION = "exploration"
 PREDICTION = "prediction"
@@ -34,8 +33,7 @@ TASK_TYPES = [
     OPTIMIZATION,
 ]
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-PARSED_SCHEMA = "parsed" # schema name to store parsed tables
-INTERNAL_DB = os.environ.get("INTERNAL_DB", "postgres") 
+INTERNAL_DB = os.environ.get("INTERNAL_DB", "postgres")
 # celery requires a different logger object. we can still reuse utils_logging
 # which just assumes a LOGGER object is defined
 LOGGER = get_task_logger(__name__)
@@ -356,52 +354,55 @@ async def gather_context(
             )
     parsed_tables = await asyncio.gather(*parse_table_tasks)
     inserted_tables = {}
-    with engine.connect() as connection:
-        for (link, table_index), parsed_table in zip(table_keys, parsed_tables):
-            try:
-                # input validation
-                if "table_name" not in parsed_table:
-                    LOGGER.error("No table name found in parsed table.")
-                    continue
-                table_name = parsed_table["table_name"]
-                table_description = parsed_table.get("table_description", None)
-                if "columns" not in parsed_table:
-                    LOGGER.error(f"No columns found in parsed table `{table_name}`.")
-                    continue
-                columns = parsed_table["columns"]
-                column_names = [column["column_name"] for column in columns]
-                num_cols = len(columns)
-                if "rows" not in parsed_table:
-                    LOGGER.error(f"No rows found in parsed table `{table_name}`.")
-                    continue
-                rows = parsed_table[
-                    "rows"
-                ]  # 2D list of data 
-                data = [column_names] + rows
-                # check data has correct number of columns passed for each row
-                if not all(len(row) == len(data[0]) for row in data):
-                    LOGGER.error(
-                        f"Unable to insert table `{table_name}.` Data has mismatched number of columns for each row. Header has {len(data[0])} columns: {data[0]}, but data has {len(data[1])} columns: {data[1]}."
-                    )
-                    continue
 
-                schema_table_name = f"{PARSED_SCHEMA}.{table_name}"
-                # create the table and insert the data into imported_tables database, parsed schema
-                update_imported_tables_db(
-                    link, table_index, table_name, data, PARSED_SCHEMA
-                )
-                # update the imported_tables table in internal db
-                update_imported_tables(
-                    link, table_index, schema_table_name, table_description
-                )
-                [
-                    column.pop("fn", None) for column in columns
-                ]  # remove "fn" key if present before updating metadata
-                inserted_tables[schema_table_name] = columns
-            except Exception as e:
+    for (link, table_index), parsed_table in zip(table_keys, parsed_tables):
+        try:
+            # input validation
+            if "table_name" not in parsed_table:
+                LOGGER.error("No table name found in parsed table.")
+                continue
+            table_name = parsed_table["table_name"]
+            table_description = parsed_table.get("table_description", None)
+            if "columns" not in parsed_table:
+                LOGGER.error(f"No columns found in parsed table `{table_name}`.")
+                continue
+            columns = parsed_table["columns"]
+            column_names = [column["column_name"] for column in columns]
+            num_cols = len(column_names)
+            if "rows" not in parsed_table:
+                LOGGER.error(f"No rows found in parsed table `{table_name}`.")
+                continue
+            rows = parsed_table["rows"]  # 2D list of data
+            # check data has correct number of columns passed for each row
+            if not all(len(row) == num_cols for row in rows):
                 LOGGER.error(
-                    f"Error occurred in parsing table: {e}\n{traceback.format_exc()}"
+                    f"Unable to insert table `{table_name}.` Data has mismatched number of columns for each row. Header has {len(data[0])} columns: {data[0]}, but data has {len(data[1])} columns: {data[1]}."
                 )
+                continue
+
+            schema_table_name = f"{IMPORTED_SCHEMA}.{table_name}"
+            # create the table and insert the data into imported_tables database, parsed schema
+            data = [column_names] + rows
+            success, old_table_name = update_imported_tables_db(
+                link, table_index, table_name, data, IMPORTED_SCHEMA
+            )
+            if not success:
+                LOGGER.error(
+                    f"Failed to update imported tables database for table `{table_name}`."
+                )
+                continue
+            # update the imported_tables table in internal db
+            update_imported_tables(
+                link, table_index, old_table_name, schema_table_name, table_description
+            )
+            [
+                column.pop("fn", None) for column in columns
+            ]  # remove "fn" key if present before updating metadata
+            inserted_tables[schema_table_name] = columns
+        except Exception as e:
+            LOGGER.error(
+                f"Error occurred in parsing table: {e}\n{traceback.format_exc()}"
+            )
     ts = save_timing(ts, "Tables saved", timings)
     # get and update metadata if inserted_tables is not empty
     if inserted_tables:
@@ -412,7 +413,12 @@ async def gather_context(
         md.update(inserted_tables)
         response = await make_request(
             DEFOG_BASE_URL + "/update_metadata",
-            {"api_key": api_key, "table_metadata": md, "db_type": INTERNAL_DB, "imported": True} ,
+            {
+                "api_key": api_key,
+                "table_metadata": md,
+                "db_type": INTERNAL_DB,
+                "imported": True,
+            },
         )
         LOGGER.info(f"Updated metadata for api_key {api_key}")
         ts = save_timing(ts, "Metadata updated", timings)
