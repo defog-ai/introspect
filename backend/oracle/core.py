@@ -15,6 +15,7 @@ from markdown2 import Markdown
 from oracle.celery_app import celery_app, LOGGER
 from oracle.explore import explore_data
 from oracle.predict import predict
+from oracle.optimize import optimize
 from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
 from utils_imported_data import (
@@ -458,7 +459,7 @@ async def gather_context(
     return combined_summary
 
 
-async def optimize(
+async def predict(
     api_key: str,
     username: str,
     report_id: str,
@@ -467,17 +468,15 @@ async def optimize(
     outputs: Dict[str, Any],
 ):
     """
-    This function will optimize the objective input by the user, considering
-    the context, data, and predictions generated. We will formulate the optimization
-    problem as a linear program, solve it using a solver, and return the optimal
-    solution(s) or infeasibility if found.
+    This function will make the necessary predictions, by training a machine learning
+    model on the data provided, and generating predictions needed for the analysis.
+    Intermediate model and predictions generated will be saved in the report_id's
+    directory.
     """
-    # TODO implement this function
-    # dummy print statement for now
-    LOGGER.info(f"Optimizing for report {report_id}")
-    # sleep for a random amount of time to simulate work
-    await asyncio.sleep(random.random() * 2)
-    return {"optimization": "optimization completed"}
+    LOGGER.info(f"Predicting for report {report_id}")
+    LOGGER.debug(f"inputs: {inputs}")
+    LOGGER.debug(f"outputs:\n{truncate_obj(outputs)}")
+    return {"predictions": "predictions generated"}
 
 
 async def export(
