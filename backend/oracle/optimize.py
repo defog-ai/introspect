@@ -51,7 +51,7 @@ async def optimize(
           after looking at the data.
         - Ideally, this should be able to run simple anlaysis on the outputs, if it needs any specific details like
           average, max, min etc.
-    2. `run_optimizer`:
+    2. `run_optimizer_model`:
         - This runs a mathematical optimizer function.
         - The LLM will figure out the constraints and objectives, and this function will run an optimizer based on those.
         - We will formulate the optimization problem as a linear program, solve it using a solver, and return the optimal
@@ -60,7 +60,7 @@ async def optimize(
     It will create a task array, where each task has a subtask type from above, and the required inputs for running that task:
     ```
     {
-      task_type: "simple_recommendation" or "run_optimizer",
+      task_type: "simple_recommendation" or "run_optimizer_model",
       "inputs": Inputs required for the optimizer. No inputs are required for "simple_recommendation".
     }
     ```
@@ -114,24 +114,24 @@ async def optimize(
             cols = ", ".join(df.columns)
 
             explore_results_prompt_text += (
-                f"\n{count}. {title}"
+                f"\n{count}. {title}\n"
                 + f"Summary: {summary}\n"
                 + f"Data generated: {table_csv_desc}\n"
                 + f"Columns: {cols}\n"
             )
             count += 1
 
-    print(gather_context_prompt_text)
-    print(explore_results_prompt_text)
+    LOGGER.debug(f"gather_context_prompt_text: {gather_context_prompt_text}")
+    LOGGER.debug(f"explore_results_prompt_text: {explore_results_prompt_text}")
     # look at the user question, and make a decision on
-    # whether we want to do simple_recommendation or run_optimizer
+    # whether we want to do simple_recommendation or run_optimizer_model
     resp = await make_request(
         DEFOG_BASE_URL + "/oracle/gen_optimization_tasks",
         data={
             "question": user_question,
             "api_key": api_key,
-            "gather_context": gather_context_prompt_text,
-            "explore": explore_results_prompt_text,
+            "gather_context_results": gather_context_prompt_text,
+            "explore_results": explore_results_prompt_text,
             "username": username,
             "report_id": report_id,
             "task_type": task_type,
@@ -139,7 +139,7 @@ async def optimize(
     )
     task_list = resp.get("task_list", [])
 
-    LOGGER.debug(f"Optimizer task list: {task_list}")
+    LOGGER.info(f"Optimizer task list: {json.dumps(task_list, indent=2)}")
     # simple_recommendation: Just do a simple text based summary/recommendations based on the data that has been generated so far
-    # run_optimizer: Run an optimizer function
+    # run_optimizer_model: Run an optimizer function
     return {"optimization": "optimization completed"}
