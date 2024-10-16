@@ -20,7 +20,7 @@ from utils_sql import execute_sql
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 MAX_ANALYSES = 5
-MAX_ROUNDS = 2
+MAX_ROUNDS = 1
 RETRY_DATA_FETCH = 1
 RETRY_CHART_GEN = 1
 
@@ -84,141 +84,54 @@ async def explore_data(
         "gather_context": gather_context,
     }
     LOGGER.info(f"Generating explorer questions")
-    generated_qns = await make_request(
+    generated_qns_response = await make_request(
         DEFOG_BASE_URL + "/oracle/gen_explorer_qns", json_data
     )
-    if "error" in generated_qns:
+    if "error" in generated_qns_response and generated_qns_response["error"]:
         LOGGER.error(
-            f"Error occurred in generating explorer questions: {generated_qns['error']}"
+            f"Error occurred in generating explorer questions: {generated_qns_response['error']}"
         )
         return None
 
-    # TODO add additional input format checks and retries
-    generated_qns = generated_qns.get("generated_questions", [])
-
-    generated_qns = [
-        q for q in generated_qns if q.get("data_available", False) and "question" in q
-    ]  # remove questions where data_available is False
-    generated_qns = sorted(
-        generated_qns, key=lambda x: x["relevancy_score"], reverse=True
-    )  # sort questions by relevancy score
+    generated_qns = generated_qns_response["generated_questions"]  # list of dict
+    dependent_variable = generated_qns_response["dependent_variable"]  # dict
+    independent_variables = generated_qns_response["independent_variables"]  # dict
 
     LOGGER.debug(f"Generated questions with data: {len(generated_qns)}")
 
-    final_analyses = []
-    final_summaries = []
-    max_analyses = inputs.get("max_analyses", MAX_ANALYSES)
-    # increments by 1 for each round of while loop
-    max_rounds = inputs.get("max_rounds", MAX_ROUNDS)
-    qn_id = 0
-    round_count = 0
-    while (
-        len(final_analyses) < max_analyses
-        and len(generated_qns) > 0
-        and round_count < max_rounds
-    ):
-        LOGGER.debug(f"Round {round_count} started")
-        tasks = []
-        for q in generated_qns:
-            # question used by 1st round question generation
-            if "question" in q:
-                qn = q["question"]
-            else:
-                LOGGER.error(f"Question not found in {q}")
-                continue
-            tasks.append(
-                explore_generated_question(
-                    api_key,
-                    user_question,
-                    qn_id,
-                    qn,
-                    context,
-                    db_type,
-                    db_creds,
-                    report_chart_dir,
-                    inputs.get("retry_data_fetch", RETRY_DATA_FETCH),
-                )
+    analyses = []
+
+    tasks = []
+    for i, question_dict in enumerate(generated_qns):
+        # question used by 1st round question generation
+        generated_qn = question_dict["question"]
+        independent_variable_name = question_dict["independent_variable"]
+        independent_variable = independent_variables[independent_variable_name]
+        independent_variable["name"] = independent_variable_name
+        if not independent_variable:
+            LOGGER.error(f"Independent variable not found for {i}: {generated_qn}")
+            continue
+        tasks.append(
+            explore_generated_question(
+                api_key,
+                user_question,
+                i,
+                generated_qn,
+                dependent_variable,
+                independent_variable,
+                context,
+                db_type,
+                db_creds,
+                report_chart_dir,
+                inputs.get("retry_data_fetch", RETRY_DATA_FETCH),
             )
-            qn_id += 1
-        topk_answers = await asyncio.gather(*tasks)
-        # remove None answers
-        analyses_for_eval = [ans for ans in topk_answers if ans is not None]
-        LOGGER.debug(f"Analyses for evaluation count: {len(analyses_for_eval)}")
-
-        if len(analyses_for_eval) == 0:
-            LOGGER.error("No valid analyses. Exiting explore stage.")
-            return None
-
-        # evaluate the analyses sequentially to check for usefulness and newness
-        unfit_analyses = []
-        for analysis in analyses_for_eval:
-            if "summary" not in analysis:
-                unfit_analyses.append(analysis)
-                continue
-            final_summaries_str = "\n".join(
-                f"{i + 1}. {summary}" for i, summary in enumerate(final_summaries)
-            )
-
-            json_data = {
-                "api_key": api_key,
-                "user_question": user_question,
-                "problem_statement": problem_statement,
-                "generated_qn": analysis["generated_qn"],
-                "summary": analysis["summary"],
-                "final_summaries_str": final_summaries_str,
-            }
-            resp = await make_request(
-                f"{DEFOG_BASE_URL}/oracle/eval_explorer_data_analysis", data=json_data
-            )
-            if "error" in resp:
-                LOGGER.error(f"Error occurred in evaluating analysis: {resp['error']}")
-                continue
-            reason = resp.get("reason", "")
-            usefulness = resp.get("usefulness", False)
-            newness = resp.get("newness", False)
-            LOGGER.debug(
-                f"Generated question: {analysis['generated_qn']}, Reason: {reason}, Usefulness: {usefulness}, Newness: {newness}\n"
-            )
-            if usefulness and newness:
-                if "evaluation" not in analysis:
-                    analysis["evaluation"] = {}
-                analysis["evaluation"]["analysis_usefulness"] = usefulness
-                analysis["evaluation"]["analysis_newness"] = newness
-                analysis["working"]["reason_for_analysis_eval"] = reason
-                final_summaries.append(analysis["summary"])
-                final_analyses.append(analysis)
-            else:
-                unfit_analyses.append(analysis)
-
-        # break if we have achieved the number of analyses required
-        if len(final_analyses) >= max_analyses:
-            break
-
-        # generate more questions if needed
-        json_data = {
-            "api_key": api_key,
-            "user_question": user_question,
-            "task_type": task_type,
-            "previous_questions": final_analyses + unfit_analyses,
-            "gather_context": gather_context,
-        }
-        resp = await make_request(
-            f"{DEFOG_BASE_URL}/oracle/regen_explorer_qns", data=json_data
         )
-        answered_questions = resp.get("answered_questions", [])
-        final_analyses_ordered = []
-        for q in answered_questions:
-            for ans in final_analyses:
-                if ans["generated_qn"] == q:
-                    final_analyses_ordered.append(ans)
-                    break
-        final_analyses = final_analyses_ordered
-        generated_qns = resp.get("refined_questions", [])
-        LOGGER.debug(f"Round {round_count} end")
-        round_count += 1
+    topk_answers = await asyncio.gather(*tasks)
+    # remove None answers and add to analyses
+    analyses.extend([ans for ans in topk_answers if ans])
 
-    LOGGER.debug(f"Final analyses count: {len(final_analyses)}\n{final_analyses}")
-    return final_analyses
+    LOGGER.debug(f"Final analyses count: {len(analyses)}\n{analyses}")
+    return analyses
 
 
 async def explore_generated_question(
@@ -226,6 +139,8 @@ async def explore_generated_question(
     user_question: str,
     qn_id: int,
     generated_qn: str,
+    dependent_variable: Dict[str, Any],
+    independent_variable: Dict[str, Any],
     context: str,
     db_type: str,
     db_creds: Dict[str, str],
@@ -246,6 +161,10 @@ async def explore_generated_question(
     Returns a dictionary with the following structure:
     - qn_id: int
     - generated_qn: str
+    - independent_variable: Dict[str, Any]
+        - name: str
+        - description: str
+        - table.column: List[str]
     - artifacts: Dict[str, Dict[str, str]]
         - outer key: str, artifact type, one of TABLE_CSV, IMAGE
         - inner keys
@@ -255,6 +174,7 @@ async def explore_generated_question(
         - generated_sql: str
         - reason_for_qn: str
         - reason_for_analysis: str
+        - chart_fn_params: Dict[str, Any]
     - title: str, title of the data analysis
     - summary: str, summary of the data analysis
 
@@ -326,6 +246,11 @@ async def explore_generated_question(
     outputs = {
         "qn_id": qn_id,
         "generated_qn": generated_qn,
+        "independent_variable": {
+            "name": independent_variable["name"],
+            "description": independent_variable["description"],
+            "table.column": independent_variable["table.column"],
+        },
         "artifacts": artifacts,
         "working": {"generated_sql": sql},
     }
@@ -353,7 +278,8 @@ async def explore_generated_question(
     if not os.path.exists(chart_path):
         LOGGER.error(f"Chart could not be generated for {qn_id}: {generated_qn}")
         return outputs
-
+    # save chosen chart function and arguments
+    outputs["working"]["chart_fn_params"] = chart_fn_params
     ts = save_timing(ts, f"{qn_id}) Get and Plot chart", timings)
 
     # TODO: DEF-552 add retries for chart plotting based on error type and if chart
@@ -368,7 +294,9 @@ async def explore_generated_question(
             api_key, user_question, generated_qn, sql, data, chart_path
         )
         if "error" in data_analysis and data_analysis["error"]:
-            LOGGER.error(f"Error occurred in generating data analysis: {data_analysis['error']}")
+            LOGGER.error(
+                f"Error occurred in generating data analysis: {data_analysis['error']}"
+            )
             return outputs
     except Exception as e:
         LOGGER.error(f"Error occurred in generating data analysis: {str(e)}")
