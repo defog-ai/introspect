@@ -161,6 +161,9 @@ async def explore_generated_question(
     Returns a dictionary with the following structure:
     - qn_id: int
     - generated_qn: str
+    - dependent_variable: Dict[str, Any]
+        - description: str
+        - table.column: List[str]
     - independent_variable: Dict[str, Any]
         - name: str
         - description: str
@@ -263,7 +266,15 @@ async def explore_generated_question(
     chart_path = os.path.join(report_chart_dir, f"q{qn_id}.png")
     error_str = None
     try:
-        chart_fn_params = await get_chart_fn(api_key, generated_qn, data)
+        dependent_variable_desc = dependent_variable["description"]
+        independent_variable_desc = independent_variable["description"]
+        chart_fn_params = await get_chart_fn(
+            api_key,
+            generated_qn,
+            data,
+            dependent_variable_desc,
+            independent_variable_desc,
+        )
         run_chart_fn(chart_fn_params, data, chart_path)
         # TODO inspect the chart visually by sending it to a VLM for ensuring
         # that the chart is meaningful (not too cluttered, too many categories

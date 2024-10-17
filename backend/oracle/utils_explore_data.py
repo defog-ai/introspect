@@ -77,7 +77,11 @@ async def retry_sql_gen(
 
 
 async def get_chart_fn(
-    api_key: str, question: str, data: pd.DataFrame
+    api_key: str,
+    question: str,
+    data: pd.DataFrame,
+    dependent_variable: str,
+    independent_variable: str,
 ) -> Optional[Dict]:
     """
     Get the most suitable chart function and arguments for the given data.
@@ -107,9 +111,11 @@ async def get_chart_fn(
         "question": question,
         "numeric_columns_summary": numeric_columns_summary,
         "qualitative_columns_summary": qualitative_columns_summary,
+        "dependent_variable": dependent_variable,
+        "independent_variable": independent_variable,
     }
     resp = await make_request(f"{DEFOG_BASE_URL}/get_sns_chart", data=json_data)
-    if "name" not in resp or "arguments" not in resp:
+    if "name" not in resp or "parameters" not in resp:
         LOGGER.error(f"Error occurred in getting sns chart: {resp}")
         return None
     return resp
@@ -123,14 +129,14 @@ def run_chart_fn(
 
     Parameters:
     - chart_fn_params (Dict): Parameters for the chart function, including the
-      function name and arguments.
+      function name and parameters.
     - data (pd.DataFrame): The data to plot.
     - chart_path (str): The file path to save the chart.
     """
     if not chart_fn_params:
         raise Exception("No chart function provided")
     chart_fn = chart_fn_params["name"]
-    kwargs = chart_fn_params.get("arguments", {})
+    kwargs = chart_fn_params.get("parameters", {})
     # replace "" in value with None
     for key, value in kwargs.items():
         if value == "":
@@ -149,7 +155,6 @@ def run_chart_fn(
     # Save the figure to the specified path
     plt.savefig(chart_path)
     plt.close()  # Close the figure to free memory
-\
 
 
 async def gen_data_analysis(
@@ -159,6 +164,7 @@ async def gen_data_analysis(
     sql: str,
     data_df: pd.DataFrame,
     chart_path: str,
+    max_rows: int = 50,
 ) -> Dict[str, str]:
     """
     Given the user question, generated question and fetched data and chart,
@@ -166,8 +172,11 @@ async def gen_data_analysis(
     Returns a dictionary with the title and summary.
     """
     sampled = False
-    if len(data_df) > 50 and not chart_path:
-        data_df = data_df.sample(50)
+    if len(data_df) > max_rows:
+        LOGGER.debug(
+            f"Sampling data down from {len(data_df)} to {max_rows} for analysis"
+        )
+        data_df = data_df.sample(max_rows)
         sampled = True
 
     # convert data df to csv
@@ -196,4 +205,6 @@ async def gen_data_analysis(
     if resp:
         return resp
     else:
-        raise Exception(f"Error in making request to /oracle/gen_explorer_data_analysis")
+        raise Exception(
+            f"Error in making request to /oracle/gen_explorer_data_analysis"
+        )
