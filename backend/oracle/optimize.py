@@ -67,68 +67,12 @@ async def optimize(
 
     It will run the above tasks in parallel, and return the resulting outputs of each of them.
     """
-    # TODO implement this function
-    # Once the
-    # dummy print statement for now
-    LOGGER.info(f"Optimizing for report {report_id}")
-    LOGGER.debug(f"Optimiser inputs: {inputs}")
-    LOGGER.debug(f"Optimiser outputs: {outputs}")
+    LOGGER.info(f"[Optimize] Optimizing for report {report_id}")
+    LOGGER.debug(f"[Optimize] Inputs: {inputs}")
+    LOGGER.debug(f"[Optimize] Outputs: {outputs}")
 
     user_question = inputs["user_question"]
-    gather_context_results = outputs.get("gather_context", {})
-    objective = gather_context_results.get("objective", "")
-    constraints = gather_context_results.get("constraints", [])
-    context = gather_context_results.get("context", "")
 
-    gather_context_prompt_text = ""
-    # Only keep objective, context and constraints
-    # The problem_statement inside gather_context doesn't seem to add too much new info
-    # Most of that information can be gleaned from the user_question itself
-    if objective:
-        gather_context_prompt_text += f"{objective}\n"
-
-    if context:
-        gather_context_prompt_text += f"Context: {context}\n"
-
-    if constraints and len(constraints) > 0:
-        gather_context_prompt_text += "Constraints:\n"
-        for i, c in enumerate(constraints):
-            gather_context_prompt_text += f"{i + 1}: {c}\n"
-
-    gather_context_prompt_text = gather_context_prompt_text.strip()
-
-    # now get explorer results
-    # and merge them into a text snippet
-    explore_results = outputs.get("explore", [])
-    explore_results_prompt_text = ""
-
-    count = 1
-
-    for analysis in explore_results:
-        title = analysis.get("title", "")
-        summary = analysis.get("summary", "")
-        artifacts = analysis.get("artifacts")
-        table_csv = artifacts.get("table_csv", {})
-        table_csv_str = table_csv.get("artifact_content", None)
-        table_csv_desc = table_csv.get("artifact_description", None)
-        independent_variable = analysis.get("independent_variable", "")
-
-        if title and summary and table_csv_str and table_csv_desc:
-            # parse the table_csv_str and get the columns available
-            df = pd.read_csv(StringIO(table_csv_str))
-            cols = ", ".join(df.columns)
-
-            explore_results_prompt_text += (
-                f"\n{count}. {title}\n"
-                + f"Summary: {summary}\n"
-                + f"Data generated: {table_csv_desc}\n"
-                + f"Columns: {cols}\n"
-                + f"Variable name: {independent_variable['name']}"
-            )
-            count += 1
-
-    LOGGER.debug(f"gather_context_prompt_text: {gather_context_prompt_text}")
-    LOGGER.debug(f"explore_results_prompt_text: {explore_results_prompt_text}")
     # look at the user question, and make a decision on
     # whether we want to do simple_recommendation or run_optimizer_model
     resp = await make_request(
@@ -136,16 +80,14 @@ async def optimize(
         data={
             "question": user_question,
             "api_key": api_key,
-            "gather_context_results": gather_context_prompt_text,
-            "explore_results": explore_results_prompt_text,
             "username": username,
             "report_id": report_id,
             "task_type": task_type,
+            "gather_context": outputs.get("gather_context", {}),
+            "explore": outputs.get("explore", {}),
         },
     )
     task = resp.get("task", [])
 
     LOGGER.info(f"Optimizer task: {json.dumps(task, indent=2)}")
-    # simple_recommendation: Just do a simple text based summary/recommendations based on the data that has been generated so far
-    # run_optimizer_model: Run an optimizer function
     return {"optimization": "optimization completed"}
