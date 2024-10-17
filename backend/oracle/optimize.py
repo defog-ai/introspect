@@ -78,13 +78,17 @@ async def optimize(
     gather_context_results = outputs.get("gather_context", {})
     objective = gather_context_results.get("objective", "")
     constraints = gather_context_results.get("constraints", [])
+    context = gather_context_results.get("context", "")
 
     gather_context_prompt_text = ""
-    # Only keep objective, constraints, variables keys
+    # Only keep objective, context and constraints
     # The problem_statement inside gather_context doesn't seem to add too much new info
     # Most of that information can be gleaned from the user_question itself
     if objective:
         gather_context_prompt_text += f"{objective}\n"
+
+    if context:
+        gather_context_prompt_text += f"Context: {context}\n"
 
     if constraints and len(constraints) > 0:
         gather_context_prompt_text += "Constraints:\n"
@@ -107,6 +111,7 @@ async def optimize(
         table_csv = artifacts.get("table_csv", {})
         table_csv_str = table_csv.get("artifact_content", None)
         table_csv_desc = table_csv.get("artifact_description", None)
+        independent_variable = analysis.get("independent_variable", "")
 
         if title and summary and table_csv_str and table_csv_desc:
             # parse the table_csv_str and get the columns available
@@ -118,6 +123,7 @@ async def optimize(
                 + f"Summary: {summary}\n"
                 + f"Data generated: {table_csv_desc}\n"
                 + f"Columns: {cols}\n"
+                + f"Variable name: {independent_variable['name']}"
             )
             count += 1
 
@@ -137,9 +143,9 @@ async def optimize(
             "task_type": task_type,
         },
     )
-    task_list = resp.get("task_list", [])
+    task = resp.get("task", [])
 
-    LOGGER.info(f"Optimizer task list: {json.dumps(task_list, indent=2)}")
+    LOGGER.info(f"Optimizer task: {json.dumps(task, indent=2)}")
     # simple_recommendation: Just do a simple text based summary/recommendations based on the data that has been generated so far
     # run_optimizer_model: Run an optimizer function
     return {"optimization": "optimization completed"}
