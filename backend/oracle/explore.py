@@ -298,7 +298,7 @@ async def explore_generated_question(
     # generate data analysis
     try:
         data_analysis = await gen_data_analysis(
-            api_key, user_question, generated_qn, sql, data, chart_path
+            api_key, generated_qn, sql, data, chart_fn_params
         )
         if "error" in data_analysis and data_analysis["error"]:
             LOGGER.error(

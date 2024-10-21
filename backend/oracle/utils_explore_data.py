@@ -151,7 +151,7 @@ def run_chart_fn(
         sns.displot(data, **kwargs)
     elif chart_fn == "catplot":
         sns.catplot(data, **kwargs)
-    
+
     # rotate x-axis labels if the x column's values has more than 100 characters
     x_col = kwargs.get("x", None)
     if x_col:
@@ -160,7 +160,7 @@ def run_chart_fn(
         x_col_char_count = sum([len(str(val)) for val in x_col_values.unique()])
         LOGGER.debug(f"X column char count: {x_col_char_count}")
         locs, labels = plt.xticks()
-        if x_col_char_count > (figsize[0]*10):
+        if x_col_char_count > (figsize[0] * 10):
             LOGGER.debug(f"Rotating x-axis labels")
             plt.setp(labels, rotation=45)
 
@@ -171,45 +171,82 @@ def run_chart_fn(
 
 async def gen_data_analysis(
     api_key: str,
-    user_question: str,
     generated_qn: str,
     sql: str,
-    data_df: pd.DataFrame,
-    chart_path: str,
-    max_rows: int = 50,
+    data_fetched: pd.DataFrame,
+    chart_fn_params: Dict[str, Any],
 ) -> Dict[str, str]:
     """
     Given the user question, generated question and fetched data and chart,
     this will generate a title and summary of the key insights.
     Returns a dictionary with the title and summary.
     """
-    sampled = False
-    if len(data_df) > max_rows:
-        LOGGER.debug(
-            f"Sampling data down from {len(data_df)} to {max_rows} for analysis"
-        )
-        data_df = data_df.sample(max_rows)
-        sampled = True
+    # get the data points that are used to generate the chart
+    # note that we need to aggregate if the chart implicitly aggregates the data
+    chart_fn = chart_fn_params.get("name")
+    chart_params = chart_fn_params.get("parameters", {})
+    kind = chart_params.get("kind", None)
+    y_col = chart_params.get("y", None)
+    x_col = chart_params.get("x", None)
+    hue_col = chart_params.get("hue", None)
+    col_col = chart_params.get("col", None)
+    row_col = chart_params.get("row", None)
+
+    grouping_cols = [col for col in [hue_col, col_col, row_col] if col]
+    # add x only if it is not numerical and used in relplot
+    if x_col and data_fetched[x_col].dtype not in ["int64", "float64"]:
+        grouping_cols.append(x_col)
+    LOGGER.debug(f"Grouping columns: {grouping_cols}")
+
+    agg_functions = {}
+    if chart_fn == "relplot" and kind == "line":
+        agg_functions[y_col] = "mean"
+    elif chart_fn == "catplot" and kind == "bar":
+        agg_functions[y_col] = "sum"
+    elif chart_fn == "catplot" and kind == "count":
+        agg_functions[y_col] = "count"
+    elif chart_fn == "catplot" and kind in ["box", "violin"]:
+        agg_functions[y_col] = [
+            lambda x: x.quantile(0.25),
+            lambda x: x.median(),
+            lambda x: x.quantile(0.75),
+        ]
+    LOGGER.debug(f"Agg functions: {agg_functions}")
+
+    if not grouping_cols or not agg_functions:
+        data_grouped = data_fetched
+        aggregated = False
+    else:
+        if y_col:
+            LOGGER.debug(f"data_fetched: {data_fetched.head()}")
+            LOGGER.debug(f"columns: {data_fetched.columns}")
+            LOGGER.debug(f"dtype: {data_fetched.dtypes}")
+            data_grouped = (
+                data_fetched.groupby(grouping_cols).agg(agg_functions).reset_index()
+            )
+        elif chart_fn == "displot":
+            data_grouped = data_fetched.groupby(grouping_cols).hist()
+        else:
+            LOGGER.error(
+                f"Edge case not handled for chart_fn: {chart_fn}, chart params: {chart_fn_params}"
+            )
+
+        LOGGER.debug(f"Grouped data: {data_grouped}")
+
+        aggregated = len(data_grouped) < len(data_fetched)
 
     # convert data df to csv
-    data_csv = data_df.to_csv(float_format="%.3f", header=True, index=False)
-
-    # convert chart to base64
-    if chart_path:
-        with open(chart_path, "rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode("utf-8")
-    else:
-        base64_image = None
+    data_csv = data_grouped.to_csv(float_format="%.3f", header=True, index=False)
 
     # generate data analysis
     json_data = {
         "api_key": api_key,
-        "user_question": user_question,
-        "generated_qn": generated_qn,
+        "question": generated_qn,
         "sql": sql,
         "data_csv": data_csv,
-        "chart": base64_image,
-        "sampled": sampled,
+        "data_aggregated": aggregated,
+        "chart_fn": chart_fn,
+        "chart_params": chart_params,
     }
     resp = await make_request(
         f"{DEFOG_BASE_URL}/oracle/gen_explorer_data_analysis", data=json_data
