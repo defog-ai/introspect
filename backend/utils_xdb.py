@@ -51,18 +51,17 @@ async def xdb_query(
     # 2. run queries on main and imported databases and fetch data
     if "main" in source_queries:
         main_sql = source_queries["main"]
-        try:
-            db_type, db_creds = get_db_type_creds(api_key)
-            data_main = await execute_sql(db_type, db_creds, question, main_sql)
-        except Exception as e:
+        db_type, db_creds = get_db_type_creds(api_key)
+        data_main, err_msg = await execute_sql(db_type, db_creds, main_sql)
+        if err_msg:
             LOGGER.error(
-                f"Error occurred in running SQL for main database: {e}\nSQL: {main_sql}"
+                f"Error occurred in running SQL for main database: {err_msg}\nSQL: {main_sql}"
             )
             import traceback
 
             LOGGER.error(traceback.format_exc())
             return {
-                "error": f"Error occurred in running SQL for main database: {e}\nSQL: {main_sql}"
+                "error": f"Error occurred in running SQL for main database: {err_msg}\nSQL: {main_sql}"
             }
         LOGGER.debug(f"Data from main database: {data_main.head()}")
         ts = save_timing(ts, "get main data", timings)

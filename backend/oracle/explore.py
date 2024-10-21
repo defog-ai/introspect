@@ -201,7 +201,7 @@ async def explore_generated_question(
 
     err_msg, sql, data = None, None, None
     retry_count = 0
-    while retry_count < retry_data_fetch:
+    while retry_count <= retry_data_fetch:
         # TODO: DEF-540 generate SQL across multiple DB's and stitch them together with pandas
         # generate SQL
         try:
@@ -221,15 +221,11 @@ async def explore_generated_question(
             ts = save_timing(
                 ts, f"{qn_id}) SQL generation (try {retry_count})", timings
             )
-            try:
-                data = await execute_sql(db_type, db_creds, generated_qn, sql)
-                err_msg = None
+            data, err_msg = await execute_sql(db_type, db_creds, sql)
+            if err_msg is not None:
+                LOGGER.error(f"Error occurred in executing SQL: {err_msg}")
+            else:
                 break
-            except Exception as e:
-                LOGGER.error(f"Error occurred in fetching data: {str(e)}")
-                LOGGER.error(traceback.format_exc())
-                err_msg = str(e)
-                data = None
         retry_count += 1
     if data is None:
         LOGGER.error(f"Data fetching failed for {qn_id}: {generated_qn}")

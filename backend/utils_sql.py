@@ -1,6 +1,6 @@
 import collections
 import re
-from typing import Dict
+from typing import Dict, Optional, Tuple
 
 import pandas as pd
 from pandas.testing import assert_frame_equal, assert_series_equal
@@ -19,19 +19,21 @@ from generic_utils import is_sorry
 async def execute_sql(
     db_type: str,
     db_creds: Dict,
-    question: str,
     sql: str,
-) -> pd.DataFrame | None:
+) -> Tuple[Optional[pd.DataFrame], Optional[str]]:
     """
     Asynchronously run the SQL query on the user's database using SQLAlchemy and return the results as a dataframe.
+    Returns the error message if any to let upstream caller decide how they want to handle it.
+    This is sometimes logged and ignored, or used for iterative generation.
     """
+    err_msg = None
     if not sql:
-        LOGGER.error(f"No SQL generated to execute for question {question}")
-        return None
+        err_msg = "No SQL generated to execute"
+        return None, err_msg
 
     if is_sorry(sql):
-        LOGGER.error(f"Obtained Sorry SQL query for question {question}")
-        return None
+        err_msg = "Obtained Sorry SQL query"
+        return None, err_msg
 
     if db_type == "postgres":
         connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
@@ -46,10 +48,8 @@ async def execute_sql(
         connection_uri = f"mssql+aioodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
         async_engine = create_async_engine(connection_uri)
     else:
-        LOGGER.error(
-            f"Unsupported db_type for executing query: {db_type}. Must be one of 'postgres', 'sqlite', 'mysql', 'sqlserver'"
-        )
-        return None
+        err_msg = f"Unsupported db_type for executing query: {db_type}. Must be one of 'postgres', 'sqlite', 'mysql', 'sqlserver'"
+        return None, err_msg
     LOGGER.debug(f"db_type: {db_type}, connection_uri: {connection_uri}")
     try:
         async with async_engine.connect() as conn:
@@ -59,14 +59,14 @@ async def execute_sql(
             LOGGER.info(
                 f"Query successfully executed. Col names: {colnames}, Data: {data}\nSQL: {sql}"
             )
+            df = mk_df(data, colnames)
     except Exception as e:
-        LOGGER.error(f"Error occurred in running SQL: {e}\nSQL: {sql}")
-        return None
+        err_msg = f"Error occurred in running SQL: {e}\nSQL: {sql}"
+        df = None
     finally:
         await async_engine.dispose()
 
-    df = mk_df(data, colnames)
-    return df
+    return df, err_msg
 
 
 def deduplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -272,30 +272,25 @@ async def compare_query_results(
     db_creds: Dict[str, str],
 ) -> Dict[str, bool]:
     """
-    Compares the results of two queries and returns a dictionary with the keys:
-    'correct' and 'subset' indicating if the queries are correct and if the result of the
+    Compares the results of two queries and returns a dictionary with the key:
+    'correct' indicating if the queries are correct or if the result of the
     generated query is a subset of the golden query.
+    Returns the error message in case of an error.
     """
     correct = False
-    try:
-        df_gold = await execute_sql(db_type, db_creds, question, query_gold)
-        # check if df_gold is an empty dataframe
-        # this is because the function errors out when df_gold is empty
-        if df_gold.empty and df_gen.empty:
-            correct = False
-        elif compare_df(df_gold, df_gen, question, query_gold, query_gen):
-            correct = True
-        elif subset_df(df_gold, df_gen, question, query_gen, query_gold):
-            correct = True
-    except Exception as e:
-        import traceback
-
-        LOGGER.error(f"Error in compare_query_results: {e}")
-        LOGGER.error(traceback.format_exc())
-    finally:
-        if "dfg" in locals():
-            del dfg
-        return {"correct": correct}
+    df_gold, err_msg = await execute_sql(db_type, db_creds, query_gold)
+    # check if df_gold is an empty dataframe
+    # this is because the function errors out when df_gold is empty
+    if err_msg:
+        LOGGER.error(err_msg)
+        correct = False
+    elif df_gold.empty and df_gen.empty:
+        correct = False
+    elif compare_df(df_gold, df_gen, question, query_gold, query_gen):
+        correct = True
+    elif subset_df(df_gold, df_gen, question, query_gen, query_gold):
+        correct = True
+    return {"correct": correct}
 
 
 def add_schema_to_tables(query, schema):

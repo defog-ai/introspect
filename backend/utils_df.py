@@ -9,7 +9,7 @@ TYPE_STRING = "string"
 TYPE_INTEGER = "int64"
 TYPE_FLOAT = "float64"
 
-REGEX_DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
+REGEX_DATE_PATTERN = r"^\d{4}(-\d{2})?(-\d{2})?$"
 REGEX_TIME_PATTERN = r"^\d{2}:\d{2}:\d{2}$"
 REGEX_DATETIME_PATTERN = r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$"
 REGEX_INTEGER_PATTERN = r"^\d+$"

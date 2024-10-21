@@ -19,6 +19,10 @@ class TestDetermineColumnType(unittest.TestCase):
     def test_date_column(self):
         data = pd.Series(['2021-01-01', '2021-01-02', '2021-01-03'])
         self.assertEqual(determine_column_type(data), 'date')
+        data = pd.Series(['2021-01', '2021-02', '2021-03'])
+        self.assertEqual(determine_column_type(data), 'date')
+        data = pd.Series(['2021', '2022', '2023'])
+        self.assertEqual(determine_column_type(data), 'date')
 
     def test_time_column(self):
         data = pd.Series(['12:00:00', '13:00:00', '14:00:00'])

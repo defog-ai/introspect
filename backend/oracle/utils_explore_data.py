@@ -151,6 +151,18 @@ def run_chart_fn(
         sns.displot(data, **kwargs)
     elif chart_fn == "catplot":
         sns.catplot(data, **kwargs)
+    
+    # rotate x-axis labels if the x column's values has more than 100 characters
+    x_col = kwargs.get("x", None)
+    if x_col:
+        x_col_values = data[x_col]
+        # get unique string values of x column and sum the length of all values
+        x_col_char_count = sum([len(str(val)) for val in x_col_values.unique()])
+        LOGGER.debug(f"X column char count: {x_col_char_count}")
+        locs, labels = plt.xticks()
+        if x_col_char_count > (figsize[0]*10):
+            LOGGER.debug(f"Rotating x-axis labels")
+            plt.setp(labels, rotation=45)
 
     # Save the figure to the specified path
     plt.savefig(chart_path)
