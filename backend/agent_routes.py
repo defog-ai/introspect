@@ -14,6 +14,8 @@ from agents.planner_executor.planner_executor_agent import (
 )
 import logging
 
+from agents.planner_executor.tool_helpers.core_functions import analyse_data
+
 LOGGER = logging.getLogger("server")
 
 from agents.planner_executor.tool_helpers.get_tool_library_prompt import (
@@ -832,3 +834,18 @@ async def generate_or_edit_tool_code(request: Request):
             "success": False,
             "error_message": "Unable to generate tool code: " + str(e)[:300],
         }
+
+
+# setup an analyse_data endpoint
+@router.post("/analyse_data")
+async def analyse_data_endpoint(request: Request):
+    params = await request.json()
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    question = params.get("question")
+    data_csv = params.get("data_csv")
+    sql = params.get("sql")
+    model_analysis = await analyse_data(
+        question=question, data_csv=data_csv, sql=sql, api_key=api_key
+    )
+    return {"success": True, "model_analysis": model_analysis}

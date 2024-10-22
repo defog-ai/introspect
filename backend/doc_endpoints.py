@@ -223,21 +223,6 @@ async def get_analyses(request: Request):
         return {"success": False, "error_message": "Unable to parse your request."}
 
 
-# setup an analyse_data endpoint
-@router.post("/analyse_data")
-async def analyse_data_endpoint(request: Request):
-    params = await request.json()
-    key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
-    question = params.get("question")
-    data_csv = params.get("data_csv")
-    sql = params.get("sql")
-    model_analysis = await analyse_data(
-        question=question, data_csv=data_csv, sql=sql, api_key=api_key
-    )
-    return {"success": True, "model_analysis": model_analysis}
-
-
 # download csv using step_id and output_storage_key
 @router.post("/download_csv")
 async def download_csv(request: Request):
