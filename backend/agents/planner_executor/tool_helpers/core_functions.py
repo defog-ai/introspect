@@ -89,17 +89,15 @@ async def analyse_data(question: str, data_csv: str, sql: str, api_key: str) -> 
     else:
         if os.environ.get("ANALYZE_DATA_MODEL") == "defog":
             analysis = await make_request(
-                url=DEFOG_BASE_URL + "/oracle/gen_explorer_data_analysis",
+                url=DEFOG_BASE_URL + "/analyse_data",
                 data={
                     "api_key": api_key,
-                    "user_question": question,
-                    "generated_qn": question,
+                    "question": question,
                     "sql": sql,
                     "data_csv": data_csv,
-                    "sampled": False,
                 },
             )
-            return analysis.get("summary", "")
+            return analysis.get("model_analysis", "")
         elif os.environ.get("ANALYZE_DATA_MODEL") == "bedrock":
             import boto3
 
