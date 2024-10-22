@@ -89,7 +89,7 @@ async def analyse_data(question: str, data_csv: str, sql: str, api_key: str) -> 
     else:
         if os.environ.get("ANALYZE_DATA_MODEL") == "defog":
             analysis = await make_request(
-                url=DEFOG_BASE_URL + "/analyse_data",
+                url=DEFOG_BASE_URL + "/agents/analyse_data",
                 data={
                     "api_key": api_key,
                     "question": question,
