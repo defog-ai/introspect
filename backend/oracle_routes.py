@@ -29,10 +29,9 @@ async def clarify_question(req: Request):
     will return:
         clarifications: list[str]
         task_type: str
-        ready: bool
     Depending on the task type, the endpoint will return other additional fields.
-    Note that our UX has only been designed to display the clarifications, task_type,
-    and ready indicator for now. All other fields are not used by the client.
+    Note that our UX has only been designed to display the clarifications, and
+    task_type. All other fields are not used by the client.
     """
     body = await req.json()
     key_name = body.pop("key_name")

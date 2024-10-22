@@ -7,7 +7,6 @@ import TaskType from "$components/oracle/TaskType";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import {
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
   CloseOutlined,
   DownloadOutlined,
   DeleteOutlined,
@@ -56,7 +55,6 @@ function OracleDashboard() {
   const [taskType, setTaskType] = useState("");
   const [sources, setSources] = useState([]);
   const [waitSources, setWaitSources] = useState(false);
-  const [ready, setReady] = useState(false);
   const [reports, setReports] = useState([]);
 
   const checkDBReady = async () => {
@@ -145,10 +143,8 @@ function OracleDashboard() {
       // we have the following fields to set:
       // - data.clarifications [list of string]
       // - data.task_type [string]
-      // - data.ready [bool]
       setTaskType(data.task_type);
       setClarifications(data.clarifications);
-      setReady(data.ready);
     } else {
       console.error("Failed to fetch clarifications");
     }
@@ -424,10 +420,8 @@ function OracleDashboard() {
                 userTask.length >= 5 &&
                 (!dataConnReady ? (
                   <CloseCircleOutlined style={{ color: "#b80617" }} />
-                ) : ready ? (
-                  <CheckCircleOutlined style={{ color: "green" }} />
                 ) : (
-                  <ExclamationCircleOutlined style={{ color: "#808080" }} />
+                  <CheckCircleOutlined style={{ color: "green" }} />
                 ))
               )}
             </div>
