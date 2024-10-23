@@ -75,61 +75,42 @@ def save_and_log(t_start: float, msg: str, timings: List[Tuple[float, str]]) -> 
 
 
 def truncate_list(
-    l: List, max_len_list: int = 10, max_len_str: int = 100, to_str: bool = True
+    l: List, max_len_list: int = 10, max_len_str: int = 100
 ) -> str:
     """
     Returns a string of the first max_len elements of the list l.
     This is avoid printing out large lists in the logs.
     """
-    num_elements = len(l)
     l_trunc = []
     for item in l[:max_len_list]:
         if isinstance(item, dict):
-            l_trunc.append(truncate_dict(item, max_len_list, max_len_str, to_str=False))
+            l_trunc.append(truncate_dict(item, max_len_list, max_len_str))
         elif isinstance(item, list):
-            l_trunc.append(truncate_list(item, max_len_list, max_len_str, to_str=False))
+            l_trunc.append(truncate_list(item, max_len_list, max_len_str))
         elif isinstance(item, str) and len(item) > max_len_str:
             l_trunc.append(item[:max_len_str] + f"...[{len(item)} chars]")
         else:
             l_trunc.append(item)
-    if to_str:
-        if num_elements > max_len_list:
-            return (
-                "["
-                + ", ".join([str(i) for i in l_trunc])
-                + f"...({num_elements} total elements)]"
-            )
-        else:
-            return json.dumps(l_trunc, indent=2)
-    else:
-        return l_trunc
+    return l_trunc
 
 
 def truncate_dict(
-    obj: Dict, max_len_list: int = 10, max_len_str: int = 100, to_str: bool = True
+    obj: Dict, max_len_list: int = 10, max_len_str: int = 100
 ) -> Union[str, Dict]:
     """
     Returns a string representation of a dictionary, truncating it if it's too long.
     """
-
-    def inner(obj, max_len_list, max_len_str):
-        ret_obj = {}
-        for k, v in obj.items():
-            if isinstance(v, list):
-                ret_obj[k] = truncate_list(v, max_len_list, max_len_str, to_str=False)
-            elif isinstance(v, dict):
-                ret_obj[k] = inner(v, max_len_list, max_len_str)
-            elif isinstance(v, str) and len(str(v)) > max_len_str:
-                ret_obj[k] = str(v)[:max_len_str] + f"...[{len(v)} chars]"
-            else:
-                ret_obj[k] = v
-        return ret_obj
-
-    ret_obj = inner(obj, max_len_list, max_len_str)
-    if to_str:
-        return json.dumps(ret_obj, indent=2)
-    else:
-        return ret_obj
+    ret_obj = {}
+    for k, v in obj.items():
+        if isinstance(v, list):
+            ret_obj[k] = truncate_list(v, max_len_list, max_len_str)
+        elif isinstance(v, dict):
+            ret_obj[k] = truncate_dict(v, max_len_list, max_len_str)
+        elif isinstance(v, str) and len(str(v)) > max_len_str:
+            ret_obj[k] = str(v)[:max_len_str] + f"...[{len(v)} chars]"
+        else:
+            ret_obj[k] = v
+    return ret_obj
 
 
 def truncate_obj(
@@ -142,13 +123,16 @@ def truncate_obj(
     """
     try:
         if isinstance(obj, list):
-            return truncate_list(obj, max_len_list, max_len_str, to_str)
+            obj_trunc = truncate_list(obj, max_len_list, max_len_str)
         elif isinstance(obj, dict):
-            return truncate_dict(obj, max_len_list, max_len_str, to_str)
+            obj_trunc = truncate_dict(obj, max_len_list, max_len_str)
         elif isinstance(obj, str) and len(obj) > max_len_str:
             return obj[:max_len_str] + f"...[{len(obj)} chars]"
         else:
             return str(obj) if to_str else obj
+        if to_str:
+            return json.dumps(obj_trunc, indent=2)
+        return obj_trunc
     except Exception as e:
         LOGGER.error(f"Error in truncate_obj: {e}")
         return "" if to_str else None
