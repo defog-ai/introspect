@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert, select
 
 from oracle.explore import explore_data
-from oracle.core import gather_context
+from oracle.core import gather_context, predict
 from db_utils import OracleReports, engine, validate_user
 from generic_utils import get_api_key_from_key_name, make_request
 from oracle.core import (
@@ -352,6 +352,16 @@ async def oracle_test_stage(req: Request):
         return JSONResponse(response)
     elif stage == "explore":
         response = await explore_data(
+            api_key=body["api_key"],
+            username=body.get("username", ""),
+            report_id=int(body.get("report_id", "1")),
+            task_type=body.get("task_type", EXPLORATION),
+            inputs=body.get("inputs", {}),
+            outputs=body.get("outputs", {}),
+        )
+        return JSONResponse(response)
+    elif stage == "predict":
+        response = await predict(
             api_key=body["api_key"],
             username=body.get("username", ""),
             report_id=int(body.get("report_id", "1")),

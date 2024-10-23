@@ -6,7 +6,7 @@ import sqlparse
 from datetime import datetime
 import re
 
-from utils_logging import LOGGER, LOG_LEVEL
+from utils_logging import LOGGER, LOG_LEVEL, truncate_obj
 
 DEFOG_API_KEYS = os.environ.get("DEFOG_API_KEYS")
 if not DEFOG_API_KEYS:
@@ -25,9 +25,7 @@ async def make_request(url, data, timeout=60):
         LOGGER.debug(f"Making request to: {url}")
         # avoid excessively long logs (e.g. for base64 encoded images)
         data_copy = copy.deepcopy(data)
-        if isinstance(data_copy, dict) and "chart" in data_copy:
-            data_copy["chart"] = "<base64 image data>"
-        data_str = json.dumps(data_copy, indent=2)
+        data_str = truncate_obj(data_copy)
         LOGGER.debug(f"Request body:\n{data_str}")
     async with httpx.AsyncClient(verify=False) as client:
         r = await client.post(
@@ -36,7 +34,7 @@ async def make_request(url, data, timeout=60):
             timeout=timeout,
         )
     response = r.json()
-    response_str = json.dumps(response, indent=2)
+    response_str = truncate_obj(response)
     if r.status_code != 200:
         LOGGER.error(f"Error in request:\n{response_str}")
         return response

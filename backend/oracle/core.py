@@ -22,7 +22,7 @@ from utils_imported_data import (
     update_imported_tables,
     update_imported_tables_db,
 )
-from utils_logging import LOG_LEVEL, save_and_log, save_timing
+from utils_logging import LOG_LEVEL, save_and_log, save_timing, truncate_obj
 
 EXPLORATION = "exploration"
 PREDICTION = "prediction"
@@ -412,7 +412,7 @@ async def gather_context(
         LOGGER.info(f"Updated metadata for api_key {api_key}")
         ts = save_timing(ts, "Metadata updated", timings)
     else:
-        LOGGER.error("No parsed tables to save.")
+        LOGGER.info("No parsed tables to save.")
 
     # summarize all sources. we only need the title, type, and summary
     sources_summary = []
@@ -448,11 +448,8 @@ async def gather_context(
     if task_type == EXPLORATION:
         if "data_overview" not in combined_summary:
             LOGGER.error("No data overview found in combined summary.")
-    elif task_type == PREDICTION:
-        if "target" not in combined_summary:
-            LOGGER.error("No target found in combined summary.")
-        if "features" not in combined_summary:
-            LOGGER.error("No features found in combined summary.")
+    # no need for prediction as we don't formulate the prediction problem during
+    # the context gathering stage
     elif task_type == OPTIMIZATION:
         if "objective" not in combined_summary:
             LOGGER.error("No objective found in combined summary.")
@@ -479,11 +476,9 @@ async def predict(
     Intermediate model and predictions generated will be saved in the report_id's
     directory.
     """
-    # TODO implement this function
-    # dummy print statement for now
     LOGGER.info(f"Predicting for report {report_id}")
-    # sleep for a random amount of time to simulate work
-    await asyncio.sleep(random.random() * 2)
+    LOGGER.debug(f"inputs: {inputs}")
+    LOGGER.debug(f"outputs:\n{truncate_obj(outputs)}")
     return {"predictions": "predictions generated"}
 
 
@@ -535,7 +530,8 @@ async def export(
     if mdx is None:
         LOGGER.error("No MDX returned from backend.")
     else:
-        LOGGER.debug(f"MDX generated for report {report_id}\n{mdx}")
+        trunc_mdx = truncate_obj(mdx, max_len_str=1000, to_str=True)
+        LOGGER.debug(f"MDX generated for report {report_id}\n{trunc_mdx}")
     markdowner = Markdown(extras=["tables"])
     html_string = markdowner.convert(mdx)
     report_file_path = get_report_file_path(api_key, report_id)

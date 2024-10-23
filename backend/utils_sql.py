@@ -7,7 +7,7 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 from sqlalchemy import text
 from sqlglot import exp, parse_one
 from utils_df import mk_df
-from utils_logging import LOGGER
+from utils_logging import LOGGER, truncate_obj
 from sqlalchemy.ext.asyncio import create_async_engine
 from generic_utils import is_sorry
 
@@ -56,8 +56,9 @@ async def execute_sql(
             result = await conn.execute(text(sql))
             data = result.all()
             colnames = list(result.keys())
+            data_str = truncate_obj([tuple(row) for row in data])
             LOGGER.info(
-                f"Query successfully executed. Col names: {colnames}, Data: {data}\nSQL: {sql}"
+                f"Query successfully executed. Col names: {colnames}, Data: {data_str}\nSQL: {sql}"
             )
             df = mk_df(data, colnames)
     except Exception as e:
