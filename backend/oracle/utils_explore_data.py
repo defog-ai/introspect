@@ -84,6 +84,13 @@ async def get_chart_fn(
     """
     LOGGER.debug(f"Getting sns chart for question: {question}")
     LOGGER.debug(f"dtypes: {data.dtypes}")
+    # if we're showing the unique values for only 1 column, hardcode to use a
+    # histogram with the number of bins set to the number of unique values.
+    if len(data.columns) == 1 and "unique" in question:
+        return {
+            "name": "displot",
+            "parameters": {"kind": "hist", "x": data.columns[0], "bins": len(data)},
+        }
     # the statistic names (e.g. count, mean, etc) are in the index after calling
     # `describe` so we need to keep it when exporting to csv
     non_numeric_columns = data.select_dtypes(include="object").columns
@@ -117,9 +124,6 @@ async def get_chart_fn(
     if resp["name"] not in SUPPORTED_CHART_TYPES:
         LOGGER.error(f"Unsupported chart type: {resp['name']}")
         return None
-    # if we're showing the unique values for a column, set the number of bins to the number of unique values
-    if resp["name"] == "displot" and len(data.columns) == 1 and "unique" in question:
-        resp["parameters"]["bins"] = len(data)
     return resp
 
 
