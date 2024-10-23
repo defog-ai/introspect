@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import unittest
 
@@ -23,8 +23,16 @@ class TestUtilsLogging(unittest.TestCase):
         result_dict = truncate_list(data, max_len_list=5, max_len_str=5)
         self.assertEqual(result_dict, data[:5])
 
-    def test_truncate_list_dates(self):
+    def test_truncate_list_dates_pd(self):
         date_range = pd.date_range("2021-01-01", periods=10).to_list()
+        result_dict = truncate_list(date_range, max_len_list=5, max_len_str=5)
+        self.assertEqual(result_dict, date_range[:5])
+
+    def test_truncate_list_dates(self):
+        date_range = [
+            (datetime.fromisoformat("2021-01-01") + timedelta(days=i),)
+            for i in range(10)
+        ]
         result_dict = truncate_list(date_range, max_len_list=5, max_len_str=5)
         self.assertEqual(result_dict, date_range[:5])
 
@@ -112,10 +120,16 @@ class TestUtilsLogging(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_truncate_obj_dict_to_str(self):
-        data = {"key1": list(range(10)), "key2": "valuevalue"}
+        dt = datetime.fromisoformat("2021-01-01")
+        data = {"key1": list(range(10)), "key2": "valuevalue", "key3": dt}
         result = truncate_obj(data, max_len_list=5, max_len_str=4, to_str=True)
         expected = json.dumps(
-            {"key1": list(range(5)), "key2": "valu...[10 chars]"}, indent=2
+            {
+                "key1": list(range(5)),
+                "key2": "valu...[10 chars]",
+                "key3": "2021-01-01 00:00:00",
+            },
+            indent=2,
         )
         self.assertEqual(result, expected)
 

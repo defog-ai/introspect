@@ -74,9 +74,7 @@ def save_and_log(t_start: float, msg: str, timings: List[Tuple[float, str]]) -> 
     log_timings(timings)
 
 
-def truncate_list(
-    l: List, max_len_list: int = 10, max_len_str: int = 100
-) -> str:
+def truncate_list(l: List, max_len_list: int = 10, max_len_str: int = 100) -> str:
     """
     Returns a string of the first max_len elements of the list l.
     This is avoid printing out large lists in the logs.
@@ -131,7 +129,7 @@ def truncate_obj(
         else:
             return str(obj) if to_str else obj
         if to_str:
-            return json.dumps(obj_trunc, indent=2)
+            return json.dumps(obj_trunc, indent=2, default=str)
         return obj_trunc
     except Exception as e:
         LOGGER.error(f"Error in truncate_obj: {e}")

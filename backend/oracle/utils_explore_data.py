@@ -2,7 +2,6 @@ import os
 from typing import Any, Dict, Optional
 from matplotlib import pyplot as plt
 import pandas as pd
-import base64
 
 from celery.utils.log import get_task_logger
 from generic_utils import format_sql, make_request, normalize_sql
