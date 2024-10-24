@@ -3,14 +3,11 @@ from typing import Any, Dict, Optional
 from matplotlib import pyplot as plt
 import pandas as pd
 
-from celery.utils.log import get_task_logger
 from generic_utils import format_sql, make_request, normalize_sql
-from utils_logging import LOG_LEVEL
+from oracle.celery_app import LOGGER
 import seaborn as sns
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-LOGGER = get_task_logger(__name__)
-LOGGER.setLevel(LOG_LEVEL)
 
 # explore module constants
 TABLE_CSV = "table_csv"
@@ -176,6 +173,7 @@ def run_chart_fn(
 
 
 async def gen_data_analysis(
+    task_type: str,
     api_key: str,
     generated_qn: str,
     sql: str,
@@ -247,6 +245,7 @@ async def gen_data_analysis(
 
     # generate data analysis
     json_data = {
+        "task_type": task_type,
         "api_key": api_key,
         "question": generated_qn,
         "sql": sql,

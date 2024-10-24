@@ -9,12 +9,12 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 import pdfkit
-from celery.utils.log import get_task_logger
 from db_utils import OracleReports, OracleSources, engine
 from generic_utils import make_request
 from markdown2 import Markdown
-from oracle.celery_app import celery_app
+from oracle.celery_app import celery_app, LOGGER
 from oracle.explore import explore_data
+from oracle.predict import predict
 from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
 from utils_imported_data import (
@@ -22,7 +22,7 @@ from utils_imported_data import (
     update_imported_tables,
     update_imported_tables_db,
 )
-from utils_logging import LOG_LEVEL, save_and_log, save_timing, truncate_obj
+from utils_logging import save_and_log, save_timing, truncate_obj
 
 EXPLORATION = "exploration"
 PREDICTION = "prediction"
@@ -34,10 +34,6 @@ TASK_TYPES = [
 ]
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 INTERNAL_DB = os.environ.get("INTERNAL_DB", "postgres")
-# celery requires a different logger object. we can still reuse utils_logging
-# which just assumes a LOGGER object is defined
-LOGGER = get_task_logger(__name__)
-LOGGER.setLevel(LOG_LEVEL)
 
 celery_async_executors = ThreadPoolExecutor(max_workers=4)
 
@@ -460,26 +456,6 @@ async def gather_context(
     LOGGER.debug(f"Context gathered for report {report_id}:\n{combined_summary}")
     save_and_log(ts, "Combined summary", timings)
     return combined_summary
-
-
-async def predict(
-    api_key: str,
-    username: str,
-    report_id: str,
-    task_type: str,
-    inputs: Dict[str, Any],
-    outputs: Dict[str, Any],
-):
-    """
-    This function will make the necessary predictions, by training a machine learning
-    model on the data provided, and generating predictions needed for the analysis.
-    Intermediate model and predictions generated will be saved in the report_id's
-    directory.
-    """
-    LOGGER.info(f"Predicting for report {report_id}")
-    LOGGER.debug(f"inputs: {inputs}")
-    LOGGER.debug(f"outputs:\n{truncate_obj(outputs)}")
-    return {"predictions": "predictions generated"}
 
 
 async def optimize(

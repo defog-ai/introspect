@@ -6,7 +6,8 @@ from typing import Any, Dict
 
 from db_utils import get_db_type_creds
 from generic_utils import make_request
-from utils_logging import LOGGER, save_timing, truncate_obj
+from utils_logging import save_timing, truncate_obj
+from oracle.celery_app import LOGGER
 from oracle.utils_explore_data import (
     TABLE_CSV,
     IMAGE,
@@ -115,6 +116,7 @@ async def explore_data(
             explore_generated_question(
                 api_key,
                 user_question,
+                task_type,
                 i,
                 generated_qn,
                 dependent_variable,
@@ -131,12 +133,13 @@ async def explore_data(
     analyses.extend([ans for ans in topk_answers if ans])
 
     LOGGER.debug(f"Final analyses count: {len(analyses)}\n{truncate_obj(analyses)}")
-    return analyses
+    return {"analyses": analyses, "dependent_variable": dependent_variable}
 
 
 async def explore_generated_question(
     api_key: str,
     user_question: str,
+    task_type: str,
     qn_id: int,
     generated_qn: str,
     dependent_variable: Dict[str, Any],
@@ -298,7 +301,7 @@ async def explore_generated_question(
     # generate data analysis
     try:
         data_analysis = await gen_data_analysis(
-            api_key, generated_qn, sql, data, chart_fn_params
+            task_type, api_key, generated_qn, sql, data, chart_fn_params
         )
         if "error" in data_analysis and data_analysis["error"]:
             LOGGER.error(

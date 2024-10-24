@@ -1,5 +1,8 @@
 import os
 from celery import Celery
+from celery.utils.log import get_task_logger
+
+from utils_logging import LOG_LEVEL
 
 # Initialize Celery with redis backend
 REDIS_HOST = os.getenv("REDIS_INTERNAL_HOST", "agents-redis")
@@ -18,5 +21,10 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
 )
+
+# celery requires a different logger object. we can still reuse utils_logging
+# which just assumes a LOGGER object is defined
+LOGGER = get_task_logger(__name__)
+LOGGER.setLevel(LOG_LEVEL)
 
 print(f"Initialized Celery app:\n{celery_app}")
