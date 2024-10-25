@@ -15,7 +15,7 @@
     "@azure/msal-browser": "^3.7.1",
     "@azure/msal-react": "^2.0.10",
     "@codemirror/lang-sql": "^6.7.0",
-    "@defogdotai/agents-ui-components": "^0.0.69",
+    "@defogdotai/agents-ui-components": "^0.0.71",
     "@dotlottie/react-player": "^1.6.12",
     "@marsidev/react-turnstile": "^0.4.1",
     "@notionhq/client": "^2.2.14",
