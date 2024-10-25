@@ -68,26 +68,86 @@ async def optimize(
     It will run the above tasks in parallel, and return the resulting outputs of each of them.
     """
     LOGGER.info(f"[Optimize] Optimizing for report {report_id}")
-    LOGGER.debug(f"[Optimize] Inputs: {inputs}")
-    LOGGER.debug(f"[Optimize] Outputs: {outputs}")
+    LOGGER.info(f"[Optimize] Inputs: {inputs}")
+    LOGGER.info(f"[Optimize] Outputs: {outputs}")
 
     user_question = inputs["user_question"]
+    explorer_outputs: list = outputs.get("explore", {})
+    gather_context: dict = outputs.get("gather_context", {})
 
     # look at the user question, and make a decision on
     # whether we want to do simple_recommendation or run_optimizer_model
-    resp = await make_request(
-        DEFOG_BASE_URL + "/oracle/gen_optimization_tasks",
+    task = await make_request(
+        DEFOG_BASE_URL + "/oracle/gen_optimization_task",
         data={
             "question": user_question,
             "api_key": api_key,
             "username": username,
             "report_id": report_id,
             "task_type": task_type,
-            "gather_context": outputs.get("gather_context", {}),
-            "explore": outputs.get("explore", {}),
+            "gather_context": gather_context,
+            "explore": explorer_outputs,
         },
     )
-    task = resp.get("task", [])
 
-    LOGGER.info(f"Optimizer task: {json.dumps(task, indent=2)}")
+    LOGGER.info(task)
+
+    processed_items = []
+    for item in task["processing_list"]:
+        qn_id = item["qn_id"]
+        columns = item["columns"]
+        aggregations = item["aggregations"]
+        # look for the qn_ids's artifact in the explore's outputs
+        relevant_explorer_output = [q for q in explorer_outputs if q["qn_id"] == qn_id]
+        if len(relevant_explorer_output) == 0:
+            LOGGER.error(
+                f"Did not find relevant question requested by optimizer: {item}"
+            )
+            continue
+
+        relevant_explorer_output = relevant_explorer_output[0]
+        table_csv = (
+            relevant_explorer_output.get("artifacts", {})
+            .get("table_csv", {})
+            .get("artifact_content", None)
+        )
+
+        if not table_csv:
+            LOGGER.error(
+                f"Did not find csv data in the explorer's output: {relevant_explorer_output}"
+            )
+            continue
+
+        df = pd.read_csv(StringIO(table_csv))
+
+        for col, agg in zip(columns, aggregations):
+            col_values = df[col]
+
+            processed = {"qn_id": qn_id, "column": col, "aggregation": agg}
+
+            if not agg:
+                processed["result"] = col_values.to_csv(index=False)
+            if agg == "mean":
+                processed["result"] = col_values.mean()
+            if agg == "sum":
+                processed["result"] = col_values.sum()
+            if agg == "min":
+                processed["result"] = col_values.min()
+            if agg == "max":
+                processed["result"] = col_values.max()
+            if agg == "variance":
+                processed["result"] = col_values.var()
+            if agg == "count":
+                processed["result"] = len(col_values)
+            if agg == "unique_count":
+                processed["result"] = int(col_values.nunique())
+            if agg == "unique_values":
+                processed["result"] = col_values.unique().to_csv(index=False)
+            else:
+                LOGGER.error(f"Could not do aggregation: {agg} for item: {item}")
+
+            processed_items.append(processed)
+
+    LOGGER.info(f"processed_items: {json.dumps(processed_items, indent=2)}")
+
     return {"optimization": "optimization completed"}

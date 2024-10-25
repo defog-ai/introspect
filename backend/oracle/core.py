@@ -494,6 +494,8 @@ async def export(
     - Final report will be saved as a PDF file in the api_key's directory.
     """
     LOGGER.debug(f"Exporting for report {report_id}")
+    LOGGER.debug(f"inputs: {inputs}")
+    LOGGER.debug(f"inputs: {outputs}")
     json_data = {
         "api_key": api_key,
         "task_type": task_type,
