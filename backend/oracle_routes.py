@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert, select
 
+from oracle.optimize import optimize
 from oracle.explore import explore_data
 from oracle.core import gather_context, predict
 from db_utils import OracleReports, engine, validate_user
@@ -378,3 +379,38 @@ async def oracle_test_stage(req: Request):
                 "message": f"Invalid 'stage' field. Must be one of: ['gather_context', 'explore']",
             },
         )
+
+
+# test router for optimize
+@router.post("/oracle/gen_optimization_task")
+async def gen_optimization_task(request: Request):
+    """
+    Generates an optimization task based on explore and gather_context stage's outputs.
+
+    Inputs:
+    - api_key: str
+    - gather_context: dict - Results of the gather_context stage. As saved in the dict while running stage_execute.
+    - explore: dict - Results of the explore stage. As saved in the dict while running stage_execute.
+
+    It will use the above results, and construct them into a prompt. We will then pass it to an LLM to get a JSON back.
+
+    Output: A well defined optimization task, which can be of type `simple_recommendation` or `run_optimizer_model`.
+    """
+
+    data = await request.json()
+    api_key = data.get("api_key", None)
+    outputs = data.get("outputs", {})
+    task_type = data.get("task_type", "")
+    question = data.get("question", None)
+    username = data.get("username", None)
+    report_id = data.get("report_id", None)
+
+    res = await optimize(
+        api_key=api_key,
+        username=username,
+        report_id=report_id,
+        task_type=task_type,
+        inputs={"user_question": question},
+        outputs=outputs,
+    )
+    return JSONResponse(content=res)

@@ -68,16 +68,15 @@ async def optimize(
     It will run the above tasks in parallel, and return the resulting outputs of each of them.
     """
     LOGGER.info(f"[Optimize] Optimizing for report {report_id}")
-    LOGGER.info(f"[Optimize] Inputs: {inputs}")
-    LOGGER.info(f"[Optimize] Outputs: {outputs}")
 
     user_question = inputs["user_question"]
     explorer_outputs: list = outputs.get("explore", {})
+    analyses = explorer_outputs.get("analyses", [])
     gather_context: dict = outputs.get("gather_context", {})
 
     # look at the user question, and make a decision on
     # whether we want to do simple_recommendation or run_optimizer_model
-    task = await make_request(
+    res = await make_request(
         DEFOG_BASE_URL + "/oracle/gen_optimization_task",
         data={
             "question": user_question,
@@ -90,64 +89,111 @@ async def optimize(
         },
     )
 
-    LOGGER.info(task)
+    LOGGER.info(f"Tasks: {json.dumps(res, indent=2)}")
 
-    processed_items = []
-    for item in task["processing_list"]:
-        qn_id = item["qn_id"]
-        columns = item["columns"]
-        aggregations = item["aggregations"]
-        # look for the qn_ids's artifact in the explore's outputs
-        relevant_explorer_output = [q for q in explorer_outputs if q["qn_id"] == qn_id]
-        if len(relevant_explorer_output) == 0:
-            LOGGER.error(
-                f"Did not find relevant question requested by optimizer: {item}"
+    optimizer_outputs = {}
+    optimizer_task_type = res["task_type"]
+
+    if optimizer_task_type == "simple_recommendation":
+        processed_items = []
+
+        for item in res["processing_list"]:
+            qn_id = item["qn_id"]
+            columns = item["columns"]
+            aggregations = item["aggregations"]
+            explanation = item["explanation"]
+            # look for the qn_ids's artifact in the explore's outputs
+            relevant_explorer_output = [q for q in analyses if q["qn_id"] == qn_id]
+            if len(relevant_explorer_output) == 0:
+                LOGGER.error(
+                    f"Did not find relevant question requested by optimizer: {item}"
+                )
+                continue
+
+            relevant_explorer_output = relevant_explorer_output[0]
+            table_csv = (
+                relevant_explorer_output.get("artifacts", {})
+                .get("table_csv", {})
+                .get("artifact_content", None)
             )
-            continue
 
-        relevant_explorer_output = relevant_explorer_output[0]
-        table_csv = (
-            relevant_explorer_output.get("artifacts", {})
-            .get("table_csv", {})
-            .get("artifact_content", None)
+            if not table_csv:
+                LOGGER.error(
+                    f"Did not find csv data in the explorer's output: {relevant_explorer_output}"
+                )
+                continue
+
+            df = pd.read_csv(StringIO(table_csv))
+
+            for col, agg in zip(columns, aggregations):
+                col_values = df[col]
+
+                processed = {
+                    "qn_id": qn_id,
+                    "column": col,
+                    "aggregation": agg,
+                    "explanation": explanation,
+                }
+
+                LOGGER.info("\n\n---\n\n")
+                LOGGER.info(f"col: {col}")
+                LOGGER.info(f"col_values: {col_values}")
+                LOGGER.info(f"agg: {agg}")
+                LOGGER.info("\n\n---\n\n")
+
+                if not agg:
+                    processed["result"] = col_values.to_csv(index=False)
+                elif agg == "mean":
+                    processed["result"] = col_values.mean()
+                elif agg == "sum":
+                    processed["result"] = col_values.sum()
+                elif agg == "min":
+                    processed["result"] = col_values.min()
+                elif agg == "max":
+                    processed["result"] = col_values.max()
+                elif agg == "variance":
+                    processed["result"] = col_values.var()
+                elif agg == "count":
+                    processed["result"] = len(col_values)
+                elif agg == "unique_count":
+                    processed["result"] = int(col_values.nunique())
+                elif agg == "unique_values":
+                    processed["result"] = col_values.unique().to_csv(index=False)
+                else:
+                    LOGGER.error(f"Could not do aggregation: {agg} for item: {item}")
+
+                processed_items.append(processed)
+
+        optimizer_outputs["processed_items"] = processed_items
+
+        LOGGER.info(processed_items)
+
+        # now using the above processed items
+        # get the actual recommendations
+
+        # now construct actual recommendations
+        recommendations = await make_request(
+            DEFOG_BASE_URL
+            + "/oracle/optimization_gen_recommendations_from_simple_analysis",
+            data={
+                "question": user_question,
+                "api_key": api_key,
+                "username": username,
+                "report_id": report_id,
+                "task_type": task_type,
+                "gather_context": gather_context,
+                "explore": explorer_outputs,
+                "processed_items": processed_items,
+            },
         )
 
-        if not table_csv:
-            LOGGER.error(
-                f"Did not find csv data in the explorer's output: {relevant_explorer_output}"
-            )
-            continue
+        LOGGER.info(f"Recommendations: {recommendations}")
 
-        df = pd.read_csv(StringIO(table_csv))
+    else:
+        optimizer_outputs = {}
 
-        for col, agg in zip(columns, aggregations):
-            col_values = df[col]
-
-            processed = {"qn_id": qn_id, "column": col, "aggregation": agg}
-
-            if not agg:
-                processed["result"] = col_values.to_csv(index=False)
-            if agg == "mean":
-                processed["result"] = col_values.mean()
-            if agg == "sum":
-                processed["result"] = col_values.sum()
-            if agg == "min":
-                processed["result"] = col_values.min()
-            if agg == "max":
-                processed["result"] = col_values.max()
-            if agg == "variance":
-                processed["result"] = col_values.var()
-            if agg == "count":
-                processed["result"] = len(col_values)
-            if agg == "unique_count":
-                processed["result"] = int(col_values.nunique())
-            if agg == "unique_values":
-                processed["result"] = col_values.unique().to_csv(index=False)
-            else:
-                LOGGER.error(f"Could not do aggregation: {agg} for item: {item}")
-
-            processed_items.append(processed)
-
-    LOGGER.info(f"processed_items: {json.dumps(processed_items, indent=2)}")
-
-    return {"optimization": "optimization completed"}
+    return {
+        "subtask_type": optimizer_task_type,
+        "outputs": optimizer_outputs,
+        "recommendations": recommendations,
+    }
