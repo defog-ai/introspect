@@ -586,12 +586,12 @@ export default function TestRegressionPage() {
                       <div className="col-span-2 p-4 border-r">
                         {item && !loading && item.validationResult ? (
                           item?.validationResult?.correct ? (
-                            <div className="text-green font-bold">
+                            <div className="text-green font-semibold">
                               <CheckCircleOutlined className=" mr-2" />
                               Correct!
                             </div>
                           ) : (
-                            <div className="text-red">
+                            <div className="text-red font-semibold">
                               <CloseCircleOutlined className=" mr-2" />
                               Incorrect!
                             </div>
