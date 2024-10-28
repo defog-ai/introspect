@@ -163,7 +163,7 @@ async def regression_results(request: Request):
             },
         )
     key_name = params.get("key_name")
-    questions = params.get("questions", [])
+    queries = params.get("queries", [])
 
     api_key = get_api_key_from_key_name(key_name)
     res = get_db_type_creds(api_key)
@@ -176,14 +176,15 @@ async def regression_results(request: Request):
         )
 
     LOGGER.debug(f"[Regression] - api_key: {api_key}")
-    LOGGER.debug(f"[Regression] - questions: {questions}")
+    LOGGER.debug(f"[Regression] - queries: {queries}")
 
     query_validation_result = await validate_queries(
-        api_key=api_key, db_type=db_type, db_creds=db_creds, questions=questions
+        api_key=api_key, db_type=db_type, db_creds=db_creds, queries=queries
     )
 
     return {
         "total": query_validation_result["total"],
         "correct": query_validation_result["correct"],
-        "regression_queries": query_validation_result["results"],
+        "results": query_validation_result["results"],
+        "query_wise_results": query_validation_result["query_wise_results"],
     }

@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 from typing import Any, Dict, List, Tuple
+from uuid import uuid4
 
 from utils_logging import LOGGER
 from utils_sql import compare_query_results
@@ -48,6 +49,7 @@ async def test_query(
     question: str,
     original_sql: str = None,
     previous_context: list[str] = [],
+    query_id: str = None,
 ) -> Dict[str, Any]:
     """
     Test the generated SQL for the given question.
@@ -82,6 +84,8 @@ async def test_query(
         result["question"] = question
         result["sql_golden"] = format_sql(original_sql)
 
+        result["query_id"] = query_id or str(uuid4())
+
         LOGGER.info(f"\n[Regression] - Question: {question}")
         LOGGER.info(
             f"\n[Regression] - Previous context: {json.dumps(previous_context, indent=2)}"
@@ -96,20 +100,21 @@ async def validate_queries(
     api_key: str,
     db_type: str,
     db_creds: Dict[str, str],
-    questions: list[Dict[str, str]],
+    queries: list[Dict[str, str]],
 ) -> Dict[str, Any]:
     """
-    Validates the given questions/query pairs. Checking if the model generated sql is correct or not.
+    Validates the given queries/query pairs. Checking if the model generated sql is correct or not.
 
-    `questions` is a list of objects, each with the following keys:
-    - questions: list[str] - A list of questions. All but last are used as `previous_context`. The last item in the array is used as the main question.
+    `queries` is a list of objects, each with the following keys:
+    - queries: list[str] - A list of queries. All but last are used as `previous_context`. The last item in the array is used as the main question.
     - sql: str - The correct SQL to check against.
     """
     num_correct = 0
     tasks = []
+    query_wise_results = {}
 
-    for query in questions:
-        # questions have a questions array
+    for query in queries:
+        # queries have a questions array
         # we use all till -1 as previous_context
         if not len(query["questions"]):
             continue
@@ -118,6 +123,9 @@ async def validate_queries(
         previous_questions = query["questions"][:-1]
         question = query["questions"][-1]
         original_sql = query["sql"]
+
+        query_id = query.get("id") or str(uuid4())
+        sqls_generated = []
 
         # this will be an alternating array of question, sql
         # we will create this now
@@ -143,6 +151,15 @@ async def validate_queries(
             LOGGER.info(f"SQL: {sql}")
 
             previous_context += [q, sql]
+            sqls_generated += [q, sql]
+
+        query_wise_results[query_id] = {
+            "question": question,
+            "sql_golden": original_sql,
+            "sqls_generated": sqls_generated,
+            "correct": False,
+            "subset": False,
+        }
 
         test_query_task = test_query(
             api_key=api_key,
@@ -151,6 +168,7 @@ async def validate_queries(
             question=question,
             original_sql=original_sql,
             previous_context=previous_context,
+            query_id=query_id,
         )
         tasks.append(test_query_task)
 
@@ -159,8 +177,12 @@ async def validate_queries(
     for result in results:
         if result.get("correct"):
             num_correct += 1
+        if result.get("query_id") in query_wise_results:
+            query_wise_results[result["query_id"]].update(result)
+
     return {
         "total": len(results),
         "correct": num_correct,
         "results": results,
+        "query_wise_results": query_wise_results,
     }
