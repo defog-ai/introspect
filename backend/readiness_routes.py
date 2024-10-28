@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request
 import os
+from utils_logging import LOGGER
 from utils_validation import validate_queries
 from db_utils import validate_user, get_db_type_creds
 from generic_utils import make_request, get_api_key_from_key_name
@@ -162,7 +163,8 @@ async def regression_results(request: Request):
             },
         )
     key_name = params.get("key_name")
-    start_from = params.get("start_from", 0)
+    questions = params.get("questions", [])
+
     api_key = get_api_key_from_key_name(key_name)
     res = get_db_type_creds(api_key)
     if res:
@@ -173,12 +175,15 @@ async def regression_results(request: Request):
             status_code=400,
         )
 
+    LOGGER.debug(f"[Regression] - api_key: {api_key}")
+    LOGGER.debug(f"[Regression] - questions: {questions}")
+
     query_validation_result = await validate_queries(
-        api_key=api_key, db_type=db_type, db_creds=db_creds, start_from=start_from
+        api_key=api_key, db_type=db_type, db_creds=db_creds, questions=questions
     )
+
     return {
         "total": query_validation_result["total"],
         "correct": query_validation_result["correct"],
         "regression_queries": query_validation_result["results"],
-        "results_remaining": query_validation_result["remaining"],
     }

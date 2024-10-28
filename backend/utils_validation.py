@@ -1,7 +1,9 @@
 import asyncio
+import json
 import os
 from typing import Any, Dict, List, Tuple
 
+from utils_logging import LOGGER
 from utils_sql import compare_query_results
 from generic_utils import make_request, format_sql
 import pandas as pd
@@ -11,6 +13,32 @@ from defog import AsyncDefog
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 test_query_semaphore = Semaphore(5)
+run_query_semaphore = Semaphore(3)
+
+
+async def run_query(
+    api_key: str, question: str, db_type: str, previous_context: list[str] = []
+):
+    """
+    Send the data to the Defog servers, and get a response from it.
+    """
+    generate_query_url = os.environ.get(
+        "DEFOG_GENERATE_URL",
+        os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
+        + "/generate_query_chat",
+    )
+    # make async request to the url, using the appropriate library
+    res = await make_request(
+        url=generate_query_url,
+        data={
+            "api_key": api_key,
+            "question": question,
+            "previous_context": previous_context,
+            "db_type": db_type,
+        },
+    )
+
+    return res
 
 
 async def test_query(
@@ -18,8 +46,8 @@ async def test_query(
     db_type: str,
     db_creds: Dict[str, str],
     question: str,
-    original_sql: str,
-    source: str,
+    original_sql: str = None,
+    previous_context: list[str] = [],
 ) -> Dict[str, Any]:
     """
     Test the generated SQL for the given question.
@@ -34,7 +62,9 @@ async def test_query(
         defog.base_url = DEFOG_BASE_URL
         defog.generate_query_url = f"{DEFOG_BASE_URL}/generate_query_chat"
 
-        res = await defog.run_query(question=question)
+        res = await defog.run_query(
+            question=question, previous_context=previous_context
+        )
         sql_gen = res["query_generated"]
         df_gen = pd.DataFrame(res["data"], columns=res["columns"])
 
@@ -46,10 +76,19 @@ async def test_query(
             db_type=db_type,
             db_creds=db_creds,
         )
+
+        result["sql_gen"] = format_sql(sql_gen)
+
         result["question"] = question
         result["sql_golden"] = format_sql(original_sql)
-        result["sql_gen"] = format_sql(sql_gen)
-        result["source"] = source
+
+        LOGGER.info(f"\n[Regression] - Question: {question}")
+        LOGGER.info(
+            f"\n[Regression] - Previous context: {json.dumps(previous_context, indent=2)}"
+        )
+        LOGGER.info(f"\n[Regression] - Original SQL: {original_sql}")
+        LOGGER.info(f"\n[Regression] - Generated SQL: {sql_gen}")
+
         return result
 
 
@@ -57,48 +96,63 @@ async def validate_queries(
     api_key: str,
     db_type: str,
     db_creds: Dict[str, str],
-    num_queries: int = 5,
-    start_from: int = 0,
+    questions: list[Dict[str, str]],
 ) -> Dict[str, Any]:
     """
-    Validate the thumbs up queries for the given api_key.
-    Returns the correct rates of the thumbs up queries along
-    with a list of all thumbs up queries and their status.
+    Validates the given questions/query pairs. Checking if the model generated sql is correct or not.
+
+    `questions` is a list of objects, each with the following keys:
+    - questions: list[str] - A list of questions. All but last are used as `previous_context`. The last item in the array is used as the main question.
+    - sql: str - The correct SQL to check against.
     """
-    data = {"api_key": api_key}
-    feedback_response = await make_request(
-        f"{DEFOG_BASE_URL}/get_feedback",
-        data,
-    )
     num_correct = 0
     tasks = []
-    # de-duplicate feedback, since we only want to test the most recent feedback (customers can sometimes give multiple pieces of feedback for the same question)
-    feedback_df = pd.DataFrame(
-        feedback_response.get("data", []), columns=feedback_response.get("columns")
-    )
 
-    # keep the most recent feedback for each question, query pair
-    feedback_df = (
-        feedback_df[feedback_df["feedback_type"].str.lower() == "good"]
-        .sort_values(by="created_at", ascending=False)
-        .drop_duplicates(subset=["question", "query_generated"])
-    )
+    for query in questions:
+        # questions have a questions array
+        # we use all till -1 as previous_context
+        if not len(query["questions"]):
+            continue
 
-    # only test for some n queries after start_from
-    # this is to avoid testing all queries at once, which can be very slow for users on the UI
-    feedback_df = feedback_df.iloc[start_from:].head(num_queries)
+        # note that this only the questions, NOT the SQL
+        previous_questions = query["questions"][:-1]
+        question = query["questions"][-1]
+        original_sql = query["sql"]
 
-    for feedback in feedback_df.to_dict(orient="records"):
-        if str(feedback["feedback_type"]).lower() == "good":
-            test_query_task = test_query(
+        # this will be an alternating array of question, sql
+        # we will create this now
+        # we can only run these questions one by one because questions depend on previous ones' outputs
+        previous_context = []
+
+        for q in previous_questions:
+            res = await run_query(
                 api_key=api_key,
+                question=q,
                 db_type=db_type,
-                db_creds=db_creds,
-                question=feedback["question"],
-                original_sql=feedback["query_generated"],
-                source="feedback",
+                previous_context=previous_context,
             )
-            tasks.append(test_query_task)
+
+            sql = res.get("sql")
+
+            if sql is None:
+                raise ValueError(
+                    f"Error in generating query for question: {q}, which was part of the previous context for question: {question}.\nFull input: {query}"
+                )
+
+            LOGGER.info(f"Question: {q}")
+            LOGGER.info(f"SQL: {sql}")
+
+            previous_context += [q, sql]
+
+        test_query_task = test_query(
+            api_key=api_key,
+            db_type=db_type,
+            db_creds=db_creds,
+            question=question,
+            original_sql=original_sql,
+            previous_context=previous_context,
+        )
+        tasks.append(test_query_task)
 
     # and run them together all at once
     results = await asyncio.gather(*tasks)
@@ -109,5 +163,4 @@ async def validate_queries(
         "total": len(results),
         "correct": num_correct,
         "results": results,
-        "remaining": len(feedback_df) - len(results),
     }
