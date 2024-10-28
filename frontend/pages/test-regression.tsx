@@ -56,7 +56,6 @@ export default function TestRegressionPage() {
 
   const input = useRef(null);
   const editor = useRef(null);
-  const linksSvg = useRef(null);
 
   const [queries, setQueries] = useState<RegressionItems>([]);
 
@@ -105,7 +104,7 @@ export default function TestRegressionPage() {
 
   const [filter, setFilter] = useState(""); // filter for search
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<string | boolean>(false);
 
   useEffect(() => {
     const apiKeyName = localStorage.getItem("defogDbSelected");
@@ -126,9 +125,9 @@ export default function TestRegressionPage() {
   }, [apiKeyName]);
 
   const getRegressionResults = useCallback(
-    async (query = null) => {
+    async (query: RegressionItem = null) => {
       try {
-        setLoading(true);
+        setLoading(query ? query.id : "all");
         const res = await fetch(
           setupBaseUrl("http", `readiness/regression_results`),
           {
@@ -152,7 +151,8 @@ export default function TestRegressionPage() {
           return prev.map((item) => {
             return {
               ...item,
-              validationResult: queryWiseResults[item.id],
+              validationResult:
+                queryWiseResults[item.id] || item.validationResult,
             };
           });
         });
@@ -164,6 +164,8 @@ export default function TestRegressionPage() {
     },
     [queries, apiKeyName, token]
   );
+
+  console.log(queries);
 
   return (
     <div className="flex justify-center">
@@ -310,7 +312,7 @@ export default function TestRegressionPage() {
                     <div className="previous-questions relative">
                       {previousQuestions.length > 0 && (
                         <>
-                          <div className="absolute z-[2] top-0 -left-2 w-1 h-full border border-r-0 bg-gray-50 border-gray-300"></div>
+                          <div className="absolute z-[2] top-0 -left-2 w-1 h-full border border-r-0 border-gray-300"></div>
                           {/* <div className="absolute z-[1] -bottom-[1.5em] -left-5 w-3 h-[50%] min-h-10 border-b border-l border-t border-gray-300"></div> */}
                         </>
                       )}
@@ -437,8 +439,8 @@ export default function TestRegressionPage() {
                 </Button>
                 <Button
                   type="primary"
-                  loading={loading}
-                  disabled={!queries.length}
+                  loading={loading === "all"}
+                  disabled={!queries.length || loading ? true : false}
                   onClick={async () => {
                     await getRegressionResults();
                   }}
@@ -502,7 +504,7 @@ export default function TestRegressionPage() {
                         <div className="previous-questions relative">
                           {previousQuestions.length > 0 && (
                             <>
-                              <div className="absolute z-[2] top-0 -left-2 w-1 h-full border border-r-0 bg-gray-50 border-gray-300"></div>
+                              <div className="absolute z-[2] top-0 -left-2 w-1 h-full border border-r-0 border-gray-300"></div>
                               {/* <div className="absolute z-[1] -bottom-[1.5em] -left-5 w-3 h-[50%] min-h-10 border-b border-l border-t border-gray-300"></div> */}
                             </>
                           )}
@@ -596,8 +598,8 @@ export default function TestRegressionPage() {
                           )
                         ) : null}
                         <Button
-                          loading={loading}
-                          disabled={loading}
+                          loading={loading === item.id || loading === "all"}
+                          disabled={loading ? true : false}
                           className="mt-2"
                           onClick={async () => {
                             await getRegressionResults(item);
