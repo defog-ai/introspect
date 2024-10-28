@@ -2,3 +2,6 @@ airbyte==0.17.9
 celery[redis]==5.4.0
 markdown2[all]==2.5.0
 pdfkit==1.0.0
+prophet==1.1.6
+scikit-learn==1.5.2
+xgboost==2.1.2

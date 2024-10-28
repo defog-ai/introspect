@@ -1,9 +1,26 @@
+import os
 import time
+import traceback
 from typing import Any, Dict
 
 from celery.utils.log import get_task_logger
+from prophet import Prophet
+from prophet.serialize import model_to_json
+from xgboost import XGBClassifier, XGBRegressor
+import pandas as pd
 
+from db_utils import get_db_type_creds
+from generic_utils import make_request
+from oracle.utils_explore_data import gen_sql, retry_sql_gen
 from utils_logging import LOG_LEVEL, save_and_log, save_timing, truncate_obj
+from utils_sql import execute_sql
+
+RETRY_DATA_FETCH = 1
+DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
+TIME_SERIES = "time-series"
+CLASSIFICATION = "classification"
+REGRESSION = "regression"
+OBJECTIVE_TYPES = [TIME_SERIES, CLASSIFICATION, REGRESSION]
 
 LOGGER = get_task_logger(__name__)
 LOGGER.setLevel(LOG_LEVEL)
@@ -49,15 +66,12 @@ async def predict(
     intermediate model and predictions generated in the report_id's directory.
 
     Outputs:
-    - model_type: type of model generated
+    - objective_type: one of time-series, classification, regression
     - model_path: path where we save the exported model
     - working:
         - target: name of target variable used
         - features: name of features used
         - unit: unit of prediction used
-        - constraints: additional constraints used
-    - train_data: csv of training data used
-    - predictions: csv of predictions generated
 
     Side Effects:
     Intermediate model and predictions generated will be saved in the report_id's
@@ -68,8 +82,200 @@ async def predict(
     LOGGER.debug(f"inputs: {inputs}")
     LOGGER.debug(f"outputs:\n{truncate_obj(outputs)}")
 
-    # TODO
-    # get the prediction dataframe. we can't reuse the data from the earlier
-    # explorer questions as they would get specific views / aggregates for
-    # individual feature analysis
-    return {"predictions": "predictions generated"}
+    gather_context = outputs["gather_context"]
+    problem_statement = gather_context["problem_statement"]
+    context = gather_context["context"]
+    explore = outputs["explore"]
+    analyses = explore["analyses"]
+    independent_variables = []
+    for analysis in analyses:
+        aiv = analysis.get("independent_variable")
+        if not aiv:
+            continue
+        working = analysis.get("working")
+        independent_variable = {
+            "variable_name": aiv["name"],
+            "variable_description": aiv["description"],
+            "variable_generated_question": analysis["generated_qn"],
+            "variable_data_summary": analysis["summary"],
+            "variable_data_sql": working["generated_sql"],
+        }
+        independent_variables.append(independent_variable)
+    dependent_variable = explore["dependent_variable"]
+    dependent_variable_description = dependent_variable["description"]
+    objective_type = dependent_variable["objective_type"]
+    formulate_request = {
+        "api_key": api_key,
+        "problem_statement": problem_statement,
+        "context": context,
+        "objective_type": objective_type,
+        "dependent_variable_description": dependent_variable_description,
+        "independent_variables": independent_variables,
+    }
+    response = await make_request(
+        f"{DEFOG_BASE_URL}/oracle/predict/formulate",
+        data=formulate_request,
+    )
+    objective_type = response.get("objective_type")
+    if not objective_type or objective_type not in OBJECTIVE_TYPES:
+        raise ValueError(f"Invalid model type: {objective_type}")
+    prediction_sql_question = response.get("question")
+    if not prediction_sql_question:
+        raise Exception("Could not get prediction question from /oracle/predict/formulate")
+    dependent_variable_name = response.get("dependent_variable_name")
+    unit_of_analysis = response.get("unit_of_analysis")
+    fit_kwargs = response.get("fit_kwargs", {})
+    predict_kwargs = response.get("predict_kwargs", {})
+    ts = save_timing(ts, "formulate prediction request", timings)
+
+    db_type, db_creds = get_db_type_creds(api_key)
+    retry_data_fetch = inputs.get("retry_data_fetch", RETRY_DATA_FETCH)
+    err_msg, sql, data = None, None, None
+    retry_count = 0
+    while retry_count <= retry_data_fetch:
+        # TODO: DEF-540 generate SQL across multiple DB's and stitch them together with pandas
+        # generate SQL
+        try:
+            if retry_count == 0:
+                sql = await gen_sql(api_key, db_type, prediction_sql_question, "")
+            else:
+                LOGGER.debug(f"Retrying SQL generation for prediction dataframe: {prediction_sql_question}")
+                sql = await retry_sql_gen(api_key, prediction_sql_question, sql, err_msg, db_type)
+            err_msg = None
+        except Exception as e:
+            LOGGER.error(f"Error occurred in generating SQL: {str(e)}")
+            LOGGER.error(traceback.format_exc())
+            err_msg = str(e)
+            sql = None
+        if sql:
+            # fetch data
+            ts = save_timing(
+                ts, f"Prediction SQL generation (try {retry_count})", timings
+            )
+            data, err_msg = await execute_sql(db_type, db_creds, sql)
+            if err_msg is not None:
+                LOGGER.error(f"Error occurred in executing SQL: {err_msg}")
+            else:
+                break
+        retry_count += 1
+    if data is None:
+        LOGGER.error(f"Data fetching failed for prediction dataframe: {prediction_sql_question}")
+        return None
+    ts = save_timing(ts, f"fetch data", timings)
+
+    # format dataframe for model training
+    if objective_type == TIME_SERIES:
+        data.rename(columns={dependent_variable_name: "y"}, inplace=True)
+        # verify that we have ds and y columns
+        if "ds" not in data.columns:
+            raise ValueError("Missing 'ds' column in data")
+        if "y" not in data.columns:
+            raise ValueError("Missing 'y' column in data")
+        # remove timezone info from ds column
+        data["ds"] = pd.to_datetime(data["ds"]).dt.tz_localize(None)
+    elif objective_type in [CLASSIFICATION, REGRESSION]:
+        if dependent_variable_name not in data.columns:
+            raise ValueError(f"Missing dependent variable column: {dependent_variable_name}")
+    LOGGER.debug(f"Data shape: {data.shape}")
+    LOGGER.debug(f"Data columns: {data.columns}")
+    LOGGER.debug(f"Data head: {data.head()}")
+    
+    # create the directory to save the model
+    current_dir = os.getcwd()
+    report_model_dir = os.path.join(
+        current_dir, f"oracle/reports/{api_key}/report_{report_id}"
+    )
+    os.makedirs(report_model_dir, exist_ok=True)
+    model_path = os.path.join(report_model_dir, "model.json")
+
+    # train model
+    train_data_csv = data.to_csv(index=False, header=True, float_format='%.3f')
+    LOGGER.debug(f"Using data to train: {train_data_csv}")
+    model = fit_model(data, objective_type, dependent_variable_name, model_path, fit_kwargs)
+    ts = save_timing(ts, "fit model", timings)
+
+    # make predictions
+    predictions = predict_data(model, objective_type, predict_kwargs)
+    LOGGER.debug(f"Predictions type: {type(predictions)}")
+    predictions_csv = predictions[["ds", "yhat", "yhat_lower", "yhat_upper"]].to_csv(index=False, header=True, float_format="%.3f")
+    LOGGER.debug(f"Predictions: {predictions_csv}")
+    ts = save_timing(ts, "predict data", timings)
+
+    # summarize predictions
+    summarize_request = {
+        "api_key": api_key,
+        "problem_statement": problem_statement,
+        "objective_type": objective_type,
+        "dependent_variable_description": dependent_variable_description,
+        "unit_of_analysis": unit_of_analysis,
+        "input_data_csv": train_data_csv,
+        "predicted_data_csv": predictions_csv,
+    }
+    response = await make_request(
+        f"{DEFOG_BASE_URL}/oracle/predict/summarize",
+        data=summarize_request,
+    )
+    prediction_summary = response.get("summary")
+    LOGGER.debug(f"Summarize response: {response}")
+    save_and_log(ts, "summarize predictions", timings)
+
+    outputs = {
+        "objective_type": objective_type,
+        "model_path": model_path,
+        "working": {
+            "target": dependent_variable_name,
+            "features": data.columns.drop(dependent_variable_name).tolist(),
+            "unit_of_analysis": unit_of_analysis,
+            "prediction_sql": sql,
+            "fit_kwargs": fit_kwargs,
+            "predict_kwargs": predict_kwargs,
+        },
+        "predictions": predictions_csv,
+        "prediction_summary": prediction_summary
+    }
+    return outputs
+
+
+def fit_model(data: pd.DataFrame, objective_type: str, dependent_variable: str, model_path: str, fit_kwargs: Dict[str, Any]):
+    """
+    This function will train a machine learning model on the data provided.
+    """
+    if objective_type == TIME_SERIES:
+        model = Prophet()
+        model.fit(data)
+        model_json = model_to_json(model)
+        with open(model_path, "w") as f:
+            f.write(model_json)
+        return model
+    elif objective_type == CLASSIFICATION:
+        model = XGBClassifier()
+        y = data[dependent_variable]
+        X = data.drop(dependent_variable, inplace=False, axis=1)
+        model.fit(X, y)
+        model.save_model(model_path)
+        return model
+    elif objective_type == REGRESSION:
+        model = XGBRegressor()
+        y = data[dependent_variable]
+        X = data.drop(dependent_variable, inplace=False, axis=1)
+        model.fit(X, y)
+        model.save_model(model_path)
+        return model
+    else:
+        raise ValueError(f"Invalid model type: {objective_type}")
+
+
+def predict_data(model, objective_type: str, predict_kwargs: Dict[str, Any]):
+    """
+    This function will generate predictions based on the model trained.
+    """
+    if objective_type == TIME_SERIES:
+        future = model.make_future_dataframe(periods=predict_kwargs.get("periods", 1))
+        forecast = model.predict(future)
+        return forecast
+    elif objective_type == CLASSIFICATION:
+        raise NotImplementedError("Classification prediction not implemented")
+    elif objective_type == REGRESSION:
+        raise NotImplementedError("Regression prediction not implemented")
+    else:
+        raise ValueError(f"Invalid model type: {objective_type}")
