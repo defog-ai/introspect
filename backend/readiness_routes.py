@@ -175,8 +175,8 @@ async def regression_results(request: Request):
             status_code=400,
         )
 
-    LOGGER.debug(f"[Regression] - api_key: {api_key}")
-    LOGGER.debug(f"[Regression] - queries: {queries}")
+    LOGGER.debug(f"[RegressionTesting] - api_key: {api_key}")
+    LOGGER.debug(f"[RegressionTesting] - queries: {queries}")
 
     query_validation_result = await validate_queries(
         api_key=api_key, db_type=db_type, db_creds=db_creds, queries=queries

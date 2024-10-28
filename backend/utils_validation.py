@@ -86,12 +86,12 @@ async def test_query(
 
         result["query_id"] = query_id or str(uuid4())
 
-        LOGGER.info(f"\n[Regression] - Question: {question}")
-        LOGGER.info(
-            f"\n[Regression] - Previous context: {json.dumps(previous_context, indent=2)}"
+        LOGGER.debug(f"\n[RegressionTesting] - Question: {question}")
+        LOGGER.debug(
+            f"\n[RegressionTesting] - Previous context: {json.dumps(previous_context, indent=2)}"
         )
-        LOGGER.info(f"\n[Regression] - Original SQL: {original_sql}")
-        LOGGER.info(f"\n[Regression] - Generated SQL: {sql_gen}")
+        LOGGER.debug(f"\n[RegressionTesting] - Original SQL: {original_sql}")
+        LOGGER.debug(f"\n[RegressionTesting] - Generated SQL: {sql_gen}")
 
         return result
 
@@ -147,8 +147,8 @@ async def validate_queries(
                     f"Error in generating query for question: {q}, which was part of the previous context for question: {question}.\nFull input: {query}"
                 )
 
-            LOGGER.info(f"Question: {q}")
-            LOGGER.info(f"SQL: {sql}")
+            LOGGER.info(f"[RegressionTesting] - Question: {q}")
+            LOGGER.info(f"[RegressionTesting] - SQL: {sql}")
 
             previous_context += [q, sql]
             sqls_generated += [q, sql]
