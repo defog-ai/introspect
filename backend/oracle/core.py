@@ -459,26 +459,6 @@ async def gather_context(
     return combined_summary
 
 
-async def predict(
-    api_key: str,
-    username: str,
-    report_id: str,
-    task_type: str,
-    inputs: Dict[str, Any],
-    outputs: Dict[str, Any],
-):
-    """
-    This function will make the necessary predictions, by training a machine learning
-    model on the data provided, and generating predictions needed for the analysis.
-    Intermediate model and predictions generated will be saved in the report_id's
-    directory.
-    """
-    LOGGER.info(f"Predicting for report {report_id}")
-    LOGGER.debug(f"inputs: {inputs}")
-    LOGGER.debug(f"outputs:\n{truncate_obj(outputs)}")
-    return {"predictions": "predictions generated"}
-
-
 async def export(
     api_key: str,
     username: str,
