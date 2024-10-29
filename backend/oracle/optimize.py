@@ -67,7 +67,7 @@ async def optimize(
 
     It will run the above tasks in parallel, and return the resulting outputs of each of them.
     """
-    LOGGER.info(f"[Optimize] Optimizing for report {report_id}")
+    LOGGER.info(f"[Optimizer] Optimizing for report {report_id}")
 
     user_question = inputs["user_question"]
     explorer_outputs: list = outputs.get("explore", {})
@@ -89,7 +89,7 @@ async def optimize(
         },
     )
 
-    LOGGER.info(f"Tasks: {json.dumps(res, indent=2)}")
+    LOGGER.info(f"[Optimizer] Tasks: {json.dumps(res, indent=2)}")
 
     optimizer_outputs = {}
     optimizer_task_type = res["task_type"]
@@ -166,7 +166,8 @@ async def optimize(
 
         optimizer_outputs["processed_items"] = processed_items
 
-        LOGGER.info(processed_items)
+        LOGGER.info("[Optimizer] Processing done\n")
+        LOGGER.debug(processed_items)
 
         # now using the above processed items
         # get the actual recommendations
@@ -187,7 +188,7 @@ async def optimize(
             },
         )
 
-        LOGGER.info(f"Recommendations: {recommendations}")
+        LOGGER.debug(f"[Optimizer] Recommendations: {recommendations}")
 
     else:
         optimizer_outputs = {}
