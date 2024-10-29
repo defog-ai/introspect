@@ -63,9 +63,9 @@ const Scaffolding = ({
           href: "/manage-tools",
         },
         {
-          key: "check-readiness",
-          title: "Check Readiness",
-          href: "/check-readiness",
+          key: "test-regression",
+          title: "Test Regression",
+          href: "/test-regression",
         },
         {
           key: "align-model",

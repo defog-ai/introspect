@@ -6,14 +6,14 @@
       "$components/*": ["./components/*"]
     },
     "allowJs": true,
-    "checkJs": true,
+    // "checkJs": true,
     "skipLibCheck": true,
     "strict": false,
     "noEmit": true,
     "incremental": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "Bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve"

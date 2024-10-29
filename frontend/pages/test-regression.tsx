@@ -165,8 +165,6 @@ export default function TestRegressionPage() {
     [queries, apiKeyName, token]
   );
 
-  console.log(queries);
-
   return (
     <div className="flex justify-center">
       <Meta />
@@ -213,7 +211,7 @@ export default function TestRegressionPage() {
                     const result = e.target.result;
 
                     try {
-                      const json = JSON.parse(result);
+                      const json = JSON.parse(result.toString());
                       if (json instanceof Array) {
                         if (
                           json.every((item) => {
