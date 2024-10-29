@@ -7,6 +7,7 @@ from generic_utils import format_sql, make_request, normalize_sql
 from oracle.celery_app import LOGGER
 import seaborn as sns
 
+FIGSIZE = (5, 3)
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 # explore module constants
@@ -125,7 +126,10 @@ async def get_chart_fn(
 
 
 def run_chart_fn(
-    chart_fn_params: Dict[str, Any], data: pd.DataFrame, chart_path: str, figsize=(5, 3)
+    chart_fn_params: Dict[str, Any],
+    data: pd.DataFrame,
+    chart_path: str,
+    figsize=FIGSIZE,
 ):
     """
     Run the sns plotting function on the data and save the chart to the given path.

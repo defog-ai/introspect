@@ -259,6 +259,7 @@ async def explore_generated_question(
 
     if data.empty:
         LOGGER.error(f"No data fetched for {qn_id}: {generated_qn}")
+        outputs["summary"] = "No data fetched"
         return outputs
 
     # choose appropriate visualization and generate chart

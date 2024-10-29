@@ -1,7 +1,7 @@
 import os
 import time
 import traceback
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 
 from celery.utils.log import get_task_logger
 from prophet import Prophet
@@ -11,7 +11,7 @@ import pandas as pd
 
 from db_utils import get_db_type_creds
 from generic_utils import make_request
-from oracle.utils_explore_data import gen_sql, retry_sql_gen
+from oracle.utils_explore_data import FIGSIZE, gen_sql, retry_sql_gen
 from utils_logging import LOG_LEVEL, save_and_log, save_timing, truncate_obj
 from utils_sql import execute_sql
 
@@ -97,7 +97,7 @@ async def predict(
             "variable_name": aiv["name"],
             "variable_description": aiv["description"],
             "variable_generated_question": analysis["generated_qn"],
-            "variable_data_summary": analysis["summary"],
+            "variable_data_summary": analysis.get("summary", "No summary available"),
             "variable_data_sql": working["generated_sql"],
         }
         independent_variables.append(independent_variable)
@@ -121,7 +121,10 @@ async def predict(
         raise ValueError(f"Invalid model type: {objective_type}")
     prediction_sql_question = response.get("question")
     if not prediction_sql_question:
-        raise Exception("Could not get prediction question from /oracle/predict/formulate")
+        raise Exception(
+            "Could not get prediction question from /oracle/predict/formulate"
+        )
+    suggested_sql = response.get("suggested_sql")
     dependent_variable_name = response.get("dependent_variable_name")
     unit_of_analysis = response.get("unit_of_analysis")
     fit_kwargs = response.get("fit_kwargs", {})
@@ -137,10 +140,17 @@ async def predict(
         # generate SQL
         try:
             if retry_count == 0:
-                sql = await gen_sql(api_key, db_type, prediction_sql_question, "")
+                if not suggested_sql:
+                    sql = await gen_sql(api_key, db_type, prediction_sql_question, "")
+                else:
+                    sql = suggested_sql
             else:
-                LOGGER.debug(f"Retrying SQL generation for prediction dataframe: {prediction_sql_question}")
-                sql = await retry_sql_gen(api_key, prediction_sql_question, sql, err_msg, db_type)
+                LOGGER.debug(
+                    f"Retrying SQL generation for prediction dataframe: {prediction_sql_question}"
+                )
+                sql = await retry_sql_gen(
+                    api_key, prediction_sql_question, sql, err_msg, db_type
+                )
             err_msg = None
         except Exception as e:
             LOGGER.error(f"Error occurred in generating SQL: {str(e)}")
@@ -159,7 +169,9 @@ async def predict(
                 break
         retry_count += 1
     if data is None:
-        LOGGER.error(f"Data fetching failed for prediction dataframe: {prediction_sql_question}")
+        LOGGER.error(
+            f"Data fetching failed for prediction dataframe: {prediction_sql_question}"
+        )
         return None
     ts = save_timing(ts, f"fetch data", timings)
 
@@ -175,11 +187,13 @@ async def predict(
         data["ds"] = pd.to_datetime(data["ds"]).dt.tz_localize(None)
     elif objective_type in [CLASSIFICATION, REGRESSION]:
         if dependent_variable_name not in data.columns:
-            raise ValueError(f"Missing dependent variable column: {dependent_variable_name}")
+            raise ValueError(
+                f"Missing dependent variable column: {dependent_variable_name}"
+            )
     LOGGER.debug(f"Data shape: {data.shape}")
     LOGGER.debug(f"Data columns: {data.columns}")
     LOGGER.debug(f"Data head: {data.head()}")
-    
+
     # create the directory to save the model
     current_dir = os.getcwd()
     report_model_dir = os.path.join(
@@ -189,17 +203,31 @@ async def predict(
     model_path = os.path.join(report_model_dir, "model.json")
 
     # train model
-    train_data_csv = data.to_csv(index=False, header=True, float_format='%.3f')
+    train_data_csv = data.to_csv(index=False, header=True, float_format="%.3f")
     LOGGER.debug(f"Using data to train: {train_data_csv}")
-    model = fit_model(data, objective_type, dependent_variable_name, model_path, fit_kwargs)
+    model = fit_model(
+        data, objective_type, dependent_variable_name, model_path, fit_kwargs
+    )
     ts = save_timing(ts, "fit model", timings)
 
     # make predictions
     predictions = predict_data(model, objective_type, predict_kwargs)
     LOGGER.debug(f"Predictions type: {type(predictions)}")
-    predictions_csv = predictions[["ds", "yhat", "yhat_lower", "yhat_upper"]].to_csv(index=False, header=True, float_format="%.3f")
+    predictions_csv = predictions[["ds", "yhat", "yhat_lower", "yhat_upper"]].to_csv(
+        index=False, header=True, float_format="%.3f"
+    )
     LOGGER.debug(f"Predictions: {predictions_csv}")
     ts = save_timing(ts, "predict data", timings)
+
+    # chart predictions
+    chart_kwargs = {
+        "ylabel": dependent_variable_description,
+    }
+    chart_paths = chart_predictions(
+        objective_type, model, predictions, report_model_dir, chart_kwargs
+    )
+    LOGGER.debug(f"Chart paths: {chart_paths}")
+    ts = save_timing(ts, "chart predictions", timings)
 
     # summarize predictions
     summarize_request = {
@@ -219,11 +247,18 @@ async def predict(
     LOGGER.debug(f"Summarize response: {response}")
     save_and_log(ts, "summarize predictions", timings)
 
+    target = (
+        dependent_variable_description
+        if dependent_variable_name == "y"
+        else dependent_variable_name
+    )
+
     outputs = {
         "objective_type": objective_type,
         "model_path": model_path,
+        "chart_paths": chart_paths,
         "working": {
-            "target": dependent_variable_name,
+            "target": target,
             "features": data.columns.drop(dependent_variable_name).tolist(),
             "unit_of_analysis": unit_of_analysis,
             "prediction_sql": sql,
@@ -231,12 +266,18 @@ async def predict(
             "predict_kwargs": predict_kwargs,
         },
         "predictions": predictions_csv,
-        "prediction_summary": prediction_summary
+        "prediction_summary": prediction_summary,
     }
     return outputs
 
 
-def fit_model(data: pd.DataFrame, objective_type: str, dependent_variable: str, model_path: str, fit_kwargs: Dict[str, Any]):
+def fit_model(
+    data: pd.DataFrame,
+    objective_type: str,
+    dependent_variable: str,
+    model_path: str,
+    fit_kwargs: Dict[str, Any],
+):
     """
     This function will train a machine learning model on the data provided.
     """
@@ -265,17 +306,53 @@ def fit_model(data: pd.DataFrame, objective_type: str, dependent_variable: str, 
         raise ValueError(f"Invalid model type: {objective_type}")
 
 
-def predict_data(model, objective_type: str, predict_kwargs: Dict[str, Any]):
+def predict_data(
+    model: Union[Prophet, XGBClassifier, XGBRegressor],
+    objective_type: str,
+    predict_kwargs: Dict[str, Any],
+) -> pd.DataFrame:
     """
     This function will generate predictions based on the model trained.
     """
     if objective_type == TIME_SERIES:
-        future = model.make_future_dataframe(periods=predict_kwargs.get("periods", 1))
+        future = model.make_future_dataframe(
+            periods=predict_kwargs.get("periods", 1),
+            freq=predict_kwargs.get("freq", "D"),
+        )
         forecast = model.predict(future)
         return forecast
     elif objective_type == CLASSIFICATION:
         raise NotImplementedError("Classification prediction not implemented")
     elif objective_type == REGRESSION:
         raise NotImplementedError("Regression prediction not implemented")
+    else:
+        raise ValueError(f"Invalid model type: {objective_type}")
+
+
+def chart_predictions(
+    objective_type: str,
+    model: Union[Prophet, XGBClassifier, XGBRegressor],
+    forecast: pd.DataFrame,
+    chart_dir: str,
+    chart_kwargs: Dict[str, Any] = {},
+) -> List[str]:
+    """
+    This function will generate a chart based on the predictions generated.
+    """
+    if objective_type == TIME_SERIES:
+        xlabel = chart_kwargs.get("xlabel", "Date")
+        ylabel = chart_kwargs.get("ylabel")
+        fig = model.plot(forecast, xlabel=xlabel, ylabel=ylabel, figsize=FIGSIZE)
+        path_forecast = os.path.join(chart_dir, "forecast.png")
+        fig.savefig(path_forecast)
+        # plot components and save
+        fig = model.plot_components(forecast, figsize=FIGSIZE)
+        path_components = os.path.join(chart_dir, "components.png")
+        fig.savefig(path_components)
+        return [path_forecast, path_components]
+    elif objective_type == CLASSIFICATION:
+        raise NotImplementedError("Classification charting not implemented")
+    elif objective_type == REGRESSION:
+        raise NotImplementedError("Regression charting not implemented")
     else:
         raise ValueError(f"Invalid model type: {objective_type}")
