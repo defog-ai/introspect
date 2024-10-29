@@ -79,10 +79,10 @@ async def test_query(
             db_creds=db_creds,
         )
 
-        result["sql_gen"] = format_sql(sql_gen)
+        result["model_sql"] = format_sql(sql_gen)
 
         result["question"] = question
-        result["sql_golden"] = format_sql(original_sql)
+        result["original_sql"] = format_sql(original_sql)
 
         result["query_id"] = query_id or str(uuid4())
 
@@ -154,8 +154,8 @@ async def validate_queries(
 
         query_wise_results[query_id] = {
             "question": question,
-            "sql_golden": original_sql,
-            "sqls_generated": sqls_generated,
+            "original_sql": original_sql,
+            "previous_questions_sql": sqls_generated,
             "correct": False,
             "subset": False,
         }
