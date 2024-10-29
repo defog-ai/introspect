@@ -1,0 +1,1 @@
+curl 'http://0.0.0.0:1235/oracle/optimize' --header 'Content-Type: application/json' -d @./test_optimize_dsh.json | jq --indent 2

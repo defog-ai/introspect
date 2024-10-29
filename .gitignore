@@ -79,6 +79,3 @@ backend/oracle/reports
 
 # package-lock
 frontend/package-lock.json
-
-test_optimize_dsh.json
-test_optimize_dsh.sh

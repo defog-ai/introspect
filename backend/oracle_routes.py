@@ -381,9 +381,9 @@ async def oracle_test_stage(req: Request):
         )
 
 
-# test router for optimize
-@router.post("/oracle/gen_optimization_task")
-async def gen_optimization_task(request: Request):
+# test router for optimize. Not used by the oracle. But helpful for testing.
+@router.post("/oracle/optimize")
+async def optimize_endpoint(request: Request):
     """
     Generates an optimization task based on explore and gather_context stage's outputs.
 

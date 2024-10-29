@@ -135,11 +135,11 @@ async def optimize(
                     "explanation": explanation,
                 }
 
-                LOGGER.info("\n\n---\n\n")
-                LOGGER.info(f"col: {col}")
-                LOGGER.info(f"col_values: {col_values}")
-                LOGGER.info(f"agg: {agg}")
-                LOGGER.info("\n\n---\n\n")
+                LOGGER.debug("\n\n---\n\n")
+                LOGGER.debug(f"col: {col}")
+                LOGGER.debug(f"col_values: {col_values}")
+                LOGGER.debug(f"agg: {agg}")
+                LOGGER.debug("\n\n---\n\n")
 
                 if not agg:
                     processed["result"] = col_values.to_csv(index=False)
@@ -167,7 +167,7 @@ async def optimize(
         optimizer_outputs["processed_items"] = processed_items
 
         LOGGER.info("[Optimizer] Processing done\n")
-        LOGGER.debug(processed_items)
+        LOGGER.info(processed_items)
 
         # now using the above processed items
         # get the actual recommendations
