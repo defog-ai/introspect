@@ -128,8 +128,7 @@ async def validate_queries(
         sqls_generated = []
 
         # this will be an alternating array of question, sql
-        # we will create this now
-        # we can only run these questions one by one because questions depend on previous ones' outputs
+        # we can only run these questions one by one because final question's answer depend on previous ones' outputs
         previous_context = []
 
         for q in previous_questions:
