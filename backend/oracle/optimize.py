@@ -9,22 +9,6 @@ import pandas as pd
 from utils_logging import LOGGER
 from generic_utils import make_request
 
-# import random
-# import time
-# import traceback
-# from db_utils import get_db_type_creds
-
-# from oracle.utils_explore_data import (
-#     TABLE_CSV,
-#     IMAGE,
-#     gen_sql,
-#     get_chart_fn,
-#     gen_data_analysis,
-#     retry_sql_gen,
-#     run_chart_fn,
-# )
-# from utils_sql import execute_sql
-
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 
@@ -60,7 +44,7 @@ async def optimize(
     It will create a task array, where each task has a subtask type from above, and the required inputs for running that task:
     ```
     {
-      task_type: "simple_recommendation" or "run_optimizer_model",
+      optimization_task_type: "simple_recommendation" or "run_optimizer_model",
       "inputs": Inputs required for the optimizer. No inputs are required for "simple_recommendation".
     }
     ```
@@ -92,9 +76,9 @@ async def optimize(
     LOGGER.info(f"[Optimizer] Tasks: {json.dumps(res, indent=2)}")
 
     optimizer_outputs = {}
-    optimizer_task_type = res["task_type"]
+    optimization_task_type = res["optimization_task_type"]
 
-    if optimizer_task_type == "simple_recommendation":
+    if optimization_task_type == "simple_recommendation":
         processed_items = []
 
         for item in res["processing_list"]:
@@ -194,7 +178,7 @@ async def optimize(
         optimizer_outputs = {}
 
     return {
-        "subtask_type": optimizer_task_type,
+        "subtask_type": optimization_task_type,
         "outputs": optimizer_outputs,
         "recommendations": recommendations,
     }

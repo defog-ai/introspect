@@ -371,6 +371,36 @@ async def oracle_test_stage(req: Request):
             outputs=body.get("outputs", {}),
         )
         return JSONResponse(response)
+
+    elif stage == "optimize":
+        """
+        Generates an optimization task based on explore and gather_context stage's outputs.
+
+        Inputs:
+        - api_key: str
+        - gather_context: dict - Results of the gather_context stage. As saved in the dict while running stage_execute.
+        - explore: dict - Results of the explore stage. As saved in the dict while running stage_execute.
+
+        It will use the above results, and construct them into a prompt. We will then pass it to an LLM to get a JSON back.
+
+        Output: A well defined optimization task, which can be of type `simple_recommendation` or `run_optimizer_model`.
+        """
+        api_key = body.get("api_key", None)
+        outputs = body.get("outputs", {})
+        task_type = body.get("task_type", "")
+        question = body.get("question", None)
+        username = body.get("username", None)
+        report_id = body.get("report_id", None)
+
+        res = await optimize(
+            api_key=api_key,
+            username=username,
+            report_id=report_id,
+            task_type=task_type,
+            inputs={"user_question": question},
+            outputs=outputs,
+        )
+        return JSONResponse(content=res)
     else:
         return JSONResponse(
             status_code=400,
@@ -379,38 +409,3 @@ async def oracle_test_stage(req: Request):
                 "message": f"Invalid 'stage' field. Must be one of: ['gather_context', 'explore']",
             },
         )
-
-
-# test router for optimize. Not used by the oracle. But helpful for testing.
-@router.post("/oracle/optimize")
-async def optimize_endpoint(request: Request):
-    """
-    Generates an optimization task based on explore and gather_context stage's outputs.
-
-    Inputs:
-    - api_key: str
-    - gather_context: dict - Results of the gather_context stage. As saved in the dict while running stage_execute.
-    - explore: dict - Results of the explore stage. As saved in the dict while running stage_execute.
-
-    It will use the above results, and construct them into a prompt. We will then pass it to an LLM to get a JSON back.
-
-    Output: A well defined optimization task, which can be of type `simple_recommendation` or `run_optimizer_model`.
-    """
-
-    data = await request.json()
-    api_key = data.get("api_key", None)
-    outputs = data.get("outputs", {})
-    task_type = data.get("task_type", "")
-    question = data.get("question", None)
-    username = data.get("username", None)
-    report_id = data.get("report_id", None)
-
-    res = await optimize(
-        api_key=api_key,
-        username=username,
-        report_id=report_id,
-        task_type=task_type,
-        inputs={"user_question": question},
-        outputs=outputs,
-    )
-    return JSONResponse(content=res)

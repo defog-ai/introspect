@@ -4,6 +4,8 @@
   "username": "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0",
   "report_id": 127,
   "task_type": "optimization",
+  "stage": "optimize",
+  "inputs": {},
   "outputs": {
     "gather_context": {
       "problem_statement": "Identify and recommend a selection of at least 5 restaurants that offer a variety of food types for an outing.",
