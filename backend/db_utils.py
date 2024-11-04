@@ -26,7 +26,7 @@ INTERNAL_DB = os.environ.get("INTERNAL_DB", None)
 IMPORTED_TABLES_DBNAME = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tables")
 TEMP_TABLES_DBNAME = os.environ.get("TEMP_TABLES_DBNAME", "temp_tables")
 
-ORACLE_ENABLED: bool = (os.environ.get("ORACLE_ENABLED", "no") == "yes")
+ORACLE_ENABLED: bool = os.environ.get("ORACLE_ENABLED", "no") == "yes"
 LOGGER.info(f"ORACLE_ENABLED: {ORACLE_ENABLED}")
 
 if INTERNAL_DB == "sqlite":
@@ -38,7 +38,9 @@ if INTERNAL_DB == "sqlite":
         imported_tables_engine = create_engine(
             f"sqlite:///{IMPORTED_TABLES_DBNAME}.db", connect_args={"timeout": 3}
         )
-        LOGGER.info(f"Created imported tables engine for sqlite: {imported_tables_engine}")
+        LOGGER.info(
+            f"Created imported tables engine for sqlite: {imported_tables_engine}"
+        )
         temp_tables_engine = create_engine(
             f"sqlite:///{TEMP_TABLES_DBNAME}.db", connect_args={"timeout": 3}
         )
@@ -65,7 +67,9 @@ elif INTERNAL_DB == "postgres":
         imported_tables_engine = create_engine(
             f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}"
         )
-        LOGGER.info(f"Created imported tables engine for postgres: {imported_tables_engine}")
+        LOGGER.info(
+            f"Created imported tables engine for postgres: {imported_tables_engine}"
+        )
         temp_tables_engine = create_engine(
             f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{TEMP_TABLES_DBNAME}"
         )
@@ -91,7 +95,9 @@ elif INTERNAL_DB == "sqlserver":
         imported_tables_engine = create_engine(
             f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}?driver=ODBC+Driver+18+for+SQL+Server"
         )
-        LOGGER.info(f"Created imported tables engine for sqlserver: {imported_tables_engine}")
+        LOGGER.info(
+            f"Created imported tables engine for sqlserver: {imported_tables_engine}"
+        )
         temp_tables_engine = create_engine(
             f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{TEMP_TABLES_DBNAME}?driver=ODBC+Driver+18+for+SQL+Server"
         )
@@ -227,39 +233,6 @@ def get_user_key_names(token):
 
     else:
         return user.allowed_dbs
-
-
-async def execute_code(
-    code_snippets: list,  # list of code strings to execute
-    fn_name=None,  # function name to call
-    use_globals=False,  # whether to use globals as the sandbox
-):
-    """
-    Runs code string and returns output.
-    """
-    err = None
-    out = None
-    try:
-        sandbox = {}
-        if use_globals:
-            sandbox = globals()
-
-        for code in code_snippets:
-            exec(code, sandbox)
-
-        if fn_name:
-            # check if test_tool is an async function
-            if inspect.iscoroutinefunction(sandbox[fn_name]):
-                out = await sandbox[fn_name]()
-            else:
-                out = sandbox[fn_name]()
-    except Exception as e:
-        out = None
-        err = str(e)
-        sandbox = None
-        traceback.print_exc()
-    finally:
-        return err, out, sandbox
 
 
 async def initialise_analysis(
@@ -782,79 +755,6 @@ def create_table_chart(table_data):
         traceback.print_exc()
     finally:
         return err
-
-
-async def update_table_chart_data(table_id, edited_table_data):
-    err = None
-    analysis = None
-    updated_data = None
-
-    if table_id is None:
-        return "Invalid table data"
-
-    try:
-        with engine.begin() as conn:
-            # check if exists.
-            # if not, create
-            row = conn.execute(
-                select(TableCharts).where(TableCharts.table_id == table_id)
-            ).fetchone()
-
-            if not row:
-                err = "Invalid table id"
-            else:
-                # print(edited_table_data)
-                print("Running table again...")
-
-                # execute the new code
-                err, analysis, updated_data = await execute_code(
-                    edited_table_data["code"]
-                )
-
-                if err is None:
-                    chart_images = []
-                    if hasattr(updated_data, "kmc_plot_paths"):
-                        chart_images = [
-                            {"path": kmc_path, "type": "kmc"}
-                            for kmc_path in updated_data.kmc_plot_paths
-                        ]
-
-                    updated_data = {
-                        "data_csv": updated_data.to_csv(
-                            float_format="%.3f", index=False
-                        ),
-                        "sql": edited_table_data.get("sql"),
-                        "code": edited_table_data.get("code"),
-                        "tool": edited_table_data.get("tool"),
-                        "reactive_vars": (
-                            updated_data.reactive_vars
-                            if hasattr(updated_data, "reactive_vars")
-                            else None
-                        ),
-                        "table_id": table_id,
-                        "chart_images": chart_images,
-                        "error": None,
-                    }
-
-                    # insert the data back into TableCharts table
-                    print("writing to table chart, table id: ", table_id)
-                    updated_data["edited"] = True
-
-                    conn.execute(
-                        update(TableCharts)
-                        .where(TableCharts.table_id == table_id)
-                        .values(updated_data)
-                    )
-                else:
-                    print("Error: ", err)
-    except Exception as e:
-        err = str(e)
-        analysis = None
-        updated_data = None
-        print(e)
-        traceback.print_exc()
-    finally:
-        return err, analysis, updated_data
 
 
 async def get_table_data(table_id):

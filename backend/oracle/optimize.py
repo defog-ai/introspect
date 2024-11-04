@@ -7,6 +7,7 @@ from typing import Any, Dict
 import pandas as pd
 
 from oracle.constants import TaskType
+from utils import execute_code
 from utils_logging import LOGGER
 from generic_utils import make_request
 
@@ -78,15 +79,17 @@ async def optimize(
 
     optimizer_outputs = {}
     optimization_task_type = res["optimization_task_type"]
+    recommendations = ""
 
     if optimization_task_type == "simple_recommendation":
         processed_items = []
 
         for item in res["processing_list"]:
             qn_id = item["qn_id"]
-            columns = item["columns"]
-            aggregations = item["aggregations"]
+            # columns = item["columns"]
+            # aggregations = item["aggregations"]
             explanation = item["explanation"]
+            pandas_code = item["pandas_code"]
             # look for the qn_ids's artifact in the explore's outputs
             relevant_explorer_output = [q for q in analyses if q["qn_id"] == qn_id]
             if len(relevant_explorer_output) == 0:
@@ -110,44 +113,33 @@ async def optimize(
 
             df = pd.read_csv(StringIO(table_csv))
 
-            for col, agg in zip(columns, aggregations):
-                col_values = df[col]
+            try:
+                err: str | None
+                processed: pd.DataFrame
+
+                # try to execute the code in pandas_code
+                err, processed = await execute_code(
+                    code_snippets=pandas_code,
+                    fn_name="run_item",
+                    sandbox={},
+                    default_imports=["import pandas as pd"],
+                    kwargs={"df": df},
+                )
+                if err:
+                    raise Exception(err)
 
                 processed = {
                     "qn_id": qn_id,
-                    "column": col,
-                    "aggregation": agg,
                     "explanation": explanation,
+                    "result": (
+                        processed.to_csv(index=False)
+                        if type(processed) == pd.DataFrame
+                        else str(processed)
+                    ),
                 }
-
-                LOGGER.debug("\n\n---\n\n")
-                LOGGER.debug(f"col: {col}")
-                LOGGER.debug(f"col_values: {col_values}")
-                LOGGER.debug(f"agg: {agg}")
-                LOGGER.debug("\n\n---\n\n")
-
-                if not agg:
-                    processed["result"] = col_values.to_csv(index=False)
-                elif agg == "mean":
-                    processed["result"] = col_values.mean()
-                elif agg == "sum":
-                    processed["result"] = col_values.sum()
-                elif agg == "min":
-                    processed["result"] = col_values.min()
-                elif agg == "max":
-                    processed["result"] = col_values.max()
-                elif agg == "variance":
-                    processed["result"] = col_values.var()
-                elif agg == "count":
-                    processed["result"] = len(col_values)
-                elif agg == "unique_count":
-                    processed["result"] = int(col_values.nunique())
-                elif agg == "unique_values":
-                    processed["result"] = col_values.unique().to_csv(index=False)
-                else:
-                    LOGGER.error(f"Could not do aggregation: {agg} for item: {item}")
-
                 processed_items.append(processed)
+            except Exception as e:
+                LOGGER.error(e)
 
         optimizer_outputs["processed_items"] = processed_items
 
@@ -179,7 +171,7 @@ async def optimize(
         optimizer_outputs = {}
 
     return {
-        "subtask_type": optimization_task_type,
+        "optimization_task_type": optimization_task_type,
         "outputs": optimizer_outputs,
         "recommendations": recommendations,
     }
