@@ -1,8 +1,11 @@
 from datetime import datetime
 import os
+import time
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert, select
 
@@ -17,27 +20,39 @@ from oracle.core import (
     begin_generation_task,
     get_report_file_path,
 )
+from utils_logging import LOGGER, save_and_log, save_timing
 
 router = APIRouter()
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 
+class ClarifyQuestionRequest(BaseModel):
+    key_name: str
+    token: str
+    user_question: str
+    task_type: str = ""
+    answered_clarifications: List[Dict[str, Any]] = []
+
+
 @router.post("/oracle/clarify_question")
-async def clarify_question(req: Request):
+async def clarify_question(req: ClarifyQuestionRequest):
     """
-    Given the question / objective statement provided by the user, this endpoint
-    will return:
-        clarifications: list[str]
+    Given the question provided by the user, an optionally a list of answered
+    clarifications, this endpoint will return a list of clarifications that still
+    need to be addressed. If this is a new question, the task_type will be inferred.
+    Otherwise, the task_type will be read from the request body and used to generate
+    the remaining clarifications.
+
+    The response contains the following fields:
+        clarifications: list[dict[str, str]] Each clarification dictionary will contain:
+            - clarification: str
+            - input_type: str (one of single_choice, multiple_choice, number, text)
+            - options: list[str]
         task_type: str
-    Depending on the task type, the endpoint will return other additional fields.
-    Note that our UX has only been designed to display the clarifications, and
-    task_type. All other fields are not used by the client.
     """
-    body = await req.json()
-    key_name = body.pop("key_name")
-    token = body.pop("token")
-    username = validate_user(token, user_type=None, get_username=True)
+    ts, timings = time.time(), []
+    username = validate_user(req.token, user_type=None, get_username=True)
     if not username:
         return JSONResponse(
             status_code=401,
@@ -46,22 +61,61 @@ async def clarify_question(req: Request):
                 "message": "Invalid username or password",
             },
         )
-    body["api_key"] = get_api_key_from_key_name(key_name)
-    if "user_question" not in body:
+    api_key = get_api_key_from_key_name(req.key_name)
+    ts = save_timing(ts, "validate_user", timings)
+
+    if not req.task_type:
+        clarify_task_type_request = {
+            "api_key": api_key,
+            "user_question": req.user_question,
+        }
+        try:
+            clarify_task_type_response = await make_request(
+                DEFOG_BASE_URL + "/oracle/clarify_task_type", clarify_task_type_request
+            )
+            task_type = clarify_task_type_response["task_type"]
+        except Exception as e:
+            LOGGER.error(f"Error getting task type: {e}")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": "Internal Server Error",
+                    "message": "Unable to get task type",
+                },
+            )
+    else:
+        task_type = req.task_type
+    LOGGER.debug(f"Task type: {task_type}")
+    ts = save_timing(ts, "get_task_type", timings)
+    clarify_request = {
+        "api_key": api_key,
+        "user_question": req.user_question,
+        "task_type": task_type,
+        "answered_clarifications": req.answered_clarifications,
+    }
+    try:
+        clarify_response = await make_request(
+            DEFOG_BASE_URL + "/oracle/clarify", clarify_request
+        )
+        for clarification in clarify_response["clarifications"]:
+            if (
+                "clarification" not in clarification
+                or "input_type" not in clarification
+                or "options" not in clarification
+            ):
+                raise ValueError(f"Invalid clarification response: {clarification}")
+    except Exception as e:
+        LOGGER.error(f"Error getting clarifications: {e}")
         return JSONResponse(
-            status_code=400,
+            status_code=500,
             content={
-                "error": "Bad Request",
-                "message": "Missing 'user_question' field",
+                "error": "Internal Server Error",
+                "message": "Unable to generate clarifications",
             },
         )
-    response = await make_request(DEFOG_BASE_URL + "/oracle/clarify_task_type", body)
-    task_type = response.get("task_type", "")
-    print(f"Task type: {task_type}")
-    body["task_type"] = task_type
-    response = await make_request(DEFOG_BASE_URL + "/oracle/clarify", body)
-    response["task_type"] = task_type
-    return JSONResponse(content=response)
+    clarify_response["task_type"] = task_type
+    save_and_log(ts, "get_clarifications", timings)
+    return JSONResponse(content=clarify_response)
 
 
 @router.post("/oracle/suggest_web_sources")

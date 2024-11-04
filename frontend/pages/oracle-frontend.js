@@ -1,4 +1,4 @@
-import { Button, Input, Row, Col, Select, Spin } from "antd";
+import { Button, Input, Row, Col, Select, Spin, Checkbox } from "antd";
 import { useState, useEffect } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
@@ -48,10 +48,10 @@ function OracleDashboard() {
   const [dbType, setDbType] = useState("");
   const [dataConnReady, setDataConnReady] = useState(false);
   const [dataConnErrorMsg, setDataConnErrorMsg] = useState("");
-  const [userTask, setUserTask] = useState("");
+  const [userQuestion, setUserQuestion] = useState("");
   const [clarifications, setClarifications] = useState([]);
+  const [needNewClarifications, setNeedNewClarifications] = useState(false);
   const [waitClarifications, setWaitClarifications] = useState(false);
-  const [dismissedClarifications, setDismissedClarifications] = useState([]);
   const [taskType, setTaskType] = useState("");
   const [sources, setSources] = useState([]);
   const [waitSources, setWaitSources] = useState(false);
@@ -113,6 +113,24 @@ function OracleDashboard() {
     }
   };
 
+  // Function that will update the list of clarifications given the clarification
+  // and the answer.
+  const updateAnsweredClarifications = (clarification, answer) => {
+    // if answer is a list (checkboxes), convert it to a comma-delimited string
+    if (Array.isArray(answer)) {
+      answer = answer.join(", ");
+    }
+    let updatedClarifications = clarifications;
+    updatedClarifications.forEach((clarificationObject) => {
+      if (clarificationObject.clarification === clarification) {
+        clarificationObject.answer = answer;
+      }
+    });
+    console.log("Updated clarifications:", updatedClarifications);
+    setClarifications(updatedClarifications);
+    setNeedNewClarifications(true);
+  };
+
   const getClarifications = async () => {
     setWaitClarifications(true);
     const token = localStorage.getItem("defogToken");
@@ -123,8 +141,12 @@ function OracleDashboard() {
       setWaitClarifications(false);
       return;
     }
-
-    console.log("dismissed clarifications:", dismissedClarifications);
+    // answeredClarifications would be a list of clarifications that have been answered
+    // by the user.
+    let answeredClarifications = clarifications.filter(
+      (clarificationObject) => clarificationObject.answer
+    );
+    console.log("answered clarifications:", answeredClarifications);
     const res = await fetch(setupBaseUrl("http", `oracle/clarify_question`), {
       method: "POST",
       headers: {
@@ -133,29 +155,29 @@ function OracleDashboard() {
       body: JSON.stringify({
         token: token,
         key_name: apiKeyName,
-        user_question: userTask,
-        dismissed_clarifications: dismissedClarifications,
+        user_question: userQuestion,
+        task_type: taskType,
+        answered_clarifications: answeredClarifications,
       }),
     });
     setWaitClarifications(false);
+    setNeedNewClarifications(false);
     if (res.ok) {
       const data = await res.json();
-      // we have the following fields to set:
-      // - data.clarifications [list of string]
-      // - data.task_type [string]
       setTaskType(data.task_type);
-      setClarifications(data.clarifications);
+      // get the updated answered clarifications, since the user might have
+      // answered some clarifications while the request was processing
+      let answeredClarifications = clarifications.filter(
+        (clarificationObject) => clarificationObject.answer
+      );
+      // concatenate the new clarifications with the answered clarifications
+      setClarifications(answeredClarifications.concat(data.clarifications));
     } else {
       console.error("Failed to fetch clarifications");
     }
   };
 
   const deleteClarification = (index) => {
-    // add the clarification to the dismissed clarifications
-    setDismissedClarifications((prevClarifications) => [
-      ...prevClarifications,
-      clarifications[index],
-    ]);
     // remove the clarification from the list of clarifications
     setClarifications((prevClarifications) =>
       prevClarifications.filter((_, i) => i !== index)
@@ -175,7 +197,7 @@ function OracleDashboard() {
         body: JSON.stringify({
           token: token,
           key_name: apiKeyName,
-          user_question: userTask,
+          user_question: userQuestion,
         }),
       }
     );
@@ -331,7 +353,7 @@ function OracleDashboard() {
       body: JSON.stringify({
         token,
         key_name: apiKeyName,
-        user_question: userTask,
+        user_question: userQuestion,
         sources: selectedSources,
         task_type: taskType,
       }),
@@ -347,24 +369,41 @@ function OracleDashboard() {
     // after 3000ms, get clarifications
     const timeout = setTimeout(() => {
       // fetch clarifications as the user is typing
-      if (userTask.length < 5) {
+      if (userQuestion.length < 5) {
         console.log("User task is too short, not fetching clarifications yet");
       } else {
         getClarifications();
         getSources();
       }
-    }, 3000);
+    }, 2000);
 
     return () => clearTimeout(timeout);
 
-    // the effect runs whenever userTask changes
-  }, [userTask]);
+    // the effect runs shortly after userQuestion changes
+  }, [userQuestion]);
+
+  useEffect(() => {
+    // after 1000ms, get clarifications
+    const timeout = setTimeout(() => {
+      if (needNewClarifications) {
+        getClarifications();
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+
+    // the effect runs shortly only when needNewClarifications changes to true,
+    // which is only set to true when the user answers a clarification,
+    // not when we fetch clarifications
+  }, [needNewClarifications]);
 
   useEffect(() => {
     // check DB readiness
     checkDBReady();
     // get reports when the component mounts
     getReports();
+    // set task type to empty string
+    setTaskType("");
 
     // the effect runs only once, and does not depend on any state
   }, []);
@@ -404,9 +443,9 @@ function OracleDashboard() {
             <Input.TextArea
               placeholder="Describe what you would like the Oracle to do..."
               className="w-full p-3 border rounded-lg text-gray-700 focus:outline-none focus:border-purple-500"
-              value={userTask}
+              value={userQuestion}
               onChange={(e) => {
-                setUserTask(e.target.value);
+                setUserQuestion(e.target.value);
                 // let the user type a few characters before fetching clarifications
               }}
               autoSize={{ minRows: 2, maxRows: 10 }}
@@ -416,8 +455,8 @@ function OracleDashboard() {
               {waitClarifications ? (
                 <Spin />
               ) : (
-                userTask &&
-                userTask.length >= 5 &&
+                userQuestion &&
+                userQuestion.length >= 5 &&
                 (!dataConnReady ? (
                   <CloseCircleOutlined style={{ color: "#b80617" }} />
                 ) : (
@@ -438,12 +477,55 @@ function OracleDashboard() {
             <div className="mt-6">
               <h2 className="text-xl font-semibold mb-2">Clarifications</h2>
               <TaskType taskType={taskType} />
-              {clarifications.map((clarification, index) => (
+              {clarifications.map((clarificationObject, index) => (
                 <div
                   key={index}
-                  className="bg-amber-100 p-4 rounded-lg my-2 relative"
+                  className="bg-amber-100 p-4 rounded-lg my-2 relative flex flex-row"
                 >
-                  <p className="text-amber-500">{clarification}</p>
+                  <div className="text-amber-500 w-3/4">
+                    {clarificationObject.clarification}
+                  </div>
+                  <div className="w-1/4 mt-2 mx-2">
+                    {clarificationObject.input_type === "single_choice" ? (
+                      <Select
+                        className="flex w-5/6"
+                        onChange={(value) =>
+                          updateAnsweredClarifications(
+                            clarificationObject.clarification,
+                            value
+                          )
+                        }
+                        options={clarificationObject.options.map((option) => ({
+                          value: option,
+                          label: option,
+                        }))}
+                      />
+                    ) : clarificationObject.input_type === "multiple_choice" ? (
+                      <Checkbox.Group
+                        className="flex w-5/6"
+                        options={clarificationObject.options.map((option) => ({
+                          label: option,
+                          value: option,
+                        }))}
+                        onChange={(value) =>
+                          updateAnsweredClarifications(
+                            clarificationObject.clarification,
+                            value
+                          )
+                        }
+                      />
+                    ) : (
+                      <Input
+                        className="flex w-5/6 rounded-lg"
+                        onChange={(value) =>
+                          updateAnsweredClarifications(
+                            clarificationObject.clarification,
+                            value.target.value
+                          )
+                        }
+                      />
+                    )}
+                  </div>
                   <CloseOutlined
                     className="text-amber-500 absolute top-2 right-2 cursor-pointer"
                     onClick={() => deleteClarification(index)}
@@ -460,7 +542,7 @@ function OracleDashboard() {
           <Button
             className="bg-purple-500 text-white py-4 px-4 mt-2 mb-2 rounded-lg hover:bg-purple-600 disabled:bg-gray-300"
             onClick={generateReport}
-            disabled={userTask.length < 5 || taskType === ""}
+            disabled={userQuestion.length < 5 || taskType === ""}
           >
             Generate
           </Button>
