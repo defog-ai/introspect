@@ -19,6 +19,16 @@ from oracle.optimize import optimize
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert, select
+
+from oracle.optimize import optimize
+from oracle.explore import explore_data
+from oracle.core import export, gather_context, predict
+from db_utils import OracleReports, engine, validate_user
+from generic_utils import get_api_key_from_key_name, make_request
+from oracle.core import (
+    begin_generation_task,
+    get_report_file_path,
+)
 from utils_logging import LOGGER, save_and_log, save_timing
 
 router = APIRouter()
@@ -428,6 +438,22 @@ async def oracle_test_stage(req: Request):
             username=username,
             report_id=report_id,
             task_type=TaskType(task_type),
+            inputs={"user_question": question},
+            outputs=outputs,
+        )
+        return JSONResponse(content=res)
+    elif stage == "export":
+        api_key = body.get("api_key", None)
+        outputs = body.get("outputs", {})
+        task_type = body.get("task_type", "")
+        question = body.get("question", None)
+        username = body.get("username", None)
+        report_id = body.get("report_id", None)
+        res = await export(
+            api_key=api_key,
+            username=username,
+            report_id=report_id,
+            task_type=task_type,
             inputs={"user_question": question},
             outputs=outputs,
         )
