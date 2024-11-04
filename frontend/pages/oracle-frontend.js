@@ -479,7 +479,7 @@ function OracleDashboard() {
               <TaskType taskType={taskType} />
               {clarifications.map((clarificationObject, index) => (
                 <div
-                  key={index}
+                  key={clarificationObject.clarification}
                   className="bg-amber-100 p-4 rounded-lg my-2 relative flex flex-row"
                 >
                   <div className="text-amber-500 w-3/4">
@@ -488,6 +488,7 @@ function OracleDashboard() {
                   <div className="w-1/4 mt-2 mx-2">
                     {clarificationObject.input_type === "single_choice" ? (
                       <Select
+                        allowClear={true}
                         className="flex w-5/6"
                         onChange={(value) =>
                           updateAnsweredClarifications(

@@ -14,8 +14,8 @@ export default function Sources({ sources, setSources }) {
         </h3>
       </div>
       <div className="flex w-full items-center overflow-x-scroll gap-6 pb-3">
-        {sources.map((source) => (
-          <SourceCard source={source} setSources={setSources} />
+        {sources.map((source, i) => (
+          <SourceCard source={source} setSources={setSources} key={i} />
         ))}
       </div>
     </div>
