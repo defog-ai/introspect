@@ -79,3 +79,4 @@ backend/oracle/reports
 
 # package-lock
 frontend/package-lock.json
+oracle_tests/temp.json

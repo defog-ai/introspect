@@ -85,58 +85,63 @@ async def optimize(
         processed_items = []
 
         for item in res["processing_list"]:
-            qn_id = item["qn_id"]
-            # columns = item["columns"]
-            # aggregations = item["aggregations"]
-            explanation = item["explanation"]
+            qn_ids = item["qn_ids"]
             pandas_code = item["pandas_code"]
+
             # look for the qn_ids's artifact in the explore's outputs
-            relevant_explorer_output = [q for q in analyses if q["qn_id"] == qn_id]
-            if len(relevant_explorer_output) == 0:
+            # and extract tables from them
+            table_dfs = []
+
+            for qn_id in qn_ids:
+                relevant_explorer_output = [q for q in analyses if q["qn_id"] == qn_id]
+                if len(relevant_explorer_output) == 0:
+                    LOGGER.error(f"Did not find question id: {qn_id}")
+                    continue
+
+                relevant_explorer_output = relevant_explorer_output[0]
+                table_csv = (
+                    relevant_explorer_output.get("artifacts", {})
+                    .get("table_csv", {})
+                    .get("artifact_content", None)
+                )
+                if not table_csv:
+                    LOGGER.error(
+                        f"Did not find csv data in the explorer's output: {relevant_explorer_output}"
+                    )
+                    continue
+
+                df = pd.read_csv(StringIO(table_csv))
+                table_dfs.append(df)
+
+            if len(table_dfs) == 0:
                 LOGGER.error(
                     f"Did not find relevant question requested by optimizer: {item}"
                 )
                 continue
 
-            relevant_explorer_output = relevant_explorer_output[0]
-            table_csv = (
-                relevant_explorer_output.get("artifacts", {})
-                .get("table_csv", {})
-                .get("artifact_content", None)
-            )
-
-            if not table_csv:
-                LOGGER.error(
-                    f"Did not find csv data in the explorer's output: {relevant_explorer_output}"
-                )
-                continue
-
-            df = pd.read_csv(StringIO(table_csv))
-
             try:
-                err: str | None
-                processed: pd.DataFrame
-
                 # try to execute the code in pandas_code
-                err, processed = await execute_code(
+                err, output = await execute_code(
                     code_snippets=pandas_code,
                     fn_name="run_item",
                     sandbox={},
                     default_imports=["import pandas as pd"],
-                    kwargs={"df": df},
+                    args=table_dfs,
                 )
                 if err:
                     raise Exception(err)
 
-                processed = {
-                    "qn_id": qn_id,
-                    "explanation": explanation,
-                    "result": (
-                        processed.to_csv(index=False)
-                        if type(processed) == pd.DataFrame
-                        else str(processed)
-                    ),
-                }
+                output_str = (
+                    output.to_csv(index=False)
+                    if type(output) == pd.DataFrame
+                    else str(output)
+                )
+
+                processed = {"result": output_str}
+                processed.update(item)
+
+                LOGGER.debug(f"[Optimizer] Processed item: {processed}")
+
                 processed_items.append(processed)
             except Exception as e:
                 LOGGER.error(e)
@@ -144,7 +149,6 @@ async def optimize(
         optimizer_outputs["processed_items"] = processed_items
 
         LOGGER.info("[Optimizer] Processing done\n")
-        LOGGER.info(processed_items)
 
         # now using the above processed items
         # get the actual recommendations
@@ -172,6 +176,6 @@ async def optimize(
 
     return {
         "optimization_task_type": optimization_task_type,
-        "outputs": optimizer_outputs,
+        "optimization_outputs": optimizer_outputs,
         "recommendations": recommendations,
     }

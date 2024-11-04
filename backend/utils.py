@@ -217,6 +217,7 @@ async def execute_code(
     sandbox: Optional[dict] = None,  # custom sandbox to use
     use_globals: bool = False,  # whether to import globals into the sandbox or not
     default_imports: list[str] = [],  # default imports for the sandbox. List of strings
+    args: Optional[list] = [],  # args to pass to the function
     kwargs: Optional[dict] = {},  # kwargs to pass to the function
 ):
     """
@@ -247,9 +248,9 @@ async def execute_code(
 
         # check if test_tool is an async function
         if inspect.iscoroutinefunction(_sandbox[fn_name]):
-            out = await _sandbox[fn_name](**kwargs)
+            out = await _sandbox[fn_name](*args, **kwargs)
         else:
-            out = _sandbox[fn_name](**kwargs)
+            out = _sandbox[fn_name](*args, **kwargs)
     except Exception as e:
         out = None
         err = str(e)
