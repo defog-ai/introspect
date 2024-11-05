@@ -1,6 +1,6 @@
 {
   "question": "suggest me restaurants for an outing. I want a variety of foods and at least 5 restaurants visited",
-  "api_key": "test",
+  "api_key": "test_restaurant",
   "username": "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0",
   "report_id": 127,
   "task_type": "optimization",
