@@ -11,6 +11,7 @@ import pandas as pd
 
 from db_utils import get_db_type_creds
 from generic_utils import make_request
+from oracle.constants import TaskType
 from oracle.utils_explore_data import FIGSIZE, gen_sql, retry_sql_gen
 from utils_logging import LOG_LEVEL, save_and_log, save_timing, truncate_obj
 from utils_sql import execute_sql
@@ -30,7 +31,7 @@ async def predict(
     api_key: str,
     username: str,
     report_id: str,
-    task_type: str,
+    task_type: TaskType,
     inputs: Dict[str, Any],
     outputs: Dict[str, Any],
 ):

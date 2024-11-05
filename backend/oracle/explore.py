@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 from db_utils import get_db_type_creds
 from generic_utils import make_request
+from oracle.constants import TaskType
 from utils_logging import save_timing, truncate_obj
 from oracle.celery_app import LOGGER
 from oracle.utils_explore_data import (
@@ -30,7 +31,7 @@ async def explore_data(
     api_key: str,
     username: str,
     report_id: str,
-    task_type: str,
+    task_type: TaskType,
     inputs: Dict[str, Any],
     outputs: Dict[str, Any],
 ):
@@ -81,7 +82,7 @@ async def explore_data(
         "api_key": api_key,
         "user_question": user_question,
         "n_gen_qns": inputs.get("max_analyses", MAX_ANALYSES),
-        "task_type": task_type,
+        "task_type": task_type.value,
         "gather_context": gather_context,
     }
     LOGGER.info(f"Generating explorer questions")
@@ -139,7 +140,7 @@ async def explore_data(
 async def explore_generated_question(
     api_key: str,
     user_question: str,
-    task_type: str,
+    task_type: TaskType,
     qn_id: int,
     generated_qn: str,
     dependent_variable: Dict[str, Any],

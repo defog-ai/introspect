@@ -1,7 +1,6 @@
 import asyncio
 import json
 import os
-import random
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
@@ -13,6 +12,7 @@ from db_utils import OracleReports, OracleSources, engine
 from generic_utils import make_request
 from markdown2 import Markdown
 from oracle.celery_app import celery_app, LOGGER
+from oracle.constants import TaskStage, TaskType, DEFOG_BASE_URL, INTERNAL_DB
 from oracle.explore import explore_data
 from oracle.predict import predict
 from oracle.optimize import optimize
@@ -25,25 +25,29 @@ from utils_imported_data import (
 )
 from utils_logging import save_and_log, save_timing, truncate_obj
 
-EXPLORATION = "exploration"
-PREDICTION = "prediction"
-OPTIMIZATION = "optimization"
-TASK_TYPES = [
-    EXPLORATION,
-    PREDICTION,
-    OPTIMIZATION,
-]
-DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-INTERNAL_DB = os.environ.get("INTERNAL_DB", "postgres")
 
 celery_async_executors = ThreadPoolExecutor(max_workers=4)
 
 
 @celery_app.task
 def begin_generation_task(
-    api_key: str, username: str, report_id: int, task_type: str, inputs: Dict[str, Any]
+    api_key: str,
+    username: str,
+    report_id: int,
+    task_type_str: str,
+    inputs: Dict[str, Any],
 ):
+    """
+    Synchronous wrapper for the asynchronous task.
+    This is the entrypoint for the celery app, and requires input types to be
+    serializable, as it will be serialized and deserialized when passed to the
+    celery worker.
+    """
     t_start = datetime.now()
+    try:
+        task_type = TaskType(task_type_str)
+    except ValueError:
+        raise ValueError(f"Invalid task_type_str: {task_type_str}")
     LOGGER.info(f"Starting celery task for {username} at {t_start}")
     with celery_async_executors:
         loop = asyncio.get_event_loop()
@@ -57,7 +61,11 @@ def begin_generation_task(
 
 
 async def begin_generation_async_task(
-    api_key: str, username: str, report_id: int, task_type: str, inputs: Dict[str, Any]
+    api_key: str,
+    username: str,
+    report_id: int,
+    task_type: TaskType,
+    inputs: Dict[str, Any],
 ):
     """
     This is the entry point for the oracle, which will kick off the control flow,
@@ -69,7 +77,7 @@ async def begin_generation_async_task(
     Every call to control is scoped over a single report_id, which can only
     belong to 1 api_key and username.
     """
-    stage = "gather_context"
+    stage = TaskStage.GATHER_CONTEXT
     outputs = {}
     continue_generation = True
     ts, timings = time.time(), []
@@ -83,7 +91,7 @@ async def begin_generation_async_task(
                 stmt = select(OracleReports).where(OracleReports.report_id == report_id)
                 result = session.execute(stmt)
                 report = result.scalar_one()
-                report.status = stage
+                report.status = stage.value
                 session.commit()
             stage_result = await execute_stage(
                 api_key=api_key,
@@ -94,13 +102,13 @@ async def begin_generation_async_task(
                 inputs=inputs,
                 outputs=outputs,
             )
-            outputs[stage] = stage_result
+            outputs[stage.value] = stage_result
             # update the status and current outputs of the report generation
             with Session(engine) as session:
                 stmt = select(OracleReports).where(OracleReports.report_id == report_id)
                 result = session.execute(stmt)
                 report = result.scalar_one()
-                report.status = stage
+                report.status = stage.value
                 report.outputs = outputs
                 session.commit()
         except Exception as e:
@@ -116,7 +124,7 @@ async def begin_generation_async_task(
                 session.commit()
             continue_generation = False
 
-        if stage == "done":
+        if stage == TaskStage.DONE:
             continue_generation = False
         # perform logging for current stage
         if continue_generation:
@@ -126,22 +134,22 @@ async def begin_generation_async_task(
             save_and_log(ts, f"Report {report_id} completed", timings)
 
 
-def next_stage(stage: str, task_type: str) -> str:
-    if stage == "gather_context":
-        return "explore"
-    elif stage == "explore":
-        if task_type == EXPLORATION:
-            return "export"
-        elif task_type == PREDICTION:
-            return "predict"
-        elif task_type == OPTIMIZATION:
-            return "optimize"
-    elif stage == "predict" and task_type == PREDICTION:
-        return "export"
-    elif stage == "optimize" and task_type == OPTIMIZATION:
-        return "export"
-    elif stage == "export":
-        return "done"
+def next_stage(stage: TaskStage, task_type: TaskType) -> TaskStage:
+    if stage == TaskStage.GATHER_CONTEXT:
+        return TaskStage.EXPLORE
+    elif stage == TaskStage.EXPLORE:
+        if task_type == TaskType.EXPLORATION:
+            return TaskStage.EXPORT
+        elif task_type == TaskType.PREDICTION:
+            return TaskStage.PREDICT
+        elif task_type == TaskType.OPTIMIZATION:
+            return TaskStage.OPTIMIZE
+    elif stage == TaskStage.PREDICT:
+        return TaskStage.EXPORT
+    elif stage == TaskStage.OPTIMIZE:
+        return TaskStage.EXPORT
+    elif stage == TaskStage.EXPORT:
+        return TaskStage.DONE
     else:
         raise ValueError(f"Stage {stage} not recognized.")
 
@@ -150,8 +158,8 @@ async def execute_stage(
     api_key: str,
     username: str,
     report_id: str,
-    task_type: str,
-    stage: str,
+    task_type: TaskType,
+    stage: TaskStage,
     inputs: Dict[str, Any],
     outputs: Dict[str, Any],
 ):
@@ -163,7 +171,7 @@ async def execute_stage(
     over the same set of input arguments to facilitate easier reading and also
     for security reasons.
     """
-    if stage == "gather_context":
+    if stage == TaskStage.GATHER_CONTEXT:
         stage_result = await gather_context(
             api_key=api_key,
             username=username,
@@ -172,7 +180,7 @@ async def execute_stage(
             inputs=inputs,
             outputs=outputs,
         )
-    elif stage == "explore":
+    elif stage == TaskStage.EXPLORE:
         stage_result = await explore_data(
             api_key=api_key,
             username=username,
@@ -181,7 +189,7 @@ async def execute_stage(
             inputs=inputs,
             outputs=outputs,
         )
-    elif stage == "predict":
+    elif stage == TaskStage.PREDICT:
         stage_result = await predict(
             api_key=api_key,
             username=username,
@@ -190,7 +198,7 @@ async def execute_stage(
             inputs=inputs,
             outputs=outputs,
         )
-    elif stage == "optimize":
+    elif stage == TaskStage.OPTIMIZE:
         stage_result = await optimize(
             api_key=api_key,
             username=username,
@@ -199,7 +207,7 @@ async def execute_stage(
             inputs=inputs,
             outputs=outputs,
         )
-    elif stage == "export":
+    elif stage == TaskStage.EXPORT:
         stage_result = await export(
             api_key=api_key,
             username=username,
@@ -208,7 +216,7 @@ async def execute_stage(
             inputs=inputs,
             outputs=outputs,
         )
-    elif stage == "done":
+    elif stage == TaskStage.DONE:
         stage_result = None
     # add more stages here for new report sections if necessary in the future
     else:
@@ -220,7 +228,7 @@ async def gather_context(
     api_key: str,
     username: str,
     report_id: str,
-    task_type: str,
+    task_type: TaskType,
     inputs: Dict[str, Any],
     outputs: Dict[str, Any],
 ):
@@ -423,7 +431,7 @@ async def gather_context(
     json_data = {
         "api_key": api_key,
         "user_question": user_question,
-        "task_type": task_type,
+        "task_type": task_type.value,
         "sources": sources_summary,
     }
     combined_summary = await make_request(
@@ -442,12 +450,12 @@ async def gather_context(
         LOGGER.error("No context found in combined summary.")
     if "issues" not in combined_summary:
         LOGGER.error("No issues found in combined summary.")
-    if task_type == EXPLORATION:
+    if task_type == TaskType.EXPLORATION:
         if "data_overview" not in combined_summary:
             LOGGER.error("No data overview found in combined summary.")
     # no need for prediction as we don't formulate the prediction problem during
     # the context gathering stage
-    elif task_type == OPTIMIZATION:
+    elif task_type == TaskType.OPTIMIZATION:
         if "objective" not in combined_summary:
             LOGGER.error("No objective found in combined summary.")
         if "constraints" not in combined_summary:
@@ -463,7 +471,7 @@ async def export(
     api_key: str,
     username: str,
     report_id: str,
-    task_type: str,
+    task_type: TaskType,
     inputs: Dict[str, Any],
     outputs: Dict[str, Any],
 ):
@@ -478,7 +486,7 @@ async def export(
     LOGGER.debug(f"inputs: {outputs}")
     json_data = {
         "api_key": api_key,
-        "task_type": task_type,
+        "task_type": task_type.value,
         "inputs": inputs,
         "outputs": outputs,
     }

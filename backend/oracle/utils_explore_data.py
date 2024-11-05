@@ -7,6 +7,8 @@ from generic_utils import format_sql, make_request, normalize_sql
 from oracle.celery_app import LOGGER
 import seaborn as sns
 
+from oracle.constants import TaskType
+
 FIGSIZE = (5, 3)
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
@@ -177,7 +179,7 @@ def run_chart_fn(
 
 
 async def gen_data_analysis(
-    task_type: str,
+    task_type: TaskType,
     api_key: str,
     generated_qn: str,
     sql: str,
@@ -249,7 +251,7 @@ async def gen_data_analysis(
 
     # generate data analysis
     json_data = {
-        "task_type": task_type,
+        "task_type": task_type.value,
         "api_key": api_key,
         "question": generated_qn,
         "sql": sql,

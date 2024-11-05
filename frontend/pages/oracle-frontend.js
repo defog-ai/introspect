@@ -343,8 +343,6 @@ function OracleDashboard() {
     const selectedSources = sources.filter((source) => source.selected);
     console.log("Selected sources:", selectedSources);
 
-    // reset clarifications
-    setClarifications([]);
     const res = await fetch(setupBaseUrl("http", `oracle/begin_generation`), {
       method: "POST",
       headers: {
@@ -356,6 +354,7 @@ function OracleDashboard() {
         user_question: userQuestion,
         sources: selectedSources,
         task_type: taskType,
+        clarifications: clarifications,
       }),
     });
 
@@ -366,7 +365,7 @@ function OracleDashboard() {
   };
 
   useEffect(() => {
-    // after 3000ms, get clarifications
+    // after 2000ms, get clarifications
     const timeout = setTimeout(() => {
       // fetch clarifications as the user is typing
       if (userQuestion.length < 5) {

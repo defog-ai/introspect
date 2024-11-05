@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 import pandas as pd
 
+from oracle.constants import TaskType
 from utils_logging import LOGGER
 from generic_utils import make_request
 
@@ -16,7 +17,7 @@ async def optimize(
     api_key: str,
     username: str,
     report_id: str,
-    task_type: str,
+    task_type: TaskType,
     inputs: Dict[str, Any],
     outputs: Dict[str, Any],
 ):

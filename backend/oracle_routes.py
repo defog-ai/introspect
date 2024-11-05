@@ -1,25 +1,24 @@
-from datetime import datetime
 import os
 import time
-from typing import Any, Dict, List
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
+from db_utils import OracleReports, engine, validate_user
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, JSONResponse
+from generic_utils import get_api_key_from_key_name, make_request
+from oracle.constants import TaskStage, TaskType
+from oracle.core import (
+    begin_generation_task,
+    gather_context,
+    get_report_file_path,
+    predict,
+)
+from oracle.explore import explore_data
+from oracle.optimize import optimize
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert, select
-
-from oracle.optimize import optimize
-from oracle.explore import explore_data
-from oracle.core import gather_context, predict
-from db_utils import OracleReports, engine, validate_user
-from generic_utils import get_api_key_from_key_name, make_request
-from oracle.core import (
-    EXPLORATION,
-    TASK_TYPES,
-    begin_generation_task,
-    get_report_file_path,
-)
 from utils_logging import LOGGER, save_and_log, save_timing
 
 router = APIRouter()
@@ -31,7 +30,7 @@ class ClarifyQuestionRequest(BaseModel):
     key_name: str
     token: str
     user_question: str
-    task_type: str = ""
+    task_type: Optional[TaskType] = None
     answered_clarifications: List[Dict[str, Any]] = []
 
 
@@ -149,17 +148,23 @@ async def suggest_web_sources(req: Request):
     return JSONResponse(content=response)
 
 
+class BeginGenerationRequest(BaseModel):
+    key_name: str
+    token: str
+    user_question: str
+    task_type: TaskType
+    sources: List[str]
+    clarifications: List[Dict[str, Any]]
+
+
 @router.post("/oracle/begin_generation")
-async def begin_generation(req: Request):
+async def begin_generation(req: BeginGenerationRequest):
     """
     Given the question / objective statement provided by the user, as well as the
     full list of configuration options, this endpoint will begin the process of
     generating a report asynchronously as a celery task.
     """
-    body = await req.json()
-    key_name = body.pop("key_name")
-    token = body.pop("token")
-    username = validate_user(token, user_type=None, get_username=True)
+    username = validate_user(req.token, user_type=None, get_username=True)
     if not username:
         return JSONResponse(
             status_code=401,
@@ -168,50 +173,20 @@ async def begin_generation(req: Request):
                 "message": "Invalid username or password",
             },
         )
-    api_key = get_api_key_from_key_name(key_name)
-    if "user_question" not in body:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "Bad Request",
-                "message": "Missing 'user_question' field",
-            },
-        )
-    if "task_type" not in body:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Bad Request", "message": "Missing 'task_type' field"},
-        )
-    task_type = body["task_type"]
-    if task_type not in TASK_TYPES:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "Bad Request",
-                "message": f"Invalid 'task_type' field. Must be one of: {TASK_TYPES}",
-            },
-        )
-    if "sources" not in body:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Bad Request", "message": "Missing 'sources' field"},
-        )
-    elif not isinstance(body["sources"], list):
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "Bad Request",
-                "message": "'sources' field must be a list",
-            },
-        )
+    api_key = get_api_key_from_key_name(req.key_name)
     # insert a new row into the OracleReports table and get a new report_id
+    user_inputs = {
+        "user_question": req.user_question,
+        "sources": req.sources,
+        "clarifications": req.clarifications,
+    }
     with Session(engine) as session:
         stmt = (
             insert(OracleReports)
             .values(
                 api_key=api_key,
                 username=username,
-                inputs=body,
+                inputs=user_inputs,
                 status="started",
                 created_ts=datetime.now(),
             )
@@ -221,7 +196,7 @@ async def begin_generation(req: Request):
         report_id = result.scalar_one()
         session.commit()
     begin_generation_task.apply_async(
-        args=[api_key, username, report_id, task_type, body]
+        args=[api_key, username, report_id, req.task_type, user_inputs]
     )
     return JSONResponse(content={"report_id": report_id, "status": "started"})
 
@@ -386,47 +361,48 @@ async def oracle_test_stage(req: Request):
     [TEST ROUTE]: this route is only for testing purposes and should not be used in production.
     Given the question / objective statement provided by the user, this endpoint
     will return a summary of the data, including a table and chart.
+    We keep this route flexible to facilitate faster testing of each stage
     """
     body = await req.json()
-    for field in ["api_key", "inputs", "outputs"]:
+    for field in ["api_key", "inputs", "outputs", "task_type", "stage"]:
         if field not in body:
             return JSONResponse(
                 status_code=400,
                 content={"error": "Bad Request", "message": f"Missing '{field}' field"},
             )
     stage = body.get("stage", "explore")
-    if stage == "gather_context":
+    if stage == TaskStage.GATHER_CONTEXT.value:
         response = await gather_context(
             api_key=body["api_key"],
             username=body.get("username", ""),
             inputs=body.get("inputs", {}),
             report_id=int(body.get("report_id", "1")),
-            task_type=body.get("task_type", EXPLORATION),
+            task_type=TaskType(body.get("task_type", TaskType.EXPLORATION.value)),
             outputs=body.get("outputs", {}),
         )
         return JSONResponse(response)
-    elif stage == "explore":
+    elif stage == TaskStage.EXPLORE.value:
         response = await explore_data(
             api_key=body["api_key"],
             username=body.get("username", ""),
             report_id=int(body.get("report_id", "1")),
-            task_type=body.get("task_type", EXPLORATION),
+            task_type=TaskType(body.get("task_type", TaskType.EXPLORATION.value)),
             inputs=body.get("inputs", {}),
             outputs=body.get("outputs", {}),
         )
         return JSONResponse(response)
-    elif stage == "predict":
+    elif stage == TaskStage.PREDICT.value:
         response = await predict(
             api_key=body["api_key"],
             username=body.get("username", ""),
             report_id=int(body.get("report_id", "1")),
-            task_type=body.get("task_type", EXPLORATION),
+            task_type=TaskType(body.get("task_type", TaskType.PREDICTION.value)),
             inputs=body.get("inputs", {}),
             outputs=body.get("outputs", {}),
         )
         return JSONResponse(response)
 
-    elif stage == "optimize":
+    elif stage == TaskStage.OPTIMIZE.value:
         """
         Generates an optimization task based on explore and gather_context stage's outputs.
 
@@ -441,7 +417,7 @@ async def oracle_test_stage(req: Request):
         """
         api_key = body.get("api_key", None)
         outputs = body.get("outputs", {})
-        task_type = body.get("task_type", "")
+        task_type = body.get("task_type", TaskType.OPTIMIZATION.value)
         question = body.get("question", None)
         username = body.get("username", None)
         report_id = body.get("report_id", None)
@@ -450,7 +426,7 @@ async def oracle_test_stage(req: Request):
             api_key=api_key,
             username=username,
             report_id=report_id,
-            task_type=task_type,
+            task_type=TaskType(task_type),
             inputs={"user_question": question},
             outputs=outputs,
         )
@@ -460,6 +436,6 @@ async def oracle_test_stage(req: Request):
             status_code=400,
             content={
                 "error": "Bad Request",
-                "message": f"Invalid 'stage' field. Must be one of: ['gather_context', 'explore']",
+                "message": f"Invalid 'stage' field. Must be one of: {TaskStage.__members__.keys()}",
             },
         )
