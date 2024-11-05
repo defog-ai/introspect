@@ -55,7 +55,6 @@ async def optimize(
     LOGGER.info(f"[Optimizer] Tasks: {json.dumps(res, indent=2)}")
 
     optimizer_outputs = {}
-    recommendations = ""
 
     processed_items = []
 
@@ -97,7 +96,7 @@ async def optimize(
             processed = {"result": output_str}
             processed.update(item)
 
-            LOGGER.info(f"[Optimizer] Processed item: {processed}")
+            LOGGER.debug(f"[Optimizer] Processed item: {processed}")
 
             processed_items.append(processed)
         except Exception as e:
@@ -111,7 +110,7 @@ async def optimize(
     # get the actual recommendations
 
     # now construct actual recommendations
-    recommendations = await make_request(
+    res = await make_request(
         DEFOG_BASE_URL + "/oracle/optimization_gen_recommendations",
         data={
             "question": user_question,
@@ -125,9 +124,8 @@ async def optimize(
         },
     )
 
-    LOGGER.debug(f"[Optimizer] Final outputs: {optimizer_outputs}")
+    LOGGER.info("[Optimizer] Recommendations generated")
 
-    return {
-        "optimization_outputs": optimizer_outputs,
-        "recommendations": recommendations,
-    }
+    optimizer_outputs["recommendations"] = res["recommendations"]
+
+    return optimizer_outputs
