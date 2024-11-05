@@ -72,7 +72,7 @@ async def clarify_question(req: ClarifyQuestionRequest):
             clarify_task_type_response = await make_request(
                 DEFOG_BASE_URL + "/oracle/clarify_task_type", clarify_task_type_request
             )
-            task_type = clarify_task_type_response["task_type"]
+            task_type_str = clarify_task_type_response["task_type"]
         except Exception as e:
             LOGGER.error(f"Error getting task type: {e}")
             return JSONResponse(
@@ -83,13 +83,13 @@ async def clarify_question(req: ClarifyQuestionRequest):
                 },
             )
     else:
-        task_type = req.task_type
-    LOGGER.debug(f"Task type: {task_type}")
+        task_type_str = req.task_type.value
+    LOGGER.debug(f"Task type: {task_type_str}")
     ts = save_timing(ts, "get_task_type", timings)
     clarify_request = {
         "api_key": api_key,
         "user_question": req.user_question,
-        "task_type": task_type,
+        "task_type": task_type_str,
         "answered_clarifications": req.answered_clarifications,
     }
     try:
@@ -112,7 +112,7 @@ async def clarify_question(req: ClarifyQuestionRequest):
                 "message": "Unable to generate clarifications",
             },
         )
-    clarify_response["task_type"] = task_type
+    clarify_response["task_type"] = task_type_str
     save_and_log(ts, "get_clarifications", timings)
     return JSONResponse(content=clarify_response)
 

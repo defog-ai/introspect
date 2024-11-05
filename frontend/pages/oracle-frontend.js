@@ -52,7 +52,7 @@ function OracleDashboard() {
   const [clarifications, setClarifications] = useState([]);
   const [needNewClarifications, setNeedNewClarifications] = useState(false);
   const [waitClarifications, setWaitClarifications] = useState(false);
-  const [taskType, setTaskType] = useState("");
+  const [taskType, setTaskType] = useState(null);
   const [sources, setSources] = useState([]);
   const [waitSources, setWaitSources] = useState(false);
   const [reports, setReports] = useState([]);
@@ -94,6 +94,8 @@ function OracleDashboard() {
         }
       );
       if (resConn.ok) {
+        setDbCreds(data.db_creds);
+        setDbType(data.db_type);
         setDataConnReady(true);
         return true;
       } else {
@@ -401,8 +403,6 @@ function OracleDashboard() {
     checkDBReady();
     // get reports when the component mounts
     getReports();
-    // set task type to empty string
-    setTaskType("");
 
     // the effect runs only once, and does not depend on any state
   }, []);
