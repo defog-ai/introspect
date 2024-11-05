@@ -68,7 +68,7 @@ async def optimize(
             "api_key": api_key,
             "username": username,
             "report_id": report_id,
-            "task_type": task_type,
+            "task_type": task_type.value,
             "gather_context": gather_context,
             "explore": explorer_outputs,
         },

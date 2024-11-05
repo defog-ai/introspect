@@ -272,152 +272,176 @@ async def gather_context(
             source["type"] = "pdf"
         sources.append(source)
         LOGGER.debug(f"{source}")
-    json_data = {
-        "api_key": api_key,
-        "user_question": user_question,
-        "sources": sources,
-    }
-    # each source now contains "text" and "summary" keys
-    sources_parsed = await make_request(
-        DEFOG_BASE_URL + "/unstructured_data/parse", json_data
-    )
-    sources_to_insert = []
-    for source in sources_parsed:
-        attributes = source.get("attributes")
-        if isinstance(attributes, Dict) or isinstance(attributes, List):
-            attributes = json.dumps(attributes)
-        source_to_insert = {
-            "link": source["link"],
-            "title": source.get("title", ""),
-            "position": source.get("position"),
-            "source_type": source.get("type"),
-            "attributes": attributes,
-            "snippet": source.get("snippet"),
-            "text_parsed": source.get("text"),
-            "text_summary": source.get("summary"),
+    if len(sources) > 0:
+        json_data = {
+            "api_key": api_key,
+            "user_question": user_question,
+            "sources": sources,
         }
-        sources_to_insert.append(source_to_insert)
-    with Session(engine) as session:
-        # insert the sources into the database if not present. otherwise update
-        for source in sources_to_insert:
-            stmt = select(OracleSources).where(OracleSources.link == source["link"])
-            result = session.execute(stmt)
-            if result.scalar() is None:
-                stmt = insert(OracleSources).values(source)
-                session.execute(stmt)
-                LOGGER.debug(f"Inserted source {source['link']} into the database.")
-            else:
-                stmt = (
-                    update(OracleSources)
-                    .where(OracleSources.link == source["link"])
-                    .values(source)
-                )
-                session.execute(stmt)
-                LOGGER.debug(f"Updated source {source['link']} in the database.")
-        session.commit()
-    LOGGER.debug(f"Inserted {len(sources_to_insert)} sources into the database.")
-    ts = save_timing(ts, "Sources parsed", timings)
-
-    parse_table_tasks = []
-    table_keys = []
-    for source in sources_parsed:
-        for i, table in enumerate(source.get("tables", [])):
-            column_names = table.get("column_names")
-            rows = table.get("rows")
-            if not column_names or not rows:
-                LOGGER.error(
-                    f"No column names or rows found in table {i}. Skipping table:\n{table}"
-                )
-                continue
-            table_data = {
-                "api_key": api_key,
-                "all_rows": [table["column_names"]] + table["rows"],
-                "previous_text": table.get("previous_text"),
+        # each source now contains "text" and "summary" keys
+        sources_parsed = await make_request(
+            DEFOG_BASE_URL + "/unstructured_data/parse", json_data
+        )
+        sources_to_insert = []
+        for source in sources_parsed:
+            attributes = source.get("attributes")
+            if isinstance(attributes, Dict) or isinstance(attributes, List):
+                attributes = json.dumps(attributes)
+            source_to_insert = {
+                "link": source["link"],
+                "title": source.get("title", ""),
+                "position": source.get("position"),
+                "source_type": source.get("type"),
+                "attributes": attributes,
+                "snippet": source.get("snippet"),
+                "text_parsed": source.get("text"),
+                "text_summary": source.get("summary"),
             }
-            if table.get("table_page", None):
-                table_keys.append(
-                    (source["link"], table["table_page"])
-                )  # use table page as index if available
-            else:
-                table_keys.append((source["link"], i))
-            parse_table_tasks.append(
-                make_request(
-                    DEFOG_BASE_URL + "/unstructured_data/infer_table_properties",
-                    table_data,
-                )
-            )
-    parsed_tables = await asyncio.gather(*parse_table_tasks)
-    inserted_tables = {}
+            sources_to_insert.append(source_to_insert)
+        with Session(engine) as session:
+            # insert the sources into the database if not present. otherwise update
+            for source in sources_to_insert:
+                stmt = select(OracleSources).where(OracleSources.link == source["link"])
+                result = session.execute(stmt)
+                if result.scalar() is None:
+                    stmt = insert(OracleSources).values(source)
+                    session.execute(stmt)
+                    LOGGER.debug(f"Inserted source {source['link']} into the database.")
+                else:
+                    stmt = (
+                        update(OracleSources)
+                        .where(OracleSources.link == source["link"])
+                        .values(source)
+                    )
+                    session.execute(stmt)
+                    LOGGER.debug(f"Updated source {source['link']} in the database.")
+            session.commit()
+        LOGGER.debug(f"Inserted {len(sources_to_insert)} sources into the database.")
+        ts = save_timing(ts, "Sources parsed", timings)
 
-    for (link, table_index), parsed_table in zip(table_keys, parsed_tables):
-        try:
-            # input validation
-            if "table_name" not in parsed_table:
-                LOGGER.error("No table name found in parsed table.")
-                continue
-            table_name = parsed_table["table_name"]
-            table_description = parsed_table.get("table_description", None)
-            if "columns" not in parsed_table:
-                LOGGER.error(f"No columns found in parsed table `{table_name}`.")
-                continue
-            columns = parsed_table["columns"]
-            column_names = [column["column_name"] for column in columns]
-            num_cols = len(column_names)
-            if "rows" not in parsed_table:
-                LOGGER.error(f"No rows found in parsed table `{table_name}`.")
-                continue
-            rows = parsed_table["rows"]  # 2D list of data
-            # check data has correct number of columns passed for each row
-            if not all(len(row) == num_cols for row in rows):
-                LOGGER.error(
-                    f"Unable to insert table `{table_name}.` Data has mismatched number of columns for each row. Header has {len(data[0])} columns: {data[0]}, but data has {len(data[1])} columns: {data[1]}."
+        parse_table_tasks = []
+        table_keys = []
+        for source in sources_parsed:
+            for i, table in enumerate(source.get("tables", [])):
+                column_names = table.get("column_names")
+                rows = table.get("rows")
+                if not column_names or not rows:
+                    LOGGER.error(
+                        f"No column names or rows found in table {i}. Skipping table:\n{table}"
+                    )
+                    continue
+                table_data = {
+                    "api_key": api_key,
+                    "all_rows": [table["column_names"]] + table["rows"],
+                    "previous_text": table.get("previous_text"),
+                }
+                if table.get("table_page", None):
+                    table_keys.append(
+                        (source["link"], table["table_page"])
+                    )  # use table page as index if available
+                else:
+                    table_keys.append((source["link"], i))
+                parse_table_tasks.append(
+                    make_request(
+                        DEFOG_BASE_URL + "/unstructured_data/infer_table_properties",
+                        table_data,
+                    )
                 )
-                continue
+        parsed_tables = await asyncio.gather(*parse_table_tasks)
+        inserted_tables = {}
 
-            schema_table_name = f"{IMPORTED_SCHEMA}.{table_name}"
-            # create the table and insert the data into imported_tables database, parsed schema
-            data = [column_names] + rows
-            success, old_table_name = update_imported_tables_db(
-                link, table_index, table_name, data, IMPORTED_SCHEMA
-            )
-            if not success:
-                LOGGER.error(
-                    f"Failed to update imported tables database for table `{table_name}`."
+        for (link, table_index), parsed_table in zip(table_keys, parsed_tables):
+            try:
+                # input validation
+                if "table_name" not in parsed_table:
+                    LOGGER.error("No table name found in parsed table.")
+                    continue
+                table_name = parsed_table["table_name"]
+                table_description = parsed_table.get("table_description", None)
+                if "columns" not in parsed_table:
+                    LOGGER.error(f"No columns found in parsed table `{table_name}`.")
+                    continue
+                columns = parsed_table["columns"]
+                column_names = [column["column_name"] for column in columns]
+                num_cols = len(column_names)
+                if "rows" not in parsed_table:
+                    LOGGER.error(f"No rows found in parsed table `{table_name}`.")
+                    continue
+                rows = parsed_table["rows"]  # 2D list of data
+                # check data has correct number of columns passed for each row
+                if not all(len(row) == num_cols for row in rows):
+                    LOGGER.error(
+                        f"Unable to insert table `{table_name}.` Data has mismatched number of columns for each row. Header has {len(data[0])} columns: {data[0]}, but data has {len(data[1])} columns: {data[1]}."
+                    )
+                    continue
+
+                schema_table_name = f"{IMPORTED_SCHEMA}.{table_name}"
+                # create the table and insert the data into imported_tables database, parsed schema
+                data = [column_names] + rows
+                success, old_table_name = update_imported_tables_db(
+                    link, table_index, table_name, data, IMPORTED_SCHEMA
                 )
-                continue
-            # update the imported_tables table in internal db
-            update_imported_tables(
-                link, table_index, old_table_name, schema_table_name, table_description
+                if not success:
+                    LOGGER.error(
+                        f"Failed to update imported tables database for table `{table_name}`."
+                    )
+                    continue
+                # update the imported_tables table in internal db
+                update_imported_tables(
+                    link,
+                    table_index,
+                    old_table_name,
+                    schema_table_name,
+                    table_description,
+                )
+                [
+                    column.pop("fn", None) for column in columns
+                ]  # remove "fn" key if present before updating metadata
+                inserted_tables[schema_table_name] = columns
+            except Exception as e:
+                LOGGER.error(
+                    f"Error occurred in parsing table: {e}\n{traceback.format_exc()}"
+                )
+        ts = save_timing(ts, "Tables saved", timings)
+        # get and update metadata if inserted_tables is not empty
+        if inserted_tables:
+            response = await make_request(
+                DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "imported": True}
             )
-            [
-                column.pop("fn", None) for column in columns
-            ]  # remove "fn" key if present before updating metadata
-            inserted_tables[schema_table_name] = columns
-        except Exception as e:
-            LOGGER.error(
-                f"Error occurred in parsing table: {e}\n{traceback.format_exc()}"
+            md = response.get("table_metadata", {}) if response else {}
+            md.update(inserted_tables)
+            response = await make_request(
+                DEFOG_BASE_URL + "/update_metadata",
+                {
+                    "api_key": api_key,
+                    "table_metadata": md,
+                    "db_type": INTERNAL_DB,
+                    "imported": True,
+                },
             )
-    ts = save_timing(ts, "Tables saved", timings)
-    # get and update metadata if inserted_tables is not empty
-    if inserted_tables:
-        response = await make_request(
-            DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "imported": True}
-        )
-        md = response.get("table_metadata", {}) if response else {}
-        md.update(inserted_tables)
-        response = await make_request(
-            DEFOG_BASE_URL + "/update_metadata",
-            {
-                "api_key": api_key,
-                "table_metadata": md,
-                "db_type": INTERNAL_DB,
-                "imported": True,
-            },
-        )
-        LOGGER.info(f"Updated metadata for api_key {api_key}")
-        ts = save_timing(ts, "Metadata updated", timings)
+            LOGGER.info(f"Updated metadata for api_key {api_key}")
+            ts = save_timing(ts, "Metadata updated", timings)
+        else:
+            LOGGER.info("No parsed tables to save.")
     else:
-        LOGGER.info("No parsed tables to save.")
+        sources_parsed = []
+        LOGGER.info("No sources to parse.")
+
+    answered_clarifications = []
+    for clarification in inputs.get("clarifications", []):
+        if (
+            isinstance(clarification, dict)
+            and "clarification" in clarification
+            and "answer" in clarification
+            and clarification["answer"]
+        ):
+            answered_clarifications.append(
+                {
+                    "clarification": clarification["clarification"],
+                    "answer": clarification["answer"],
+                }
+            )
+    LOGGER.debug(f"Answered clarifications: {answered_clarifications}")
 
     # summarize all sources. we only need the title, type, and summary
     sources_summary = []
@@ -433,6 +457,7 @@ async def gather_context(
         "user_question": user_question,
         "task_type": task_type.value,
         "sources": sources_summary,
+        "clarifications": answered_clarifications,
     }
     combined_summary = await make_request(
         DEFOG_BASE_URL + "/unstructured_data/combine_summaries", json_data
