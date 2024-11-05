@@ -13,6 +13,8 @@ import {
   CloseCircleOutlined,
 } from "@ant-design/icons";
 
+const { TextArea } = Input;
+
 function OracleDashboard() {
   const [apiKeyNames, setApiKeyNames] = useState([]);
 
@@ -226,6 +228,8 @@ function OracleDashboard() {
     );
   };
 
+  console.log(clarifications);
+
   const getReports = async () => {
     const token = localStorage.getItem("defogToken");
     let allFinished = false;
@@ -430,7 +434,7 @@ function OracleDashboard() {
 
         <div className="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold mb-2">The Oracle</h1>
+            <h1 className="text-2xl font-semibold mb-2">The Oracle isss2222</h1>
             <p className="text-gray-600">
               The Oracle is a background assistant, helping you to dig into your
               dataset for insights. To begin, please let us know what you are
@@ -439,7 +443,7 @@ function OracleDashboard() {
           </div>
 
           <div className="flex items-center mb-6">
-            <Input.TextArea
+            <TextArea
               placeholder="Describe what you would like the Oracle to do..."
               className="w-full p-3 border rounded-lg text-gray-700 focus:outline-none focus:border-purple-500"
               value={userQuestion}
@@ -478,7 +482,7 @@ function OracleDashboard() {
               <TaskType taskType={taskType} />
               {clarifications.map((clarificationObject, index) => (
                 <div
-                  key={clarificationObject.clarification}
+                  key={String(clarificationObject.clarification)}
                   className="bg-amber-100 p-4 rounded-lg my-2 relative flex flex-row"
                 >
                   <div className="text-amber-500 w-3/4">
