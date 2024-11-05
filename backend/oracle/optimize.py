@@ -52,7 +52,7 @@ async def optimize(
         },
     )
 
-    LOGGER.info(f"[Optimizer] Tasks: {json.dumps(res, indent=2)}")
+    LOGGER.debug(f"[Optimizer] Tasks: {json.dumps(res, indent=2)}")
 
     optimizer_outputs = {}
 
@@ -105,6 +105,8 @@ async def optimize(
     optimizer_outputs["processed_items"] = processed_items
 
     LOGGER.info("[Optimizer] Processing done\n")
+
+    LOGGER.info(f"[Optimizer] Processed tasks: {json.dumps(processed_items, indent=2)}")
 
     # now using the above processed items
     # get the actual recommendations
