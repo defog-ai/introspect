@@ -532,7 +532,7 @@ function OracleDashboard() {
                             }
                             options={opts.map((option) => ({
                               value: option,
-                              label: option.repeat(10),
+                              label: option,
                             }))}
                           />
                           {/* if other is selected, show a text input too */}
