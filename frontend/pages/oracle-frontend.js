@@ -360,6 +360,8 @@ function OracleDashboard() {
     const selectedSources = sources.filter((source) => source.selected);
     console.log("Selected sources:", selectedSources);
 
+    //
+
     const res = await fetch(setupBaseUrl("http", `oracle/begin_generation`), {
       method: "POST",
       headers: {
@@ -371,7 +373,10 @@ function OracleDashboard() {
         user_question: userQuestion,
         sources: selectedSources,
         task_type: taskType,
-        clarifications: clarifications,
+        clarifications: clarifications.map((d) => ({
+          ...d,
+          answer: answers.current[d.clarification],
+        })),
       }),
     });
 
