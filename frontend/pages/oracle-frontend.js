@@ -54,7 +54,7 @@ function OracleDashboard() {
 
   const answers = useRef({});
   const [clarifications, setClarifications] = useState([]);
-  const [needNewClarifications, setNeedNewClarifications] = useState(false);
+  const [answerLastUpdateTs, setAnswerLastUpdateTs] = useState(Date.now());
   const [waitClarifications, setWaitClarifications] = useState(false);
   const [taskType, setTaskType] = useState(null);
   const [sources, setSources] = useState([]);
@@ -129,10 +129,7 @@ function OracleDashboard() {
 
     answers.current[clarification] = answer;
 
-    // set this to a random number instead of true so that our use effect is called and cleared always
-    // if we set this simply to true, the use effect never gets called again if we go from true -> true
-    // and we somehow end up sending older answers to the request. which shouldn't ideally happen but ¯\_(ツ)_/¯
-    setNeedNewClarifications(Math.floor(Math.random() * 1000));
+    setAnswerLastUpdateTs(Date.now());
   };
 
   const getClarifications = async () => {
@@ -173,7 +170,6 @@ function OracleDashboard() {
       }),
     });
     setWaitClarifications(false);
-    setNeedNewClarifications(false);
     if (res.ok) {
       const data = await res.json();
       setTaskType(data.task_type);
@@ -406,20 +402,16 @@ function OracleDashboard() {
   }, [userQuestion]);
 
   useEffect(() => {
-    if (!needNewClarifications) return;
     // after 1000ms, get clarifications
     const timeout = setTimeout(() => {
-      if (needNewClarifications) {
-        getClarifications();
-      }
+      getClarifications();
     }, 1000);
 
     return () => clearTimeout(timeout);
 
-    // the effect runs shortly only when needNewClarifications changes to true,
-    // which is only set to true when the user answers a clarification,
-    // not when we fetch clarifications
-  }, [needNewClarifications]);
+    // the effect runs shortly only when answerLastUpdateTs changes
+    // i.e. when the user answers a clarification
+  }, [answerLastUpdateTs]);
 
   useEffect(() => {
     // check DB readiness
