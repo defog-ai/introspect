@@ -667,7 +667,7 @@ function ClarificationItem({
       </div>
       <CloseOutlined
         className="text-amber-500 absolute top-2 right-2 cursor-pointer"
-        onClick={() => deleteClarification(index, clarificationObject)}
+        onClick={deleteClarification}
       />
     </div>
   );
