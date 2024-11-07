@@ -120,6 +120,8 @@ async def begin_generation_async_task(
                 stmt = select(OracleReports).where(OracleReports.report_id == report_id)
                 result = session.execute(stmt)
                 report = result.scalar_one()
+                outputs[stage.value] = {"error": str(e) + "\n" + traceback.format_exc()}
+                report.outputs = outputs
                 report.status = "error"
                 session.commit()
             continue_generation = False

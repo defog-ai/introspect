@@ -3,7 +3,9 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from db_utils import OracleReports, engine, validate_user
+import requests
+
+from db_utils import OracleReports, engine, get_db_type_creds, validate_user
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, JSONResponse
 from generic_utils import get_api_key_from_key_name, make_request

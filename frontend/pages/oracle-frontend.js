@@ -16,6 +16,7 @@ import {
 const { TextArea } = Input;
 
 function OracleDashboard() {
+  const [apiKeyName, setApiKeyName] = useState(null);
   const [apiKeyNames, setApiKeyNames] = useState([]);
 
   const getApiKeyNames = async (token) => {
@@ -40,16 +41,13 @@ function OracleDashboard() {
     setApiKeyNames(data.api_key_names);
     setApiKeyName(data.api_key_names[0]);
   };
-  const [apiKeyName, setApiKeyName] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("defogToken");
     getApiKeyNames(token);
   }, []);
-  const [dbCreds, setDbCreds] = useState({});
-  const [dbType, setDbType] = useState("");
-  const [dataConnReady, setDataConnReady] = useState(false);
-  const [dataConnErrorMsg, setDataConnErrorMsg] = useState("");
+  const [ready, setReady] = useState(false);
+  const [readyErrorMsg, setReadyErrorMsg] = useState("");
   const [userQuestion, setUserQuestion] = useState("");
 
   const answers = useRef({});
@@ -61,61 +59,27 @@ function OracleDashboard() {
   const [waitSources, setWaitSources] = useState(false);
   const [reports, setReports] = useState([]);
 
-  const checkDBReady = async () => {
+  const checkReady = async () => {
     const token = localStorage.getItem("defogToken");
-    const resCreds = await fetch(
-      setupBaseUrl("http", `integration/get_tables_db_creds`),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token: token,
-          key_name: apiKeyName,
-        }),
-      }
-    );
-    if (resCreds.ok) {
-      const data = await resCreds.json();
-      console.log("DB credentials fetched successfully");
-      console.log(data);
-      setDbCreds(data.db_creds);
-      setDbType(data.db_type);
-      const resConn = await fetch(
-        setupBaseUrl("http", `integration/validate_db_connection`),
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token: token,
-            key_name: apiKeyName,
-            db_creds: data.db_creds,
-            db_type: data.db_type,
-          }),
-        }
-      );
-      if (resConn.ok) {
-        setDbCreds(data.db_creds);
-        setDbType(data.db_type);
-        setDataConnReady(true);
-        return true;
-      } else {
-        const data = await resConn.json();
-        setDataConnReady(false);
-        setDataConnErrorMsg(data.message);
-        console.error("Failed to validate DB connection");
-        return false;
-      }
+    const resCheck = await fetch(setupBaseUrl("http", `integration/check`), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token: token,
+        key_name: apiKeyName,
+      }),
+    });
+    if (resCheck.ok) {
+      setReady(true);
+      setReadyErrorMsg("");
+      console.log("Backend ready to generate reports");
     } else {
-      setDataConnReady(false);
-      setDataConnErrorMsg(
-        "Failed to fetch DB credentials. Please verify that your token is valid."
-      );
-      console.error("Failed to fetch DB credentials");
-      return false;
+      const data = await resCheck.json();
+      setReady(false);
+      setReadyErrorMsg(data.error);
+      console.error("Backend not ready to generate reports");
     }
   };
 
@@ -136,7 +100,7 @@ function OracleDashboard() {
     setWaitClarifications(true);
     const token = localStorage.getItem("defogToken");
     // check if the DB is ready
-    const ready = checkDBReady();
+    checkReady();
     if (!ready) {
       console.log("DB not ready yet, not fetching clarifications");
       setWaitClarifications(false);
@@ -414,13 +378,14 @@ function OracleDashboard() {
   }, [answerLastUpdateTs]);
 
   useEffect(() => {
-    // check DB readiness
-    checkDBReady();
+    // check DB / backend API readiness
+    checkReady();
     // get reports when the component mounts
     getReports();
 
-    // the effect runs only once, and does not depend on any state
-  }, []);
+    // the effect runs after the apiKeyName fetches / changes as our checks
+    // depend on the api key
+  }, [apiKeyName]);
 
   return (
     <>
@@ -471,7 +436,7 @@ function OracleDashboard() {
               ) : (
                 userQuestion &&
                 userQuestion.length >= 5 &&
-                (!dataConnReady ? (
+                (!ready ? (
                   <CloseCircleOutlined style={{ color: "#b80617" }} />
                 ) : (
                   <CheckCircleOutlined style={{ color: "green" }} />
@@ -480,11 +445,11 @@ function OracleDashboard() {
             </div>
           </div>
 
-          {!dataConnReady && (
-            <div className="bg-light-red rounded-lg p-2 my-1">
-              <p className="text-red">{dataConnErrorMsg}</p>
+          {!ready && readyErrorMsg ? (
+            <div className="bg-light-red p-4 rounded-lg my-2">
+              <p className="text-red">{readyErrorMsg}</p>
             </div>
-          )}
+          ) : null}
 
           {clarifications.length > 0 && (
             // show clarifications only when there are some

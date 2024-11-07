@@ -1,28 +1,31 @@
-from fastapi import APIRouter, Request
+import asyncio
 import json
 import os
+import re
+from io import StringIO
+from uuid import uuid4
+
+import pandas as pd
+import requests
+from db_utils import (
+    get_db_type_creds,
+    redis_client,
+    update_db_type_creds,
+    validate_user,
+)
 from defog import Defog
 from defog.query import execute_query
-import re
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
-from uuid import uuid4
-from generic_utils import format_sql
-import pandas as pd
-from io import StringIO
-from utils_md import metadata_error
-
-from db_utils import (
-    validate_user,
-    get_db_type_creds,
-    update_db_type_creds,
-    redis_client,
-)
-import asyncio
 from generic_utils import (
-    make_request,
     convert_nested_dict_to_list,
+    format_sql,
     get_api_key_from_key_name,
+    make_request,
 )
+from pydantic import BaseModel
+from utils_logging import LOGGER
+from utils_md import metadata_error
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 print(DEFOG_BASE_URL, flush=True)
@@ -35,6 +38,59 @@ if not os.path.exists(defog_path):
     os.makedirs(defog_path)
 
 router = APIRouter()
+
+
+class CheckRequest(BaseModel):
+    token: str
+    key_name: str
+
+
+@router.post("/integration/check")
+async def check_route(req: CheckRequest):
+    """
+    Makes a few checks and returns a dictionary with the error message if any.
+    """
+    if not validate_user(req.token, user_type="admin"):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": f"Invalid token provided: {req.token}.\nPlease verify that you have the correct token."
+            },
+        )
+    api_key = get_api_key_from_key_name(req.key_name)
+    LOGGER.debug(f"Checking api_key: {api_key}")
+    db_type, db_creds = get_db_type_creds(api_key)
+    if not db_type or not db_creds:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Database credentials not found.\nPlease verify your database connection at the `Manage Database` tab."
+            },
+        )
+    try:
+        res = requests.get(f"{DEFOG_BASE_URL}")
+        res = await make_request(f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key})
+        if res.get("status", "") != "success":
+            err_msg = "Error: " + res.get("message", "")
+            return JSONResponse(
+                status_code=500,
+                content={"error": err_msg},
+            )
+    except requests.exceptions.ConnectionError as e:
+        LOGGER.error(e)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": f"Defog API is not reachable at `{DEFOG_BASE_URL}`.\nPlease verify that the API is up and running at the URL provided in the DEFOG_BASE_URL environment variable."
+            },
+        )
+    except Exception as e:
+        LOGGER.error(f"Unexpected error class: {type(e)}\nError: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Unexpected error occurred: {e}"},
+        )
+    return None
 
 
 @router.post("/integration/get_tables_db_creds")

@@ -4,6 +4,7 @@ import inspect
 import logging
 import os
 import traceback
+from typing import Dict, Tuple
 import uuid
 
 import redis
@@ -154,14 +155,11 @@ def convert_cols_to_jsonb(
         return False
 
 
-def get_db_type_creds(api_key):
+def get_db_type_creds(api_key: str) -> Tuple[str, Dict[str, str]]:
     with engine.begin() as conn:
         row = conn.execute(
             select(DbCreds.db_type, DbCreds.db_creds).where(DbCreds.api_key == api_key)
         ).fetchone()
-
-    LOGGER.debug(row)
-
     return row
 
 
