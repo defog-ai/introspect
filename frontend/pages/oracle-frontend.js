@@ -518,6 +518,11 @@ function OracleDashboard() {
                           <Select
                             allowClear={true}
                             className="flex w-5/6"
+                            optionRender={(opt, info) => (
+                              <div className="text-wrap break-words hyphens-auto">
+                                {opt.label}
+                              </div>
+                            )}
                             onChange={(value) =>
                               updateAnsweredClarifications(
                                 clarificationObject.clarification,
@@ -527,7 +532,7 @@ function OracleDashboard() {
                             }
                             options={opts.map((option) => ({
                               value: option,
-                              label: option,
+                              label: option.repeat(10),
                             }))}
                           />
                           {/* if other is selected, show a text input too */}
