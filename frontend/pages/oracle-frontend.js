@@ -135,7 +135,7 @@ function OracleDashboard() {
       if (clarificationObject.clarification === clarification) {
         clarificationObject.answer = answer;
         // if this is a single_choice, keep the selected choice stored in a separate field
-        // this is because we also have an "Other" option, which is a text input. which will overwrite the "answer" field
+        // we will check against this "selected_choice" field to decide if we want to show a text input or not.
         if (
           clarificationObject.input_type === "single_choice" &&
           updateSelectedChoice
@@ -241,8 +241,6 @@ function OracleDashboard() {
       (report) => report.status === "done" || report.status === "error"
     );
   };
-
-  console.log(clarifications);
 
   const getReports = async () => {
     const token = localStorage.getItem("defogToken");
@@ -499,7 +497,8 @@ function OracleDashboard() {
                 // add an other option if it doesn't exist and the input type is single_choice
                 if (
                   clarificationObject.input_type === "single_choice" &&
-                  opts.indexOf("Other") === -1
+                  opts.indexOf("Other") === -1 &&
+                  opts.indexOf("other") === -1
                 ) {
                   opts.push("Other");
                 }
@@ -536,8 +535,9 @@ function OracleDashboard() {
                             }))}
                           />
                           {/* if other is selected, show a text input too */}
-                          {clarificationObject.options.includes("Other") &&
-                          clarificationObject.selected_choice === "Other" ? (
+                          {(clarificationObject.options.includes("Other") &&
+                            clarificationObject.selected_choice === "Other") ||
+                          clarificationObject.selected_choice === "other" ? (
                             <TextArea
                               placeholder="Type here"
                               className="my-2 w-5/6"
