@@ -501,12 +501,12 @@ function OracleDashboard() {
               <TaskType taskType={taskType} />
               {clarifications.map((clarificationObject, index) => (
                 <ClarificationItem
-                  key={
-                    String(clarificationObject.clarification) + String(index)
-                  }
+                  key={String(clarificationObject.clarification)}
                   clarificationObject={clarificationObject}
                   updateAnsweredClarifications={updateAnsweredClarifications}
-                  deleteClarification={deleteClarification}
+                  deleteClarification={() =>
+                    deleteClarification(index, clarificationObject)
+                  }
                 />
               ))}
             </div>
