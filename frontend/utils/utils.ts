@@ -66,7 +66,11 @@ export const addTool = async ({
  *
  * @returns
  */
-export function arrayOfObjectsToObject(arr, key, includeKeys = null) {
+export function arrayOfObjectsToObject(
+  arr: Array<any>,
+  key: string,
+  includeKeys: Array<any> | null = null
+) {
   return arr.reduce((acc, obj) => {
     acc[obj[key]] = Object.keys(obj).reduce((acc2, k) => {
       if (Array.isArray(includeKeys) && !includeKeys.includes(k)) {
@@ -85,7 +89,7 @@ export function arrayOfObjectsToObject(arr, key, includeKeys = null) {
  * Converts a string to lower case. Returns the passed parameter as is if it can't convert.
  * @param {string} str - The string to convert to lower case
  */
-export function toLowerCase(str) {
+export function toLowerCase(str: string) {
   try {
     return str.toLowerCase();
   } catch (e) {

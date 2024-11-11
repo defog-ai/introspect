@@ -5,6 +5,7 @@ import Scaffolding from "$components/layout/Scaffolding";
 import Sources from "$components/oracle/Sources";
 import TaskType from "$components/oracle/TaskType";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import { useRouter } from "next/router";
 import {
   CheckCircleOutlined,
   CloseOutlined,
@@ -18,6 +19,8 @@ const { TextArea } = Input;
 function OracleDashboard() {
   const [apiKeyName, setApiKeyName] = useState(null);
   const [apiKeyNames, setApiKeyNames] = useState([]);
+
+  const router = useRouter();
 
   const getApiKeyNames = async (token) => {
     const res = await fetch(
@@ -198,16 +201,8 @@ function OracleDashboard() {
     }
   };
 
-  // function that checks if status == done or error for each report
-  const checkAllFinished = (reports) => {
-    return reports.every(
-      (report) => report.status === "done" || report.status === "error"
-    );
-  };
-
-  const getReports = useCallback(async () => {
+  useEffect(() => {
     const token = localStorage.getItem("defogToken");
-    let allFinished = false;
 
     const pollReports = async () => {
       try {
@@ -225,11 +220,6 @@ function OracleDashboard() {
         if (res.ok) {
           const data = await res.json();
           setReports(data.reports);
-          allFinished = checkAllFinished(data.reports);
-
-          if (allFinished) {
-            clearInterval(intervalId);
-          }
         } else {
           console.error("Failed to fetch reports");
           clearInterval(intervalId);
@@ -244,7 +234,38 @@ function OracleDashboard() {
 
     // Optionally, start the first poll immediately
     pollReports();
-  }, []);
+
+    return () => clearInterval(intervalId);
+  }, [apiKeyName]);
+
+  const getMDX = useCallback(
+    async (reportId) => {
+      const token = localStorage.getItem("defogToken");
+      const res = await fetch(setupBaseUrl("http", `oracle/get_report_mdx`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/pdf",
+          // disable cors for the download
+          mode: "no-cors",
+        },
+        body: JSON.stringify({
+          key_name: apiKeyName,
+          token: token,
+          report_id: reportId,
+        }),
+      });
+
+      const data = await res.json();
+
+      console.log(data);
+
+      if (!data.mdx) {
+        console.log("Could not getch MDX for report:", reportId);
+      }
+    },
+    [apiKeyName]
+  );
 
   const downloadReport = async (report_id) => {
     // Fetch the token from localStorage
@@ -311,11 +332,6 @@ function OracleDashboard() {
         report_id: report_id,
       }),
     });
-
-    if (res.ok) {
-      // call getReports to refresh the list
-      getReports();
-    }
   };
 
   const generateReport = async () => {
@@ -343,11 +359,6 @@ function OracleDashboard() {
         })),
       }),
     });
-
-    if (res.ok) {
-      // at this point, we should have the new report's as an entry in the DB already
-      getReports();
-    }
   };
 
   useEffect(() => {
@@ -384,12 +395,12 @@ function OracleDashboard() {
   useEffect(() => {
     // check DB / backend API readiness
     checkReady();
-    // get reports when the component mounts
-    getReports();
 
     // the effect runs after the apiKeyName fetches / changes as our checks
     // depend on the api key
   }, [apiKeyName]);
+
+  // console.log(apiKeyName, reports);
 
   return (
     <>
@@ -503,7 +514,22 @@ function OracleDashboard() {
                   disabled={report.status !== "done"}
                   onClick={() => downloadReport(report.report_id)}
                 >
-                  Download
+                  Download PDF
+                </Button>
+                <Button
+                  className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300"
+                  disabled={report.status !== "done"}
+                  onClick={() =>
+                    router.push({
+                      pathname: "view-oracle-report",
+                      query: {
+                        reportId: report.report_id,
+                        keyName: apiKeyName,
+                      },
+                    })
+                  }
+                >
+                  View
                 </Button>
                 <Button
                   className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300"

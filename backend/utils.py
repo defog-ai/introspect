@@ -1,4 +1,4 @@
-from ast import List
+import base64
 import inspect
 import re
 import json
@@ -257,3 +257,21 @@ async def execute_code(
         traceback.print_exc()
     finally:
         return err, out
+
+
+def escape_markdown(text: str) -> str:
+    """
+    Escapes special characters in a string so it is correctly parsed as Markdown.
+    """
+    # escape curly brackets
+    escaped_text = text.replace("{", "").replace("}", "")
+
+    return escaped_text
+
+
+def encode_image(image_path):
+    """
+    Encodes an image to base64.
+    """
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")

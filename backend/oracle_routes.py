@@ -3,8 +3,7 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-import requests
-
+from utils import encode_image, escape_markdown
 from db_utils import OracleReports, engine, get_db_type_creds, validate_user
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -329,6 +328,105 @@ async def delete_report(req: Request):
             return JSONResponse(status_code=200, content={"message": "Report deleted"})
         else:
             return JSONResponse(status_code=404, content={"error": "Report not found"})
+
+
+class GetReportMDXRequest(BaseModel):
+    key_name: str
+    report_id: int
+
+
+@router.post("/oracle/get_report_mdx")
+async def get_report_mdx(req: GetReportMDXRequest):
+    """
+    Given a report_id, this endpoint will return the MDX string for the report stored in the postgres db.
+
+    Will return status 400 if no string is found.
+    """
+
+    api_key = get_api_key_from_key_name(req.key_name)
+    report_id = req.report_id
+
+    with Session(engine) as session:
+        stmt = select(OracleReports).where(
+            OracleReports.api_key == api_key,
+            OracleReports.report_id == report_id,
+        )
+        result = session.execute(stmt)
+        report = result.scalar_one_or_none()
+
+        if report:
+            mdx = report.outputs.get("export", {}).get("mdx", None)
+            md = report.outputs.get("export", {}).get("md", None)
+
+            # clean mdx
+            mdx = escape_markdown(mdx)
+
+            return JSONResponse(status_code=200, content={"mdx": mdx, "md": md})
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Report not found"},
+            )
+
+
+class GetReportDataRequest(BaseModel):
+    key_name: str
+    report_id: int
+
+
+@router.post("/oracle/get_report_data")
+async def get_report_data(req: GetReportDataRequest):
+    """
+    Given a report_id, this endpoint will returns all the data for this report. Returns the full row stored in the db.
+    """
+    api_key = get_api_key_from_key_name(req.key_name)
+    report_id = req.report_id
+
+    with Session(engine) as session:
+        stmt = select(OracleReports).where(
+            OracleReports.api_key == api_key,
+            OracleReports.report_id == report_id,
+        )
+        result = session.execute(stmt)
+        row = result.scalar_one_or_none()
+
+        if row:
+            report_data = {
+                column.name: (
+                    getattr(row, column.name).isoformat()
+                    if isinstance(getattr(row, column.name), datetime)
+                    else getattr(row, column.name)
+                )
+                for column in row.__table__.columns
+            }
+            return JSONResponse(status_code=200, content={"data": report_data})
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Report not found"},
+            )
+
+
+class GetReportImageRequest(BaseModel):
+    key_name: str
+    report_id: int | str
+    image_path: str
+
+
+@router.post("/oracle/get_report_image")
+async def get_report_image(req: GetReportImageRequest):
+    """
+    Given a report_id, this endpoint will return the image file as base 64 string.
+    """
+
+    # find the image path
+    LOGGER.error(f"Getting image: {req.image_path}")
+
+    # load the image_path and convert to base64
+    return JSONResponse(
+        status_code=200,
+        content={"encoded": encode_image(req.image_path)},
+    )
 
 
 @router.post("/oracle/rename_report")

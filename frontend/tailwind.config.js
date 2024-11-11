@@ -115,6 +115,7 @@ module.exports = {
 
   plugins: [
     require("@tailwindcss/forms"),
+    require("@tailwindcss/typography"),
     plugin(function ({ addUtilities }) {
       addUtilities({
         ".writing-vertical": {
@@ -132,6 +133,9 @@ module.exports = {
           height: "0",
           borderLeft: "5px solid transparent",
           borderRight: "5px solid transparent",
+        },
+        ".text-shadow-none": {
+          textShadow: "none",
         },
       });
     }),

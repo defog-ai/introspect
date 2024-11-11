@@ -508,7 +508,7 @@ async def export(
     Side Effects:
     - Final report will be saved as a PDF file in the api_key's directory.
     """
-    LOGGER.debug(f"Exporting for report {report_id}")
+    LOGGER.info(f"Exporting for report {report_id}")
     LOGGER.debug(f"inputs: {inputs}")
     LOGGER.debug(f"inputs: {outputs}")
     json_data = {
@@ -517,21 +517,25 @@ async def export(
         "inputs": inputs,
         "outputs": outputs,
     }
-    response = await make_request(DEFOG_BASE_URL + "/oracle/generate_report", json_data)
+    response = await make_request(
+        DEFOG_BASE_URL + "/oracle/generate_report", json_data, timeout=120
+    )
+
+    md = response.get("md")
     mdx = response.get("mdx")
-    if mdx is None:
-        LOGGER.error("No MDX returned from backend.")
+    if md is None:
+        LOGGER.error("No MD returned from backend.")
     else:
-        trunc_mdx = truncate_obj(mdx, max_len_str=1000, to_str=True)
-        LOGGER.debug(f"MDX generated for report {report_id}\n{trunc_mdx}")
+        trunc_md = truncate_obj(md, max_len_str=1000, to_str=True)
+        LOGGER.debug(f"MD generated for report {report_id}\n{trunc_md}")
     markdowner = Markdown(extras=["tables"])
-    html_string = markdowner.convert(mdx)
+    html_string = markdowner.convert(md)
     report_file_path = get_report_file_path(api_key, report_id)
     pdfkit.from_string(
         html_string, report_file_path, options={"enable-local-file-access": ""}
     )
     LOGGER.debug(f"Exported report {report_id} to {report_file_path}")
-    return {"mdx": mdx, "report_file_path": report_file_path}
+    return {"md": md, "mdx": mdx, "report_file_path": report_file_path}
 
 
 def get_report_file_path(api_key: str, report_id: str) -> str:

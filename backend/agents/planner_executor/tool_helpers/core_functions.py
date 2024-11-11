@@ -21,15 +21,6 @@ analysis_assets_dir = os.environ.get(
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 
-def encode_image(image_path):
-    """
-    Encodes an image to base64.
-    """
-    image_path = os.path.join(analysis_assets_dir, image_path)
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode("utf-8")
-
-
 # make sure the query does not contain any malicious commands like drop, delete, etc.
 def safe_sql(query):
     if query is None:
