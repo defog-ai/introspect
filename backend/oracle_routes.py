@@ -3,6 +3,8 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from openai import api_key
+
 from utils import encode_image, escape_markdown
 from db_utils import OracleReports, engine, get_db_type_creds, validate_user
 from fastapi import APIRouter, Request
@@ -330,13 +332,13 @@ async def delete_report(req: Request):
             return JSONResponse(status_code=404, content={"error": "Report not found"})
 
 
-class GetReportMDXRequest(BaseModel):
+class GetReportRequest(BaseModel):
     key_name: str
     report_id: int
 
 
 @router.post("/oracle/get_report_mdx")
-async def get_report_mdx(req: GetReportMDXRequest):
+async def get_report_mdx(req: GetReportRequest):
     """
     Given a report_id, this endpoint will return the MDX string for the report stored in the postgres db.
 
@@ -372,13 +374,8 @@ async def get_report_mdx(req: GetReportMDXRequest):
             )
 
 
-class GetReportDataRequest(BaseModel):
-    key_name: str
-    report_id: int
-
-
 @router.post("/oracle/get_report_data")
-async def get_report_data(req: GetReportDataRequest):
+async def get_report_data(req: GetReportRequest):
     """
     Given a report_id, this endpoint will returns all the data for this report. Returns the full row stored in the db.
     """
@@ -454,10 +451,6 @@ async def feedback_report(req: OracleReportFeedbackRequest):
     """
     Given a report id and the associated feedback, save the feedback with the report.
     """
-    LOGGER.info(req.key_name)
-    LOGGER.info(req.report_id)
-    LOGGER.info(req.feedback)
-
     api_key = get_api_key_from_key_name(req.key_name)
 
     with Session(engine) as session:

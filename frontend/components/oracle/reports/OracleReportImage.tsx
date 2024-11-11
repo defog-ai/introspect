@@ -33,11 +33,13 @@ function OracleReportImage(props) {
               report_id: reportId,
             }),
           }
-        ).catch((e) => {
-          throw e;
-        });
+        );
 
         const data = await res.json();
+
+        if (!data.encoded) {
+          throw new Error("Error fetching image");
+        }
 
         const encoded = data.encoded;
         setError(null);
@@ -55,7 +57,9 @@ function OracleReportImage(props) {
   return (
     <NodeViewWrapper className="react-component not-prose">
       {error ? (
-        <div>{error}</div>
+        <div className="bg-rose-100 text-red text-center rounded-md p-2">
+          {error}
+        </div>
       ) : base64 ? (
         <img src={base64} alt={alt} />
       ) : (

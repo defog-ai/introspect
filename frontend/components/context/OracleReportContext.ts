@@ -1,7 +1,5 @@
-// import type { Table } from "@defogdotai/agents-ui-components/core-ui";
 import { createContext } from "react";
 
-// import { Table } from "@defogdotai/agents-ui-components/core-ui";
 export interface OracleReportContext {
   /** API Key name */
   keyName: string;

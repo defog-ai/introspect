@@ -95,7 +95,7 @@ export default function ViewOracleReport() {
         setMDX(mdx);
       } catch (e) {
         console.error(e);
-        setError("Could not getch MDX for report: " + reportId);
+        setError("Could not fetch MDX for report: " + reportId);
       }
     };
 
@@ -141,7 +141,7 @@ export default function ViewOracleReport() {
     return (
       <div
         className={
-          "w-full h-full min-h-60 flex flex-col justify-center items-center "
+          "w-full h-full min-h-60 flex flex-col justify-center items-center bg-rose-100 text-red text-center rounded-md p-2"
         }
       >
         <div className="mb-2 text-sm text-rose-500">{error}</div>
