@@ -17,7 +17,7 @@ import setupBaseUrl from "./setupBaseUrl";
  */
 export function parseTables(mdx: string) {
   const tables = {};
-  const tableRegex = /<Table csv=([\s\S]+?) \/>/g;
+  const tableRegex = /<Table csv=\{([\s\S]+?)\} \/>/g;
 
   let newMdx = mdx;
 
@@ -47,7 +47,7 @@ export function parseTables(mdx: string) {
  */
 export function parseImages(mdx: string) {
   const images = {};
-  const imageRegex = /<Image src=([\s\S]+?) alt=([\s\S]+?) \/>/g;
+  const imageRegex = /<Image src=\{([\s\S]+?)\} alt=\{([\s\S]+?)\} \/>/g;
 
   let newMdx = mdx;
 

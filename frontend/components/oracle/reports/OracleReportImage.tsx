@@ -28,7 +28,7 @@ function OracleReportImage(props) {
               mode: "no-cors",
             },
             body: JSON.stringify({
-              image_path: src,
+              image_file_name: src,
               key_name: keyName,
               report_id: reportId,
             }),

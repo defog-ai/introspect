@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from openai import api_key
 
-from utils import encode_image, escape_markdown
+from utils import encode_image
 from db_utils import OracleReports, engine, get_db_type_creds, validate_user
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -15,6 +15,7 @@ from oracle.core import (
     begin_generation_task,
     gather_context,
     get_report_file_path,
+    get_report_image_path,
     predict,
 )
 from oracle.explore import explore_data
@@ -28,10 +29,6 @@ from oracle.explore import explore_data
 from oracle.core import export, gather_context, predict
 from db_utils import OracleReports, engine, validate_user
 from generic_utils import get_api_key_from_key_name, make_request
-from oracle.core import (
-    begin_generation_task,
-    get_report_file_path,
-)
 from utils_logging import LOGGER, save_and_log, save_timing
 
 router = APIRouter()
@@ -361,9 +358,6 @@ async def get_report_mdx(req: GetReportRequest):
             md = report.outputs.get("export", {}).get("md", None)
             feedback = report.feedback
 
-            # clean mdx
-            mdx = escape_markdown(mdx)
-
             return JSONResponse(
                 status_code=200, content={"mdx": mdx, "md": md, "feedback": feedback}
             )
@@ -410,7 +404,7 @@ async def get_report_data(req: GetReportRequest):
 class GetReportImageRequest(BaseModel):
     key_name: str
     report_id: int | str
-    image_path: str
+    image_file_name: str
 
 
 @router.post("/oracle/get_report_image")
@@ -419,13 +413,15 @@ async def get_report_image(req: GetReportImageRequest):
     Given a report_id, this endpoint will return the image file as base 64 string.
     """
 
-    # find the image path
-    LOGGER.error(f"Getting image: {req.image_path}")
+    api_key = get_api_key_from_key_name(req.key_name)
+
+    # construct the image path
+    image_path = get_report_image_path(api_key, req.report_id, req.image_file_name)
 
     # load the image_path and convert to base64
     return JSONResponse(
         status_code=200,
-        content={"encoded": encode_image(req.image_path)},
+        content={"encoded": encode_image(image_path)},
     )
 
 
@@ -567,7 +563,9 @@ async def oracle_test_stage(req: Request):
         api_key = body.get("api_key", None)
         outputs = body.get("outputs", {})
         task_type = body.get("task_type", "")
-        question = body.get("question", None)
+        question = body.get(
+            "question", body.get("inputs", {}).get("user_question", None)
+        )
         username = body.get("username", None)
         report_id = body.get("report_id", None)
         res = await export(

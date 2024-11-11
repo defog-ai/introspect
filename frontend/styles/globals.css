@@ -110,3 +110,8 @@ a {
     color-scheme: light;
   }
 } */
+
+.oracle-report-tiptap pre code{
+  color: theme('colors.gray.200');
+  text-shadow: none;
+}

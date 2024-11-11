@@ -1,12 +1,11 @@
 {
-  "report_id": 174,
+  "report_id": 182,
   "report_name": null,
   "status": "done",
-  "created_ts": "2024-11-10T12:30:15.625449",
-  "api_key": "test_restaurant",
   "task_type": "optimization",
+  "created_ts": "2024-11-11T12:21:55.152590",
+  "api_key": "test_restaurant",
   "username": "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0",
-  "question": "suggest me restaurants for an outing. I want a variety of foods and at least 5 restaurants visited",
   "inputs": {
     "user_question": "suggest me restaurants for an outing. I want a variety of foods and at least 5 restaurants visited",
     "sources": [],
@@ -17,7 +16,7 @@
         "options": ["yes", "no", "Other"]
       },
       {
-        "clarification": "What specific types of food are you interested in for the outing?",
+        "clarification": "What specific types of food are you interested in for the variety?",
         "input_type": "text",
         "options": []
       },
@@ -31,20 +30,37 @@
   "outputs": {
     "gather_context": {
       "context": "",
-      "objective": "Identify at least 5 restaurants that offer a variety of food types, by fetching data from the restaurant table and aggregating over the food_type column to ensure diversity.",
+      "objective": "Identify at least 5 restaurants with a variety of food types and the highest average rating. This can be calculated by fetching data from the restaurant table and aggregating the food_type and rating columns.",
       "decision_variables": ["restaurant_id", "food_type"],
       "constraints": [
-        "At least 5 restaurants must be selected",
-        "Restaurants must offer different types of food"
+        "At least 5 different food types must be represented among the selected restaurants."
       ],
-      "problem_statement": "Select at least 5 restaurant_ids that provide a variety of food types, ensuring that each selected restaurant offers a different food_type.",
+      "problem_statement": "Select at least 5 restaurant_ids that offer a variety of food types, subject to the constraint that there are at least 5 different food types represented.",
       "issues": []
     },
     "explore": {
       "analyses": [
         {
           "qn_id": 0,
-          "generated_qn": "What are the different food types offered by restaurants in the dataset?",
+          "generated_qn": "What are the restaurant_ids of restaurants that offer at least 5 different food types and have the highest average rating?",
+          "independent_variable": {
+            "name": "restaurant_id",
+            "description": "Unique identifier for each restaurant",
+            "table.column": ["restaurant.id"]
+          },
+          "artifacts": {
+            "table_csv": {
+              "artifact_content": "restaurant_id\n"
+            }
+          },
+          "working": {
+            "generated_sql": "WITH restaurant_food_types AS (SELECT r.id AS restaurant_id, COUNT (DISTINCT r.food_type) AS food_type_count FROM restaurant r GROUP BY r.id), restaurant_ratings AS (SELECT r.id AS restaurant_id, AVG (r.rating) AS average_rating FROM restaurant r GROUP BY r.id) SELECT rf.restaurant_id FROM restaurant_food_types rf JOIN restaurant_ratings rr ON rf.restaurant_id = rr.restaurant_id WHERE rf.food_type_count >= 5 ORDER BY rr.average_rating DESC NULLS LAST LIMIT 5;"
+          },
+          "summary": "No data fetched"
+        },
+        {
+          "qn_id": 1,
+          "generated_qn": "How many different food types are represented among the selected restaurants with the highest average rating?",
           "independent_variable": {
             "name": "food_type",
             "description": "Type of food served at the restaurant",
@@ -52,34 +68,29 @@
           },
           "artifacts": {
             "table_csv": {
-              "artifact_content": "food_type\nVegan\nSeafood\nAmerican\nJapanese\nMexican\nItalian\n",
-              "artifact_description": "The table lists the distinct food types offered by restaurants in the dataset, including Vegan, Seafood, American, Japanese, Mexican, and Italian."
+              "artifact_content": "count\n1\n",
+              "artifact_description": "The table shows that there is only 1 distinct food type represented among the selected restaurants with the highest average rating."
             },
             "image": {
-              "artifact_location": "/backend/oracle/reports/test_restaurant/report_174/q0.png",
-              "artifact_description": "A bar chart showing the relationship between different food types offered by restaurants, with each food type represented as a separate bar."
+              "artifact_location": "/backend/oracle/reports/test_restaurant/report_182/q1.png",
+              "artifact_description": "A displot showing the distribution of the count of distinct food types among the highest-rated restaurants, indicating a single value of 1."
             }
           },
           "working": {
-            "generated_sql": "SELECT DISTINCT r.food_type FROM restaurant AS r;",
+            "generated_sql": "SELECT COUNT (DISTINCT r.food_type) FROM restaurant r WHERE r.rating = (SELECT MAX (r2.rating) FROM restaurant r2);",
             "chart_fn_params": {
-              "name": "catplot",
+              "name": "displot",
               "parameters": {
-                "kind": "bar",
-                "x": "food_type",
-                "y": null,
-                "hue": null,
-                "col": null,
-                "row": null
+                "x": "count"
               }
             }
           },
-          "title": "Diversity of Food Types Offered by Restaurants",
-          "summary": "The dataset reveals a diverse range of food types available at restaurants, highlighting a variety of cuisines such as Vegan, Seafood, American, Japanese, Mexican, and Italian. This variety suggests a broad culinary landscape, catering to different dietary preferences and cultural tastes."
+          "title": "Diversity of Food Types Among Top-Rated Restaurants",
+          "summary": "The analysis reveals that among the restaurants with the highest average rating, there is only one food type represented, suggesting a lack of diversity in cuisine options at the top-rated establishments."
         },
         {
-          "qn_id": 1,
-          "generated_qn": "How many restaurants in each city offer different types of food?",
+          "qn_id": 2,
+          "generated_qn": "In which cities are the restaurants with at least 5 different food types and the highest average rating located?",
           "independent_variable": {
             "name": "city_name",
             "description": "City where the restaurant is located",
@@ -87,34 +98,17 @@
           },
           "artifacts": {
             "table_csv": {
-              "artifact_content": "city_name,food_types_count\nLos Angeles,3\nNew York,3\nSan Francisco,3\nMiami,1\n",
-              "artifact_description": "The table displays the number of distinct food types offered by restaurants in various cities, with Los Angeles, New York, and San Francisco each having 3 types, while Miami has 1 type."
-            },
-            "image": {
-              "artifact_location": "/backend/oracle/reports/test_restaurant/report_174/q1.png",
-              "artifact_description": "A bar chart showing the relationship between city names and the count of distinct food types offered by restaurants, highlighting that Los Angeles, New York, and San Francisco have the highest variety with 3 food types each, while Miami has only 1."
+              "artifact_content": "city_name\n"
             }
           },
           "working": {
-            "generated_sql": "SELECT r.city_name, COUNT (DISTINCT r.food_type) AS food_types_count FROM restaurant AS r GROUP BY r.city_name ORDER BY food_types_count DESC NULLS LAST;",
-            "chart_fn_params": {
-              "name": "catplot",
-              "parameters": {
-                "kind": "bar",
-                "x": "city_name",
-                "y": "food_types_count",
-                "hue": null,
-                "col": null,
-                "row": null
-              }
-            }
+            "generated_sql": "SELECT g.city_name FROM geographic AS g JOIN LOCATION AS l ON g.city_name = l.city_name JOIN restaurant AS r ON l.restaurant_id = r.id WHERE r.food_type IS NOT NULL GROUP BY g.city_name HAVING COUNT (DISTINCT r.food_type) >= 5 ORDER BY AVG (r.rating) DESC;"
           },
-          "title": "Diversity of Food Types Offered by Restaurants in Major Cities",
-          "summary": "The analysis reveals that Los Angeles, New York, and San Francisco are the cities with the most diverse food offerings, each providing three distinct types of cuisine, while Miami has significantly less variety with only one type. This indicates a potential concentration of culinary diversity in certain urban areas compared to others."
+          "summary": "No data fetched"
         },
         {
-          "qn_id": 2,
-          "generated_qn": "What is the average rating of restaurants offering different food types?",
+          "qn_id": 3,
+          "generated_qn": "What is the average rating of restaurants that offer at least 5 different food types?",
           "independent_variable": {
             "name": "rating",
             "description": "Rating of the restaurant on a scale of 0 to 5",
@@ -122,121 +116,47 @@
           },
           "artifacts": {
             "table_csv": {
-              "artifact_content": "food_type,average_rating\nVegan,4.600\nItalian,4.600\nSeafood,4.500\nJapanese,4.250\nMexican,4.100\nAmerican,3.800\n",
-              "artifact_description": "The table presents the average ratings of restaurants categorized by different food types, with Italian cuisine having the highest average rating."
+              "artifact_content": "average_rating\n4.255\n",
+              "artifact_description": "The table presents the average rating of restaurants that offer at least 5 different food types, which is 4.255."
             },
             "image": {
-              "artifact_location": "/backend/oracle/reports/test_restaurant/report_174/q2.png",
-              "artifact_description": "A bar chart showing the relationship between food types and their average restaurant ratings, with Italian cuisine leading in average rating."
+              "artifact_location": "/backend/oracle/reports/test_restaurant/report_182/q3.png",
+              "artifact_description": "A displot showing the distribution of the average rating of restaurants that offer at least 5 different food types."
             }
           },
           "working": {
-            "generated_sql": "SELECT r.food_type, AVG (r.rating) AS average_rating FROM restaurant AS r GROUP BY r.food_type ORDER BY average_rating DESC NULLS LAST;",
+            "generated_sql": "SELECT AVG (r.rating) AS average_rating FROM restaurant r WHERE (SELECT COUNT (DISTINCT r.food_type) FROM restaurant r WHERE r.id = r.id) >= 5;",
             "chart_fn_params": {
-              "name": "catplot",
+              "name": "displot",
               "parameters": {
-                "kind": "bar",
-                "x": "food_type",
-                "y": "average_rating",
-                "hue": null,
-                "col": null,
-                "row": null
+                "x": "average_rating"
               }
             }
           },
-          "title": "Average Restaurant Ratings by Food Type",
-          "summary": "The analysis reveals that Italian restaurants have the highest average rating among the food types listed, followed closely by Seafood and Japanese cuisines. American cuisine has the lowest average rating, indicating a potential area for improvement. The data does not show any missing values, but the variation in ratings suggests differing customer satisfaction across food types."
-        },
-        {
-          "qn_id": 3,
-          "generated_qn": "Which counties have the highest variety of food types in their restaurants?",
-          "independent_variable": {
-            "name": "county",
-            "description": "County where the restaurant is located",
-            "table.column": ["geographic.county"]
-          },
-          "artifacts": {
-            "table_csv": {
-              "artifact_content": "county,food_type_count\nLos Angeles,3\nNew York,3\nSan Francisco,3\nMiami-Dade,1\n",
-              "artifact_description": "The table lists the top counties along with the count of distinct food types available in their restaurants, showing that Los Angeles, New York, and San Francisco each have the highest variety with three food types, while Miami-Dade has one."
-            },
-            "image": {
-              "artifact_location": "/backend/oracle/reports/test_restaurant/report_174/q3.png",
-              "artifact_description": "A bar chart showing the relationship between counties and the count of distinct food types in their restaurants, highlighting that Los Angeles, New York, and San Francisco have the highest counts of three food types each, while Miami-Dade has a lower count of one."
-            }
-          },
-          "working": {
-            "generated_sql": "WITH restaurant_food_types AS (SELECT g.county, COUNT (DISTINCT r.food_type) AS food_type_count FROM restaurant AS r JOIN LOCATION AS l ON r.id = l.restaurant_id JOIN geographic AS g ON l.city_name = g.city_name GROUP BY g.county) SELECT county, food_type_count FROM restaurant_food_types ORDER BY food_type_count DESC NULLS LAST LIMIT 5;",
-            "chart_fn_params": {
-              "name": "catplot",
-              "parameters": {
-                "kind": "bar",
-                "x": "county",
-                "y": "food_type_count",
-                "hue": null,
-                "col": null,
-                "row": null
-              }
-            }
-          },
-          "title": "Counties with the Highest Variety of Food Types in Restaurants",
-          "summary": "The analysis reveals that Los Angeles, New York, and San Francisco are tied for the highest variety of food types in their restaurants, each offering three distinct types, while Miami-Dade shows significantly less variety with only one type. This indicates a concentration of diverse culinary options in the former counties compared to Miami-Dade."
-        },
-        {
-          "qn_id": 4,
-          "generated_qn": "How does the variety of food types in restaurants differ across regions?",
-          "independent_variable": {
-            "name": "region",
-            "description": "Region where the restaurant is located",
-            "table.column": ["geographic.region"]
-          },
-          "artifacts": {
-            "table_csv": {
-              "artifact_content": "region,food_type_count\nCalifornia,5\nNew York,3\nFlorida,1\n",
-              "artifact_description": "The table displays the count of distinct food types available in restaurants across different regions, highlighting California with the highest variety."
-            },
-            "image": {
-              "artifact_location": "/backend/oracle/reports/test_restaurant/report_174/q4.png",
-              "artifact_description": "A bar chart showing the relationship between regions and the count of distinct food types in restaurants, with California having the highest count followed by New York and Florida."
-            }
-          },
-          "working": {
-            "generated_sql": "SELECT g.region, COUNT (DISTINCT r.food_type) AS food_type_count FROM restaurant AS r JOIN LOCATION AS l ON r.id = l.restaurant_id JOIN geographic AS g ON l.city_name = g.city_name GROUP BY g.region ORDER BY food_type_count DESC NULLS LAST;",
-            "chart_fn_params": {
-              "name": "catplot",
-              "parameters": {
-                "kind": "bar",
-                "x": "region",
-                "y": "food_type_count",
-                "hue": null,
-                "col": null,
-                "row": null
-              }
-            }
-          },
-          "title": "Regional Diversity of Food Types in Restaurants",
-          "summary": "The analysis reveals that California offers the most diverse range of food types in its restaurants, significantly outpacing New York and Florida, which suggests regional culinary diversity may be influenced by factors such as population size and cultural diversity."
+          "title": "Average Rating of Diverse Restaurants",
+          "summary": "The analysis indicates that restaurants with a diverse menu, offering at least 5 different food types, have a relatively high average rating of 4.255, suggesting a positive reception among customers. However, the data does not provide insights into the distribution of ratings or any potential outliers that could influence this average."
         }
       ],
       "dependent_variable": {
-        "description": "Restaurant IDs that provide a variety of food types",
-        "table.column": ["restaurant.id"],
+        "description": "Average rating of restaurants",
+        "table.column": ["restaurant.rating"],
         "data_available": true
       }
     },
     "optimize": {
       "processed_items": [],
       "recommendations": [
-        "Visit Los Angeles for a diverse culinary experience, with restaurants offering Vegan, Seafood, American, Japanese, Mexican, and Italian cuisines.",
-        "Explore New York City, which features a variety of food types including Italian, Japanese, and American, providing a rich dining experience.",
-        "Check out San Francisco for its unique blend of food types, including Seafood, Vegan, and Italian, perfect for food enthusiasts.",
-        "Consider trying restaurants in California, as it has the highest variety of food types available, catering to diverse tastes.",
-        "If you're looking for high-rated options, focus on Italian and Seafood restaurants, which have shown the highest average ratings among food types."
+        "Consider exploring restaurants that offer a diverse menu with at least 5 different food types, as they have an average rating of 4.255, indicating a positive reception among customers.",
+        "Look for restaurants that specialize in unique or less common cuisines to enhance the diversity of food options available in the top-rated category.",
+        "Encourage restaurants to expand their menu offerings to include a variety of food types, which may help improve their average ratings and attract a broader customer base.",
+        "Promote restaurants that are already known for their diverse menus, as they are likely to appeal to a wider audience and maintain higher customer satisfaction.",
+        "Investigate customer feedback on restaurants with limited food types to understand potential areas for improvement and menu expansion."
       ]
     },
     "export": {
-      "mdx": "# Restaurant Selection for Diverse Culinary Experience\n\n## Problem Statement\n\nThe task at hand is to optimize the selection of at least five restaurants that offer a diverse range of food types. The goal is to ensure that each selected restaurant provides a unique culinary experience by offering different food types. This selection process is crucial for individuals seeking a varied dining experience during an outing, thereby enhancing their culinary journey and satisfaction. The challenge lies in identifying and selecting restaurants that not only meet the criteria of diversity in food offerings but also maintain a standard of quality as indicated by their ratings.\n\n## Context\n\nTo address this problem, we have access to a comprehensive database schema that includes detailed information about restaurants, their locations, and the geographic regions they belong to. The `restaurant` table provides essential data such as the unique identifier for each restaurant, their ratings, names, and the type of food they serve. This information is pivotal in identifying restaurants that offer different food types. Additionally, the `location` table helps in pinpointing the exact location of each restaurant, which can be useful for logistical considerations. The `geographic` table offers insights into the broader regional context, which might be relevant for understanding cultural influences on the food types available. These data sources collectively enable a thorough analysis and informed decision-making process in selecting the optimal set of restaurants for a diverse culinary outing.\n\n\n## Data Exploration\n### Diversity of Food Types Offered by Restaurants\nIn this section, we will explore the various food types offered by restaurants within the dataset. Understanding the diversity of cuisines available is crucial for identifying restaurants that cater to a wide array of dietary preferences and cultural tastes, thereby enhancing our selection process for a varied dining experience. This analysis will inform our recommendations for restaurants that exemplify this culinary diversity.\n\n| Food Type   |\n|-------------|\n| Vegan       |\n| Seafood     |\n| American    |\n| Japanese    |\n| Mexican     |\n| Italian     |\n\nThe table lists the distinct food types offered by restaurants in the dataset, including Vegan, Seafood, American, Japanese, Mexican, and Italian.\n\n![A bar chart showing the relationship between different food types offered by restaurants, with each food type represented as a separate bar.](/backend/oracle/reports/test_restaurant/report_174/q0.png)\n\nFigure 1: A bar chart showing the relationship between different food types offered by restaurants, with each food type represented as a separate bar.\n\n\nThis was generated with:\n```sql\nSELECT DISTINCT r.food_type\nFROM restaurant AS r;\n```\n\nThe dataset reveals a diverse range of food types available at restaurants, highlighting a variety of cuisines such as Vegan, Seafood, American, Japanese, Mexican, and Italian. This variety suggests a broad culinary landscape, catering to different dietary preferences and cultural tastes.\n### Diversity of Food Types Offered by Restaurants in Major Cities\nIn this section, we will explore the distribution of various food types offered by restaurants across major cities. Understanding the number of restaurants that provide diverse culinary options is crucial for identifying urban areas with rich gastronomic landscapes, as well as those that may benefit from increased variety. This analysis highlights the disparities in food diversity, particularly between cities like Los Angeles, New York, and San Francisco compared to Miami.\n\n| City Name     |   Food Types Count |\n|---------------|--------------------|\n| Los Angeles   |                  3 |\n| New York      |                  3 |\n| San Francisco |                  3 |\n| Miami         |                  1 |\n\nThe table displays the number of distinct food types offered by restaurants in various cities, with Los Angeles, New York, and San Francisco each having 3 types, while Miami has 1 type.\n\n![A bar chart showing the relationship between city names and the count of distinct food types offered by restaurants, highlighting that Los Angeles, New York, and San Francisco have the highest variety with 3 food types each, while Miami has only 1.](/backend/oracle/reports/test_restaurant/report_174/q1.png)\n\nFigure 2: A bar chart showing the relationship between city names and the count of distinct food types offered by restaurants, highlighting that Los Angeles, New York, and San Francisco have the highest variety with 3 food types each, while Miami has only 1.\n\n\nThis was generated with:\n```sql\nSELECT r.city_name,\n       COUNT (DISTINCT r.food_type) AS food_types_count\nFROM restaurant AS r\nGROUP BY r.city_name\nORDER BY food_types_count DESC NULLS LAST;\n```\n\nThe analysis reveals that Los Angeles, New York, and San Francisco are the cities with the most diverse food offerings, each providing three distinct types of cuisine, while Miami has significantly less variety with only one type. This indicates a potential concentration of culinary diversity in certain urban areas compared to others.\n### Average Restaurant Ratings by Food Type\nIn this section, we will explore the average ratings of restaurants categorized by various food types. Understanding these ratings is crucial as they highlight customer satisfaction levels and reveal potential areas for improvement within specific cuisines, ultimately guiding strategic decisions for enhancing restaurant performance.\n\n| Food Type   |   Average Rating |\n|-------------|------------------|\n| Vegan       |            4.600 |\n| Italian     |            4.600 |\n| Seafood     |            4.500 |\n| Japanese    |            4.250 |\n| Mexican     |            4.100 |\n| American    |            3.800 |\n\nThe table presents the average ratings of restaurants categorized by different food types, with Italian cuisine having the highest average rating.\n\n![A bar chart showing the relationship between food types and their average restaurant ratings, with Italian cuisine leading in average rating.](/backend/oracle/reports/test_restaurant/report_174/q2.png)\n\nFigure 3: A bar chart showing the relationship between food types and their average restaurant ratings, with Italian cuisine leading in average rating.\n\n\nThis was generated with:\n```sql\nSELECT r.food_type,\n       AVG (r.rating) AS average_rating\nFROM restaurant AS r\nGROUP BY r.food_type\nORDER BY average_rating DESC NULLS LAST;\n```\n\nThe analysis reveals that Italian restaurants have the highest average rating among the food types listed, followed closely by Seafood and Japanese cuisines. American cuisine has the lowest average rating, indicating a potential area for improvement. The data does not show any missing values, but the variation in ratings suggests differing customer satisfaction across food types.\n### Counties with the Highest Variety of Food Types in Restaurants\nIn this section, we explore the counties that exhibit the highest diversity of food types within their restaurant offerings. Understanding the distribution of culinary variety is crucial for identifying regions that cater to a broad spectrum of consumer preferences and can influence strategic decisions for restaurant development and marketing. The analysis highlights key counties such as Los Angeles, New York, and San Francisco, which stand out for their extensive variety compared to others like Miami-Dade.\n\n| County        |   Food Type Count |\n|---------------|-------------------|\n| Los Angeles   |                 3 |\n| New York      |                 3 |\n| San Francisco |                 3 |\n| Miami-Dade    |                 1 |\n\nThe table lists the top counties along with the count of distinct food types available in their restaurants, showing that Los Angeles, New York, and San Francisco each have the highest variety with three food types, while Miami-Dade has one.\n\n![A bar chart showing the relationship between counties and the count of distinct food types in their restaurants, highlighting that Los Angeles, New York, and San Francisco have the highest counts of three food types each, while Miami-Dade has a lower count of one.](/backend/oracle/reports/test_restaurant/report_174/q3.png)\n\nFigure 4: A bar chart showing the relationship between counties and the count of distinct food types in their restaurants, highlighting that Los Angeles, New York, and San Francisco have the highest counts of three food types each, while Miami-Dade has a lower count of one.\n\n\nThis was generated with:\n```sql\nWITH restaurant_food_types AS\n  (SELECT g.county,\n          COUNT (DISTINCT r.food_type) AS food_type_count\n   FROM restaurant AS r\n   JOIN LOCATION AS l ON r.id = l.restaurant_id\n   JOIN geographic AS g ON l.city_name = g.city_name\n   GROUP BY g.county)\nSELECT county,\n       food_type_count\nFROM restaurant_food_types\nORDER BY food_type_count DESC NULLS LAST\nLIMIT 5;\n```\n\nThe analysis reveals that Los Angeles, New York, and San Francisco are tied for the highest variety of food types in their restaurants, each offering three distinct types, while Miami-Dade shows significantly less variety with only one type. This indicates a concentration of diverse culinary options in the former counties compared to Miami-Dade.\n### Regional Diversity of Food Types in Restaurants\nIn this section, we explore the variations in food types offered by restaurants across different regions. Understanding these differences is crucial for identifying regional culinary diversity and its potential influences, such as population size and cultural factors. This analysis highlights California's leading position in restaurant diversity compared to New York and Florida.\n\n| Region     |   Food Type Count |\n|------------|-------------------|\n| California |                 5 |\n| New York   |                 3 |\n| Florida    |                 1 |\n\nThe table displays the count of distinct food types available in restaurants across different regions, highlighting California with the highest variety.\n\n![A bar chart showing the relationship between regions and the count of distinct food types in restaurants, with California having the highest count followed by New York and Florida.](/backend/oracle/reports/test_restaurant/report_174/q4.png)\n\nFigure 5: A bar chart showing the relationship between regions and the count of distinct food types in restaurants, with California having the highest count followed by New York and Florida.\n\n\nThis was generated with:\n```sql\nSELECT g.region,\n       COUNT (DISTINCT r.food_type) AS food_type_count\nFROM restaurant AS r\nJOIN LOCATION AS l ON r.id = l.restaurant_id\nJOIN geographic AS g ON l.city_name = g.city_name\nGROUP BY g.region\nORDER BY food_type_count DESC NULLS LAST;\n```\n\nThe analysis reveals that California offers the most diverse range of food types in its restaurants, significantly outpacing New York and Florida, which suggests regional culinary diversity may be influenced by factors such as population size and cultural diversity.\n\n## Recommendations\n\n1. Visit Los Angeles for a diverse culinary experience, with restaurants offering Vegan, Seafood, American, Japanese, Mexican, and Italian cuisines.\n2. Explore New York City, which features a variety of food types including Italian, Japanese, and American, providing a rich dining experience.\n3. Check out San Francisco for its unique blend of food types, including Seafood, Vegan, and Italian, perfect for food enthusiasts.\n4. Consider trying restaurants in California, as it has the highest variety of food types available, catering to diverse tastes.\n5. If you're looking for high-rated options, focus on Italian and Seafood restaurants, which have shown the highest average ratings among food types.\n",
-      "report_file_path": "oracle/reports/test_restaurant/report_174.pdf"
+      "md": "# Restaurant Selection Optimization Report\n\n## Problem Statement\nThe objective of this report is to identify at least five restaurants that provide a diverse range of food types for an outing. The selection must ensure that there are at least five different food types represented among the chosen restaurants. This optimization problem arises from the need to enhance the dining experience by offering a variety of culinary options, catering to different tastes and preferences. A well-curated selection of restaurants can significantly improve customer satisfaction and engagement during the outing.\n\n## Context\nTo address this problem, we have access to a database schema that includes three tables: `location`, `geographic`, and `restaurant`. The `restaurant` table is particularly relevant as it contains essential information such as the unique identifier for each restaurant, its rating, name, food type, and the city in which it is located. This data will be instrumental in identifying restaurants that meet the criteria of offering a variety of food types. The `location` table provides additional context regarding the physical addresses of the restaurants, which can be useful for logistical planning. However, there is no additional context provided regarding specific preferences or constraints beyond the requirement for variety. The available data will be leveraged to ensure a comprehensive selection process that meets the outlined criteria.\n\n\n## Data Exploration\n### \nIn this section, we will identify the restaurant_ids of establishments that not only provide a diverse selection of at least five different food types but also maintain the highest average ratings. This analysis is crucial for understanding which restaurants excel in both variety and quality, thereby informing strategic decisions related to dining options. By focusing on these metrics, we aim to enhance our recommendations for a well-rounded culinary experience.\n\n\nThis was generated with:\n```sql\nWITH restaurant_food_types AS\n  (SELECT r.id AS restaurant_id,\n          COUNT (DISTINCT r.food_type) AS food_type_count\n   FROM restaurant r\n   GROUP BY r.id),\n     restaurant_ratings AS\n  (SELECT r.id AS restaurant_id,\n          AVG (r.rating) AS average_rating\n   FROM restaurant r\n   GROUP BY r.id)\nSELECT rf.restaurant_id\nFROM restaurant_food_types rf\nJOIN restaurant_ratings rr ON rf.restaurant_id = rr.restaurant_id\nWHERE rf.food_type_count >= 5\nORDER BY rr.average_rating DESC NULLS LAST\nLIMIT 5;\n```\n\nNo data fetched\n### Diversity of Food Types Among Top-Rated Restaurants\nIn this section, we will explore the diversity of food types represented among the selected restaurants that boast the highest average ratings. Understanding the variety of cuisines available at these top-rated establishments is crucial, as it highlights potential gaps in culinary diversity that may impact customer satisfaction and dining experiences. This analysis aims to shed light on the current landscape of restaurant offerings and their implications for consumer choice.\n\n|   Count |\n|---------|\n|    1.00 |\n\nThe table shows that there is only 1 distinct food type represented among the selected restaurants with the highest average rating.\n\n![A displot showing the distribution of the count of distinct food types among the highest-rated restaurants, indicating a single value of 1.](/backend/oracle/reports/test_restaurant/report_182/q1.png)\n\nFigure 1: A displot showing the distribution of the count of distinct food types among the highest-rated restaurants, indicating a single value of 1.\n\n\nThis was generated with:\n```sql\nSELECT COUNT (DISTINCT r.food_type)\nFROM restaurant r\nWHERE r.rating =\n    (SELECT MAX (r2.rating)\n     FROM restaurant r2);\n```\n\nThe analysis reveals that among the restaurants with the highest average rating, there is only one food type represented, suggesting a lack of diversity in cuisine options at the top-rated establishments.\n### \nIn this section, we will explore the geographic distribution of restaurants that offer at least five distinct food types while also achieving the highest average ratings. Understanding the cities where these establishments are located is crucial for identifying key markets and potential opportunities for expansion. This analysis will provide valuable insights into the relationship between food variety and customer satisfaction across different locations.\n\n\nThis was generated with:\n```sql\nSELECT g.city_name\nFROM geographic AS g\nJOIN LOCATION AS l ON g.city_name = l.city_name\nJOIN restaurant AS r ON l.restaurant_id = r.id\nWHERE r.food_type IS NOT NULL\nGROUP BY g.city_name\nHAVING COUNT (DISTINCT r.food_type) >= 5\nORDER BY AVG (r.rating) DESC;\n```\n\nNo data fetched\n### Average Rating of Diverse Restaurants\nIn this section, we will examine the average rating of restaurants that provide a diverse selection of at least five different food types. Understanding this metric is crucial as it highlights the correlation between menu variety and customer satisfaction, thereby informing strategic decisions for enhancing restaurant offerings. This analysis aims to shed light on the overall performance of these diverse establishments in terms of customer perception.\n\n|   Average Rating |\n|------------------|\n|            4.255 |\n\nThe table presents the average rating of restaurants that offer at least 5 different food types, which is 4.255.\n\n![A displot showing the distribution of the average rating of restaurants that offer at least 5 different food types.](/backend/oracle/reports/test_restaurant/report_182/q3.png)\n\nFigure 2: A displot showing the distribution of the average rating of restaurants that offer at least 5 different food types.\n\n\nThis was generated with:\n```sql\nSELECT AVG (r.rating) AS average_rating\nFROM restaurant r\nWHERE\n    (SELECT COUNT (DISTINCT r.food_type)\n     FROM restaurant r\n     WHERE r.id = r.id) >= 5;\n```\n\nThe analysis indicates that restaurants with a diverse menu, offering at least 5 different food types, have a relatively high average rating of 4.255, suggesting a positive reception among customers. However, the data does not provide insights into the distribution of ratings or any potential outliers that could influence this average.\n\n## Recommendations\n\n1. Consider exploring restaurants that offer a diverse menu with at least 5 different food types, as they have an average rating of 4.255, indicating a positive reception among customers.\n2. Look for restaurants that specialize in unique or less common cuisines to enhance the diversity of food options available in the top-rated category.\n3. Encourage restaurants to expand their menu offerings to include a variety of food types, which may help improve their average ratings and attract a broader customer base.\n4. Promote restaurants that are already known for their diverse menus, as they are likely to appeal to a wider audience and maintain higher customer satisfaction.\n5. Investigate customer feedback on restaurants with limited food types to understand potential areas for improvement and menu expansion.\n",
+      "mdx": "# Restaurant Selection Optimization Report\n\n## Problem Statement\nThe objective of this report is to identify at least five restaurants that provide a diverse range of food types for an outing. The selection must ensure that there are at least five different food types represented among the chosen restaurants. This optimization problem arises from the need to enhance the dining experience by offering a variety of culinary options, catering to different tastes and preferences. A well-curated selection of restaurants can significantly improve customer satisfaction and engagement during the outing.\n\n## Context\nTo address this problem, we have access to a database schema that includes three tables: `location`, `geographic`, and `restaurant`. The `restaurant` table is particularly relevant as it contains essential information such as the unique identifier for each restaurant, its rating, name, food type, and the city in which it is located. This data will be instrumental in identifying restaurants that meet the criteria of offering a variety of food types. The `location` table provides additional context regarding the physical addresses of the restaurants, which can be useful for logistical planning. However, there is no additional context provided regarding specific preferences or constraints beyond the requirement for variety. The available data will be leveraged to ensure a comprehensive selection process that meets the outlined criteria.\n\n\n## Data Exploration\n### \nIn this section, we will identify the restaurant_ids of establishments that not only provide a diverse selection of at least five different food types but also maintain the highest average ratings. This analysis is crucial for understanding which restaurants excel in both variety and quality, thereby informing strategic decisions related to dining options. By focusing on these metrics, we aim to enhance our recommendations for a well-rounded culinary experience.\n\nThis was generated with:\n```sql\nWITH restaurant_food_types AS\n  (SELECT r.id AS restaurant_id,\n          COUNT (DISTINCT r.food_type) AS food_type_count\n   FROM restaurant r\n   GROUP BY r.id),\n     restaurant_ratings AS\n  (SELECT r.id AS restaurant_id,\n          AVG (r.rating) AS average_rating\n   FROM restaurant r\n   GROUP BY r.id)\nSELECT rf.restaurant_id\nFROM restaurant_food_types rf\nJOIN restaurant_ratings rr ON rf.restaurant_id = rr.restaurant_id\nWHERE rf.food_type_count >= 5\nORDER BY rr.average_rating DESC NULLS LAST\nLIMIT 5;\n```\n\nNo data fetched\n### Diversity of Food Types Among Top-Rated Restaurants\nIn this section, we will explore the diversity of food types represented among the selected restaurants that boast the highest average ratings. Understanding the variety of cuisines available at these top-rated establishments is crucial, as it highlights potential gaps in culinary diversity that may impact customer satisfaction and dining experiences. This analysis aims to shed light on the current landscape of restaurant offerings and their implications for consumer choice.\n<Table csv={Count\n1\n} />\n\nThe table shows that there is only 1 distinct food type represented among the selected restaurants with the highest average rating.\n\n<Image src={/backend/oracle/reports/test_restaurant/report_182/q1.png} alt={A displot showing the distribution of the count of distinct food types among the highest-rated restaurants, indicating a single value of 1.} />\n\n\nThis was generated with:\n```sql\nSELECT COUNT (DISTINCT r.food_type)\nFROM restaurant r\nWHERE r.rating =\n    (SELECT MAX (r2.rating)\n     FROM restaurant r2);\n```\n\nThe analysis reveals that among the restaurants with the highest average rating, there is only one food type represented, suggesting a lack of diversity in cuisine options at the top-rated establishments.\n### \nIn this section, we will explore the geographic distribution of restaurants that offer at least five distinct food types while also achieving the highest average ratings. Understanding the cities where these establishments are located is crucial for identifying key markets and potential opportunities for expansion. This analysis will provide valuable insights into the relationship between food variety and customer satisfaction across different locations.\n\nThis was generated with:\n```sql\nSELECT g.city_name\nFROM geographic AS g\nJOIN LOCATION AS l ON g.city_name = l.city_name\nJOIN restaurant AS r ON l.restaurant_id = r.id\nWHERE r.food_type IS NOT NULL\nGROUP BY g.city_name\nHAVING COUNT (DISTINCT r.food_type) >= 5\nORDER BY AVG (r.rating) DESC;\n```\n\nNo data fetched\n### Average Rating of Diverse Restaurants\nIn this section, we will examine the average rating of restaurants that provide a diverse selection of at least five different food types. Understanding this metric is crucial as it highlights the correlation between menu variety and customer satisfaction, thereby informing strategic decisions for enhancing restaurant offerings. This analysis aims to shed light on the overall performance of these diverse establishments in terms of customer perception.\n<Table csv={Average Rating\n4.255\n} />\n\nThe table presents the average rating of restaurants that offer at least 5 different food types, which is 4.255.\n\n<Image src={/backend/oracle/reports/test_restaurant/report_182/q3.png} alt={A displot showing the distribution of the average rating of restaurants that offer at least 5 different food types.} />\n\n\nThis was generated with:\n```sql\nSELECT AVG (r.rating) AS average_rating\nFROM restaurant r\nWHERE\n    (SELECT COUNT (DISTINCT r.food_type)\n     FROM restaurant r\n     WHERE r.id = r.id) >= 5;\n```\n\nThe analysis indicates that restaurants with a diverse menu, offering at least 5 different food types, have a relatively high average rating of 4.255, suggesting a positive reception among customers. However, the data does not provide insights into the distribution of ratings or any potential outliers that could influence this average.\n\n## Recommendations\n\n1. Consider exploring restaurants that offer a diverse menu with at least 5 different food types, as they have an average rating of 4.255, indicating a positive reception among customers.<br />\n2. Look for restaurants that specialize in unique or less common cuisines to enhance the diversity of food options available in the top-rated category.<br />\n3. Encourage restaurants to expand their menu offerings to include a variety of food types, which may help improve their average ratings and attract a broader customer base.<br />\n4. Promote restaurants that are already known for their diverse menus, as they are likely to appeal to a wider audience and maintain higher customer satisfaction.<br />\n5. Investigate customer feedback on restaurants with limited food types to understand potential areas for improvement and menu expansion.\n",
+      "report_file_path": "oracle/reports/test_restaurant/report_182.pdf"
     },
     "done": null
   },

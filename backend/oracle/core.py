@@ -538,6 +538,13 @@ async def export(
     return {"md": md, "mdx": mdx, "report_file_path": report_file_path}
 
 
+def get_report_image_path(api_key: str, report_id: str, image_file_name: str) -> str:
+    """
+    Helper function for getting the report image path based on the api_key, report_id and image file name.
+    """
+    return f"oracle/reports/{api_key}/report_{report_id}/{image_file_name}"
+
+
 def get_report_file_path(api_key: str, report_id: str) -> str:
     """
     Helper function for getting the report file path based on the api_key and report_id.

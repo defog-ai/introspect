@@ -62,11 +62,8 @@ function OracleDashboard() {
   const [waitSources, setWaitSources] = useState(false);
   const [reports, setReports] = useState([]);
 
-  const checkReady = async () => {
-    // skip if apiKeyName is not set
-    if (!apiKeyName) {
-      return;
-    }
+  const checkReady = useCallback(async () => {
+    if (!apiKeyName) return;
     const token = localStorage.getItem("defogToken");
     const resCheck = await fetch(setupBaseUrl("http", `integration/check`), {
       method: "POST",
@@ -78,6 +75,7 @@ function OracleDashboard() {
         key_name: apiKeyName,
       }),
     });
+
     if (resCheck.ok) {
       setReady(true);
       setReadyErrorMsg("");
@@ -88,7 +86,7 @@ function OracleDashboard() {
       setReadyErrorMsg(data.error);
       console.error("Backend not ready to generate reports");
     }
-  };
+  }, [apiKeyName]);
 
   // Function that will update the list of clarifications given the clarification
   // and the answer.
@@ -104,13 +102,15 @@ function OracleDashboard() {
   };
 
   const getClarifications = async () => {
+    if (!userQuestion) return;
+
     setWaitClarifications(true);
     const token = localStorage.getItem("defogToken");
-    // check if the DB is ready
-    checkReady();
     if (!ready) {
-      console.log("DB not ready yet, not fetching clarifications");
+      console.log("DB not ready yet, re checking...");
       setWaitClarifications(false);
+      // check if the DB is ready again
+      checkReady();
       return;
     }
     // answeredClarifications would be a list of clarifications that have been answered
@@ -393,6 +393,7 @@ function OracleDashboard() {
   }, [answerLastUpdateTs]);
 
   useEffect(() => {
+    if (!apiKeyName) return;
     // check DB / backend API readiness
     checkReady();
 

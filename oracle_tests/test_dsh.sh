@@ -15,7 +15,7 @@ fi
 echo "Running stage $stage with task type optimization"
 
 # use jq to merge the json file with the json file containing the data
-jq ".stage = \"$stage\"" ./test_optimize_dsh.json > ./temp.json
+jq ".stage = \"$stage\"" ./test_data.json > ./temp.json
 
 curl 'http://0.0.0.0:1235/oracle/test_stage' --header 'Content-Type: application/json' -d @./temp.json | jq --indent 2
 

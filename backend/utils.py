@@ -259,16 +259,6 @@ async def execute_code(
         return err, out
 
 
-def escape_markdown(text: str) -> str:
-    """
-    Escapes special characters in a string so it is correctly parsed as Markdown.
-    """
-    # escape curly brackets
-    escaped_text = text.replace("{", "").replace("}", "")
-
-    return escaped_text
-
-
 def encode_image(image_path):
     """
     Encodes an image to base64.

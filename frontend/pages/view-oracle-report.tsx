@@ -42,7 +42,9 @@ export default function ViewOracleReport() {
 
   const [mdx, setMDX] = useState<string | null>(null);
 
-  const [currentFeedback, setCurrentFeedback] = useState<string | null>(null);
+  const [currentFeedback, setCurrentFeedback] = useState<string | null>(
+    undefined
+  );
 
   const [error, setError] = useState<string | null>(null);
 
@@ -90,7 +92,7 @@ export default function ViewOracleReport() {
         setImages(images.images);
         setTables(tables.tables);
 
-        setCurrentFeedback(data.feedback);
+        setCurrentFeedback(data.feedback || undefined);
 
         setMDX(mdx);
       } catch (e) {
@@ -199,7 +201,7 @@ export default function ViewOracleReport() {
           editorProps={{
             attributes: {
               class:
-                "prose mx-auto p-2 mb-12 md:mb-0 focus:outline-none prose-code:text-gray-200 prose-code:text-shadow-none",
+                "oracle-report-tiptap prose prose-base mx-auto p-2 mb-12 md:mb-0 focus:outline-none",
             },
           }}
         />
