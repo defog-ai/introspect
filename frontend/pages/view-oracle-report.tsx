@@ -1,7 +1,20 @@
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { useRouter } from "next/router";
-import { createContext, useContext, useEffect, useState } from "react";
-import { SpinningLoader } from "@defogdotai/agents-ui-components/core-ui";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  Button,
+  Modal,
+  SpinningLoader,
+  MessageManagerContext,
+  TextArea,
+} from "@defogdotai/agents-ui-components/core-ui";
 import { parseTables, parseImages } from "$utils/oracleUtils";
 
 import StarterKit from "@tiptap/starter-kit";
@@ -25,9 +38,17 @@ export default function ViewOracleReport() {
   const [tables, setTables] = useState<any>({});
   const [images, setImages] = useState<any>({});
 
+  const feedbackTextArea = useRef<HTMLTextAreaElement>(null);
+
   const [mdx, setMDX] = useState<string | null>(null);
 
+  const [currentFeedback, setCurrentFeedback] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
+
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
+
+  const message = useContext(MessageManagerContext);
 
   useEffect(() => {
     const getMDX = async (reportId: string, keyName: string) => {
@@ -69,6 +90,8 @@ export default function ViewOracleReport() {
         setImages(images.images);
         setTables(tables.tables);
 
+        setCurrentFeedback(data.feedback);
+
         setMDX(mdx);
       } catch (e) {
         console.error(e);
@@ -82,6 +105,37 @@ export default function ViewOracleReport() {
       getMDX(reportId, keyName);
     }
   }, [router.query]);
+
+  const submitFeedback = useCallback(async () => {
+    if (!feedbackTextArea.current || !feedbackTextArea.current.value) {
+      message.info("Feedback cannot be empty");
+      return;
+    }
+
+    await fetch(setupBaseUrl("http", `oracle/feedback_report`), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        report_id: router.query.reportId,
+        key_name: router.query.keyName,
+        feedback: feedbackTextArea.current.value,
+      }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          throw Error(await res.text());
+        }
+        message.success("Feedback submitted");
+
+        setFeedbackModalOpen(false);
+      })
+      .catch((e) => {
+        console.error(e);
+        message.error("Could not submit feedback");
+      });
+  }, [router.query.reportId, router.query.keyName, message]);
 
   if (error) {
     return (
@@ -117,17 +171,39 @@ export default function ViewOracleReport() {
         keyName: router.query.keyName,
       }}
     >
-      <EditorProvider
-        extensions={extensions}
-        content={mdx}
-        editable={false}
-        editorProps={{
-          attributes: {
-            class:
-              "prose mx-auto p-2 focus:outline-none prose-code:text-gray-200 prose-code:text-shadow-none",
-          },
-        }}
-      />
+      <div className="relative">
+        <div className="fixed h-12 bottom-0 w-full bg-gray-50 md:bg-transparent md:w-auto md:sticky md:top-0 p-2 z-10 md:h-0">
+          <Button onClick={() => setFeedbackModalOpen(true)}>
+            Give feedback
+          </Button>
+
+          <Modal
+            rootClassNames="w-96"
+            open={feedbackModalOpen}
+            onOk={submitFeedback}
+            onCancel={() => setFeedbackModalOpen(false)}
+            title="Write your feedback and press submit"
+            okText="Submit"
+          >
+            <TextArea
+              autoResize={true}
+              ref={feedbackTextArea}
+              defaultValue={currentFeedback}
+            ></TextArea>
+          </Modal>
+        </div>
+        <EditorProvider
+          extensions={extensions}
+          content={mdx}
+          editable={false}
+          editorProps={{
+            attributes: {
+              class:
+                "prose mx-auto p-2 mb-12 md:mb-0 focus:outline-none prose-code:text-gray-200 prose-code:text-shadow-none",
+            },
+          }}
+        />
+      </div>
     </OracleReportContext.Provider>
   );
 }

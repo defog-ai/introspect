@@ -357,11 +357,14 @@ async def get_report_mdx(req: GetReportMDXRequest):
         if report:
             mdx = report.outputs.get("export", {}).get("mdx", None)
             md = report.outputs.get("export", {}).get("md", None)
+            feedback = report.feedback
 
             # clean mdx
             mdx = escape_markdown(mdx)
 
-            return JSONResponse(status_code=200, content={"mdx": mdx, "md": md})
+            return JSONResponse(
+                status_code=200, content={"mdx": mdx, "md": md, "feedback": feedback}
+            )
         else:
             return JSONResponse(
                 status_code=404,
@@ -440,13 +443,39 @@ async def rename_report(req: Request):
     return JSONResponse(status_code=501, content={"error": "Not Implemented"})
 
 
+class OracleReportFeedbackRequest(BaseModel):
+    key_name: str
+    report_id: int
+    feedback: str
+
+
 @router.post("/oracle/feedback_report")
-async def feedback_report(req: Request):
+async def feedback_report(req: OracleReportFeedbackRequest):
     """
     Given a report id and the associated feedback, save the feedback with the report.
     """
-    body = await req.json()
-    # TODO: Implement this endpoint
+    LOGGER.info(req.key_name)
+    LOGGER.info(req.report_id)
+    LOGGER.info(req.feedback)
+
+    api_key = get_api_key_from_key_name(req.key_name)
+
+    with Session(engine) as session:
+        stmt = select(OracleReports).where(
+            OracleReports.api_key == api_key,
+            OracleReports.report_id == req.report_id,
+        )
+        result = session.execute(stmt)
+        report = result.scalar_one_or_none()
+        if report:
+            report.feedback = req.feedback
+            session.commit()
+            return JSONResponse(status_code=200, content={"message": "Feedback saved"})
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Report not found"},
+            )
     return JSONResponse(status_code=501, content={"error": "Not Implemented"})
 
 
