@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Union
 from celery.utils.log import get_task_logger
 from prophet import Prophet
 from prophet.serialize import model_to_json
-from xgboost import XGBClassifier, XGBRegressor
 import pandas as pd
 
 from db_utils import get_db_type_creds
@@ -42,13 +41,6 @@ async def predict(
 
     We will first start by getting the target variable and the features from the
     data, focusing on getting the following correct:
-    - type of ML objective (time-series, classification, regression). While time-series
-        is a subset of regression, there are some packages that make our life easier
-        by handling things like seasonality, change point detection, etc. for us.
-    - type of model to use (linear regression, random forest, etc.) based on user
-        intent. E.g. If we want to overweight on interpretability, we might choose
-        linear regression, if we want to overweight on accuracy, we might choose
-        xgboost.
     - target variable and features to use and any transformations needed (e.g. log
         transformation, scaling, etc.) based on earlier explorations.
     - unit of prediction (individual, aggregate, time-period to aggregate / predict over etc.)
@@ -104,32 +96,27 @@ async def predict(
         independent_variables.append(independent_variable)
     dependent_variable = explore["dependent_variable"]
     dependent_variable_description = dependent_variable["description"]
-    objective_type = dependent_variable["objective_type"]
     formulate_request = {
         "api_key": api_key,
         "problem_statement": problem_statement,
         "context": context,
-        "objective_type": objective_type,
         "dependent_variable_description": dependent_variable_description,
         "independent_variables": independent_variables,
     }
-    response = await make_request(
+    formulate_response = await make_request(
         f"{DEFOG_BASE_URL}/oracle/predict/formulate",
         data=formulate_request,
     )
-    objective_type = response.get("objective_type")
-    if not objective_type or objective_type not in OBJECTIVE_TYPES:
-        raise ValueError(f"Invalid model type: {objective_type}")
-    prediction_sql_question = response.get("question")
+    prediction_sql_question = formulate_response.get("question")
     if not prediction_sql_question:
         raise Exception(
             "Could not get prediction question from /oracle/predict/formulate"
         )
-    suggested_sql = response.get("suggested_sql")
-    dependent_variable_name = response.get("dependent_variable_name")
-    unit_of_analysis = response.get("unit_of_analysis")
-    fit_kwargs = response.get("fit_kwargs", {})
-    predict_kwargs = response.get("predict_kwargs", {})
+    suggested_sql = formulate_response.get("suggested_sql")
+    dependent_variable_name = formulate_response.get("dependent_variable_name")
+    unit_of_analysis = formulate_response.get("unit_of_analysis")
+    fit_kwargs = formulate_response.get("fit_kwargs", {})
+    predict_kwargs = formulate_response.get("predict_kwargs", {})
     ts = save_timing(ts, "formulate prediction request", timings)
 
     db_type, db_creds = get_db_type_creds(api_key)
@@ -177,20 +164,14 @@ async def predict(
     ts = save_timing(ts, f"fetch data", timings)
 
     # format dataframe for model training
-    if objective_type == TIME_SERIES:
-        data.rename(columns={dependent_variable_name: "y"}, inplace=True)
-        # verify that we have ds and y columns
-        if "ds" not in data.columns:
-            raise ValueError("Missing 'ds' column in data")
-        if "y" not in data.columns:
-            raise ValueError("Missing 'y' column in data")
-        # remove timezone info from ds column
-        data["ds"] = pd.to_datetime(data["ds"]).dt.tz_localize(None)
-    elif objective_type in [CLASSIFICATION, REGRESSION]:
-        if dependent_variable_name not in data.columns:
-            raise ValueError(
-                f"Missing dependent variable column: {dependent_variable_name}"
-            )
+    data.rename(columns={dependent_variable_name: "y"}, inplace=True)
+    # verify that we have ds and y columns
+    if "ds" not in data.columns:
+        raise ValueError("Missing 'ds' column in data")
+    if "y" not in data.columns:
+        raise ValueError("Missing 'y' column in data")
+    # remove timezone info from ds column
+    data["ds"] = pd.to_datetime(data["ds"]).dt.tz_localize(None)
     LOGGER.debug(f"Data shape: {data.shape}")
     LOGGER.debug(f"Data columns: {data.columns}")
     LOGGER.debug(f"Data head: {data.head()}")
@@ -207,12 +188,12 @@ async def predict(
     train_data_csv = data.to_csv(index=False, header=True, float_format="%.3f")
     LOGGER.debug(f"Using data to train: {train_data_csv}")
     model = fit_model(
-        data, objective_type, dependent_variable_name, model_path, fit_kwargs
+        data, model_path, fit_kwargs
     )
     ts = save_timing(ts, "fit model", timings)
 
     # make predictions
-    predictions = predict_data(model, objective_type, predict_kwargs)
+    predictions = predict_data(model, predict_kwargs)
     LOGGER.debug(f"Predictions type: {type(predictions)}")
     predictions_csv = predictions[["ds", "yhat", "yhat_lower", "yhat_upper"]].to_csv(
         index=False, header=True, float_format="%.3f"
@@ -225,7 +206,7 @@ async def predict(
         "ylabel": dependent_variable_description,
     }
     chart_paths = chart_predictions(
-        objective_type, model, predictions, report_model_dir, chart_kwargs
+        model, predictions, report_model_dir, chart_kwargs
     )
     LOGGER.debug(f"Chart paths: {chart_paths}")
     ts = save_timing(ts, "chart predictions", timings)
@@ -234,7 +215,6 @@ async def predict(
     summarize_request = {
         "api_key": api_key,
         "problem_statement": problem_statement,
-        "objective_type": objective_type,
         "dependent_variable_description": dependent_variable_description,
         "unit_of_analysis": unit_of_analysis,
         "input_data_csv": train_data_csv,
@@ -255,7 +235,6 @@ async def predict(
     )
 
     outputs = {
-        "objective_type": objective_type,
         "model_path": model_path,
         "chart_paths": chart_paths,
         "working": {
@@ -274,65 +253,37 @@ async def predict(
 
 def fit_model(
     data: pd.DataFrame,
-    objective_type: str,
-    dependent_variable: str,
     model_path: str,
     fit_kwargs: Dict[str, Any],
 ):
     """
     This function will train a machine learning model on the data provided.
     """
-    if objective_type == TIME_SERIES:
-        model = Prophet()
-        model.fit(data)
-        model_json = model_to_json(model)
-        with open(model_path, "w") as f:
-            f.write(model_json)
-        return model
-    elif objective_type == CLASSIFICATION:
-        model = XGBClassifier()
-        y = data[dependent_variable]
-        X = data.drop(dependent_variable, inplace=False, axis=1)
-        model.fit(X, y)
-        model.save_model(model_path)
-        return model
-    elif objective_type == REGRESSION:
-        model = XGBRegressor()
-        y = data[dependent_variable]
-        X = data.drop(dependent_variable, inplace=False, axis=1)
-        model.fit(X, y)
-        model.save_model(model_path)
-        return model
-    else:
-        raise ValueError(f"Invalid model type: {objective_type}")
+    model = Prophet()
+    model.fit(data)
+    model_json = model_to_json(model)
+    with open(model_path, "w") as f:
+        f.write(model_json)
+    return model
 
 
 def predict_data(
-    model: Union[Prophet, XGBClassifier, XGBRegressor],
-    objective_type: str,
+    model: Prophet,
     predict_kwargs: Dict[str, Any],
 ) -> pd.DataFrame:
     """
     This function will generate predictions based on the model trained.
     """
-    if objective_type == TIME_SERIES:
-        future = model.make_future_dataframe(
-            periods=predict_kwargs.get("periods", 1),
-            freq=predict_kwargs.get("freq", "D"),
-        )
-        forecast = model.predict(future)
-        return forecast
-    elif objective_type == CLASSIFICATION:
-        raise NotImplementedError("Classification prediction not implemented")
-    elif objective_type == REGRESSION:
-        raise NotImplementedError("Regression prediction not implemented")
-    else:
-        raise ValueError(f"Invalid model type: {objective_type}")
+    future = model.make_future_dataframe(
+        periods=predict_kwargs.get("periods", 1),
+        freq=predict_kwargs.get("freq", "D"),
+    )
+    forecast = model.predict(future)
+    return forecast
 
 
 def chart_predictions(
-    objective_type: str,
-    model: Union[Prophet, XGBClassifier, XGBRegressor],
+    model: Prophet,
     forecast: pd.DataFrame,
     chart_dir: str,
     chart_kwargs: Dict[str, Any] = {},
@@ -340,20 +291,13 @@ def chart_predictions(
     """
     This function will generate a chart based on the predictions generated.
     """
-    if objective_type == TIME_SERIES:
-        xlabel = chart_kwargs.get("xlabel", "Date")
-        ylabel = chart_kwargs.get("ylabel")
-        fig = model.plot(forecast, xlabel=xlabel, ylabel=ylabel, figsize=FIGSIZE)
-        path_forecast = os.path.join(chart_dir, "forecast.png")
-        fig.savefig(path_forecast)
-        # plot components and save
-        fig = model.plot_components(forecast, figsize=FIGSIZE)
-        path_components = os.path.join(chart_dir, "components.png")
-        fig.savefig(path_components)
-        return [path_forecast, path_components]
-    elif objective_type == CLASSIFICATION:
-        raise NotImplementedError("Classification charting not implemented")
-    elif objective_type == REGRESSION:
-        raise NotImplementedError("Regression charting not implemented")
-    else:
-        raise ValueError(f"Invalid model type: {objective_type}")
+    xlabel = chart_kwargs.get("xlabel", "Date")
+    ylabel = chart_kwargs.get("ylabel")
+    fig = model.plot(forecast, xlabel=xlabel, ylabel=ylabel, figsize=FIGSIZE)
+    path_forecast = os.path.join(chart_dir, "forecast.png")
+    fig.savefig(path_forecast)
+    # plot components and save
+    fig = model.plot_components(forecast, figsize=FIGSIZE)
+    path_components = os.path.join(chart_dir, "components.png")
+    fig.savefig(path_components)
+    return [path_forecast, path_components]
