@@ -60,6 +60,10 @@ function OracleDashboard() {
   const [reports, setReports] = useState([]);
 
   const checkReady = async () => {
+    // skip if apiKeyName is not set
+    if (!apiKeyName) {
+      return;
+    }
     const token = localStorage.getItem("defogToken");
     const resCheck = await fetch(setupBaseUrl("http", `integration/check`), {
       method: "POST",

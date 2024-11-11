@@ -68,6 +68,16 @@ async def check_route(req: CheckRequest):
             },
         )
     try:
+        execute_query("SELECT 1;", api_key, db_type, db_creds, retries=0)
+    except Exception as e:
+        LOGGER.error(e)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": f"Error connecting to the database: {e}.\nPlease verify your database connection at the `Manage Database` tab."
+            },
+        )
+    try:
         res = requests.get(f"{DEFOG_BASE_URL}")
         res = await make_request(f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key})
         if res.get("status", "") != "success":
