@@ -113,7 +113,6 @@ async def predict(
             "Could not get prediction question from /oracle/predict/formulate"
         )
     suggested_sql = formulate_response.get("suggested_sql")
-    dependent_variable_name = formulate_response.get("dependent_variable_name")
     unit_of_analysis = formulate_response.get("unit_of_analysis")
     fit_kwargs = formulate_response.get("fit_kwargs", {})
     predict_kwargs = formulate_response.get("predict_kwargs", {})
@@ -163,8 +162,6 @@ async def predict(
         return None
     ts = save_timing(ts, f"fetch data", timings)
 
-    # format dataframe for model training
-    data.rename(columns={dependent_variable_name: "y"}, inplace=True)
     # verify that we have ds and y columns
     if "ds" not in data.columns:
         raise ValueError("Missing 'ds' column in data")
@@ -228,18 +225,12 @@ async def predict(
     LOGGER.debug(f"Summarize response: {response}")
     save_and_log(ts, "summarize predictions", timings)
 
-    target = (
-        dependent_variable_description
-        if dependent_variable_name == "y"
-        else dependent_variable_name
-    )
-
     outputs = {
         "model_path": model_path,
         "chart_paths": chart_paths,
         "working": {
-            "target": target,
-            "features": data.columns.drop(dependent_variable_name).tolist(),
+            "target": dependent_variable_description,
+            "features": "ds",
             "unit_of_analysis": unit_of_analysis,
             "prediction_sql": sql,
             "fit_kwargs": fit_kwargs,
