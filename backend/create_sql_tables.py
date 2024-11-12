@@ -9,7 +9,6 @@ from sqlalchemy import (
     Text,
     Boolean,
     DateTime,
-    text,
 )
 from sqlalchemy.dialects.sqlite import JSON
 import os

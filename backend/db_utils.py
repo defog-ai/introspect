@@ -1,16 +1,30 @@
 import asyncio
 import datetime
-import inspect
 import logging
 import os
 import traceback
-from typing import Dict, Tuple
 import uuid
+from typing import Dict, Tuple
 
 import redis
 from generic_utils import make_request
-from sqlalchemy import create_engine, delete, insert, select, text, update
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Integer,
+    JSON,
+    MetaData,
+    Text,
+    create_engine,
+    delete,
+    insert,
+    select,
+    text,
+    update,
+)
 from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.ext.declarative import declarative_base
 from utils import YieldList
 from utils_logging import LOGGER
 
@@ -104,27 +118,177 @@ elif INTERNAL_DB == "sqlserver":
         )
         LOGGER.info(f"Created temp tables engine for sqlserver: {temp_tables_engine}")
 
-Base = automap_base()
-# reflect the tables
-Base.prepare(autoload_with=engine)
+metadata = MetaData()
 
-Docs = Base.classes.defog_docs
-RecentlyViewedDocs = Base.classes.defog_recently_viewed_docs
-Analyses = Base.classes.defog_analyses
-TableCharts = Base.classes.defog_table_charts
-Tools = Base.classes.defog_tools
-Users = Base.classes.defog_users
-Feedback = Base.classes.defog_plans_feedback
-DbCreds = Base.classes.defog_db_creds
+Base = declarative_base(metadata=metadata)
+
+
+class Docs(Base):
+    __tablename__ = "defog_docs"
+    doc_id = Column(Text, primary_key=True)
+    doc_md = Column(Text)
+    doc_blocks = Column(JSON)
+    editor_defog_blocks = Column(JSON)
+    api_key = Column(Text, nullable=False)
+    timestamp = Column(DateTime)
+    username = Column(Text)
+    doc_xml = Column(Text)
+    doc_uint8 = Column(JSON)
+    doc_title = Column(Text)
+    archived = Column(Boolean, default=False)
+
+
+class RecentlyViewedDocs(Base):
+    __tablename__ = "defog_recently_viewed_docs"
+    username = Column(Text, primary_key=True)
+    api_key = Column(Text, nullable=False)
+    recent_docs = Column(JSON)
+
+
+class Analyses(Base):
+    __tablename__ = "defog_analyses"
+    analysis_id = Column(Text, primary_key=True)
+    api_key = Column(Text, nullable=False)
+    email = Column(Text)
+    timestamp = Column(DateTime)
+    approaches = Column(JSON)
+    clarify = Column(JSON)
+    assignment_understanding = Column(JSON)
+    understand = Column(JSON)
+    gen_approaches = Column(JSON)
+    user_question = Column(Text)
+    gen_steps = Column(JSON)
+    follow_up_analyses = Column(JSON)
+    parent_analyses = Column(JSON)
+    is_root_analysis = Column(Boolean, default=True)
+    root_analysis_id = Column(Text)
+    direct_parent_id = Column(Text)
+    username = Column(Text)
+
+
+class TableCharts(Base):
+    __tablename__ = "defog_table_charts"
+    table_id = Column(Text, primary_key=True)
+    data_csv = Column(JSON)
+    query = Column(Text)
+    chart_images = Column(JSON)
+    sql = Column(Text)
+    code = Column(Text)
+    tool = Column(JSON)
+    edited = Column(Integer)
+    error = Column(Text)
+    reactive_vars = Column(JSON)
+
+
+class ToolRuns(Base):
+    __tablename__ = "defog_tool_runs"
+    tool_run_id = Column(Text, primary_key=True)
+    step = Column(JSON)
+    outputs = Column(JSON)
+    tool_name = Column(Text)
+    tool_run_details = Column(JSON)
+    error_message = Column(Text)
+    edited = Column(Integer)
+    analysis_id = Column(Text)
+
+
+class Tools(Base):
+    __tablename__ = "defog_tools"
+    tool_name = Column(Text, primary_key=True)
+    function_name = Column(Text, nullable=False)
+    description = Column(Text, nullable=False)
+    code = Column(Text, nullable=False)
+    input_metadata = Column(JSON)
+    output_metadata = Column(JSON)
+    toolbox = Column(Text, default=None)
+    disabled = Column(Boolean, default=False)
+    cannot_delete = Column(Boolean, default=False)
+    cannot_disable = Column(Boolean, default=False)
+
+
+class Users(Base):
+    __tablename__ = "defog_users"
+    username = Column(Text, primary_key=True)
+    hashed_password = Column(Text)
+    token = Column(Text, nullable=False)
+    user_type = Column(Text, nullable=False)
+    created_at = Column(DateTime)
+    allowed_dbs = Column(Text, nullable=True)
+
+
+class PlansFeedback(Base):
+    __tablename__ = "defog_plans_feedback"
+    analysis_id = Column(Text, primary_key=True)
+    api_key = Column(Text, nullable=False)
+    user_question = Column(Text, nullable=False)
+    username = Column(Text, nullable=False)
+    comments = Column(JSON)
+    is_correct = Column(Boolean, nullable=False)
+    # metadata is a reserved attribute in sqlalchemy so we need to map it to a different variable name
+    feedback_metadata = Column(Text, name="metadata", nullable=False)
+    client_description = Column(Text)
+    glossary = Column(Text)
+    db_type = Column(Text, nullable=False)
+
+
+class DbCreds(Base):
+    __tablename__ = "defog_db_creds"
+    api_key = Column(Text, primary_key=True)
+    db_type = Column(Text)
+    db_creds = Column(JSON)
+
+
+if ORACLE_ENABLED:
+
+    class OracleReports(Base):
+        __tablename__ = "oracle_reports"
+        report_id = Column(Integer, primary_key=True, autoincrement=True)
+        report_name = Column(Text)
+        status = Column(Text)
+        created_ts = Column(DateTime)
+        api_key = Column(Text)
+        username = Column(Text)
+        inputs = Column(JSON)
+        outputs = Column(JSON)
+        feedback = Column(Text)
+
+    class OracleClarifications(Base):
+        __tablename__ = "oracle_clarifications"
+        clarification_id = Column(Text, primary_key=True)
+        report_id = Column(Text, primary_key=True)
+        llm_question = Column(Text)
+        user_response = Column(Text)
+        created_ts = Column(DateTime)
+        resolved_ts = Column(DateTime)
+
+    class OracleSources(Base):
+        __tablename__ = "oracle_sources"
+        link = Column(Text, primary_key=True)
+        title = Column(Text)
+        position = Column(Integer)
+        source_type = Column(Text)
+        attributes = Column(Text)
+        snippet = Column(Text)
+        text_parsed = Column(Text)
+        text_summary = Column(Text)
+
+
+# tables should already be created in create_sql_tables.py
+Base.metadata.create_all(engine)
 
 if ORACLE_ENABLED:
     try:
-        OracleSources = Base.classes.oracle_sources
-        OracleClarifications = Base.classes.oracle_clarifications
-        OracleReports = Base.classes.oracle_reports
         ImportedTablesBase = automap_base()
+
+        class ImportedTables(ImportedTablesBase):
+            __tablename__ = "imported_tables"
+            table_link = Column(Text, primary_key=True)
+            table_position = Column(Integer)
+            table_name = Column(Text)
+            table_description = Column(Text)
+
         ImportedTablesBase.prepare(autoload_with=imported_tables_engine)
-        ImportedTables = ImportedTablesBase.classes.imported_tables
+        ImportedTablesBase.classes.imported_tables = ImportedTables
     except Exception as e:
         LOGGER.debug(f"Error loading oracle tables: {e}")
 

@@ -26,6 +26,14 @@ IMPORTED_SCHEMA = "imported"  # schema name to store imported tables
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(LOG_LEVEL)
 
+def get_source_type(link: str) -> str:
+    if "http" in link:
+        return "webpage"
+    elif ".pdf" in link:
+        return "pdf"
+    else:
+        LOGGER.error(f"Unknown source type for link: {link}")
+        return "unknown"
 
 def update_imported_tables_db(
     link: str,
