@@ -111,7 +111,15 @@ a {
   }
 } */
 
-.oracle-report-tiptap pre code{
-  color: theme('colors.gray.200');
+.oracle-report-tiptap pre code {
+  color: theme("colors.gray.200");
   text-shadow: none;
+}
+
+.oracle-report-tiptap li br {
+  display: none;
+}
+
+.oracle-report-tiptap li p {
+  margin: 0;
 }
