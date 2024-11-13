@@ -44,6 +44,8 @@ async def sources_list_route(req: SourcesListRequest):
     """
     List all the sources and their imported tables from the imported_tables database,
     namely where the data was taken from and the table name and description.
+    Returns a dictionary of sources with the link as the key and the source title,
+    type, summary, and tables as the value.
     """
     if not validate_user(req.token):
         return JSONResponse(
@@ -105,14 +107,10 @@ async def sources_list_route(req: SourcesListRequest):
     return JSONResponse(status_code=200, content=sources)
 
 
-class Source(BaseModel):
-    link: str
-
-
 class ImportSourcesRequest(BaseModel):
     token: str
     key_name: str
-    sources: List[Source]
+    links: List[str]
 
 
 @router.post("/sources/import")
@@ -129,13 +127,13 @@ async def sources_import_route(req: ImportSourcesRequest):
                 "message": "Invalid username or password",
             },
         )
-    if not req.sources:
+    if not req.links:
         return
     api_key = get_api_key_from_key_name(req.key_name)
     sources_to_parse = []
-    for source in req.sources:
-        source_type = get_source_type(source.link)
-        sources_to_parse.append({"link": source.link, "type": source_type})
+    for link in req.links:
+        source_type = get_source_type(link)
+        sources_to_parse.append({"link": link, "type": source_type})
     json_data = {
         "api_key": api_key,
         "sources": sources_to_parse,
