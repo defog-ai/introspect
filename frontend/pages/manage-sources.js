@@ -78,7 +78,6 @@ const ManageSources = () => {
     if (response.ok) {
       const data = await response.json();
       setImportedSources(data);
-      console.log("imported sources", importedSources);
     } else {
       message.error("Failed to get sources");
     }
