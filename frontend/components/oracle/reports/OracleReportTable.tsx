@@ -37,6 +37,7 @@ function OracleReportTable(props) {
   return (
     <NodeViewWrapper className="react-component not-prose">
       <Tabs
+        // @ts-ignore
         tabs={tabs}
         size="small"
         rootClassNames="lg:-mx-40 my-10"

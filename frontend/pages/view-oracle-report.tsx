@@ -1,13 +1,6 @@
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { useRouter } from "next/router";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   Button,
   Modal,
@@ -101,8 +94,14 @@ export default function ViewOracleReport() {
       }
     };
 
-    const reportId = router?.query?.reportId;
-    const keyName = router?.query?.keyName;
+    const reportId = Array.isArray(router?.query?.reportId)
+      ? router?.query?.reportId[0]
+      : router?.query?.reportId;
+
+    const keyName = Array.isArray(router?.query?.keyName)
+      ? router?.query?.keyName[0]
+      : router?.query?.keyName;
+
     if (reportId && keyName) {
       getMDX(reportId, keyName);
     }
@@ -169,12 +168,17 @@ export default function ViewOracleReport() {
       value={{
         tables: tables,
         images: images,
-        reportId: router.query.reportId,
-        keyName: router.query.keyName,
+        reportId: Array.isArray(router.query.reportId)
+          ? router.query.reportId[0]
+          : router.query.reportId,
+        keyName: Array.isArray(router.query.keyName)
+          ? router.query.keyName[0]
+          : router.query.keyName,
       }}
     >
       <div className="relative">
         <div className="fixed h-12 bottom-0 w-full bg-gray-50 md:bg-transparent md:w-auto md:sticky md:top-0 p-2 z-10 md:h-0">
+          {/* @ts-ignore */}
           <Button onClick={() => setFeedbackModalOpen(true)}>
             Give feedback
           </Button>
