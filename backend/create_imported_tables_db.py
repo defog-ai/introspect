@@ -4,7 +4,7 @@ from sqlalchemy import (
     MetaData,
     Table,
     Column,
-    Float,
+    Integer,
     Text,
     text,
 )
@@ -15,8 +15,9 @@ imported_metadata = MetaData()
 imported_tables = Table(
     "imported_tables",
     imported_metadata,
+    Column("api_key", Text, primary_key=True),
     Column("table_link", Text, primary_key=True),
-    Column("table_position", Float, primary_key=True),
+    Column("table_position", Integer, primary_key=True),
     Column("table_name", Text),
     Column("table_description", Text),
 )

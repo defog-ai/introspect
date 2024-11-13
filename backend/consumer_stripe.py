@@ -383,7 +383,7 @@ async def callback(ch, method, properties, body):
         # update imported_tables database with the ga schema and tables
         link = "stripe"
         success, old_table_name = update_imported_tables_db(
-            link, table_index, table_name, csv_data, STRIPE_SCHEMA
+            api_key, link, table_index, table_name, csv_data, STRIPE_SCHEMA
         )
         if not success:
             LOGGER.error(
@@ -407,7 +407,12 @@ async def callback(ch, method, properties, body):
 
         # update imported_tables table entries in internal db
         update_imported_tables(
-            link, table_index, old_table_name, schema_table_name, table_description=None
+            api_key,
+            link,
+            table_index,
+            old_table_name,
+            schema_table_name,
+            table_description=None,
         )
 
     # get and update metadata for {api_key}-imported

@@ -26,6 +26,7 @@ IMPORTED_SCHEMA = "imported"  # schema name to store imported tables
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(LOG_LEVEL)
 
+
 def get_source_type(link: str) -> str:
     if "http" in link:
         return "webpage"
@@ -35,7 +36,9 @@ def get_source_type(link: str) -> str:
         LOGGER.error(f"Unknown source type for link: {link}")
         return "unknown"
 
+
 def update_imported_tables_db(
+    api_key: str,
     link: str,
     table_index: int,
     new_table_name: str,
@@ -49,7 +52,9 @@ def update_imported_tables_db(
     This function should always precede `update_imported_tables` as it first retrieves the old table name if the
     table (defined by its link/index) already exists in the imported_tables table.
     """
-    LOGGER.debug(f"Updating imported tables database with table: {new_table_name}")
+    LOGGER.debug(
+        f"Updating imported tables database with schema.table: `{schema_name}.{new_table_name}`"
+    )
     # create schema in imported_tables db if it doesn't exist
     try:
         if INTERNAL_DB == "postgres":
@@ -79,6 +84,7 @@ def update_imported_tables_db(
 
     # check if link and table_index already exist in imported_tables table
     stmt = select(ImportedTables.table_name).where(
+        ImportedTables.api_key == api_key,
         ImportedTables.table_link == link,
         ImportedTables.table_position == table_index,
     )
@@ -141,6 +147,7 @@ def update_imported_tables_db(
 
 
 def update_imported_tables(
+    api_key: str,
     link: str,
     table_index: int,
     old_table_name: Optional[str],
@@ -158,6 +165,7 @@ def update_imported_tables(
             update_stmt = (
                 update(ImportedTables)
                 .where(
+                    ImportedTables.api_key == api_key,
                     ImportedTables.table_link == link,
                     ImportedTables.table_position == table_index,
                 )
@@ -177,6 +185,7 @@ def update_imported_tables(
         try:
             # insert the table's info into imported_tables table
             table_data = {
+                "api_key": api_key,
                 "table_link": link,
                 "table_position": table_index,
                 "table_name": table_name,

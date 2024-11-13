@@ -173,6 +173,7 @@ oracle_clarifications = Table(
 oracle_sources = Table(
     "oracle_sources",
     metadata,
+    Column("api_key", Text, primary_key=True),
     Column("link", Text, primary_key=True),
     Column("title", Text),
     Column("position", Integer),

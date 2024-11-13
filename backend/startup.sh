@@ -9,7 +9,7 @@ if [ "$INTERNAL_DB" = "postgres" ]; then
 fi
 
 python3 create_sql_tables.py
-python3 create_new_dbs.py
+python3 create_imported_tables_db.py
 python3 create_admin_user.py
 python3 add_tools_to_db.py
 # test if REDIS_INTERNAL_PORT is up, and sleep until it is

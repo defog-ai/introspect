@@ -23,13 +23,7 @@ from utils_imported_data import (
     update_imported_tables_db,
 )
 from pydantic import BaseModel
-from sqlalchemy import (
-    delete,
-    insert,
-    select,
-    text,
-    update
-)
+from sqlalchemy import delete, insert, select, text, update
 from sqlalchemy.orm import Session
 from utils_imported_data import IMPORTED_SCHEMA
 from utils_logging import LOGGER, save_and_log, save_timing
@@ -41,6 +35,7 @@ router = APIRouter()
 
 class SourcesListRequest(BaseModel):
     token: str
+    key_name: str
     preview_rows: int = 5
 
 
@@ -58,54 +53,56 @@ async def sources_list_route(req: SourcesListRequest):
                 "message": "Invalid username or password",
             },
         )
-    imported_tables = {}
-    with imported_tables_engine.connect() as connection:
-        # get all imported tables non null and sort by table_link and table_position
-        stmt_list = (
-            select(ImportedTables)
-            .where(ImportedTables.table_link != None)
-            .order_by(ImportedTables.table_link, ImportedTables.table_position)
-        )
-        result_list = connection.execute(stmt_list)
-        imported_tables_tuples = result_list.fetchall()
-        LOGGER.debug(f"{len(imported_tables_tuples)} imported tables found")
-        for table in imported_tables_tuples:
-            LOGGER.debug(f"Fetching head for table: {table.table_name}")
-            stmt_head = text(
-                f"SELECT * FROM {table.table_name} LIMIT {req.preview_rows}"
-            )
-            result_head = connection.execute(stmt_head)
-            data_head = result_head.fetchall()
-            stmt_count = text(
-                f"SELECT COUNT(*) FROM {table.table_name}"
-            )
-            result_count = connection.execute(stmt_count)
-            count = result_count.fetchone()[0]
-            if table.table_link not in imported_tables:
-                imported_tables[table.table_link] = []
-            imported_tables[table.table_link].append(
-                {
-                    "table_name": table.table_name,
-                    "table_description": table.table_description,
-                    "data_head": [list(row) for row in data_head],
-                    "num_rows": count,
-                }
-            )
-    LOGGER.debug(f"Imported tables: {imported_tables}")
+    api_key = get_api_key_from_key_name(req.key_name)
     sources = {}
+    # get all sources for api_key from engine
     with engine.connect() as connection:
-        links = imported_tables.keys()
-        # get all sources' summary for the links
-        stmt_sources = select(OracleSources).where(OracleSources.link.in_(links))
+        stmt_sources = select(OracleSources).where(OracleSources.api_key == api_key)
         result_sources = connection.execute(stmt_sources).fetchall()
         for source in result_sources:
             sources[source.link] = {
                 "source_title": source.title,
                 "source_type": source.source_type,
                 "source_summary": source.text_summary,
-                "tables": imported_tables[source.link],
+                "tables": [],
             }
-    return sources
+    source_links = list(sources.keys())
+    # get all imported tables where api_key matches and link is in source_links
+    with imported_tables_engine.connect() as connection:
+        stmt_list = (
+            select(ImportedTables)
+            .where(
+                ImportedTables.api_key == api_key,
+                ImportedTables.table_link.in_(source_links),
+            )
+            .order_by(ImportedTables.table_link, ImportedTables.table_position)
+        )
+        result_list = connection.execute(stmt_list)
+        imported_tables = result_list.fetchall()
+        LOGGER.debug(f"{len(imported_tables)} imported tables found")
+        for table in imported_tables:
+            table_name = str(table.table_name)
+            if not table_name.startswith(IMPORTED_SCHEMA):
+                LOGGER.error(
+                    f"Table name `{table_name}` does not start with `{IMPORTED_SCHEMA}`."
+                )
+                continue
+            LOGGER.debug(f"Fetching head for table: {table_name}")
+            stmt_head = text(f"SELECT * FROM {table_name} LIMIT {req.preview_rows}")
+            result_head = connection.execute(stmt_head)
+            data_head = result_head.fetchall()
+            stmt_count = text(f"SELECT COUNT(*) FROM {table_name}")
+            result_count = connection.execute(stmt_count)
+            count = result_count.fetchone()[0]
+            sources[table.table_link]["tables"].append(
+                {
+                    "table_name": table_name,
+                    "table_description": str(table.table_description),
+                    "table_head": [list(row) for row in data_head],
+                    "table_count": count,
+                }
+            )
+    return JSONResponse(status_code=200, content=sources)
 
 
 class Source(BaseModel):
@@ -153,6 +150,7 @@ async def sources_import_route(req: ImportSourcesRequest):
         if isinstance(attributes, Dict) or isinstance(attributes, List):
             attributes = json.dumps(attributes)
         source_to_insert = {
+            "api_key": api_key,
             "link": source["link"],
             "title": source.get("title", ""),
             "position": source.get("position"),
@@ -166,7 +164,9 @@ async def sources_import_route(req: ImportSourcesRequest):
     with Session(engine) as session:
         # insert the sources into the database if not present. otherwise update
         for source in sources_to_insert:
-            stmt = select(OracleSources).where(OracleSources.link == source["link"])
+            stmt = select(OracleSources).where(
+                OracleSources.api_key == api_key, OracleSources.link == source["link"]
+            )
             result = session.execute(stmt)
             if result.scalar() is None:
                 stmt = insert(OracleSources).values(source)
@@ -175,7 +175,10 @@ async def sources_import_route(req: ImportSourcesRequest):
             else:
                 stmt = (
                     update(OracleSources)
-                    .where(OracleSources.link == source["link"])
+                    .where(
+                        OracleSources.api_key == api_key,
+                        OracleSources.link == source["link"],
+                    )
                     .values(source)
                 )
                 session.execute(stmt)
@@ -245,7 +248,7 @@ async def sources_import_route(req: ImportSourcesRequest):
             # create the table and insert the data into imported_tables database, parsed schema
             data = [column_names] + rows
             success, old_table_name = update_imported_tables_db(
-                link, table_index, table_name, data, IMPORTED_SCHEMA
+                api_key, link, table_index, table_name, data, IMPORTED_SCHEMA
             )
             if not success:
                 LOGGER.error(
@@ -254,6 +257,7 @@ async def sources_import_route(req: ImportSourcesRequest):
                 continue
             # update the imported_tables table in internal db
             update_imported_tables(
+                api_key,
                 link,
                 table_index,
                 old_table_name,
@@ -302,6 +306,7 @@ class DeleteSourceRequest(BaseModel):
     key_name: str
     link: str
 
+
 @router.post("/sources/delete")
 async def delete_source(req: DeleteSourceRequest):
     """
@@ -315,9 +320,12 @@ async def delete_source(req: DeleteSourceRequest):
                 "message": "Invalid username or password",
             },
         )
+    api_key = get_api_key_from_key_name(req.key_name)
     # delete source from oracle_sources
     with Session(engine) as session:
-        stmt = select(OracleSources).where(OracleSources.link == req.link)
+        stmt = select(OracleSources).where(
+            OracleSources.api_key == api_key, OracleSources.link == req.link
+        )
         result = session.execute(stmt)
         source = result.fetchone()
         if source is None:
@@ -328,15 +336,16 @@ async def delete_source(req: DeleteSourceRequest):
                     "message": "Source not found",
                 },
             )
-        stmt = delete(OracleSources).where(OracleSources.link == req.link)
+        stmt = delete(OracleSources).where(
+            OracleSources.api_key == api_key, OracleSources.link == req.link
+        )
         session.execute(stmt)
         session.commit()
     # delete source's tables from imported_tables
     with imported_tables_engine.begin() as imported_tables_connection:
         # get table_name for all entries with the link
-        stmt = (
-            select(ImportedTables.table_name)
-            .where(ImportedTables.table_link == req.link)
+        stmt = select(ImportedTables.table_name).where(
+            ImportedTables.table_link == req.link
         )
         result = imported_tables_connection.execute(stmt)
         tables = result.fetchall()
@@ -413,6 +422,7 @@ async def imported_tables_create_route(req: CreateImportedTablesRequest):
         )
     api_key = get_api_key_from_key_name(req.key_name)
     success, old_table_name = update_imported_tables_db(
+        api_key=api_key,
         link=req.link,
         table_index=req.table_index,
         new_table_name=req.table_name,
@@ -431,6 +441,7 @@ async def imported_tables_create_route(req: CreateImportedTablesRequest):
     LOGGER.debug(f"Old table name: {old_table_name}")
 
     success = update_imported_tables(
+        api_key=api_key,
         link=req.link,
         table_index=req.table_index,
         old_table_name=old_table_name,

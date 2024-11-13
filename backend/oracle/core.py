@@ -381,7 +381,7 @@ async def gather_context(
                 # create the table and insert the data into imported_tables database, parsed schema
                 data = [column_names] + rows
                 success, old_table_name = update_imported_tables_db(
-                    link, table_index, table_name, data, IMPORTED_SCHEMA
+                    api_key, link, table_index, table_name, data, IMPORTED_SCHEMA
                 )
                 if not success:
                     LOGGER.error(
@@ -390,6 +390,7 @@ async def gather_context(
                     continue
                 # update the imported_tables table in internal db
                 update_imported_tables(
+                    api_key,
                     link,
                     table_index,
                     old_table_name,

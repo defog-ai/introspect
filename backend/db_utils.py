@@ -263,6 +263,7 @@ if ORACLE_ENABLED:
 
     class OracleSources(Base):
         __tablename__ = "oracle_sources"
+        api_key = Column(Text, primary_key=True)
         link = Column(Text, primary_key=True)
         title = Column(Text)
         position = Column(Integer)
@@ -282,8 +283,9 @@ if ORACLE_ENABLED:
 
         class ImportedTables(ImportedTablesBase):
             __tablename__ = "imported_tables"
+            api_key = Column(Text, primary_key=True)
             table_link = Column(Text, primary_key=True)
-            table_position = Column(Integer)
+            table_position = Column(Integer, primary_key=True)
             table_name = Column(Text)
             table_description = Column(Text)
 
