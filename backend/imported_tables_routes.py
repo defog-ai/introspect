@@ -137,6 +137,7 @@ async def sources_import_route(req: ImportSourcesRequest):
     json_data = {
         "api_key": api_key,
         "sources": sources_to_parse,
+        "resummarize": True,
     }
     # each source now contains "text" and "summary" keys
     sources_parsed = await make_request(

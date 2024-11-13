@@ -1,7 +1,7 @@
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Col, Divider, Input, Row, Select, Spin, message } from "antd";
 import { BookOutlined, DeleteOutlined } from "@ant-design/icons";
 import { Button } from "@defogdotai/agents-ui-components/core-ui";
@@ -42,63 +42,79 @@ const ManageSources = () => {
   const [importedSources, setImportedSources] = useState([]);
   const [waitImport, setWaitImport] = useState(false);
 
-  const addSource = async () => {
-    const token = localStorage.getItem("defogToken");
-    // make a request to /sources/import with token, key_name, and source
-    setWaitImport(true);
-    const response = await fetch(setupBaseUrl("http", `sources/import`), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token: token,
-        key_name: apiKeyName,
-        links: [inputLink],
-      }),
-    });
-    setWaitImport(false);
-    if (response.ok) {
-      message.info("Source added successfully");
-      setInputLink("");
-      getSources();
-    } else {
+  const getSources = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("defogToken");
+      const response = await fetch(setupBaseUrl("http", `sources/list`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: token,
+          key_name: apiKeyName,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setImportedSources(data);
+      } else {
+        message.error("Failed to get sources");
+      }
+    } catch (e) {
+      message.error(e.message);
+      console.error(e);
+    }
+  }, [apiKeyName, setImportedSources]);
+
+  const addSource = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("defogToken");
+      // make a request to /sources/import with token, key_name, and source
+      setWaitImport(true);
+      const response = await fetch(setupBaseUrl("http", `sources/import`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: token,
+          key_name: apiKeyName,
+          links: [inputLink],
+        }),
+      });
+
+      if (response.ok) {
+        message.info("Source added successfully");
+        setInputLink("");
+        getSources();
+      } else {
+        message.error("Failed to add source");
+      }
+    } catch (e) {
       message.error("Failed to add source");
+      console.error(e);
+    } finally {
+      setWaitImport(false);
     }
-  };
+  }, [apiKeyName, inputLink, setInputLink, getSources]);
 
-  const getSources = async () => {
-    const token = localStorage.getItem("defogToken");
-    const response = await fetch(setupBaseUrl("http", `sources/list`), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token: token,
-        key_name: apiKeyName,
-      }),
-    });
-    if (response.ok) {
-      const data = await response.json();
-      setImportedSources(data);
-    } else {
-      message.error("Failed to get sources");
-    }
-  };
-
-  const deleteSource = (link) => async () => {
-    const token = localStorage.getItem("defogToken");
-    const response = await fetch(setupBaseUrl("http", `sources/delete`), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token: token,
-        key_name: apiKeyName,
-        link: link,
-      }),
-    });
-    if (response.ok) {
-      message.info("Source deleted successfully");
-      getSources();
-    }
-  };
+  const deleteSource = useCallback(
+    async (link) => {
+      const token = localStorage.getItem("defogToken");
+      const response = await fetch(setupBaseUrl("http", `sources/delete`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: token,
+          key_name: apiKeyName,
+          link: link,
+        }),
+      });
+      if (response.ok) {
+        message.info("Source deleted successfully");
+        getSources();
+      }
+    },
+    [apiKeyName, getSources]
+  );
 
   useEffect(() => {
     if (apiKeyName) {
@@ -165,7 +181,7 @@ const ManageSources = () => {
                 </a>
                 <DeleteOutlined
                   className="ml-auto"
-                  onClick={deleteSource(link)}
+                  onClick={() => deleteSource(link)}
                 />
               </div>
               <div>

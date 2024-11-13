@@ -6,7 +6,6 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   InboxOutlined,
-  MinusOutlined,
 } from "@ant-design/icons";
 
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
