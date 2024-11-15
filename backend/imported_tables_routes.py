@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import json
 import os
 import time
@@ -96,13 +97,23 @@ async def sources_list_route(req: SourcesListRequest):
                 stmt_head = text(f"SELECT * FROM {table_name}")
             result_head = connection.execute(stmt_head)
             data_head = result_head.fetchall()
+            # serialize all non-native objects to strings (e.g. datetime)
+            rows = []
+            for row in data_head:
+                row_str = []
+                for cell in row:
+                    if isinstance(cell, str):
+                        row_str.append(cell)
+                    else:
+                        row_str.append(str(cell))
+                rows.append(row_str)
             column_names = list(result_head.keys())
             sources[table.table_link]["tables"].append(
                 {
                     "name": table_name,
                     "description": str(table.table_description),
                     "columns": column_names,
-                    "rows": [list(row) for row in data_head],
+                    "rows": rows,
                 }
             )
     return JSONResponse(status_code=200, content=sources)
