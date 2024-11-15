@@ -3,7 +3,7 @@ import json
 import os
 import time
 import traceback
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -36,7 +36,7 @@ router = APIRouter()
 class SourcesListRequest(BaseModel):
     token: str
     key_name: str
-    preview_rows: int = 5
+    preview_rows: Optional[int] = None
 
 
 @router.post("/sources/list")
@@ -90,18 +90,19 @@ async def sources_list_route(req: SourcesListRequest):
                 )
                 continue
             LOGGER.debug(f"Fetching head for table: {table_name}")
-            stmt_head = text(f"SELECT * FROM {table_name} LIMIT {req.preview_rows}")
+            if req.preview_rows:
+                stmt_head = text(f"SELECT * FROM {table_name} LIMIT {req.preview_rows}")
+            else:
+                stmt_head = text(f"SELECT * FROM {table_name}")
             result_head = connection.execute(stmt_head)
             data_head = result_head.fetchall()
-            stmt_count = text(f"SELECT COUNT(*) FROM {table_name}")
-            result_count = connection.execute(stmt_count)
-            count = result_count.fetchone()[0]
+            column_names = list(result_head.keys())
             sources[table.table_link]["tables"].append(
                 {
-                    "table_name": table_name,
-                    "table_description": str(table.table_description),
-                    "table_head": [list(row) for row in data_head],
-                    "table_count": count,
+                    "name": table_name,
+                    "description": str(table.table_description),
+                    "columns": column_names,
+                    "rows": [list(row) for row in data_head],
                 }
             )
     return JSONResponse(status_code=200, content=sources)

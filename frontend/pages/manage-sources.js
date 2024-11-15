@@ -1,9 +1,10 @@
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
+import Source from "components/manage-sources/Source";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { useCallback, useEffect, useState } from "react";
-import { Col, Divider, Input, Row, Select, Spin, message } from "antd";
-import { BookOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Col, Input, Row, Select, Spin, message } from "antd";
+import { BookOutlined } from "@ant-design/icons";
 import { Button } from "@defogdotai/agents-ui-components/core-ui";
 
 const ManageSources = () => {
@@ -169,27 +170,12 @@ const ManageSources = () => {
         </div>
         <div className="flex flex-col p-1 mt-2">
           {Object.entries(importedSources).map(([link, source], i) => (
-            <div key={link}>
-              <div className="flex">
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href={link}
-                  className="text-lg text-bold"
-                >
-                  {source.source_title ? source.source_title : link}
-                </a>
-                <DeleteOutlined
-                  className="ml-auto"
-                  onClick={() => deleteSource(link)}
-                />
-              </div>
-              <div>
-                <p className="mt-2 text-gray-600">{source.source_summary}</p>
-              </div>
-              {/* TODO add tables */}
-              <Divider />
-            </div>
+            <Source
+              key={link}
+              link={link}
+              source={source}
+              deleteSource={deleteSource}
+            />
           ))}
         </div>
       </Scaffolding>
