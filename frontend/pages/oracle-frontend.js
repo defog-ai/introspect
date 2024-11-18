@@ -337,8 +337,10 @@ function OracleDashboard() {
   const generateReport = async () => {
     // generate a report
     const token = localStorage.getItem("defogToken");
-    const selectedSources = sources.filter((source) => source.selected);
-    console.log("Selected sources:", selectedSources);
+    const selectedSourceLinks = sources
+      .filter((source) => source.selected) // Filter to only selected sources
+      .map((source) => source.link); // Extract the 'link' property of the source
+    console.log("Selected sources:", selectedSourceLinks);
 
     //
 
@@ -351,7 +353,7 @@ function OracleDashboard() {
         token,
         key_name: apiKeyName,
         user_question: userQuestion,
-        sources: selectedSources,
+        sources: selectedSourceLinks,
         task_type: taskType,
         clarifications: clarifications.map((d) => ({
           ...d,
