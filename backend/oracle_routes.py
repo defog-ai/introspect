@@ -73,7 +73,7 @@ async def clarify_question(req: ClarifyQuestionRequest):
 
     # fetch the latest question asked by the user from redis.
     # if the latest question has a longest substring match of over 75% with the
-    # latest question, we will use the task_type from the previous question.
+    # latest question, we will use the task_type from the latest question.
     # else we will infer the task_type from the current question.
     latest_question = redis_client.get(f"{api_key}:oracle:user_question")
     LOGGER.debug(f"Latest question: {latest_question}")
@@ -85,6 +85,9 @@ async def clarify_question(req: ClarifyQuestionRequest):
         LOGGER.debug(f"Overlaps: {overlaps}, overlap_str: {overlap_str}")
         if not overlaps:
             req.task_type = None
+    else:
+        # if there hasn't been a recent question asked, always reinfer instead of reusing
+        req.task_type = None
 
     if not req.task_type:
         clarify_task_type_request = {
