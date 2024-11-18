@@ -244,6 +244,7 @@ async def gather_context(
     sources_summary = []
     for source in sources_parsed:
         source_summary = {
+            "link": source.get("link"),
             "title": source.get("title", ""),
             "type": source.get("type"),
             "summary": source.get("summary"),
@@ -284,6 +285,7 @@ async def gather_context(
             LOGGER.error("No constraints found in combined summary.")
         if "variables" not in combined_summary:
             LOGGER.error("No variables found in combined summary.")
+    combined_summary["sources"] = sources_summary
     LOGGER.debug(f"Context gathered for report {report_id}:\n{combined_summary}")
     save_and_log(ts, "Combined summary", timings)
     return combined_summary
