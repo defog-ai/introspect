@@ -97,7 +97,7 @@ async def clarify_question(req: ClarifyQuestionRequest):
             )
             task_type_str = clarify_task_type_response["task_type"]
             redis_key = f"{api_key}:oracle:user_question"
-            redis_client.set(redis_key, req.user_question)
+            redis_client.set(redis_key, req.user_question, ex=60) # store the question for 60 seconds
             LOGGER.debug(
                 f"Inferred task type: {task_type_str}\nSaved to redis key {redis_key}"
             )
