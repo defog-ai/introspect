@@ -24,7 +24,7 @@ from sqlalchemy.sql import insert, select
 
 from oracle.optimize import optimize
 from oracle.explore import explore_data
-from oracle.core import export, gather_context, predict
+from oracle.core import generate_report, gather_context, predict
 from db_utils import OracleReports, engine, validate_user
 from generic_utils import get_api_key_from_key_name, make_request
 from utils_logging import LOGGER, save_and_log, save_timing
@@ -100,7 +100,9 @@ async def clarify_question(req: ClarifyQuestionRequest):
             )
             task_type_str = clarify_task_type_response["task_type"]
             redis_key = f"{api_key}:oracle:user_question"
-            redis_client.set(redis_key, req.user_question, ex=60) # store the question for 60 seconds
+            redis_client.set(
+                redis_key, req.user_question, ex=60
+            )  # store the question for 60 seconds
             LOGGER.debug(
                 f"Inferred task type: {task_type_str}\nSaved to redis key {redis_key}"
             )
@@ -590,7 +592,7 @@ async def oracle_test_stage(req: Request):
         )
         username = body.get("username", None)
         report_id = body.get("report_id", None)
-        res = await export(
+        res = await generate_report(
             api_key=api_key,
             username=username,
             report_id=report_id,

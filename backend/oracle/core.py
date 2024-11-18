@@ -206,7 +206,7 @@ async def execute_stage(
             outputs=outputs,
         )
     elif stage == TaskStage.EXPORT:
-        stage_result = await export(
+        stage_result = await generate_report(
             api_key=api_key,
             username=username,
             report_id=report_id,
@@ -222,7 +222,7 @@ async def execute_stage(
     return stage_result
 
 
-async def export(
+async def generate_report(
     api_key: str,
     username: str,
     report_id: str,
@@ -231,10 +231,8 @@ async def export(
     outputs: Dict[str, Any],
 ):
     """
-    This function will export the final report, by consolidating all the
+    This function will generate the final report, by consolidating all the
     information gathered, explored, predicted, and optimized.
-    Side Effects:
-    - Final report will be saved as a PDF file in the api_key's directory.
     """
     LOGGER.info(f"Exporting for report {report_id}")
     LOGGER.debug(f"inputs: {inputs}")
@@ -245,8 +243,10 @@ async def export(
         "inputs": inputs,
         "outputs": outputs,
     }
+
+    # generate the initial markdown
     response = await make_request(
-        DEFOG_BASE_URL + "/oracle/generate_report", json_data, timeout=120
+        DEFOG_BASE_URL + "/oracle/generate_report", json_data, timeout=300
     )
 
     md = response.get("md")
@@ -254,16 +254,30 @@ async def export(
     if md is None:
         LOGGER.error("No MD returned from backend.")
     else:
+        # log truncated markdown for debugging
         trunc_md = truncate_obj(md, max_len_str=1000, to_str=True)
         LOGGER.debug(f"MD generated for report {report_id}\n{trunc_md}")
-    markdowner = Markdown(extras=["tables"])
-    html_string = markdowner.convert(md)
-    report_file_path = get_report_file_path(api_key, report_id)
-    pdfkit.from_string(
-        html_string, report_file_path, options={"enable-local-file-access": ""}
+
+    # generate a synthesized introduction to the report
+    introduction_md = await make_request(
+        DEFOG_BASE_URL + "/oracle/synthesize_report",
+        {"md": md, "api_key": api_key},
+        timeout=300,
     )
-    LOGGER.debug(f"Exported report {report_id} to {report_file_path}")
-    return {"md": md, "mdx": mdx, "report_file_path": report_file_path}
+
+    intro_md = introduction_md.get("md")
+    if intro_md is None:
+        LOGGER.error("No introduction MD returned from backend.")
+    else:
+        trunc_intro_md = truncate_obj(intro_md, max_len_str=1000, to_str=True)
+        LOGGER.debug(
+            f"Introduction MD generated for report {report_id}\n{trunc_intro_md}"
+        )
+
+    return {
+        "md": "# Executive Summary\n\n" + intro_md + "\n\n" + md,
+        "mdx": "# Executive Summary\n\n" + intro_md + "\n\n" + mdx,
+    }
 
 
 def get_report_image_path(api_key: str, report_id: str, image_file_name: str) -> str:
