@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { PlusOutlined, CheckOutlined } from "@ant-design/icons";
 import Image from "next/image";
 
@@ -23,21 +22,22 @@ export default function Sources({ sources, setSources }) {
 }
 
 const SourceCard = ({ source, setSources }) => {
-  const [selected, setSelected] = useState(source.selected);
   const handleSelect = () => {
-    setSelected(!selected);
     setSources((prevSources) =>
       prevSources.map((prevSource) => {
         if (prevSource.link === source.link) {
-          return { ...prevSource, selected: !selected };
+          return { ...prevSource, selected: !prevSource.selected };
         }
         return prevSource;
       })
     );
   };
+
   return (
     <div
-      className={`"flex h-[79px] w-full items-center gap-2.5 rounded-lg border border-gray-100 px-1.5 py-1 shadow-md ${selected ? "bg-gray-100 opacity-50" : "bg-white"}`}
+      className={`flex h-[79px] w-full items-center gap-2.5 rounded-lg border border-gray-100 px-1.5 py-1 shadow-md ${
+        source.selected ? "bg-gray-100 opacity-50" : "bg-white"
+      }`}
     >
       <div className="flex items-center relative">
         <span className="shrink-0">
@@ -65,7 +65,7 @@ const SourceCard = ({ source, setSources }) => {
           className="ml-auto cursor-pointer top-2 right-2"
           onClick={handleSelect}
         >
-          {selected ? (
+          {source.selected ? (
             <CheckOutlined style={{ color: "green" }} />
           ) : (
             <PlusOutlined />
