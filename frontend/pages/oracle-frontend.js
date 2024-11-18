@@ -511,14 +511,14 @@ function OracleDashboard() {
                 Generated at {report.date_created}
               </p>
               <div className="flex space-x-4 mt-2">
-                <Button
+                {/* <Button
                   className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300"
                   icon={<DownloadOutlined />}
                   disabled={report.status !== "done"}
                   onClick={() => downloadReport(report.report_id)}
                 >
                   Download PDF
-                </Button>
+                </Button> */}
                 <Button
                   className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300"
                   disabled={report.status !== "done"}
