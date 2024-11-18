@@ -102,7 +102,7 @@ async def sources_list_route(req: SourcesListRequest):
             for row in data_head:
                 row_str = []
                 for cell in row:
-                    if isinstance(cell, str):
+                    if isinstance(cell, str) or cell is None:
                         row_str.append(cell)
                     else:
                         row_str.append(str(cell))
