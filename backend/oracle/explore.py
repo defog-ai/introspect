@@ -97,7 +97,9 @@ async def explore_data(
 
     generated_qns = generated_qns_response["generated_questions"]  # list of dict
     dependent_variable = generated_qns_response["dependent_variable"]  # dict
-    independent_variables = generated_qns_response["independent_variables"]  # dict
+    independent_variable_groups = generated_qns_response[
+        "independent_variable_groups"
+    ]  # dict
 
     LOGGER.debug(f"Generated questions with data: {len(generated_qns)}")
 
@@ -107,11 +109,15 @@ async def explore_data(
     for i, question_dict in enumerate(generated_qns):
         # question used by 1st round question generation
         generated_qn = question_dict["question"]
-        independent_variable_name = question_dict["independent_variable"]
-        independent_variable = independent_variables[independent_variable_name]
-        independent_variable["name"] = independent_variable_name
-        if not independent_variable:
-            LOGGER.error(f"Independent variable not found for {i}: {generated_qn}")
+        independent_variable_group_name = question_dict["group_name"]
+        independent_variable_group = independent_variable_groups[
+            independent_variable_group_name
+        ]
+        independent_variable_group["name"] = independent_variable_group_name
+        if not independent_variable_group:
+            LOGGER.error(
+                f"Independent variable group not found for {i}: {generated_qn}"
+            )
             continue
         tasks.append(
             explore_generated_question(
@@ -121,7 +127,7 @@ async def explore_data(
                 i,
                 generated_qn,
                 dependent_variable,
-                independent_variable,
+                independent_variable_group,
                 context,
                 db_type,
                 db_creds,
@@ -144,7 +150,7 @@ async def explore_generated_question(
     qn_id: int,
     generated_qn: str,
     dependent_variable: Dict[str, Any],
-    independent_variable: Dict[str, Any],
+    independent_variable_group: Dict[str, Any],
     context: str,
     db_type: str,
     db_creds: Dict[str, str],
@@ -168,7 +174,7 @@ async def explore_generated_question(
     - dependent_variable: Dict[str, Any]
         - description: str
         - table.column: List[str]
-    - independent_variable: Dict[str, Any]
+    - independent_variable_group: Dict[str, Any]
         - name: str
         - description: str
         - table.column: List[str]
@@ -249,10 +255,10 @@ async def explore_generated_question(
     outputs = {
         "qn_id": qn_id,
         "generated_qn": generated_qn,
-        "independent_variable": {
-            "name": independent_variable["name"],
-            "description": independent_variable["description"],
-            "table.column": independent_variable["table.column"],
+        "independent_variable_group": {
+            "name": independent_variable_group["name"],
+            "description": independent_variable_group["description"],
+            "table.column": independent_variable_group["table.column"],
         },
         "artifacts": artifacts,
         "working": {"generated_sql": sql},
@@ -268,7 +274,7 @@ async def explore_generated_question(
     error_str = None
     try:
         dependent_variable_desc = dependent_variable["description"]
-        independent_variable_desc = independent_variable["description"]
+        independent_variable_desc = independent_variable_group["description"]
         chart_fn_params = await get_chart_fn(
             api_key,
             generated_qn,
