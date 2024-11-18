@@ -19,7 +19,6 @@ const { TextArea } = Input;
 function OracleDashboard() {
   const [apiKeyName, setApiKeyName] = useState(null);
   const [apiKeyNames, setApiKeyNames] = useState([]);
-
   const router = useRouter();
 
   const getApiKeyNames = async (token) => {
@@ -59,8 +58,11 @@ function OracleDashboard() {
   const [waitClarifications, setWaitClarifications] = useState(false);
   const [taskType, setTaskType] = useState(null);
   const [sources, setSources] = useState([]);
-  const [waitSources, setWaitSources] = useState(false);
   const [reports, setReports] = useState([]);
+
+  const handleTaskTypeChange = (value) => {
+    setTaskType(value);
+  };
 
   const checkReady = useCallback(async () => {
     if (!apiKeyName) return;
@@ -169,7 +171,6 @@ function OracleDashboard() {
   };
 
   const getSources = async () => {
-    setWaitSources(true);
     const token = localStorage.getItem("defogToken");
     const res = await fetch(
       setupBaseUrl("http", `oracle/suggest_web_sources`),
@@ -185,7 +186,6 @@ function OracleDashboard() {
         }),
       }
     );
-    setWaitSources(false);
     if (res.ok) {
       const data = await res.json();
       // we only use the list of organic search results, discarding the rest for now
@@ -390,7 +390,7 @@ function OracleDashboard() {
 
     // the effect runs shortly only when answerLastUpdateTs changes
     // i.e. when the user answers a clarification
-  }, [answerLastUpdateTs]);
+  }, [answerLastUpdateTs, taskType]);
 
   useEffect(() => {
     if (!apiKeyName) return;
@@ -471,7 +471,7 @@ function OracleDashboard() {
             // show clarifications only when there are some
             <div className="mt-6">
               <h2 className="text-xl font-semibold mb-2">Clarifications</h2>
-              <TaskType taskType={taskType} />
+              <TaskType taskType={taskType} onChange={handleTaskTypeChange} />
               {clarifications.map((clarificationObject, index) => (
                 <ClarificationItem
                   key={String(clarificationObject.clarification)}

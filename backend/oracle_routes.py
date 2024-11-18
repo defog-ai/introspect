@@ -3,10 +3,8 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from openai import api_key
-
-from utils import encode_image
-from db_utils import OracleReports, engine, get_db_type_creds, validate_user
+from utils import encode_image, longest_substring_overlap
+from db_utils import OracleReports, engine, redis_client, validate_user
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, JSONResponse
 from generic_utils import get_api_key_from_key_name, make_request
@@ -73,6 +71,21 @@ async def clarify_question(req: ClarifyQuestionRequest):
     api_key = get_api_key_from_key_name(req.key_name)
     ts = save_timing(ts, "validate_user", timings)
 
+    # fetch the latest question asked by the user from redis.
+    # if the latest question has a longest substring match of over 75% with the
+    # latest question, we will use the task_type from the previous question.
+    # else we will infer the task_type from the current question.
+    latest_question = redis_client.get(f"{api_key}:oracle:user_question")
+    LOGGER.debug(f"Latest question: {latest_question}")
+    min_overlap_length = len(req.user_question) * 0.75
+    if latest_question:
+        overlaps, overlap_str = longest_substring_overlap(
+            latest_question, req.user_question, min_overlap_length
+        )
+        LOGGER.debug(f"Overlaps: {overlaps}, overlap_str: {overlap_str}")
+        if not overlaps:
+            req.task_type = None
+
     if not req.task_type:
         clarify_task_type_request = {
             "api_key": api_key,
@@ -83,6 +96,11 @@ async def clarify_question(req: ClarifyQuestionRequest):
                 DEFOG_BASE_URL + "/oracle/clarify_task_type", clarify_task_type_request
             )
             task_type_str = clarify_task_type_response["task_type"]
+            redis_key = f"{api_key}:oracle:user_question"
+            redis_client.set(redis_key, req.user_question)
+            LOGGER.debug(
+                f"Inferred task type: {task_type_str}\nSaved to redis key {redis_key}"
+            )
         except Exception as e:
             LOGGER.error(f"Error getting task type: {e}")
             return JSONResponse(
@@ -94,6 +112,7 @@ async def clarify_question(req: ClarifyQuestionRequest):
             )
     else:
         task_type_str = req.task_type.value
+        LOGGER.debug(f"Reusing existing task type: {task_type_str}")
     LOGGER.debug(f"Task type: {task_type_str}")
     ts = save_timing(ts, "get_task_type", timings)
     clarify_request = {

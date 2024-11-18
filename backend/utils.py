@@ -265,3 +265,32 @@ def encode_image(image_path):
     """
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
+
+
+def longest_substring_overlap(s1, s2, min_substr_len_match):
+    """
+    If the longest overlap is greater than or equal to min_substr_len_match,
+    return True and matched string, otherwise return False and longest matched string.
+
+    Args:
+        s1 (str): First string.
+        s2 (str): Second string.
+        min_substr_len_match (int): Minimum substring length to consider as a match.
+
+    Returns:
+        bool: True if the minimum substring length match is reached, otherwise False.
+        str: The overlapping substring.
+    """
+    max_overlap = 0
+    overlap_string = ""
+
+    for i in range(len(s1)):
+        for j in range(len(s2)):
+            k = 0
+            while i + k < len(s1) and j + k < len(s2) and s1[i + k] == s2[j + k]:
+                k += 1
+            if k > max_overlap:
+                max_overlap = k
+                overlap_string = s1[i : i + k]
+
+    return max_overlap >= min_substr_len_match, overlap_string
