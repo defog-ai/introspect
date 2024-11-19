@@ -47,6 +47,10 @@ databases = [
         "api_key": "test_macmillan",
         "database": "macmillan",
     },
+    {
+        "api_key": "fbc046431bd131d1c6c55c782d8bbd413a339d9c78ec6da6fea73cdfaeacb897",
+        "database": "macmillan",
+    },
 ]
 DB_CREDS = {
     "host": "host.docker.internal",

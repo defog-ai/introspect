@@ -58,7 +58,7 @@ async def execute_sql(
             colnames = list(result.keys())
             data_str = truncate_obj([tuple(row) for row in data])
             LOGGER.info(
-                f"Query successfully executed. Col names: {colnames}, Data: {data_str}\nSQL: {sql}"
+                f"Query successfully executed.\nCol names: {colnames}\nData: {data_str}\nSQL: {sql}"
             )
             df = mk_df(data, colnames)
     except Exception as e:
