@@ -70,12 +70,12 @@ with engine.begin() as conn:
 
         # check if user exists and update
         user_result = conn.execute(
-            select(Users).where(Users.token == hashed_password)
+            select(Users).where(Users.username == username)
         ).fetchone()
         if user_result:
             conn.execute(
                 update(Users)
-                .where(Users.token == hashed_password)
+                .where(Users.username == username)
                 .values(
                     username=username,
                     hashed_password=hashed_password,
