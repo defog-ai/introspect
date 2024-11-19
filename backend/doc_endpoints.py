@@ -237,8 +237,6 @@ async def download_csv(request: Request):
         key_name = data.get("key_name")
         api_key = get_api_key_from_key_name(key_name)
 
-        print(step_id, output_storage_key, analysis_id, key_name, api_key, flush=True)
-
         if step_id is None or type(step_id) != str:
             return {"success": False, "error_message": "Invalid tool run id."}
 
