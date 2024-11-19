@@ -10,31 +10,41 @@ SALT = "TOMMARVOLORIDDLE"
 # Edit this section based on your data setup
 users = [
     {
+        "username": "admin",
+        "password": "admin",
+    },
+    {
         "username": "card",
         "password": "password",
-        "api_key": "123",
-        "user_type": "user",
-        "database": "card",
     },
     {
         "username": "housing",
         "password": "password",
-        "api_key": "456",
-        "user_type": "user",
-        "database": "housing",
     },
     {
         "username": "restaurant",
         "password": "password",
-        "api_key": "test_restaurant",
-        "user_type": "user",
-        "database": "restaurants",
     },
     {
         "username": "macmillan",
         "password": "admin",
+    },
+]
+databases = [
+    {
+        "api_key": "123",
+        "database": "card",
+    },
+    {
+        "api_key": "456",
+        "database": "housing",
+    },
+    {
+        "api_key": "test_restaurant",
+        "database": "restaurants",
+    },
+    {
         "api_key": "test_macmillan",
-        "user_type": "admin",
         "database": "macmillan",
     },
 ]
@@ -57,21 +67,19 @@ with engine.begin() as conn:
         username = user["username"]
         password = user["password"]
         hashed_password = get_hashed_password(username, password)
-        user_type = user["user_type"]
-        api_key = user["api_key"]
 
         # check if user exists and update
         user_result = conn.execute(
-            select(Users).where(Users.token == api_key)
+            select(Users).where(Users.token == hashed_password)
         ).fetchone()
         if user_result:
             conn.execute(
                 update(Users)
-                .where(Users.token == api_key)
+                .where(Users.token == hashed_password)
                 .values(
                     username=username,
                     hashed_password=hashed_password,
-                    user_type=user_type,
+                    user_type="admin",
                 )
             )
             print(f"User {username} updated.")
@@ -80,29 +88,36 @@ with engine.begin() as conn:
                 insert(Users).values(
                     username=username,
                     hashed_password=hashed_password,
-                    token=api_key,
-                    user_type=user_type,
+                    token=hashed_password,
+                    user_type="admin",
                     created_at=datetime.datetime.now(),
                 )
             )
             print(f"User {username} created.")
+        print(f"Token to use for {username}: {hashed_password}")
 
+    for db in databases:
+        api_key = db["api_key"]
+        database = db["database"]
         # check if db_creds exists and update
         db_creds = conn.execute(
             select(DbCreds.db_creds).where(DbCreds.api_key == api_key)
         ).fetchone()
         if db_creds:
             db_creds = copy.deepcopy(DB_CREDS)
-            db_creds["database"] = user["database"]
+            db_creds["database"] = database
             conn.execute(
                 update(DbCreds)
                 .where(DbCreds.api_key == api_key)
                 .values(
                     db_creds=db_creds,
+                    db_type="postgres",
                 )
             )
-            print(f"DbCreds for {username} updated.")
+            print(f"DbCreds for api_key={api_key} updated.")
         else:
+            db_creds = copy.deepcopy(DB_CREDS)
+            db_creds["database"] = database
             conn.execute(
                 insert(DbCreds).values(
                     api_key=api_key,
@@ -110,4 +125,4 @@ with engine.begin() as conn:
                     db_type="postgres",
                 )
             )
-            print(f"DbCreds for {username} created.")
+            print(f"DbCreds for api_key={api_key} created.")
