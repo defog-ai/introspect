@@ -28,7 +28,6 @@ celery_async_executors = ThreadPoolExecutor(max_workers=4)
 @celery_app.task
 def begin_generation_task(
     api_key: str,
-    username: str,
     report_id: int,
     task_type_str: str,
     inputs: Dict[str, Any],
@@ -44,21 +43,20 @@ def begin_generation_task(
         task_type = TaskType(task_type_str)
     except ValueError:
         raise ValueError(f"Invalid task_type_str: {task_type_str}")
-    LOGGER.info(f"Starting celery task for {username} at {t_start}")
+    LOGGER.info(f"Starting celery task for {api_key} at {t_start}")
     with celery_async_executors:
         loop = asyncio.get_event_loop()
         task = loop.create_task(
-            begin_generation_async_task(api_key, username, report_id, task_type, inputs)
+            begin_generation_async_task(api_key, report_id, task_type, inputs)
         )
         loop.run_until_complete(task)
     t_end = datetime.now()
     time_elapsed = (t_end - t_start).total_seconds()
-    LOGGER.info(f"Completed celery task for {username} in {time_elapsed:.2f} seconds.")
+    LOGGER.info(f"Completed celery task for {api_key} in {time_elapsed:.2f} seconds.")
 
 
 async def begin_generation_async_task(
     api_key: str,
-    username: str,
     report_id: int,
     task_type: TaskType,
     inputs: Dict[str, Any],
@@ -71,7 +69,7 @@ async def begin_generation_async_task(
     It will only return when the report is done, or an error has occurred.
 
     Every call to control is scoped over a single report_id, which can only
-    belong to 1 api_key and username.
+    belong to 1 api_key.
     """
     stage = TaskStage.GATHER_CONTEXT
     outputs = {}
@@ -91,7 +89,6 @@ async def begin_generation_async_task(
                 session.commit()
             stage_result = await execute_stage(
                 api_key=api_key,
-                username=username,
                 report_id=report_id,
                 task_type=task_type,
                 stage=stage,
@@ -154,7 +151,6 @@ def next_stage(stage: TaskStage, task_type: TaskType) -> TaskStage:
 
 async def execute_stage(
     api_key: str,
-    username: str,
     report_id: str,
     task_type: TaskType,
     stage: TaskStage,
@@ -172,7 +168,6 @@ async def execute_stage(
     if stage == TaskStage.GATHER_CONTEXT:
         stage_result = await gather_context(
             api_key=api_key,
-            username=username,
             report_id=report_id,
             task_type=task_type,
             inputs=inputs,
@@ -181,7 +176,6 @@ async def execute_stage(
     elif stage == TaskStage.EXPLORE:
         stage_result = await explore_data(
             api_key=api_key,
-            username=username,
             report_id=report_id,
             task_type=task_type,
             inputs=inputs,
@@ -190,7 +184,6 @@ async def execute_stage(
     elif stage == TaskStage.PREDICT:
         stage_result = await predict(
             api_key=api_key,
-            username=username,
             report_id=report_id,
             task_type=task_type,
             inputs=inputs,
@@ -199,7 +192,6 @@ async def execute_stage(
     elif stage == TaskStage.OPTIMIZE:
         stage_result = await optimize(
             api_key=api_key,
-            username=username,
             report_id=report_id,
             task_type=task_type,
             inputs=inputs,
@@ -208,7 +200,6 @@ async def execute_stage(
     elif stage == TaskStage.EXPORT:
         stage_result = await generate_report(
             api_key=api_key,
-            username=username,
             report_id=report_id,
             task_type=task_type,
             inputs=inputs,
@@ -224,7 +215,6 @@ async def execute_stage(
 
 async def generate_report(
     api_key: str,
-    username: str,
     report_id: str,
     task_type: TaskType,
     inputs: Dict[str, Any],

@@ -16,7 +16,6 @@ DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 async def optimize(
     api_key: str,
-    username: str,
     report_id: str,
     task_type: TaskType,
     inputs: Dict[str, Any],
@@ -44,7 +43,6 @@ async def optimize(
         data={
             "question": user_question,
             "api_key": api_key,
-            "username": username,
             "report_id": report_id,
             "task_type": task_type.value,
             "gather_context": gather_context,
@@ -117,7 +115,6 @@ async def optimize(
         data={
             "question": user_question,
             "api_key": api_key,
-            "username": username,
             "report_id": report_id,
             "task_type": task_type.value,
             "gather_context": gather_context,

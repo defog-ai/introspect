@@ -21,7 +21,6 @@ from utils_logging import save_and_log, save_timing
 
 async def gather_context(
     api_key: str,
-    username: str,
     report_id: str,
     task_type: TaskType,
     inputs: Dict[str, Any],

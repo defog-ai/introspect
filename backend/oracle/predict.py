@@ -28,7 +28,6 @@ LOGGER.setLevel(LOG_LEVEL)
 
 async def predict(
     api_key: str,
-    username: str,
     report_id: str,
     task_type: TaskType,
     inputs: Dict[str, Any],
