@@ -35,11 +35,18 @@ const SourceCard = ({ source, setSources }) => {
 
   return (
     <div
-      className={`flex h-[79px] w-full items-center gap-2.5 rounded-lg border border-gray-100 px-1.5 py-1 shadow-md ${
+      className={`relative flex h-[79px] w-full items-center gap-2.5 rounded-lg border border-gray-100 px-1.5 py-1 shadow-md transition-all hover:shadow-lg hover:border-gray-50 hover:bg-gray-200 ${
         source.selected ? "bg-gray-100 opacity-50" : "bg-white"
       }`}
     >
-      <div className="flex items-center relative">
+      {/* Icon and Text Wrapped in a Clickable <a> Tag that redirect to the source link*/}
+      <a
+        href={source.link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 z-10"
+        aria-label={`Visit ${source.title}`}
+      >
         <span className="shrink-0">
           <Image
             unoptimized
@@ -50,27 +57,27 @@ const SourceCard = ({ source, setSources }) => {
             height={36}
           />
         </span>
-        <span className="flex min-w-0 max-w-[192px] flex-col justify-center gap-1 ml-2 mt-2">
+        <span className="flex min-w-0 max-w-[192px] flex-col justify-center gap-1">
           <h6 className="line-clamp-2 text-xs font-light">{source.title}</h6>
-          <a
-            target="_blank"
-            rel="noopener noreferrer"
-            href={source.link}
-            className="truncate text-xs font-light text-[#1B1B16]/30"
-          >
+          <span className="truncate text-xs font-light text-[#1B1B16]/30">
             {source.link}
-          </a>
+          </span>
         </span>
-        <div
-          className="ml-auto cursor-pointer top-2 right-2"
-          onClick={handleSelect}
-        >
-          {source.selected ? (
-            <CheckOutlined style={{ color: "green" }} />
-          ) : (
-            <PlusOutlined />
-          )}
-        </div>
+      </a>
+
+      {/* Button for Selection */}
+      <div
+        className="ml-2 mr-2 cursor-pointer relative z-20"
+        onClick={(e) => {
+          e.stopPropagation(); // Prevent link click
+          handleSelect();
+        }}
+      >
+        {source.selected ? (
+          <CheckOutlined style={{ color: "green" }} />
+        ) : (
+          <PlusOutlined />
+        )}
       </div>
     </div>
   );
