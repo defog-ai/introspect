@@ -29,6 +29,10 @@ users = [
         "username": "macmillan",
         "password": "admin",
     },
+    {
+        "username": "webshop",
+        "password": "test",
+    },
 ]
 databases = [
     {
@@ -50,6 +54,10 @@ databases = [
     {
         "api_key": "fbc046431bd131d1c6c55c782d8bbd413a339d9c78ec6da6fea73cdfaeacb897",
         "database": "macmillan",
+    },
+    {
+        "api_key": "test_webshop",
+        "database": "webshop",
     },
 ]
 DB_CREDS = {
