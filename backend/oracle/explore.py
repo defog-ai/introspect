@@ -102,6 +102,7 @@ async def explore_data(
 
     analyses = []
     round = 0
+    summary_all = ""
     while True:
         tasks = []
         for i, question_dict in enumerate(generated_qns):
