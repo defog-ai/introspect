@@ -4,20 +4,21 @@ import time
 import traceback
 from typing import Any, Dict
 
+import pandas as pd
 from db_utils import get_db_type_creds
 from generic_utils import make_request
-from oracle.constants import TaskType
-from utils_logging import save_timing, truncate_obj
 from oracle.celery_app import LOGGER
+from oracle.constants import TaskType
 from oracle.utils_explore_data import (
-    TABLE_CSV,
     IMAGE,
+    TABLE_CSV,
+    gen_data_analysis,
     gen_sql,
     get_chart_fn,
-    gen_data_analysis,
     retry_sql_gen,
     run_chart_fn,
 )
+from utils_logging import save_timing
 from utils_sql import execute_sql
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
@@ -59,15 +60,12 @@ async def explore_data(
         - analysis_usefulness: bool
         - analysis_newness: bool
     """
-    LOGGER.info(f"Exploring data for report {report_id}")
-    LOGGER.info(f"Task type: {task_type}")
     user_question = inputs["user_question"]
     gather_context = outputs["gather_context"]
     context = gather_context.get("context", "")
     problem_statement = gather_context.get("problem_statement", "")
     db_type, db_creds = get_db_type_creds(api_key)
-    LOGGER.info(f"DB type: {db_type}")
-    LOGGER.info(f"DB creds: {db_creds}")
+    max_rounds = inputs.get("max_rounds", MAX_ROUNDS)
 
     # create the directory to save the chart
     current_dir = os.getcwd()
@@ -76,7 +74,7 @@ async def explore_data(
     )
     os.makedirs(report_chart_dir, exist_ok=True)
 
-    # generate explorer questions
+    # generate initial explorer questions
     json_data = {
         "api_key": api_key,
         "user_question": user_question,
@@ -103,43 +101,68 @@ async def explore_data(
     LOGGER.debug(f"Generated questions with data: {len(generated_qns)}")
 
     analyses = []
-
-    tasks = []
-    for i, question_dict in enumerate(generated_qns):
-        # question used by 1st round question generation
-        generated_qn = question_dict["question"]
-        independent_variable_group_name = question_dict["group_name"]
-        independent_variable_group = independent_variable_groups[
-            independent_variable_group_name
-        ]
-        independent_variable_group["name"] = independent_variable_group_name
-        if not independent_variable_group:
-            LOGGER.error(
-                f"Independent variable group not found for {i}: {generated_qn}"
+    round = 0
+    while True:
+        tasks = []
+        for i, question_dict in enumerate(generated_qns):
+            # question used by 1st round question generation
+            generated_qn = question_dict["question"]
+            independent_variable_group_name = question_dict["group_name"]
+            independent_variable_group = independent_variable_groups[
+                independent_variable_group_name
+            ]
+            independent_variable_group["name"] = independent_variable_group_name
+            if not independent_variable_group:
+                LOGGER.error(
+                    f"Independent variable group not found for {i}: {generated_qn}"
+                )
+                continue
+            tasks.append(
+                explore_generated_question(
+                    api_key,
+                    user_question,
+                    task_type,
+                    i,
+                    generated_qn,
+                    dependent_variable,
+                    independent_variable_group,
+                    context,
+                    db_type,
+                    db_creds,
+                    report_chart_dir,
+                    inputs.get("retry_data_fetch", RETRY_DATA_FETCH),
+                )
             )
-            continue
-        tasks.append(
-            explore_generated_question(
-                api_key,
-                user_question,
-                task_type,
-                i,
-                generated_qn,
-                dependent_variable,
-                independent_variable_group,
-                context,
-                db_type,
-                db_creds,
-                report_chart_dir,
-                inputs.get("retry_data_fetch", RETRY_DATA_FETCH),
-            )
+        answers = await asyncio.gather(*tasks)
+        # remove None answers and add to analyses
+        non_empty_answers = []
+        for ans in answers:
+            if ans:
+                ans["round"] = round
+                non_empty_answers.append(ans)
+        analyses.extend(non_empty_answers)
+        LOGGER.debug(
+            f"Round {round} analyses count: {len(non_empty_answers)}\nTotal analyses count: {len(analyses)}"
         )
-    topk_answers = await asyncio.gather(*tasks)
-    # remove None answers and add to analyses
-    analyses.extend([ans for ans in topk_answers if ans])
-
-    LOGGER.debug(f"Final analyses count: {len(analyses)}\n{truncate_obj(analyses)}")
-    return {"analyses": analyses, "dependent_variable": dependent_variable}
+        round += 1
+        if round >= max_rounds:
+            break
+        # generate new questions for the next round
+        get_deeper_qns_request = {
+            "api_key": api_key,
+            "user_question": user_question,
+            "task_type": task_type.value,
+            "problem_statement": problem_statement,
+            "context": context,
+            "dependent_variable": dependent_variable,
+            "past_analyses": analyses,
+        }
+        response = await make_request(
+            DEFOG_BASE_URL + "/oracle/gen_explorer_qns_deeper", get_deeper_qns_request
+        )
+        generated_qns = response["generated_questions"]
+        summary_all = response.get("summary", "") # this is the summary across all analyses
+    return {"analyses": analyses, "dependent_variable": dependent_variable, "summary": summary_all}
 
 
 async def explore_generated_question(
@@ -211,8 +234,7 @@ async def explore_generated_question(
     err_msg, sql, data = None, None, None
     retry_count = 0
     while retry_count <= retry_data_fetch:
-        # TODO: DEF-540 generate SQL across multiple DB's and stitch them together with pandas
-        # generate SQL
+        # TODO: Replace gen_sql and execute_sql with XDB calls if requested in inputs
         try:
             if retry_count == 0:
                 sql = await gen_sql(api_key, db_type, generated_qn, glossary)
@@ -233,6 +255,9 @@ async def explore_generated_question(
             data, err_msg = await execute_sql(db_type, db_creds, sql)
             if err_msg is not None:
                 LOGGER.error(f"Error occurred in executing SQL: {err_msg}")
+            elif isinstance(data, pd.DataFrame) and data.empty:
+                err_msg = "No data fetched for the query. Please gradually remove filters and try again."
+                # TODO modify question to have less filters
             else:
                 break
         retry_count += 1
