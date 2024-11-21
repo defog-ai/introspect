@@ -27,8 +27,13 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(LOG_LEVEL)
 
 
-def is_pdf_url(url):
+def is_pdf_url(url: str) -> bool:
     try:
+        if not "http" in url:
+            return False
+        if "http" in url and ".pdf" in url:
+            return True
+        # else check if it's a webpage pointing to a pdf
         response = requests.head(url, allow_redirects=True)
         content_type = response.headers.get("Content-Type", "")
         return content_type == "application/pdf"
@@ -37,8 +42,7 @@ def is_pdf_url(url):
 
 
 def get_source_type(link: str) -> str:
-    # check if it's ending in .pdf or if it's a webpage pointing to a pdf
-    if "http" in link and (".pdf" in link or is_pdf_url(link)):
+    if is_pdf_url(link):
         return "webpage-pdf"
     elif ".pdf" in link:
         return "pdf"
