@@ -151,6 +151,7 @@ async def sources_import_route(req: ImportSourcesRequest):
         "sources": sources_to_parse,
         "resummarize": True,
     }
+    LOGGER.debug(f"Parsing sources: {sources_to_parse}")
     # each source now contains "text" and "summary" keys
     sources_parsed = await make_request(
         DEFOG_BASE_URL + "/unstructured_data/parse", json_data

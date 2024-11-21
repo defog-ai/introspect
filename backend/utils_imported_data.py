@@ -20,18 +20,30 @@ from db_utils import (
 )
 from utils_df import mk_df
 from utils_logging import LOG_LEVEL
-
+import requests
 
 IMPORTED_SCHEMA = "imported"  # schema name to store imported tables
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(LOG_LEVEL)
 
 
+def is_pdf_url(url):
+    try:
+        response = requests.head(url, allow_redirects=True)
+        content_type = response.headers.get("Content-Type", "")
+        return content_type == "application/pdf"
+    except requests.RequestException:
+        return False
+
+
 def get_source_type(link: str) -> str:
-    if "http" in link:
-        return "webpage"
+    # check if it's ending in .pdf or if it's a webpage pointing to a pdf
+    if "http" in link and (".pdf" in link or is_pdf_url(link)):
+        return "webpage-pdf"
     elif ".pdf" in link:
         return "pdf"
+    elif "http" in link:
+        return "webpage"
     else:
         LOGGER.error(f"Unknown source type for link: {link}")
         return "unknown"
