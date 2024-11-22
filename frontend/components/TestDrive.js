@@ -1,6 +1,6 @@
 "use client";
 import { DefogAnalysisAgentEmbed } from "@defogdotai/agents-ui-components/agent";
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 
 export function TestDrive({
   token,
@@ -12,16 +12,33 @@ export function TestDrive({
   hiddenCharts = [],
   hideRawAnalysis = false,
 }) {
-  const initialTrees = useMemo(() => {
-    try {
-      const storedTrees = localStorage.getItem("analysisTrees");
-      if (storedTrees) {
-        return JSON.parse(storedTrees);
-      }
-    } catch (e) {
-      return null;
-    }
+  const [initialTrees, setInitialTrees] = useState(null);
+  // const initialTrees = useMemo(() => {
+  //   try {
+  //     const storedTrees = localStorage.getItem("analysisTrees");
+  //     if (storedTrees) {
+  //       return JSON.parse(storedTrees);
+  //     }
+  //   } catch (e) {
+  //     return null;
+  //   }
+  // }, []);
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/get_user_history`, {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    })
+      .then((res) => res.json())
+      .then((data) => setInitialTrees(data.history));
   }, []);
+
+  const updateUserHistory = (history) => {
+    fetch(`${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/update_user_history`, {
+      method: "POST",
+      body: JSON.stringify({ token, history }),
+    });
+  };
 
   return (
     <DefogAnalysisAgentEmbed
@@ -52,6 +69,7 @@ export function TestDrive({
 
           trees[keyName] = tree;
           localStorage.setItem("analysisTrees", JSON.stringify(trees));
+          updateUserHistory(trees);
         } catch (e) {
           console.error(e);
         }
