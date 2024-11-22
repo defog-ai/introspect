@@ -12,6 +12,7 @@ from io import StringIO
 import requests
 import asyncio
 from fastapi.responses import JSONResponse
+import os
 
 router = APIRouter()
 
@@ -149,3 +150,32 @@ async def delete_user(request: Request):
     with engine.begin() as conn:
         conn.execute(delete(Users).where(Users.username == username))
     return {"status": "success"}
+
+
+@router.post("/get_non_admin_config")
+async def get_non_admin_config(request: Request):
+    # get environment variables:
+    # HIDE_SQL_TAB_FOR_NON_ADMIN
+    # HIDE_PREVIEW_TABS_FOR_NON_ADMIN
+    # HIDDEN_CHARTS_FOR_NON_ADMIN
+    hide_sql_tab_for_non_admin = os.getenv("HIDE_SQL_TAB_FOR_NON_ADMIN")
+    hide_preview_tabs_for_non_admin = os.getenv("HIDE_PREVIEW_TABS_FOR_NON_ADMIN")
+    hidden_charts_for_non_admin = os.getenv("HIDDEN_CHARTS_FOR_NON_ADMIN")
+    hide_raw_analysis_for_non_admin = os.getenv("HIDE_RAW_ANALYSIS_FOR_NON_ADMIN")
+    if hidden_charts_for_non_admin:
+        hidden_charts_for_non_admin = [
+            x.strip().lower() for x in hidden_charts_for_non_admin.split(",")
+        ]
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "hide_sql_tab_for_non_admin": hide_sql_tab_for_non_admin == "yes"
+            or hide_sql_tab_for_non_admin == "true",
+            "hide_preview_tabs_for_non_admin": hide_preview_tabs_for_non_admin == "yes"
+            or hide_preview_tabs_for_non_admin == "true",
+            "hidden_charts_for_non_admin": hidden_charts_for_non_admin,
+            "hide_raw_analysis_for_non_admin": hide_raw_analysis_for_non_admin == "yes"
+            or hide_raw_analysis_for_non_admin == "true",
+        },
+    )

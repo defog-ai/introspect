@@ -15,9 +15,11 @@ const QueryDataPage = () => {
   const [apiKeyNames, setApiKeyNames] = useState(["Default DB"]);
   const [loading, setLoading] = useState(false);
 
+  const [nonAdminConfig, setNonAdminConfig] = useState({});
+
   const getApiKeyNames = async (token) => {
     setLoading(true);
-    const res = await fetch(
+    let res = await fetch(
       (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
       {
         method: "POST",
@@ -35,10 +37,36 @@ const QueryDataPage = () => {
         "Failed to get api key names - are you sure your network is working?"
       );
     }
-    const data = await res.json();
+    let data = await res.json();
     setApiKeyNames(data.api_key_names);
+
+    res = await fetch(
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_non_admin_config",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      setLoading(false);
+      throw new Error(
+        "Failed to get non admin config - are you sure your network is working?"
+      );
+    }
+
+    data = await res.json();
+    setNonAdminConfig(data);
+
     setLoading(false);
   };
+
+  console.log(nonAdminConfig);
 
   useEffect(() => {
     const token = localStorage.getItem("defogToken");
@@ -50,6 +78,8 @@ const QueryDataPage = () => {
 
     getApiKeyNames(token);
   }, []);
+
+  const isAdmin = userType === "admin";
 
   return (
     <div className="max-h-screen h-screen">
@@ -69,6 +99,19 @@ const QueryDataPage = () => {
             <TestDrive
               token={token}
               devMode={false}
+              isAdmin={isAdmin}
+              hideSqlTab={
+                isAdmin ? false : nonAdminConfig.hide_sql_tab_for_non_admin
+              }
+              hidePreviewTabs={
+                isAdmin ? false : nonAdminConfig.hide_preview_tabs_for_non_admin
+              }
+              hiddenCharts={
+                isAdmin ? [] : nonAdminConfig.hidden_charts_for_non_admin || []
+              }
+              hideRawAnalysis={
+                isAdmin ? false : nonAdminConfig.hide_raw_analysis_for_non_admin
+              }
               dbs={(apiKeyNames.length > 0 ? apiKeyNames : ["Default DB"]).map(
                 (name) => {
                   return {

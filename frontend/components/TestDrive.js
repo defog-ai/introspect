@@ -2,7 +2,16 @@
 import { DefogAnalysisAgentEmbed } from "@defogdotai/agents-ui-components/agent";
 import { useMemo } from "react";
 
-export function TestDrive({ token, dbs, devMode }) {
+export function TestDrive({
+  token,
+  dbs,
+  devMode,
+  isAdmin = false,
+  hideSqlTab = false,
+  hidePreviewTabs = false,
+  hiddenCharts = [],
+  hideRawAnalysis = false,
+}) {
   const initialTrees = useMemo(() => {
     try {
       const storedTrees = localStorage.getItem("analysisTrees");
@@ -18,6 +27,11 @@ export function TestDrive({ token, dbs, devMode }) {
     <DefogAnalysisAgentEmbed
       apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
       token={token}
+      isAdmin={isAdmin}
+      hideSqlTab={hideSqlTab}
+      hidePreviewTabs={hidePreviewTabs}
+      hiddenCharts={hiddenCharts}
+      hideRawAnalysis={hideRawAnalysis}
       // these are the ones that will be shown for new csvs uploaded
       uploadedCsvPredefinedQuestions={["Show me any 5 rows from the dataset"]}
       searchBarDraggable={false}
