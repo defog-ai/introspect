@@ -236,6 +236,11 @@ class DbCreds(Base):
     db_creds = Column(JSON)
 
 
+class UserHistory(Base):
+    __tablename__ = "defog_user_history"
+    username = Column(Text, primary_key=True)
+    history = Column(JSON)
+
 if ORACLE_ENABLED:
 
     class OracleReports(Base):

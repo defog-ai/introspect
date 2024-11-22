@@ -182,6 +182,13 @@ oracle_sources = Table(
     Column("text_summary", Text),
 )
 
+defog_user_history = Table(
+    "defog_user_history",
+    metadata,
+    Column("username", Text, primary_key=True),
+    Column("history", JSON),
+)
+
 
 def create_sqlite_tables():
     """
