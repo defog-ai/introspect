@@ -135,7 +135,6 @@ docker buildx use mybuilder
 Next, build the docker images. To build and push each image individually, here are the commands:
 
 ```bash
-docker buildx build --platform linux/arm64,linux/amd64 -f dockerfile.agents-postgres -t defogai/agents-postgres:latest --push .
 docker buildx build --platform linux/arm64,linux/amd64 -f dockerfile.agents-python-server-export -t defogai/agents-python-server:latest --push .
 docker buildx build --platform linux/arm64,linux/amd64 -f dockerfile.agents-nginx -t defogai/agents-nginx:latest --push .
 ```
@@ -144,18 +143,6 @@ Note that whatever you build and push with will overwrite past builds with the s
 
 ### Run Exported Docker Images
 
-As before, remember to make a copy of the `.env.template`, rename it to `.env`, and replace the placeholders with the actual values.
+Please refer to the instructions in [defog-docker](https://github.com/defog-ai/defog-docker) to run the exported docker images.
 
-To run the exported images, you would need to use a different compose file, namely `docker-compose-hub.yaml`. This file does not contain the build steps, but only the image links (to our defogai docker repository), and is used to run the built images from the repository. You can run the following command to start the containers:
-
-```bash
-docker compose -f docker-compose-hub.yaml up -d
-```
-
-Our repositories for the images are:
-
-- https://hub.docker.com/repository/docker/defogai/agents-nginx/general
-- https://hub.docker.com/repository/docker/defogai/agents-python-server/general
-- https://hub.docker.com/repository/docker/defogai/agents-postgres/general
-
-When distributing the composed image, customers only need the `docker-compose-hub.yaml` and the `.env.template` files. They can then rename the `.env.template` to `.env` and fill in the required values. The `docker-compose-hub.yaml` file can be used to pull the built images and start the containers.
+When changing substantial parts of the docker-compose.yaml in this repo, please also make sure to update the docker-compose.yaml in defog-docker accordingly.
