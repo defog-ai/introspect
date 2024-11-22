@@ -118,7 +118,6 @@ defog_users = Table(
     Column("token", Text, nullable=False),
     Column("user_type", Text, nullable=False),
     Column("created_at", DateTime),
-    Column("allowed_dbs", Text, nullable=True),
 )
 
 defog_plans_feedback = Table(

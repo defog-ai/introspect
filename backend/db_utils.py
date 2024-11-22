@@ -213,7 +213,6 @@ class Users(Base):
     token = Column(Text, nullable=False)
     user_type = Column(Text, nullable=False)
     created_at = Column(DateTime)
-    allowed_dbs = Column(Text, nullable=True)
 
 
 class PlansFeedback(Base):
@@ -392,11 +391,11 @@ def get_user_key_names(token):
     if not user:
         return "Invalid token"
 
-    if user.user_type == "admin":
-        return None
+    # if user.user_type == "admin":
+    return None
 
-    else:
-        return user.allowed_dbs
+    # else:
+    #     return user.allowed_dbs
 
 
 async def initialise_analysis(
