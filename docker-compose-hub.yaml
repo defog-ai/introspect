@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   agents-postgres:
@@ -52,6 +52,12 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
       - DELETE_EXISTING_TOOLS=${DELETE_EXISTING_TOOLS:-no}
+
+      # front end non-admin config
+      - HIDE_SQL_TAB_FOR_NON_ADMIN=${HIDE_SQL_TAB_FOR_NON_ADMIN}
+      - HIDE_PREVIEW_TABS_FOR_NON_ADMIN=${HIDE_PREVIEW_TABS_FOR_NON_ADMIN}
+      - HIDDEN_CHARTS_FOR_NON_ADMIN=${HIDDEN_CHARTS_FOR_NON_ADMIN}
+      - HIDE_RAW_ANALYSIS_FOR_NON_ADMIN=${HIDE_RAW_ANALYSIS_FOR_NON_ADMIN}
     volumes:
       - agents-assets:/agents-assets/
     depends_on:
