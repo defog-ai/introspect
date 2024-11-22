@@ -38,6 +38,12 @@ async def update_user_history(request: Request):
 
     if history is None or history == {}:
         return {"error": "History is required"}
+    
+    for key in history:
+        if not isinstance(history[key], dict):
+            return {"error": "History must be a dictionary of dictionaries"}
+        if history[key] == {}:
+            return {"error": "History cannot contain empty dictionaries"}
 
     
     with engine.begin() as conn:
