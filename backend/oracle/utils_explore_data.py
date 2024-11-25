@@ -1,19 +1,21 @@
 import os
 from typing import Any, Dict, Optional
-from matplotlib import pyplot as plt
+
+import numpy as np
 import pandas as pd
-
-from generic_utils import format_sql, make_request, normalize_sql
-from oracle.celery_app import LOGGER
 import seaborn as sns
-
+from generic_utils import format_sql, make_request, normalize_sql
+from matplotlib import pyplot as plt
+from oracle.celery_app import LOGGER
 from oracle.constants import TaskType
+from seaborn._stats.counting import Hist
 
 FIGSIZE = (5, 3)
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 # explore module constants
-TABLE_CSV = "table_csv"
+FETCHED_TABLE_CSV = "fetched_table_csv"  # raw table fetched using sql
+TABLE_CSV = "table_csv"  # table represented in the chart
 IMAGE = "image"
 ARTIFACT_TYPES = [TABLE_CSV, IMAGE]
 SUPPORTED_CHART_TYPES = [
@@ -178,12 +180,143 @@ def run_chart_fn(
     plt.close()  # Close the figure to free memory
 
 
+# sub-routines for getting summaries / percentiles:
+def get_mean(data: pd.Series) -> float:
+    return data.mean()
+
+
+def get_pct_05(data: pd.Series) -> float:
+    return data.quantile(0.05)
+
+
+def get_pct_25(data: pd.Series) -> float:
+    return data.quantile(0.25)
+
+
+def get_median(data: pd.Series) -> float:
+    return data.median()
+
+
+def get_pct_75(data: pd.Series) -> float:
+    return data.quantile(0.75)
+
+
+def get_pct_95(data: pd.Series) -> float:
+    return data.quantile(0.95)
+
+
+def histogram(data: pd.Series) -> pd.DataFrame:
+    print(f"index: {data.index}, name: {data.name}")
+    # drop na/infinite values
+    vals = data.dropna(inplace=False).values
+    vals = vals[vals != np.inf]
+    # we use auto because seaborn defaults to auto bins
+    counts, bin_edges = np.histogram(vals, bins="auto")
+    # bin_edges has 1 more element than counts
+    return pd.DataFrame(
+        {"count": counts}, index=pd.Index(bin_edges[:-1], name=f"bin_{data.name}")
+    )
+
+
+def get_chart_df(data: pd.DataFrame, chart_fn_params: Dict[str, Any]) -> pd.DataFrame:
+    """
+    Performs any necessary data aggregations on data, and returns the dataframe
+    representing the underlying data used to plot the chart.
+    """
+    chart_fn = chart_fn_params["name"]
+    kwargs = chart_fn_params.get("parameters", {})
+    kind = kwargs.get("kind", None)
+    # 1-to-1 mapping of rows to chart elements
+    if chart_fn == "relplot" and kind == "scatter":
+        data_cols = []
+        for col in ["x", "y", "hue", "col", "row"]:
+            if col in kwargs and kwargs[col]:
+                data_cols.append(kwargs[col])
+        return data[data_cols]
+    # many-to-1 mapping of rows to chart elements using an aggregate function
+    elif (chart_fn == "relplot" and kind == "line") or (
+        chart_fn == "catplot" and kind == "bar"
+    ):
+        agg_cols = []
+        y_col = kwargs.get("y", None)
+        for col in ["x", "hue", "col", "row"]:
+            if col in kwargs and kwargs[col]:
+                agg_cols.append(kwargs[col])
+        # get the default mean and 5th/95th percentiles
+        data_agg = (
+            data[agg_cols + [y_col]]
+            .groupby(agg_cols)
+            .agg(
+                {
+                    y_col: [
+                        ("mean", get_mean),
+                        ("pct_05", get_pct_05),
+                        ("pct_95", get_pct_95),
+                    ]
+                }
+            )
+            .reset_index()
+        )
+        # flatten multi-index columns
+        data_agg.columns = [
+            f"{col[0]}_{col[1]}" if col[1] else col[0] for col in data_agg.columns
+        ]
+        return data_agg
+    # many-to-1 mapping of rows to chart elements using distribution
+    elif chart_fn == "catplot" and (kind == "box" or kind == "violin"):
+        agg_cols = []
+        y_col = kwargs.get("y", None)
+        for col in ["x", "hue", "col", "row"]:
+            if col in kwargs and kwargs[col]:
+                agg_cols.append(kwargs[col])
+        dist_data = (
+            data.groupby(agg_cols)
+            .agg(
+                {
+                    y_col: [
+                        ("pct_05", get_pct_05),
+                        ("pct_25", get_pct_25),
+                        ("pct_50", get_median),
+                        ("pct_75", get_pct_75),
+                        ("pct_95", get_pct_95),
+                    ]
+                }
+            )
+            .reset_index()
+        )
+        # flatten multi-index columns
+        dist_data.columns = [
+            f"{col[0]}_{col[1]}" if col[1] else col[0] for col in dist_data.columns
+        ]
+        return dist_data
+    elif chart_fn == "displot" and kind == "hist":
+        agg_cols = []
+        x_col = kwargs.get("x", None)
+        for col in ["hue", "col", "row"]:
+            if col in kwargs and kwargs[col]:
+                agg_cols.append(kwargs[col])
+        # calculate histogram grouped by agg_cols
+        if agg_cols:
+            histogram_data = data.groupby(agg_cols).apply(
+                lambda x: histogram(x[x_col]), include_groups=False
+            )
+        else:
+            histogram_data = histogram(data[x_col])
+        histogram_data = histogram_data.reset_index()
+        return histogram_data
+    else:
+        LOGGER.error(
+            f"Edge case not handled for chart_fn: {chart_fn}, chart params: {chart_fn_params}"
+        )
+        return data
+
+
 async def gen_data_analysis(
     task_type: TaskType,
     api_key: str,
     generated_qn: str,
     sql: str,
-    data_fetched: pd.DataFrame,
+    data_chart: pd.DataFrame,
     chart_fn_params: Dict[str, Any],
 ) -> Dict[str, str]:
     """
@@ -191,74 +324,14 @@ async def gen_data_analysis(
     this will generate a title and summary of the key insights.
     Returns a dictionary with the title and summary.
     """
-    # get the data points that are used to generate the chart
-    # note that we need to aggregate if the chart implicitly aggregates the data
-    chart_fn = chart_fn_params.get("name")
-    chart_params = chart_fn_params.get("parameters", {})
-    kind = chart_params.get("kind", None)
-    y_col = chart_params.get("y", None)
-    x_col = chart_params.get("x", None)
-    hue_col = chart_params.get("hue", None)
-    col_col = chart_params.get("col", None)
-    row_col = chart_params.get("row", None)
-
-    grouping_cols = [col for col in [hue_col, col_col, row_col] if col]
-    # add x only if it is not numerical and used in relplot
-    if x_col and data_fetched[x_col].dtype not in ["int64", "float64"]:
-        grouping_cols.append(x_col)
-    LOGGER.debug(f"Grouping columns: {grouping_cols}")
-
-    agg_functions = {}
-    if y_col:
-        if chart_fn == "relplot" and kind == "line":
-            agg_functions[y_col] = "mean"
-        elif chart_fn == "catplot" and kind == "bar":
-            agg_functions[y_col] = "sum"
-        elif chart_fn == "catplot" and kind == "count":
-            agg_functions[y_col] = "count"
-        elif chart_fn == "catplot" and kind in ["box", "violin"]:
-            agg_functions[y_col] = [
-                lambda x: x.quantile(0.25),
-                lambda x: x.median(),
-                lambda x: x.quantile(0.75),
-            ]
-        LOGGER.debug(f"Agg functions: {agg_functions}")
-
-    if not grouping_cols or not agg_functions:
-        data_grouped = data_fetched
-        aggregated = False
-    else:
-        if y_col:
-            LOGGER.debug(f"data_fetched: {data_fetched.head()}")
-            LOGGER.debug(f"columns: {data_fetched.columns}")
-            LOGGER.debug(f"dtype: {data_fetched.dtypes}")
-            data_grouped = (
-                data_fetched.groupby(grouping_cols).agg(agg_functions).reset_index()
-            )
-        elif chart_fn == "displot":
-            data_grouped = data_fetched.groupby(grouping_cols).hist()
-        else:
-            LOGGER.error(
-                f"Edge case not handled for chart_fn: {chart_fn}, chart params: {chart_fn_params}"
-            )
-
-        LOGGER.debug(f"Grouped data: {data_grouped}")
-
-        aggregated = len(data_grouped) < len(data_fetched)
-
-    # convert data df to csv
-    data_csv = data_grouped.to_csv(float_format="%.3f", header=True, index=False)
-
-    # generate data analysis
     json_data = {
         "task_type": task_type.value,
         "api_key": api_key,
         "question": generated_qn,
         "sql": sql,
-        "data_csv": data_csv,
-        "data_aggregated": aggregated,
-        "chart_fn": chart_fn,
-        "chart_params": chart_params,
+        "data_csv": data_chart.to_csv(float_format="%.3f", header=True, index=False),
+        "chart_fn": chart_fn_params["name"],
+        "chart_params": chart_fn_params.get("parameters", {}),
     }
     resp = await make_request(
         f"{DEFOG_BASE_URL}/oracle/gen_explorer_data_analysis", data=json_data

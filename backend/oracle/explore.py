@@ -10,10 +10,12 @@ from generic_utils import make_request
 from oracle.celery_app import LOGGER
 from oracle.constants import TaskType
 from oracle.utils_explore_data import (
+    FETCHED_TABLE_CSV,
     IMAGE,
     TABLE_CSV,
     gen_data_analysis,
     gen_sql,
+    get_chart_df,
     get_chart_fn,
     retry_sql_gen,
     run_chart_fn,
@@ -162,8 +164,14 @@ async def explore_data(
             DEFOG_BASE_URL + "/oracle/gen_explorer_qns_deeper", get_deeper_qns_request
         )
         generated_qns = response["generated_questions"]
-        summary_all = response.get("summary", "") # this is the summary across all analyses
-    return {"analyses": analyses, "dependent_variable": dependent_variable, "summary": summary_all}
+        summary_all = response.get(
+            "summary", ""
+        )  # this is the summary across all analyses
+    return {
+        "analyses": analyses,
+        "dependent_variable": dependent_variable,
+        "summary": summary_all,
+    }
 
 
 async def explore_generated_question(
@@ -202,7 +210,7 @@ async def explore_generated_question(
         - description: str
         - table.column: List[str]
     - artifacts: Dict[str, Dict[str, str]]
-        - outer key: str, artifact type, one of TABLE_CSV, IMAGE
+        - outer key: str, artifact type, one of FETCHED_TABLE_CSV, TABLE_CSV, IMAGE
         - inner keys
             - artifact_content: str, e.g. csv content, image path
             - artifact_description: str, e.g. table of prices, scatter plot of x vs y
@@ -261,18 +269,33 @@ async def explore_generated_question(
                 independent_variable_str = f"{independent_variable_group['description']} ({independent_variable_group['table.column']})"
                 expand_sql_qn_response = await make_request(
                     DEFOG_BASE_URL + "/oracle/expand_sql_qn",
-                    data={"api_key": api_key, "user_question": user_question, "generated_qn": generated_qn, "sql": sql, "dependent_variable": dependent_variable_str, "independent_variable": independent_variable_str},
+                    data={
+                        "api_key": api_key,
+                        "user_question": user_question,
+                        "generated_qn": generated_qn,
+                        "sql": sql,
+                        "dependent_variable": dependent_variable_str,
+                        "independent_variable": independent_variable_str,
+                    },
                 )
-                sql = expand_sql_qn_response["sql"]
-                generated_qn = expand_sql_qn_response["question"]
-                if sql:
+                new_sql = expand_sql_qn_response["sql"]
+                new_generated_qn = expand_sql_qn_response["question"]
+                if new_sql:
                     LOGGER.debug(f"Expanded SQL for {qn_id}: {generated_qn}")
                     data, err_msg = await execute_sql(db_type, db_creds, sql)
                     if err_msg is not None:
-                        LOGGER.error(f"Error occurred in executing expanded SQL: {err_msg}")
+                        LOGGER.error(
+                            f"Error occurred in executing expanded SQL: {err_msg}"
+                        )
                     elif isinstance(data, pd.DataFrame) and not data.empty:
-                        LOGGER.debug(f"Data fetched after expanding SQL for {qn_id}: {generated_qn}")
+                        LOGGER.debug(
+                            f"Data fetched after expanding SQL for {qn_id}: {generated_qn}"
+                        )
+                        sql = new_sql
+                        generated_qn = new_generated_qn
                         break
+                    else:
+                        err_msg = "No data fetched"
             else:
                 break
         retry_count += 1
@@ -285,7 +308,7 @@ async def explore_generated_question(
     # This is the minimal output required to return, should any of the subsequent
     # tools fail.
     artifacts = {
-        TABLE_CSV: {
+        FETCHED_TABLE_CSV: {
             "artifact_content": data.to_csv(
                 float_format="%.3f", header=True, index=False
             )
@@ -337,6 +360,13 @@ async def explore_generated_question(
         return outputs
     # save chosen chart function and arguments
     outputs["working"]["chart_fn_params"] = chart_fn_params
+    # add the data represented in the chart to the artifacts
+    chart_df = get_chart_df(data, chart_fn_params)
+    artifacts[TABLE_CSV] = {
+        "artifact_content": chart_df.to_csv(
+            float_format="%.3f", header=True, index=False
+        )
+    }
     ts = save_timing(ts, f"{qn_id}\) Get and Plot chart", timings)
 
     # TODO: DEF-552 add retries for chart plotting based on error type and if chart
@@ -348,7 +378,7 @@ async def explore_generated_question(
     # generate data analysis
     try:
         data_analysis = await gen_data_analysis(
-            task_type, api_key, generated_qn, sql, data, chart_fn_params
+            task_type, api_key, generated_qn, sql, chart_df, chart_fn_params
         )
         if "error" in data_analysis and data_analysis["error"]:
             LOGGER.error(
