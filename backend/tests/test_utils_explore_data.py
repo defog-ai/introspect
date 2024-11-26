@@ -1,11 +1,9 @@
 import unittest
+
 import numpy as np
 import pandas as pd
+from oracle.utils_explore_data import get_anomalies, get_chart_df, histogram
 from pandas.testing import assert_frame_equal
-from oracle.utils_explore_data import (
-    get_chart_df,
-    histogram,
-)
 
 
 class TestGetHistogram(unittest.TestCase):
@@ -310,7 +308,174 @@ class TestGetChartDf(unittest.TestCase):
         )
         assert_frame_equal(result, expected_df)
 
-    # def test_edge_case(self):
-    #     chart_fn_params = {"name": "unknown", "parameters": {}}
-    #     result = get_chart_df(self.data, chart_fn_params)
-    #     self.assertTrue(result.equals(self.data))
+
+class TestAnomalies(unittest.TestCase):
+    def setUp(self) -> None:
+        self.data_xy_no_anomaly = pd.DataFrame(
+            {
+                "product_id": [1, 2, 3],
+                "price": [10, 20, 30],
+            }
+        )
+        self.data_xy_anomaly = pd.DataFrame(
+            {
+                "product_id": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                "price": [10, 20, 30, 80, 10, 15, 20, -50, 15, 20],
+            }
+        )
+        self.data_xy_agg_no_anomaly = pd.DataFrame(
+            {
+                "product_id": [1, 2, 3],
+                "price_mean": [10, 20, 30],
+                "price_pct_05": [10, 20, 30],
+                "price_pct_95": [10, 20, 30],
+            }
+        )
+        self.data_xy_agg_anomaly = pd.DataFrame(
+            {
+                "product_id": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                "price_mean": [10, 20, 30, 80, 10, 15, 20, -50, 15, 20],
+                "price_pct_05": [10, 20, 30, 80, 10, 15, 20, -50, 15, 20],
+                "price_pct_95": [10, 20, 30, 80, 10, 15, 20, -50, 15, 20],
+            }
+        )
+        self.data_xy_cat_no_anomaly = pd.DataFrame(
+            {
+                "product_id": ["a", "b", "c"],
+                "price": [10, 20, 30],
+            }
+        )
+        self.data_xy_cat_anomaly = pd.DataFrame(
+            {
+                "product_id": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"],
+                "price": [10, 20, 30, 80, 10, 15, 20, -50, 15, 20],
+            }
+        )
+        self.data_xy_cat_agg_no_anomaly = pd.DataFrame(
+            {
+                "product_id": ["a", "b", "c"],
+                "price_mean": [10, 20, 30],
+                "price_pct_05": [10, 20, 30],
+                "price_pct_95": [10, 20, 30],
+            }
+        )
+        self.data_xy_cat_agg_anomaly = pd.DataFrame(
+            {
+                "product_id": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"],
+                "price_mean": [10, 20, 30, 80, 10, 15, 20, -50, 15, 20],
+                "price_pct_05": [10, 20, 30, 80, 10, 15, 20, -50, 15, 20],
+                "price_pct_95": [10, 20, 30, 80, 10, 15, 20, -50, 15, 20],
+            }
+        )
+        self.scatter_xy_params = {
+            "name": "relplot",
+            "parameters": {
+                "kind": "scatter",
+                "x": "product_id",
+                "y": "price",
+            },
+        }
+        self.line_xy_params = {
+            "name": "relplot",
+            "parameters": {
+                "kind": "line",
+                "x": "product_id",
+                "y": "price",
+            },
+        }
+        self.bar_xy_params = {
+            "name": "catplot",
+            "parameters": {
+                "kind": "bar",
+                "x": "product_id",
+                "y": "price",
+            },
+        }
+
+    def test_scatter(self):
+        result = get_anomalies(self.data_xy_no_anomaly, self.scatter_xy_params, 3)
+        self.assertIsNone(result)
+        result = get_anomalies(self.data_xy_anomaly, self.scatter_xy_params, 3)
+        expected_df = pd.DataFrame(
+            {
+                "product_id": [4.0, 8.0],
+                "price": [80.0, -50.0],
+                "price_zscore": [3.001915, -3.428299],
+            },
+            index=pd.Index([3, 7]),
+        )
+        print(result)
+        assert_frame_equal(result, expected_df)
+
+    def test_line(self):
+        result = get_anomalies(self.data_xy_agg_no_anomaly, self.line_xy_params, 3)
+        self.assertIsNone(result)
+        result = get_anomalies(self.data_xy_agg_anomaly, self.line_xy_params, 3)
+        expected_df = pd.DataFrame(
+            {
+                "product_id": [4.0, 8.0],
+                "price_mean": [80.0, -50.0],
+                "price_mean_zscore": [3.001915, -3.428299],
+            },
+            index=pd.Index([3, 7]),
+        )
+        print(result)
+        assert_frame_equal(result, expected_df)
+
+    def test_bar(self):
+        result = get_anomalies(self.data_xy_agg_no_anomaly, self.bar_xy_params, 3)
+        self.assertIsNone(result)
+        result = get_anomalies(self.data_xy_agg_anomaly, self.bar_xy_params, 3)
+        expected_df = pd.DataFrame(
+            {
+                "product_id": [4.0, 8.0],
+                "price_mean": [80.0, -50.0],
+                "price_mean_zscore": [3.001915, -3.428299],
+            },
+            index=pd.Index([3, 7]),
+        )
+        assert_frame_equal(result, expected_df)
+
+    def test_bar_cat(self):
+        result = get_anomalies(self.data_xy_cat_agg_no_anomaly, self.bar_xy_params, 3)
+        self.assertIsNone(result)
+        result = get_anomalies(self.data_xy_cat_agg_anomaly, self.bar_xy_params, 3)
+        expected_df = pd.DataFrame(
+            {
+                "product_id": ["d", "h"],
+                "price_mean": [80, -50],
+                "price_mean_zscore": [3.001915, -3.428299],
+            },
+            index=pd.Index([3, 7]),
+        )
+        assert_frame_equal(result, expected_df)
+
+    def test_box(self):
+        # outlier comparison for box distribution is not supported atm
+        chart_fn_params = {
+            "name": "catplot",
+            "parameters": {
+                "kind": "box",
+                "x": "product_id",
+                "y": "price",
+            },
+        }
+        result = get_anomalies(self.data_xy_no_anomaly, chart_fn_params, 3)
+        self.assertIsNone(result)
+        result = get_anomalies(self.data_xy_anomaly, chart_fn_params, 3)
+        self.assertIsNone(result)
+
+    def test_violin(self):
+        # outlier comparison for violin distribution is not supported atm
+        chart_fn_params = {
+            "name": "catplot",
+            "parameters": {
+                "kind": "violin",
+                "x": "product_id",
+                "y": "price",
+            },
+        }
+        result = get_anomalies(self.data_xy_no_anomaly, chart_fn_params, 3)
+        self.assertIsNone(result)
+        result = get_anomalies(self.data_xy_anomaly, chart_fn_params, 3)
+        self.assertIsNone(result)

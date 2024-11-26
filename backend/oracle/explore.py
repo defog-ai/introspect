@@ -10,11 +10,13 @@ from generic_utils import make_request
 from oracle.celery_app import LOGGER
 from oracle.constants import TaskType
 from oracle.utils_explore_data import (
+    ANOMALIES_CSV,
     FETCHED_TABLE_CSV,
     IMAGE,
     TABLE_CSV,
     gen_data_analysis,
     gen_sql,
+    get_anomalies,
     get_chart_df,
     get_chart_fn,
     retry_sql_gen,
@@ -262,7 +264,10 @@ async def explore_generated_question(
                 ts, f"{qn_id}\) SQL generation (try {retry_count})", timings
             )
             data, err_msg = await execute_sql(db_type, db_creds, sql)
-            if err_msg is not None:
+            if err_msg == "Obtained Sorry SQL query":
+                LOGGER.error(f"Sorry SQL query obtained for {qn_id}: {generated_qn}")
+                break
+            elif err_msg is not None:
                 LOGGER.error(f"Error occurred in executing SQL: {err_msg}")
             elif isinstance(data, pd.DataFrame):
                 dependent_variable_str = f"{dependent_variable['description']} ({dependent_variable['table.column']})"
@@ -377,10 +382,26 @@ async def explore_generated_question(
     # add chart to outputs
     artifacts[IMAGE] = {"artifact_location": chart_path}
 
+    anomalies_df = get_anomalies(chart_df, chart_fn_params)
+    LOGGER.debug(f"Anomalies {anomalies_df}")
+    if anomalies_df is not None:
+        LOGGER.debug(f"Anomalies found for {qn_id}: {generated_qn}")
+        artifacts[ANOMALIES_CSV] = {
+            "artifact_content": anomalies_df.to_csv(
+                float_format="%.3f", header=True, index=False
+            )
+        }
+
     # generate data analysis
     try:
         data_analysis = await gen_data_analysis(
-            task_type, api_key, generated_qn, sql, chart_df, chart_fn_params
+            task_type,
+            api_key,
+            generated_qn,
+            sql,
+            chart_df,
+            anomalies_df,
+            chart_fn_params,
         )
         if "error" in data_analysis and data_analysis["error"]:
             LOGGER.error(

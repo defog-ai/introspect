@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -11,13 +11,14 @@ from oracle.constants import TaskType
 from seaborn._stats.counting import Hist
 
 FIGSIZE = (5, 3)
+Z_THRESHOLD = 3  # z-score threshold for anomalies
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 # explore module constants
 FETCHED_TABLE_CSV = "fetched_table_csv"  # raw table fetched using sql
 TABLE_CSV = "table_csv"  # table represented in the chart
-IMAGE = "image"
-ARTIFACT_TYPES = [TABLE_CSV, IMAGE]
+ANOMALIES_CSV = "anomalies_csv"  # anomalies in the data
+IMAGE = "image"  # image of the chart
 SUPPORTED_CHART_TYPES = [
     "relplot",
     "catplot",
@@ -147,20 +148,39 @@ def run_chart_fn(
     if not chart_fn_params:
         raise Exception("No chart function provided")
     chart_fn = chart_fn_params["name"]
+    if chart_fn not in SUPPORTED_CHART_TYPES:
+        raise Exception(f"Unsupported chart type: {chart_fn}")
     kwargs = chart_fn_params.get("parameters", {})
-    # replace "" in value with None
-    for key, value in kwargs.items():
-        if value == "":
-            kwargs[key] = None
+    x = kwargs.get("x", None)
+    y = kwargs.get("y", None)
+    hue = kwargs.get("hue", None)
+    col = kwargs.get("col", None)
+    row = kwargs.get("row", None)
+    all_colnames = [c for c in [x, y, hue, col, row] if c]
+    # perform some basic data validation
+    LOGGER.debug(f"Columns used in chart: {all_colnames}")
+    for c in all_colnames:
+        if c not in data.columns:
+            raise Exception(f"Column not found in data: {c}")
 
     plt.figure(figsize=figsize)  # Initialize a new figure
 
     # Run the sns plotting function on the data
     if chart_fn == "relplot":
+        if not (x and y):
+            raise Exception(
+                f"X and Y columns not provided for relplot.\n{chart_fn_params}"
+            )
         sns.relplot(data, **kwargs)
     elif chart_fn == "displot":
+        if not x:
+            raise Exception(f"X column not provided for displot.\n{chart_fn_params}")
         sns.displot(data, **kwargs)
     elif chart_fn == "catplot":
+        if not (x and y):
+            raise Exception(
+                f"X and Y columns not provided for catplot.\n{chart_fn_params}"
+            )
         sns.catplot(data, **kwargs)
 
     # rotate x-axis labels if the x column's values has more than 100 characters
@@ -178,6 +198,9 @@ def run_chart_fn(
     # Save the figure to the specified path
     plt.savefig(chart_path)
     plt.close()  # Close the figure to free memory
+    LOGGER.debug(
+        f"Saved chart to: {chart_path}\nchart_fn: {chart_fn}\nparams: {kwargs}"
+    )
 
 
 # sub-routines for getting summaries / percentiles:
@@ -239,6 +262,12 @@ def get_chart_df(data: pd.DataFrame, chart_fn_params: Dict[str, Any]) -> pd.Data
     ):
         agg_cols = []
         y_col = kwargs.get("y", None)
+        if not y_col or y_col not in data.columns:
+            LOGGER.error(f"y column not found in data: {y_col}")
+            return data
+        if data[y_col].dtype not in [np.float64, np.int64]:
+            LOGGER.error(f"y column is not numeric: {y_col}")
+            return data
         for col in ["x", "hue", "col", "row"]:
             if col in kwargs and kwargs[col]:
                 agg_cols.append(kwargs[col])
@@ -311,12 +340,73 @@ def get_chart_df(data: pd.DataFrame, chart_fn_params: Dict[str, Any]) -> pd.Data
         return data
 
 
+def get_anomalies(
+    chart_df: pd.DataFrame,
+    chart_fn_params: Dict[str, Any],
+    z_threshold: int = Z_THRESHOLD,
+) -> Optional[pd.DataFrame]:
+    """
+    Get anomalies in the data using a simple z-score method.
+    The data supplied should ideally be the data represented in the chart.
+    Returns a dataframe of anomalies and None if inputs are invalid or no
+    anomalies are found.
+    """
+    chart_fn = chart_fn_params["name"]
+    kwargs = chart_fn_params.get("parameters", {})
+    kind = kwargs.get("kind", None)
+    y_colname = kwargs.get("y", None)
+    non_y_columns = [col for col in chart_df.columns if not col.startswith(y_colname)]
+    # hist charts have no y column, and only numeric columns can have z-scores
+    if chart_fn == "displot" and kind == "hist":
+        return None
+    # box/violin plots have multiple y columns, and requires a different method
+    elif chart_fn == "catplot" and (kind == "box" or kind == "violin"):
+        # TODO use other distribution statistics to calculate z-scores
+        return None
+    # get list of y column names depending on the earlier processing (e.g. aggregation)
+    if chart_fn == "relplot" and kind == "scatter":
+        y_colname = kwargs.get("y", None)
+    elif (chart_fn == "relplot" and kind == "line") or (
+        chart_fn == "catplot" and kind == "bar"
+    ):
+        y_colname = f"{y_colname}_mean"
+    else:
+        raise ValueError(f"Unsupported chart_fn: {chart_fn}")
+    if y_colname not in chart_df.columns:
+        LOGGER.error(f"y column not found in data: {y_colname}")
+        return None
+    if chart_df[y_colname].dtype not in [np.float64, np.int64]:
+        LOGGER.error(f"y column is not numeric: {y_colname}")
+        return None
+
+    # iterate through each record, and see if it is within the z-threshold calculated without it
+    anomalies = []
+    y_col = chart_df[y_colname]
+    columns_to_keep = non_y_columns + [y_colname]
+    for i, row in chart_df.iterrows():
+        # get the mean and std of the data without the row
+        y_no_row = y_col.drop(i, inplace=False)
+        y_mean = y_no_row.mean()
+        y_std = y_no_row.std()
+        z_score = (row[y_colname] - y_mean) / y_std
+        if abs(z_score) > z_threshold:
+            row_to_keep = row[columns_to_keep]
+            row_to_keep[f"{y_colname}_zscore"] = z_score
+            anomalies.append(row_to_keep)
+    if anomalies:
+        anomalies_df = pd.DataFrame(anomalies)
+        return anomalies_df
+    else:
+        return None
+
+
 async def gen_data_analysis(
     task_type: TaskType,
     api_key: str,
     generated_qn: str,
     sql: str,
     data_chart: pd.DataFrame,
+    data_anomalies: pd.DataFrame,
     chart_fn_params: Dict[str, Any],
 ) -> Dict[str, str]:
     """
@@ -324,12 +414,19 @@ async def gen_data_analysis(
     this will generate a title and summary of the key insights.
     Returns a dictionary with the title and summary.
     """
+    if data_anomalies is None:
+        data_anomalies_csv = ""
+    else:
+        data_anomalies_csv = data_anomalies.to_csv(
+            float_format="%.3f", header=True, index=False
+        )
     json_data = {
         "task_type": task_type.value,
         "api_key": api_key,
         "question": generated_qn,
         "sql": sql,
         "data_csv": data_chart.to_csv(float_format="%.3f", header=True, index=False),
+        "data_anomalies": data_anomalies_csv,
         "chart_fn": chart_fn_params["name"],
         "chart_params": chart_fn_params.get("parameters", {}),
     }
