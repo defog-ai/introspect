@@ -151,10 +151,8 @@ class Analyses(Base):
     api_key = Column(Text, nullable=False)
     email = Column(Text)
     timestamp = Column(DateTime)
-    approaches = Column(JSON)
     clarify = Column(JSON)
     assignment_understanding = Column(JSON)
-    gen_approaches = Column(JSON)
     user_question = Column(Text)
     gen_steps = Column(JSON)
     follow_up_analyses = Column(JSON)
@@ -584,7 +582,6 @@ async def update_analysis_data(
     request_types = [
         "clarify",
         "understand",
-        "gen_approaches",
         "gen_steps",
         "gen_analysis",
         "user_question",

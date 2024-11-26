@@ -57,7 +57,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-request_types = ["clarify", "understand", "gen_approaches", "gen_steps", "gen_analysis"]
+request_types = ["clarify", "understand", "gen_steps", "gen_analysis"]
 analysis_assets_dir = os.environ.get(
     "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
 )
