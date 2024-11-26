@@ -351,19 +351,33 @@ function OracleDashboard() {
   };
 
   const deleteReport = async (report_id) => {
-    // delete a report
+    // Fetch the token from localStorage
     const token = localStorage.getItem("defogToken");
-    const res = await fetch(setupBaseUrl("http", `oracle/delete_report`), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        token,
-        key_name: apiKeyName,
-        report_id: report_id,
-      }),
-    });
+
+    try {
+      // Send delete request to the API
+      const res = await fetch(setupBaseUrl("http", `oracle/delete_report`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+          key_name: apiKeyName,
+          report_id: report_id,
+        }),
+      });
+
+      if (res.ok) {
+        // Re-fetch reports after successful deletion
+        console.log("Report deleted successfully");
+        await fetchReports(apiKeyName, setReports);
+      } else {
+        console.error("Failed to delete report");
+      }
+    } catch (error) {
+      console.error("Error deleting report:", error);
+    }
   };
 
   const generateReport = async () => {
