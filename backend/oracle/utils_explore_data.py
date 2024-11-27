@@ -11,12 +11,14 @@ from oracle.constants import TaskType
 
 FIGSIZE = (5, 3)
 Z_THRESHOLD = 3  # z-score threshold for anomalies
+NUMERIC_DTYPES = [np.float64, np.int64]
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 # explore module constants
 FETCHED_TABLE_CSV = "fetched_table_csv"  # raw table fetched using sql
 TABLE_CSV = "table_csv"  # table represented in the chart
 ANOMALIES_CSV = "anomalies_csv"  # anomalies in the data
+CORRELATION = "correlation" # correlation between x and y columns
 IMAGE = "image"  # image of the chart
 SUPPORTED_CHART_TYPES = [
     "relplot",
@@ -345,6 +347,26 @@ def get_chart_df(data: pd.DataFrame, chart_fn_params: Dict[str, Any]) -> pd.Data
         return data
 
 
+def get_correlation(data: pd.DataFrame, chart_fn_params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Get the correlation between the x and y columns.
+    """
+    kwargs = chart_fn_params.get("parameters", {})
+    x_col = kwargs.get("x", None)
+    y_col = kwargs.get("y", None)
+    if not x_col or not y_col or x_col not in data.columns or y_col not in data.columns:
+        LOGGER.debug(f"x or y column not found in data: {x_col}, {y_col}")
+        return None
+    if pd.api.types.is_numeric_dtype(data[x_col]) is False or pd.api.types.is_numeric_dtype(data[y_col]) is False:
+        LOGGER.debug(f"x or y column is not numeric. dtypes: {data[x_col].dtype}, {data[y_col].dtype}")
+        return None
+    return {
+        "x_col": x_col,
+        "y_col": y_col,
+        "correlation": data[x_col].corr(data[y_col], method="spearman"),
+    }
+
+
 def get_anomalies(
     chart_df: pd.DataFrame,
     chart_fn_params: Dict[str, Any],
@@ -413,6 +435,7 @@ async def gen_data_analysis(
     sql: str,
     data_chart: pd.DataFrame,
     data_anomalies: pd.DataFrame,
+    correlation_dict: Optional[Dict[str, Any]],
     chart_fn_params: Dict[str, Any],
 ) -> Dict[str, str]:
     """
@@ -433,6 +456,7 @@ async def gen_data_analysis(
         "sql": sql,
         "data_csv": data_chart.to_csv(float_format="%.3f", header=True, index=False),
         "data_anomalies_csv": data_anomalies_csv,
+        "correlation_dict": correlation_dict,
         "chart_fn": chart_fn_params["name"],
         "chart_params": chart_fn_params.get("parameters", {}),
     }

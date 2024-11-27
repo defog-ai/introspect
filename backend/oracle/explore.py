@@ -11,6 +11,7 @@ from oracle.celery_app import LOGGER
 from oracle.constants import TaskType
 from oracle.utils_explore_data import (
     ANOMALIES_CSV,
+    CORRELATION,
     FETCHED_TABLE_CSV,
     IMAGE,
     TABLE_CSV,
@@ -19,6 +20,7 @@ from oracle.utils_explore_data import (
     get_anomalies,
     get_chart_df,
     get_chart_fn,
+    get_correlation,
     retry_sql_gen,
     run_chart_fn,
 )
@@ -382,7 +384,8 @@ async def explore_generated_question(
     # add chart to outputs
     artifacts[IMAGE] = {"artifact_location": chart_path}
 
-    anomalies_df = get_anomalies(chart_df, chart_fn_params)
+    # we get the anomalies from the raw data, not the chart data
+    anomalies_df = get_anomalies(data, chart_fn_params)
     LOGGER.debug(f"Anomalies {anomalies_df}")
     if anomalies_df is not None:
         LOGGER.debug(f"Anomalies found for {qn_id}: {generated_qn}")
@@ -390,6 +393,17 @@ async def explore_generated_question(
             "artifact_content": anomalies_df.to_csv(
                 float_format="%.3f", header=True, index=False
             )
+        }
+
+    correlation_dict = get_correlation(chart_df, chart_fn_params)
+    if correlation_dict is not None:
+        corr = correlation_dict["correlation"]
+        x_col = correlation_dict["x_col"]
+        y_col = correlation_dict["y_col"]
+        LOGGER.debug(f"Correlation between {x_col} and {y_col}: {corr}")
+        artifacts[CORRELATION] = {
+            "artifact_content": f"{corr:.3f}",
+            "artifact_description": f"Correlation between {x_col} and {y_col}"
         }
 
     # generate data analysis
@@ -401,6 +415,7 @@ async def explore_generated_question(
             sql,
             chart_df,
             anomalies_df,
+            correlation_dict,
             chart_fn_params,
         )
         if "error" in data_analysis and data_analysis["error"]:
