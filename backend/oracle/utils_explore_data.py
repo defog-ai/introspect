@@ -359,8 +359,9 @@ def get_anomalies(
     chart_fn = chart_fn_params["name"]
     kwargs = chart_fn_params.get("parameters", {})
     kind = kwargs.get("kind", None)
-    y_colname = kwargs.get("y", None)
-    non_y_columns = [col for col in chart_df.columns if not col.startswith(y_colname)]
+    y_colname_original = kwargs.get("y", None)
+    if y_colname_original:
+        non_y_columns = [col for col in chart_df.columns if not col.startswith(y_colname_original)]
     # hist charts have no y column, and only numeric columns can have z-scores
     if chart_fn == "displot" and kind == "hist":
         return None
@@ -370,11 +371,11 @@ def get_anomalies(
         return None
     # get list of y column names depending on the earlier processing (e.g. aggregation)
     if chart_fn == "relplot" and kind == "scatter":
-        y_colname = kwargs.get("y", None)
+        y_colname = y_colname_original
     elif (chart_fn == "relplot" and kind == "line") or (
         chart_fn == "catplot" and kind == "bar"
     ):
-        y_colname = f"{y_colname}_mean"
+        y_colname = f"{y_colname_original}_mean"
     else:
         raise ValueError(f"Unsupported chart_fn: {chart_fn}")
     if y_colname not in chart_df.columns:
