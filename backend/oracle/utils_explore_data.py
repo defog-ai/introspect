@@ -8,6 +8,7 @@ from generic_utils import format_sql, make_request, normalize_sql
 from matplotlib import pyplot as plt
 from oracle.celery_app import LOGGER
 from oracle.constants import TaskType
+from utils_df import get_columns_summary
 
 FIGSIZE = (5, 3)
 Z_THRESHOLD = 3  # z-score threshold for anomalies
@@ -86,8 +87,6 @@ async def get_chart_fn(
     """
     Get the most suitable chart function and arguments for the given data.
     """
-    LOGGER.debug(f"Getting sns chart for question: {question}")
-    LOGGER.debug(f"dtypes: {data.dtypes}")
     # if we're showing the unique values for only 1 column, hardcode to use a
     # histogram with the number of bins set to the number of unique values.
     if len(data.columns) == 1 and "unique" in question:
@@ -95,29 +94,13 @@ async def get_chart_fn(
             "name": "displot",
             "parameters": {"kind": "hist", "x": data.columns[0], "bins": len(data)},
         }
-    # the statistic names (e.g. count, mean, etc) are in the index after calling
-    # `describe` so we need to keep it when exporting to csv
-    non_numeric_columns = data.select_dtypes(include="object").columns
-    numeric_columns = data.select_dtypes(exclude="object").columns
-    LOGGER.debug(f"Numeric columns: {numeric_columns}")
-    LOGGER.debug(f"Non-Numeric columns: {non_numeric_columns}")
-    if not numeric_columns.empty:
-        numeric_columns_summary = (
-            data[numeric_columns].describe().to_csv(index=True, float_format="%.2f")
-        )
-    else:
-        numeric_columns_summary = ""
-    if not non_numeric_columns.empty:
-        qualitative_columns_summary = (
-            data[non_numeric_columns].describe(include="object").to_csv(index=True)
-        )
-    else:
-        qualitative_columns_summary = ""
+    numeric_columns_summary, qualitative_columns_summary, date_columns_summary = get_columns_summary(data)
     json_data = {
         "api_key": api_key,
         "question": question,
         "numeric_columns_summary": numeric_columns_summary,
         "qualitative_columns_summary": qualitative_columns_summary,
+        "date_columns_summary": date_columns_summary,
         "dependent_variable": dependent_variable,
         "independent_variable": independent_variable,
     }
@@ -385,7 +368,7 @@ def get_anomalies(
     if y_colname_original:
         non_y_columns = [col for col in chart_df.columns if not col.startswith(y_colname_original)]
     # hist charts have no y column, and only numeric columns can have z-scores
-    if chart_fn == "displot" and kind == "hist":
+    if chart_fn == "displot":
         return None
     # box/violin plots have multiple y columns, and requires a different method
     elif chart_fn == "catplot" and (kind == "box" or kind == "violin"):
@@ -399,7 +382,7 @@ def get_anomalies(
     ):
         y_colname = f"{y_colname_original}_mean"
     else:
-        raise ValueError(f"Unsupported chart_fn: {chart_fn}")
+        raise ValueError(f"Unsupported chart_fn x kind combination: {chart_fn} x {kind}")
     if y_colname not in chart_df.columns:
         LOGGER.error(f"y column not found in data: {y_colname}")
         return None

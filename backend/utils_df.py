@@ -1,6 +1,8 @@
 # helper functions for dataframes
-from typing import List
+from typing import List, Tuple
 import pandas as pd
+
+from utils_logging import LOGGER
 
 TYPE_DATE = "date"
 TYPE_TIME = "time"
@@ -87,3 +89,33 @@ def mk_df(data: List, columns: List[str]) -> pd.DataFrame:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
 
     return df
+
+
+def get_columns_summary(df: pd.DataFrame) -> Tuple[str, str, str]:
+    """
+    Get the summary of the numeric and non-numeric columns.
+    """
+    numeric_columns = df.columns[df.dtypes.apply(lambda x: pd.api.types.is_numeric_dtype(x))]
+    date_columns = df.columns[df.dtypes.apply(lambda x: pd.api.types.is_datetime64_any_dtype(x))]
+    non_numeric_columns = pd.Index(set(df.columns) - set(numeric_columns) - set(date_columns))
+    LOGGER.debug(f"numeric_columns: {numeric_columns}")
+    LOGGER.debug(f"non_numeric_columns: {non_numeric_columns}")
+    LOGGER.debug(f"date_columns: {date_columns}")
+    # the statistic names (e.g. count, mean, etc) are in the index after calling
+    # `describe` so we need to keep it when exporting to csv
+    if not non_numeric_columns.empty:
+        non_numeric_columns_summary = df[non_numeric_columns].describe(include="object").to_csv(index=True)
+    else:
+        non_numeric_columns_summary = ""
+    if not numeric_columns.empty:
+        numeric_columns_summary = df[numeric_columns].describe().to_csv(index=True, float_format="%.2f")
+    else:
+        numeric_columns_summary = ""
+    if not date_columns.empty:
+        date_columns_summary = ""
+        for col in date_columns:
+            date_columns_summary += f"Column name: {col}\n"
+            date_columns_summary += f"Value counts:\n{df[col].value_counts().to_csv(index=True)}\n"
+    else:
+        date_columns_summary = ""
+    return numeric_columns_summary, non_numeric_columns_summary, date_columns_summary

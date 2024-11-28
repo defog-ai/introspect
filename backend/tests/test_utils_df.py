@@ -1,8 +1,9 @@
+import datetime
 from decimal import Decimal
 import unittest
 import pandas as pd
 from pandas.testing import assert_series_equal
-from utils_df import determine_column_type, mk_df
+from utils_df import determine_column_type, mk_df, get_columns_summary
 
 
 class TestDetermineColumnType(unittest.TestCase):
@@ -227,3 +228,92 @@ class TestMkDf(unittest.TestCase):
         df_varied = mk_df(data_varied, columns)
         assert df_varied.dtypes["amount"] == "float64"
         assert df_varied["amount"].tolist() == [1234.56, 1234.56, 1234.56, 1234.0]
+
+    def test_get_columns_summary(self):
+        # Create test data with mixed types
+        data = [
+            [datetime.date(2023, 1, 1), 'A', 10, 1.5, datetime.datetime(2023, 1, 1, 10, 0)],
+            [datetime.date(2023, 1, 2), 'B', 20, 2.5, datetime.datetime(2023, 1, 2, 11, 0)],
+            [datetime.date(2023, 1, 3), 'A', 30, 3.5, datetime.datetime(2023, 1, 3, 12, 0)],
+            [datetime.date(2023, 1, 4), 'C', 40, 4.5, datetime.datetime(2023, 1, 4, 13, 0)]
+        ]
+        columns = ['dt_col', 'category', 'int_col', 'float_col', 'datetime_col']
+        df = mk_df(data, columns)
+        
+        numeric_summary, non_numeric_summary, date_summary = get_columns_summary(df)
+        
+        # Check numeric summary format and content
+        expected_numeric_summary = """,int_col,float_col
+count,4.00,4.00
+mean,25.00,3.00
+std,12.91,1.29
+min,10.00,1.50
+25%,17.50,2.25
+50%,25.00,3.00
+75%,32.50,3.75
+max,40.00,4.50
+"""
+        self.assertEqual(numeric_summary, expected_numeric_summary)
+        
+        # Check non-numeric summary format and content
+        expected_non_numeric_summary = """,category
+count,4
+unique,3
+top,A
+freq,2
+"""
+        self.assertEqual(non_numeric_summary, expected_non_numeric_summary)
+        
+        # Check date summary format and content
+        expected_date_summary = """Column name: dt_col
+Value counts:
+dt_col,count
+2023-01-01,1
+2023-01-02,1
+2023-01-03,1
+2023-01-04,1
+
+Column name: datetime_col
+Value counts:
+datetime_col,count
+2023-01-01 10:00:00,1
+2023-01-02 11:00:00,1
+2023-01-03 12:00:00,1
+2023-01-04 13:00:00,1
+
+"""
+        self.assertEqual(date_summary, expected_date_summary)
+
+    def test_get_columns_summary_empty_categories(self):
+        # Test with missing category types
+        data = [
+            ['A', 10],
+            ['B', 20],
+            ['C', 30]
+        ]
+        columns = ['category', 'value']
+        df = mk_df(data, columns)
+        
+        numeric_summary, non_numeric_summary, date_summary = get_columns_summary(df)
+        
+        # Should have numeric and non-numeric summaries but empty date summary
+        self.assertNotEqual(numeric_summary, '')
+        self.assertNotEqual(non_numeric_summary, '')
+        self.assertEqual(date_summary, '')
+
+    def test_get_columns_summary_all_numeric(self):
+        # Test with only numeric data
+        data = [
+            [1, 1.5],
+            [2, 2.5],
+            [3, 3.5]
+        ]
+        columns = ['int_col', 'float_col']
+        df = mk_df(data, columns)
+        
+        numeric_summary, non_numeric_summary, date_summary = get_columns_summary(df)
+        
+        # Should only have numeric summary
+        self.assertNotEqual(numeric_summary, '')
+        self.assertEqual(non_numeric_summary, '')
+        self.assertEqual(date_summary, '')

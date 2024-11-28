@@ -90,7 +90,7 @@ async def explore_data(
     }
     LOGGER.info(f"Generating explorer questions")
     generated_qns_response = await make_request(
-        DEFOG_BASE_URL + "/oracle/gen_explorer_qns", json_data
+        DEFOG_BASE_URL + "/oracle/gen_explorer_qns", json_data, timeout=120
     )
     if "error" in generated_qns_response and generated_qns_response["error"]:
         LOGGER.error(
@@ -109,19 +109,24 @@ async def explore_data(
     analyses = []
     round = 0
     summary_all = ""
+    qn_id = 0
     while True:
         tasks = []
-        for i, question_dict in enumerate(generated_qns):
+        for question_dict in generated_qns:
+            qn_id += 1
             # question used by 1st round question generation
             generated_qn = question_dict["question"]
             independent_variable_group_name = question_dict["group_name"]
-            independent_variable_group = independent_variable_groups[
-                independent_variable_group_name
-            ]
+            independent_variable_group = independent_variable_groups.get(independent_variable_group_name)
+            if independent_variable_group is None:
+                LOGGER.error(
+                    f"Independent variable group not found for {qn_id}: {generated_qn}"
+                )
+                continue
             independent_variable_group["name"] = independent_variable_group_name
             if not independent_variable_group:
                 LOGGER.error(
-                    f"Independent variable group not found for {i}: {generated_qn}"
+                    f"Independent variable group not found for {qn_id}: {generated_qn}"
                 )
                 continue
             tasks.append(
@@ -129,7 +134,7 @@ async def explore_data(
                     api_key,
                     user_question,
                     task_type,
-                    i,
+                    qn_id,
                     generated_qn,
                     dependent_variable,
                     independent_variable_group,
@@ -165,12 +170,17 @@ async def explore_data(
             "past_analyses": analyses,
         }
         response = await make_request(
-            DEFOG_BASE_URL + "/oracle/gen_explorer_qns_deeper", get_deeper_qns_request
+            DEFOG_BASE_URL + "/oracle/gen_explorer_qns_deeper",
+            get_deeper_qns_request,
+            timeout=120,
         )
+        if "generated_questions" not in response or "independent_variable_groups" not in response:
+            LOGGER.error(f"Error occurred in generating deeper questions: {response}")
+            break
         generated_qns = response["generated_questions"]
-        summary_all = response.get(
-            "summary", ""
-        )  # this is the summary across all analyses
+        independent_variable_groups = response["independent_variable_groups"]
+        # this is the summary across all analyses so far
+        summary_all = response.get("summary", "")
     return {
         "analyses": analyses,
         "dependent_variable": dependent_variable,
@@ -271,7 +281,7 @@ async def explore_generated_question(
                 break
             elif err_msg is not None:
                 LOGGER.error(f"Error occurred in executing SQL: {err_msg}")
-            elif isinstance(data, pd.DataFrame):
+            elif isinstance(data, pd.DataFrame) and data.empty:
                 dependent_variable_str = f"{dependent_variable['description']} ({dependent_variable['table.column']})"
                 independent_variable_str = f"{independent_variable_group['description']} ({independent_variable_group['table.column']})"
                 expand_sql_qn_response = await make_request(
@@ -384,27 +394,35 @@ async def explore_generated_question(
     # add chart to outputs
     artifacts[IMAGE] = {"artifact_location": chart_path}
 
-    # we get the anomalies from the raw data, not the chart data
-    anomalies_df = get_anomalies(data, chart_fn_params)
-    LOGGER.debug(f"Anomalies {anomalies_df}")
-    if anomalies_df is not None:
-        LOGGER.debug(f"Anomalies found for {qn_id}: {generated_qn}")
-        artifacts[ANOMALIES_CSV] = {
-            "artifact_content": anomalies_df.to_csv(
-                float_format="%.3f", header=True, index=False
-            )
-        }
+    # we get the anomalies from the chart data
+    try:
+        anomalies_df = get_anomalies(chart_df, chart_fn_params)
+        LOGGER.debug(f"Anomalies {anomalies_df}")
+        if anomalies_df is not None:
+            LOGGER.debug(f"Anomalies found for {qn_id}: {generated_qn}")
+            artifacts[ANOMALIES_CSV] = {
+                "artifact_content": anomalies_df.to_csv(
+                    float_format="%.3f", header=True, index=False
+                )
+            }
+    except Exception as e:
+        LOGGER.error(f"Error occurred in getting anomalies: {str(e)}")
+        LOGGER.error(traceback.format_exc())
 
-    correlation_dict = get_correlation(chart_df, chart_fn_params)
-    if correlation_dict is not None:
-        corr = correlation_dict["correlation"]
-        x_col = correlation_dict["x_col"]
-        y_col = correlation_dict["y_col"]
-        LOGGER.debug(f"Correlation between {x_col} and {y_col}: {corr}")
-        artifacts[CORRELATION] = {
-            "artifact_content": f"{corr:.3f}",
-            "artifact_description": f"Correlation between {x_col} and {y_col}"
-        }
+    try:
+        correlation_dict = get_correlation(chart_df, chart_fn_params)
+        if correlation_dict is not None:
+            corr = correlation_dict["correlation"]
+            x_col = correlation_dict["x_col"]
+            y_col = correlation_dict["y_col"]
+            LOGGER.debug(f"Correlation between {x_col} and {y_col}: {corr}")
+            artifacts[CORRELATION] = {
+                "artifact_content": f"{corr:.3f}",
+                "artifact_description": f"Correlation between {x_col} and {y_col}"
+            }
+    except Exception as e:
+        LOGGER.error(f"Error occurred in getting correlation: {str(e)}")
+        LOGGER.error(traceback.format_exc())
 
     # generate data analysis
     try:
