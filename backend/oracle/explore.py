@@ -23,6 +23,7 @@ from oracle.utils_explore_data import (
     get_correlation,
     retry_sql_gen,
     run_chart_fn,
+    independent_status_updater,
 )
 from utils_logging import save_timing
 from utils_sql import execute_sql
@@ -112,6 +113,7 @@ async def explore_data(
     qn_id = 0
     while True:
         tasks = []
+        generated_qns_summaries = []
         for question_dict in generated_qns:
             qn_id += 1
             # question used by 1st round question generation
@@ -129,6 +131,8 @@ async def explore_data(
                     f"Independent variable group not found for {qn_id}: {generated_qn}"
                 )
                 continue
+            # add the summary of the question to the list of status updates
+            generated_qns_summaries.append(question_dict.get("summary", "exploring"))
             tasks.append(
                 explore_generated_question(
                     api_key,
@@ -145,7 +149,21 @@ async def explore_data(
                     inputs.get("retry_data_fetch", RETRY_DATA_FETCH),
                 )
             )
-        answers = await asyncio.gather(*tasks)
+        update_status_task = asyncio.create_task(
+            independent_status_updater(report_id=report_id, generated_qns_summaries=generated_qns_summaries)
+        )
+        try:
+            # Await primary tasks
+            answers = await asyncio.gather(*tasks)
+        finally:
+            # Ensure background task of status update is terminated when primary tasks are done
+            if update_status_task.done():
+                update_status_task.cancel()
+                try:
+                    await update_status_task
+                except asyncio.CancelledError:
+                    LOGGER.info("Background task of updating status terminated successfully.")
+
         # remove None answers and add to analyses
         non_empty_answers = []
         for ans in answers:
