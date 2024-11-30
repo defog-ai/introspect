@@ -4,6 +4,7 @@ import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import Sources from "$components/oracle/Sources";
 import TaskType from "$components/oracle/TaskType";
+import ReportStatus from "$components/oracle/ReportStatus";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { useRouter } from "next/router";
 import {
@@ -556,7 +557,11 @@ function OracleDashboard() {
             <div key={index} className="bg-purple-100 p-4 rounded-lg mb-4">
               <h3 className="text-lg font-semibold">{report.report_id}</h3>
               <p className="text-purple-700">{report.report_name}</p>
-              <p className="text-gray-600">{report.status}</p>
+              {/* <p className="text-gray-600">{report.status}</p> */}
+              <div className="text-gray-600 flex items-center">
+                <ReportStatus status={report.status} />
+              </div>
+
               <p className="text-gray-400">
                 Generated at {report.date_created}
               </p>
