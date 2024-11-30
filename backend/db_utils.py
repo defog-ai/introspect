@@ -1422,3 +1422,17 @@ async def get_analysis_question_context(analysis_id, max_n=5):
         question_context = ""
     finally:
         return err, question_context
+
+
+
+def update_status(report_id: int, new_status: str):
+    from sqlalchemy.orm import Session
+    try:
+        with Session(engine) as session:
+            stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+            result = session.execute(stmt)
+            report = result.scalar_one()
+            report.status = new_status
+            session.commit()
+    except Exception as e:
+        LOGGER.error(f"Error updating status for report {report_id}: {str(e)}")

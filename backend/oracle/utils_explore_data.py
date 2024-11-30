@@ -9,6 +9,8 @@ from matplotlib import pyplot as plt
 from oracle.celery_app import LOGGER
 from oracle.constants import TaskType
 from utils_df import get_columns_summary
+from db_utils import update_status
+import asyncio
 
 FIGSIZE = (5, 3)
 Z_THRESHOLD = 3  # z-score threshold for anomalies
@@ -452,3 +454,16 @@ async def gen_data_analysis(
         raise Exception(
             f"Error in making request to /oracle/gen_explorer_data_analysis"
         )
+
+
+async def independent_status_updater(report_id: int, generated_qns_summaries: list):
+    """
+    Update the status of the report in the based on the summaries of the generated questions.
+    """
+    LOGGER.info(f"Updating status for {len(generated_qns_summaries)} questions")
+    for summary in generated_qns_summaries:
+        # Update the status in the database
+        update_status(report_id, summary)
+        # Delay between updates (in seconds)
+        await asyncio.sleep(2)
+    LOGGER.info(f"All {len(generated_qns_summaries)} statuses updated successfully.")

@@ -12,7 +12,7 @@ from db_utils import OracleReports, engine
 from generic_utils import make_request
 from markdown2 import Markdown
 from oracle.celery_app import celery_app, LOGGER
-from oracle.constants import TaskStage, TaskType, DEFOG_BASE_URL
+from oracle.constants import TaskStage, TaskType, DEFOG_BASE_URL, STAGE_TO_STATUS
 from oracle.explore import explore_data
 from oracle.gather_context import gather_context
 from oracle.predict import predict
@@ -85,7 +85,7 @@ async def begin_generation_async_task(
                 stmt = select(OracleReports).where(OracleReports.report_id == report_id)
                 result = session.execute(stmt)
                 report = result.scalar_one()
-                report.status = stage.value
+                report.status = STAGE_TO_STATUS[stage]
                 session.commit()
             stage_result = await execute_stage(
                 api_key=api_key,
@@ -101,7 +101,7 @@ async def begin_generation_async_task(
                 stmt = select(OracleReports).where(OracleReports.report_id == report_id)
                 result = session.execute(stmt)
                 report = result.scalar_one()
-                report.status = stage.value
+                report.status = STAGE_TO_STATUS[stage]
                 report.outputs = outputs
                 session.commit()
         except Exception as e:
