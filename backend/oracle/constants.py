@@ -29,11 +29,12 @@ class TaskStage(Enum):
     EXPORT = "export"
     DONE = "done"
 
+
 STAGE_TO_STATUS = {
     TaskStage.GATHER_CONTEXT: "gathering context",
     TaskStage.EXPLORE: "exploring",
     TaskStage.PREDICT: "predicting",
     TaskStage.OPTIMIZE: "optimizing",
     TaskStage.EXPORT: "finalizing and exporting",
-    TaskStage.DONE: "Done",
+    TaskStage.DONE: "done",
 }
