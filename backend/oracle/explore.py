@@ -398,12 +398,16 @@ async def explore_generated_question(
     # save chosen chart function and arguments
     outputs["working"]["chart_fn_params"] = chart_fn_params
     # add the data represented in the chart to the artifacts
-    chart_df = get_chart_df(data, chart_fn_params)
-    artifacts[TABLE_CSV] = {
-        "artifact_content": chart_df.to_csv(
-            float_format="%.3f", header=True, index=False
-        )
-    }
+    try:
+        chart_df = get_chart_df(data, chart_fn_params)
+        artifacts[TABLE_CSV] = {
+            "artifact_content": chart_df.to_csv(
+                float_format="%.3f", header=True, index=False
+            )
+        }
+    except Exception as e:
+        LOGGER.error(f"Error occurred in getting chart data: {str(e)}")
+        LOGGER.error(traceback.format_exc())
     ts = save_timing(ts, f"{qn_id}\) Get and Plot chart", timings)
 
     # TODO: DEF-552 add retries for chart plotting based on error type and if chart
