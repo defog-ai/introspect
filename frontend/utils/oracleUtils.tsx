@@ -1,42 +1,105 @@
 import { parseData } from "@defogdotai/agents-ui-components/agent";
-import { Table } from "@defogdotai/agents-ui-components/core-ui";
-import { useEffect, useState } from "react";
-import { v4 } from "uuid";
-import setupBaseUrl from "./setupBaseUrl";
+
+interface TableAttributes {
+  /**
+   * The type of the table.
+   */
+  type: string;
+  /**
+   * The csv data of the table.
+   */
+  csv: string;
+  /**
+   * The id of the table.
+   */
+  id: string;
+  [key: string]: string;
+}
 
 /**
  *
  * Parse tables from an mdx string.
+ * For example:
  *
- * Looks for `<Table csv={CSV_STRING} />` in the mdx string.
+ * <MultiTable>
+ *  <Table id={TABLE_ID} />
+ *  <Table id={xxx} />
+ * </MultiTable>
  *
- * 1. First parse the CSV STRING.
- * 2. Convert the CSV string into an array of objects.
- * 3. Converts it into a string that is compatible with the agents-ui-components Table component.
+ * Or just:
+ * <Table id={TABLE_ID} text-stage={TT} />
+ *
+ * 1. First look for table tags. Parse all data in them.
+ * 2. Replace those table tags with oracle-table tags. Keep storing the parsed data with the table id inside a dict.
+ * 3. Then look for multi-table tags. For each multi-table tag, replace it with an oracle-multi-table tag.
+ * 4. Store the table ids within each multi table tag inside a dict.
+ * 5. Replace all content inside a multi table tag with nothing.
  *
  */
 export function parseTables(mdx: string) {
   const tables = {};
-  const tableRegex = /<Table csv=[\{'\"]([\s\S]+?)[\}'\"] \/>/g;
+  const multitables = {};
+  const multiTableRegex = /<MultiTable>([\s\S]*?)<\/MultiTable>/g;
+  const tableRegex = /<Table\s+([^>]*?)\s*\/>/g;
+  const attributesRegex = /([\w-]+)=[\{'\"]([\s\S]+?)[\}'\"]/g;
 
   let newMdx = mdx;
 
-  let match: RegExpExecArray | null;
-  while ((match = tableRegex.exec(mdx)) !== null) {
-    const csv = match[1];
+  // first find all tables
+  let tableMatch: RegExpExecArray | null;
+  while ((tableMatch = tableRegex.exec(mdx)) !== null) {
+    // find all attributes
+    const tableId = crypto.randomUUID();
+    const attributes: TableAttributes = {
+      csv: null,
+      type: null,
+      id: tableId,
+    };
+    let attributeMatch;
 
-    const id = v4();
-    const { columns, data } = parseData(csv);
+    while ((attributeMatch = attributesRegex.exec(tableMatch[1])) !== null) {
+      attributes[attributeMatch[1]] = attributeMatch[2];
+    }
 
-    tables[id] = { columns, data };
+    const { columns, data } = parseData(attributes.csv);
+    tables[tableId] = { columns, data, ...attributes };
 
+    // replace the table with an oracle-table tag
     newMdx = newMdx.replace(
-      match[0],
-      `<oracle-table id="${id}"></oracle-table>`
+      tableMatch[0],
+      `<oracle-table id="${tableId}"></oracle-table>`
     );
   }
 
-  return { newMdx, tables };
+  // handle MultiTables
+  mdx = newMdx;
+
+  let multiMatch: RegExpExecArray | null;
+  while ((multiMatch = multiTableRegex.exec(mdx)) !== null) {
+    const multiTableContent = multiMatch[1];
+    const multiTableId = crypto.randomUUID();
+    const tableIds = [];
+
+    // Find all tables within this MultiTable
+    let localTableIdMatch: RegExpExecArray | null;
+    const localTableIdRegex = /id=["'](.*?)["']/g;
+    while (
+      (localTableIdMatch = localTableIdRegex.exec(multiTableContent)) !== null
+    ) {
+      const tableId = localTableIdMatch[1];
+      tableIds.push(tableId);
+    }
+
+    // Store MultiTable metadata
+    multitables[multiTableId] = { tableIds };
+
+    // Replace the entire MultiTable with a single oracle-multi-table tag
+    newMdx = newMdx.replace(
+      multiMatch[0],
+      `<oracle-multi-table id="${multiTableId}"></oracle-multi-table>`
+    );
+  }
+  return { newMdx, tables, multitables };
 }
 
 /**
@@ -57,7 +120,7 @@ export function parseImages(mdx: string) {
     const src = match[1];
     const alt = match[2];
 
-    const id = v4();
+    const id = crypto.randomUUID();
 
     newMdx = newMdx.replace(
       match[0],
@@ -68,37 +131,4 @@ export function parseImages(mdx: string) {
   }
 
   return { newMdx, images };
-}
-
-/**
- *
- * Thin wrapper around the <img> element.
- *
- * Downloads the image's data from the backend, and displays it.
- *
- */
-export function OracleImage({ src, alt }) {
-  const [base64, setBase64] = useState<string | null>(null);
-
-  useEffect(() => {
-    const getImage = async () => {
-      const res = await fetch(setupBaseUrl("http", `oracle/get_image`), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          src,
-        }),
-      });
-
-      const data = await res.json();
-
-      setBase64(data.base64);
-    };
-
-    getImage();
-  });
-
-  return base64 ? <img src={base64} alt={alt} /> : null;
 }

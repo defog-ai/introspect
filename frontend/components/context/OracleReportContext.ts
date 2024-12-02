@@ -18,6 +18,15 @@ export interface OracleReportContext {
   };
 
   /**
+   * Holds the multi tables for an oracle report
+   */
+  multiTables: {
+    [key: string]: {
+      tableIds: string[];
+    };
+  };
+
+  /**
    * Holds the tables for an oracle report
    */
   tables: {
@@ -34,6 +43,7 @@ export interface OracleReportContext {
 export const OracleReportContext = createContext<OracleReportContext>({
   keyName: "",
   reportId: "",
+  multiTables: {},
   tables: {},
   images: {},
 });
