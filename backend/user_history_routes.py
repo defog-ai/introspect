@@ -1,4 +1,3 @@
-from re import S
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from utils_logging import LOGGER
