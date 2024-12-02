@@ -91,7 +91,7 @@ async def explore_data(
     }
     LOGGER.info(f"Generating explorer questions")
     generated_qns_response = await make_request(
-        DEFOG_BASE_URL + "/oracle/gen_explorer_qns", json_data, timeout=120
+        DEFOG_BASE_URL + "/oracle/gen_explorer_qns", json_data, timeout=300
     )
     if "error" in generated_qns_response and generated_qns_response["error"]:
         LOGGER.error(
@@ -190,7 +190,7 @@ async def explore_data(
         response = await make_request(
             DEFOG_BASE_URL + "/oracle/gen_explorer_qns_deeper",
             get_deeper_qns_request,
-            timeout=120,
+            timeout=300,
         )
         if "generated_questions" not in response or "independent_variable_groups" not in response:
             LOGGER.error(f"Error occurred in generating deeper questions: {response}")

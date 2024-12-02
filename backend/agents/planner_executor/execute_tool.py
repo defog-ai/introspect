@@ -122,7 +122,7 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
             try:
                 # expand tool inputs
                 # if it takes more than 120 seconds, then timeout
-                result = await asyncio.wait_for(task, timeout=120)
+                result = await asyncio.wait_for(task, timeout=300)
             except asyncio.TimeoutError:
                 print(error_str(f"Error for tool {function_name}: TimeoutError"))
                 result = {

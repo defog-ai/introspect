@@ -165,7 +165,7 @@ async def send_email(
                     "subject": email_subject,
                     "data_csv": full_data.to_csv(index=False),
                 },
-                timeout=60,
+                timeout=300,
             )
             if r.status_code == 200:
                 success = True
