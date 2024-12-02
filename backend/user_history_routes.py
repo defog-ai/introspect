@@ -69,3 +69,20 @@ async def update_user_history(request: Request):
             )
     
     return {"message": "User history updated"}
+
+@router.post("/clear_user_history")
+async def clear_user_history(request: Request):
+    params = await request.json()
+    token = params.get("token")
+    username = validate_user(token, get_username=True)
+    if not username:
+        return {"error": "Invalid token"}
+    
+    with engine.begin() as conn:
+        conn.execute(
+            update(UserHistory)
+            .where(UserHistory.username == username)
+            .values(history={})
+        )
+    
+    return {"message": "User history cleared"}
