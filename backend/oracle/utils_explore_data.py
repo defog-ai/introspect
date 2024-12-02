@@ -418,10 +418,10 @@ async def gen_data_analysis(
     api_key: str,
     generated_qn: str,
     sql: str,
-    data_chart: pd.DataFrame,
-    data_anomalies: pd.DataFrame,
-    correlation_dict: Optional[Dict[str, Any]],
-    chart_fn_params: Dict[str, Any],
+    analysis_data: pd.DataFrame = None,
+    data_anomalies: pd.DataFrame = None,
+    correlation_dict: Optional[Dict[str, Any]] = None,
+    chart_fn_params: Dict[str, Any] = None,
 ) -> Dict[str, str]:
     """
     Given the user question, generated question and fetched data and chart,
@@ -439,10 +439,10 @@ async def gen_data_analysis(
         "api_key": api_key,
         "question": generated_qn,
         "sql": sql,
-        "data_csv": data_chart.to_csv(float_format="%.3f", header=True, index=False),
+        "data_csv": analysis_data.to_csv(float_format="%.2f", header=True, index=False),
         "data_anomalies_csv": data_anomalies_csv,
         "correlation_dict": correlation_dict,
-        "chart_fn": chart_fn_params["name"],
+        "chart_fn": chart_fn_params.get("name"),
         "chart_params": chart_fn_params.get("parameters", {}),
     }
     resp = await make_request(
