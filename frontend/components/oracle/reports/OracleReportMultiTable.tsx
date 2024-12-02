@@ -5,6 +5,7 @@ import { OracleReportContext } from "$components/context/OracleReportContext";
 import { Table, Tabs } from "@defogdotai/agents-ui-components/core-ui";
 import ErrorBoundary from "$components/layout/ErrorBoundary";
 import { ChartContainer } from "@defogdotai/agents-ui-components/agent";
+import { TABLE_TYPE_TO_NAME } from "$utils/oracleUtils";
 
 function OracleReportMultiTable(props) {
   const { multiTables, tables } = useContext(OracleReportContext);
@@ -15,7 +16,7 @@ function OracleReportMultiTable(props) {
     tableIds.length ? tableIds[0] : null
   );
 
-  console.log(multiTables, tables);
+  console.log(tables);
 
   const tabs = useMemo(() => {
     // tabs within tabs
@@ -53,24 +54,29 @@ function OracleReportMultiTable(props) {
   }, [tables]);
 
   return (
-    <NodeViewWrapper className="react-component not-prose">
+    <NodeViewWrapper className="react-component not-prose lg:-mx-40 my-10">
       {/* chips to select tables if there's more than one table */}
-      <div className="table-selection w-100 overflow-scroll">
-        {tableIds.map((id) => (
-          <div
-            className={`px-2 py-1 bg-gray-300 text-gray-400 ${selectedTableId === id ? "bg-gray-300 text-white" : ""}`}
-            key={id}
-          >
-            {id}
-          </div>
-        ))}
-      </div>
+      {tableIds && tableIds.length > 0 && (
+        <div className="table-selection flex flex-row gap-2 w-100 overflow-scroll mb-4">
+          {tableIds.map((id) => (
+            <div
+              className={`p-2 bg-gray-200 border border-gray-300 rounded-full cursor-pointer whitespace-nowrap text-xs ${selectedTableId === id ? "bg-gray-600 border-transparent text-white" : "text-gray-500 hover:bg-gray-300"}`}
+              key={id}
+              onClick={() => setSelectedTableId(id)}
+            >
+              {TABLE_TYPE_TO_NAME[tables[id]?.type] ||
+                tables[id]?.type ||
+                "Table"}
+            </div>
+          ))}
+        </div>
+      )}
+
       {tabs[selectedTableId] && (
         <Tabs
           // @ts-ignore
-          tabs={tabs}
+          tabs={tabs[selectedTableId]}
           size="small"
-          rootClassNames="lg:-mx-40 my-10"
           contentClassNames="border"
           defaultSelected={selectedTableId}
         />

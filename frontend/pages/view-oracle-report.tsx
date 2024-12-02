@@ -15,12 +15,14 @@ import { Markdown } from "tiptap-markdown";
 import { EditorProvider } from "@tiptap/react";
 import React from "react";
 import { OracleReportContext } from "$components/context/OracleReportContext";
-import { OracleReportTableExtension } from "$components/oracle/reports/OracleReportTable";
 import { OracleReportImageExtension } from "$components/oracle/reports/OracleReportImage";
 import { LeftOutlined } from "@ant-design/icons";
+import { OracleReportMultiTableExtension } from "$components/oracle/reports/OracleReportMultiTable";
+import { OracleReportTableExtension } from "$components/oracle/reports/OracleReportTable";
 
 const extensions = [
   StarterKit,
+  OracleReportMultiTableExtension,
   OracleReportTableExtension,
   OracleReportImageExtension,
   Markdown,
@@ -30,6 +32,7 @@ export default function ViewOracleReport() {
   const router = useRouter();
 
   const [tables, setTables] = useState<any>({});
+  const [multiTables, setMultiTables] = useState<any>({});
   const [images, setImages] = useState<any>({});
 
   const feedbackTextArea = useRef<HTMLTextAreaElement>(null);
@@ -77,18 +80,24 @@ export default function ViewOracleReport() {
           throw Error();
         }
 
-        const tables = parseTables(mdx);
-        mdx = tables.newMdx;
+        let parsed = {
+          ...parseTables(mdx),
+        };
 
-        const images = parseImages(mdx);
-        mdx = images.newMdx;
+        console.log(parsed);
 
-        setImages(images.images);
-        setTables(tables.tables);
+        parsed = {
+          ...parsed,
+          ...parseImages(parsed.mdx),
+        };
 
+        setTables(parsed.tables);
+        // @ts-ignore
+        setImages(parsed.images);
+        setMultiTables(parsed.multiTables);
         setCurrentFeedback(data.feedback || undefined);
 
-        setMDX(mdx);
+        setMDX(parsed.mdx);
       } catch (e) {
         console.error(e);
         setError("Could not fetch MDX for report: " + reportId);
@@ -168,6 +177,7 @@ export default function ViewOracleReport() {
     <OracleReportContext.Provider
       value={{
         tables: tables,
+        multiTables: multiTables,
         images: images,
         reportId: Array.isArray(router.query.reportId)
           ? router.query.reportId[0]

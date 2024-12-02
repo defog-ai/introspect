@@ -269,7 +269,7 @@ async def reports_list(req: Request):
                 OracleReports.created_ts,
                 OracleReports.inputs,
             )
-            .where(OracleReports.api_key == api_key, OracleReports.username == username)
+            .where(OracleReports.api_key == api_key)
             .order_by(OracleReports.created_ts.desc())
         )
         result = session.execute(stmt)

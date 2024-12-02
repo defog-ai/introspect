@@ -33,6 +33,9 @@ export interface OracleReportContext {
     [key: string]: {
       columns: [];
       data: [];
+      id?: string;
+      type?: string;
+      csv?: string;
     };
   };
 }

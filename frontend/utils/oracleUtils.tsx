@@ -38,14 +38,11 @@ interface TableAttributes {
  */
 export function parseTables(mdx: string) {
   const tables = {};
-  const multitables = {};
+  const multiTables = {};
   const multiTableRegex = /<MultiTable>([\s\S]*?)<\/MultiTable>/g;
   const tableRegex = /<Table\s+([^>]*?)\s*\/>/g;
   const attributesRegex = /([\w-]+)=[\{'\"]([\s\S]+?)[\}'\"]/g;
-
   let newMdx = mdx;
-
-  console.log(mdx);
 
   // first find all tables
   let tableMatch: RegExpExecArray | null;
@@ -93,7 +90,7 @@ export function parseTables(mdx: string) {
     }
 
     // Store MultiTable metadata
-    multitables[multiTableId] = { tableIds };
+    multiTables[multiTableId] = { tableIds };
 
     // Replace the entire MultiTable with a single oracle-multi-table tag
     newMdx = newMdx.replace(
@@ -102,7 +99,7 @@ export function parseTables(mdx: string) {
     );
   }
 
-  return { newMdx, tables, multitables };
+  return { mdx: newMdx, tables, multiTables };
 }
 
 /**
@@ -133,5 +130,11 @@ export function parseImages(mdx: string) {
     images[id] = { src, alt };
   }
 
-  return { newMdx, images };
+  return { mdx: newMdx, images };
 }
+
+export const TABLE_TYPE_TO_NAME = {
+  table_csv: "Aggregated data",
+  fetched_table_csv: "Fetched data",
+  anomalies_csv: "Anomalies data",
+};
