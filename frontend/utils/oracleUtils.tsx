@@ -45,6 +45,8 @@ export function parseTables(mdx: string) {
 
   let newMdx = mdx;
 
+  console.log(mdx);
+
   // first find all tables
   let tableMatch: RegExpExecArray | null;
   while ((tableMatch = tableRegex.exec(mdx)) !== null) {
@@ -99,6 +101,7 @@ export function parseTables(mdx: string) {
       `<oracle-multi-table id="${multiTableId}"></oracle-multi-table>`
     );
   }
+
   return { newMdx, tables, multitables };
 }
 

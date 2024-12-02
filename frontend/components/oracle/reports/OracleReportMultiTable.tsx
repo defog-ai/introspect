@@ -1,6 +1,6 @@
 import { mergeAttributes, Node } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
-import { useContext, useMemo } from "react";
+import { useContext, useMemo, useState } from "react";
 import { OracleReportContext } from "$components/context/OracleReportContext";
 import { Table, Tabs } from "@defogdotai/agents-ui-components/core-ui";
 import ErrorBoundary from "$components/layout/ErrorBoundary";
@@ -9,14 +9,20 @@ import { ChartContainer } from "@defogdotai/agents-ui-components/agent";
 function OracleReportMultiTable(props) {
   const { multiTables, tables } = useContext(OracleReportContext);
 
-  const { tableIds } = multiTables[props.node.attrs.id] || {};
+  const { tableIds } = multiTables[props.node.attrs.id] || { tableIds: [] };
+
+  const [selectedTableId, setSelectedTableId] = useState(
+    tableIds.length ? tableIds[0] : null
+  );
+
+  console.log(multiTables, tables);
 
   const tabs = useMemo(() => {
     // tabs within tabs
-    const tableTabs = [];
+    const tableTabs = {};
     tableIds.forEach((tableId) => {
       const { columns, data } = tables[tableId] || {};
-      tableTabs.push([
+      tableTabs[tableId] = [
         {
           name: "Table",
           content: (
@@ -40,7 +46,7 @@ function OracleReportMultiTable(props) {
             </ErrorBoundary>
           ),
         },
-      ]);
+      ];
     });
 
     return tableTabs;
@@ -48,13 +54,27 @@ function OracleReportMultiTable(props) {
 
   return (
     <NodeViewWrapper className="react-component not-prose">
-      <Tabs
-        // @ts-ignore
-        tabs={tabs}
-        size="small"
-        rootClassNames="lg:-mx-40 my-10"
-        contentClassNames="border"
-      />
+      {/* chips to select tables if there's more than one table */}
+      <div className="table-selection w-100 overflow-scroll">
+        {tableIds.map((id) => (
+          <div
+            className={`px-2 py-1 bg-gray-300 text-gray-400 ${selectedTableId === id ? "bg-gray-300 text-white" : ""}`}
+            key={id}
+          >
+            {id}
+          </div>
+        ))}
+      </div>
+      {tabs[selectedTableId] && (
+        <Tabs
+          // @ts-ignore
+          tabs={tabs}
+          size="small"
+          rootClassNames="lg:-mx-40 my-10"
+          contentClassNames="border"
+          defaultSelected={selectedTableId}
+        />
+      )}
     </NodeViewWrapper>
   );
 }
