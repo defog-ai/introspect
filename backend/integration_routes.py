@@ -44,6 +44,17 @@ class CheckRequest(BaseModel):
     token: str
     key_name: str
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "user_token",
+                    "key_name": "integration_key"
+                }
+            ]
+        }
+    }
+
 
 @router.post("/integration/check")
 async def check_route(req: CheckRequest):

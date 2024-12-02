@@ -36,6 +36,18 @@ class UpdateHistoryRequest(BaseModel):
     key_name: str
     history: dict
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "user_token",
+                    "key_name": "history_key",
+                    "history": {"data": "history_data"}
+                }
+            ]
+        }
+    }
+
 
 @router.post("/update_user_history")
 async def update_user_history(request: UpdateHistoryRequest):

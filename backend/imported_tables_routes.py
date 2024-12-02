@@ -39,6 +39,18 @@ class SourcesListRequest(BaseModel):
     key_name: str
     preview_rows: Optional[int] = None
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "user_token",
+                    "key_name": "source_key",
+                    "preview_rows": 10
+                }
+            ]
+        }
+    }
+
 
 @router.post("/sources/list")
 async def sources_list_route(req: SourcesListRequest):
@@ -123,6 +135,18 @@ class ImportSourcesRequest(BaseModel):
     token: str
     key_name: str
     links: List[str]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "user_token",
+                    "key_name": "source_key",
+                    "links": ["https://example.com/source1", "https://example.com/source2"]
+                }
+            ]
+        }
+    }
 
 
 @router.post("/sources/import")
@@ -318,6 +342,18 @@ class DeleteSourceRequest(BaseModel):
     key_name: str
     link: str
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "user_token",
+                    "key_name": "source_key",
+                    "link": "https://example.com/source1"
+                }
+            ]
+        }
+    }
+
 
 @router.post("/sources/delete")
 async def delete_source(req: DeleteSourceRequest):
@@ -387,6 +423,25 @@ class CreateImportedTablesRequest(BaseModel):
     table_index: int
     table_name: str
     table_description: str = ""
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "user_token",
+                    "key_name": "source_key",
+                    "data": [
+                        ["column1", "column2"],
+                        ["value1", "value2"]
+                    ],
+                    "link": "https://example.com/source1",
+                    "table_index": 0,
+                    "table_name": "example_table",
+                    "table_description": "Example table description"
+                }
+            ]
+        }
+    }
 
 
 @router.post("/imported_tables/create")

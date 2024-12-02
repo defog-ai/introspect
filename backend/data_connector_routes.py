@@ -21,12 +21,23 @@ class DataConnectorRequest(BaseModel):
     """
     Request body for data connector endpoints.
     """
-
     key_name: str
     token: str
     data_start_date: Optional[str] = Field(
         default="1900-01-01", description="Start date for data retrieval"
     )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "key_name": "my_api_key",
+                    "token": "user_token",
+                    "data_start_date": "1900-01-01"
+                }
+            ]
+        }
+    }
 
 
 @router.post("/connector/get_google_analytics_data")
@@ -167,7 +178,7 @@ async def get_stripe_data(request: DataConnectorRequest):
                 "message": "RABBITMQ_PORT env var not set",
             },
         )
-    # check that the data_start_date is in the correct format YYYY-MM-DD
+    # check that the data_start_date is in the correct format YYYY-MM-DDThh:mm:ssZ
     try:
         datetime.strptime(data_start_date, "%Y-%m-%dT%H:%M:%SZ")
     except ValueError:

@@ -41,6 +41,20 @@ class ClarifyQuestionRequest(BaseModel):
     task_type: Optional[TaskType] = None
     answered_clarifications: List[Dict[str, Any]] = []
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "key_name": "my_api_key",
+                    "token": "user_token",
+                    "user_question": "What are the sales trends?",
+                    "task_type": None,
+                    "answered_clarifications": []
+                }
+            ]
+        }
+    }
+
 
 @router.post("/oracle/clarify_question")
 async def clarify_question(req: ClarifyQuestionRequest):
@@ -189,6 +203,21 @@ class BeginGenerationRequest(BaseModel):
     task_type: TaskType
     sources: List[str]
     clarifications: List[Dict[str, Any]]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "key_name": "my_api_key",
+                    "token": "user_token",
+                    "user_question": "What are the sales trends?",
+                    "task_type": "analysis",
+                    "sources": ["source1", "source2"],
+                    "clarifications": [{"question": "answer"}]
+                }
+            ]
+        }
+    }
 
 
 @router.post("/oracle/begin_generation")
@@ -357,6 +386,17 @@ class GetReportRequest(BaseModel):
     key_name: str
     report_id: int
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "key_name": "my_api_key",
+                    "report_id": 1
+                }
+            ]
+        }
+    }
+
 
 @router.post("/oracle/get_report_mdx")
 async def get_report_mdx(req: GetReportRequest):
@@ -430,6 +470,18 @@ class GetReportImageRequest(BaseModel):
     report_id: int | str
     image_file_name: str
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "key_name": "my_api_key",
+                    "report_id": 1,
+                    "image_file_name": "chart.png"
+                }
+            ]
+        }
+    }
+
 
 @router.post("/oracle/get_report_image")
 async def get_report_image(req: GetReportImageRequest):
@@ -464,6 +516,18 @@ class OracleReportFeedbackRequest(BaseModel):
     key_name: str
     report_id: int
     feedback: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "key_name": "my_api_key",
+                    "report_id": 1,
+                    "feedback": "Great report!"
+                }
+            ]
+        }
+    }
 
 
 @router.post("/oracle/feedback_report")
