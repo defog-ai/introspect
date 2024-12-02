@@ -16,8 +16,6 @@ function OracleReportMultiTable(props) {
     tableIds.length ? tableIds[0] : null
   );
 
-  console.log(tables);
-
   const tabs = useMemo(() => {
     // tabs within tabs
     const tableTabs = {};
@@ -56,7 +54,7 @@ function OracleReportMultiTable(props) {
   return (
     <NodeViewWrapper className="react-component not-prose lg:-mx-40 my-10">
       {/* chips to select tables if there's more than one table */}
-      {tableIds && tableIds.length > 0 && (
+      {tableIds && tableIds.length > 1 && (
         <div className="table-selection flex flex-row gap-2 w-100 overflow-scroll mb-4">
           {tableIds.map((id) => (
             <div
