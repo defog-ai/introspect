@@ -84,13 +84,12 @@ export default function ViewOracleReport() {
           ...parseTables(mdx),
         };
 
-        console.log(parsed);
-
         parsed = {
           ...parsed,
           ...parseImages(parsed.mdx),
         };
 
+        console.log(parsed);
         setTables(parsed.tables);
         // @ts-ignore
         setImages(parsed.images);
