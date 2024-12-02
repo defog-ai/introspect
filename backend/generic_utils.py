@@ -19,7 +19,7 @@ if not DEFOG_API_KEYS:
 DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
 
 
-async def make_request(url, data, timeout=60):
+async def make_request(url, data, timeout=180):
     if LOG_LEVEL == "DEBUG":
         LOGGER.debug(f"Making request to: {url}")
         # avoid excessively long logs (e.g. for base64 encoded images)
