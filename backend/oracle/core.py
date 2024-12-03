@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 import time
 import traceback
@@ -7,10 +6,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Dict
 
-import pdfkit
 from db_utils import OracleReports, engine
 from generic_utils import make_request
-from markdown2 import Markdown
 from oracle.celery_app import celery_app, LOGGER
 from oracle.constants import TaskStage, TaskType, DEFOG_BASE_URL, STAGE_TO_STATUS
 from oracle.explore import explore_data

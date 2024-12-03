@@ -239,6 +239,7 @@ class UserHistory(Base):
     username = Column(Text, primary_key=True)
     history = Column(JSON)
 
+
 if ORACLE_ENABLED:
 
     class OracleReports(Base):
@@ -358,7 +359,6 @@ def validate_user(token, user_type=None, get_username=False):
         user = conn.execute(
             select(Users).where(Users.hashed_password == token)
         ).fetchone()
-
     if user:
         if user_type == "admin":
             if user.user_type == "admin":
@@ -1424,9 +1424,9 @@ async def get_analysis_question_context(analysis_id, max_n=5):
         return err, question_context
 
 
-
 def update_status(report_id: int, new_status: str):
     from sqlalchemy.orm import Session
+
     try:
         with Session(engine) as session:
             stmt = select(OracleReports).where(OracleReports.report_id == report_id)

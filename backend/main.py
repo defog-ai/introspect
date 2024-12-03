@@ -15,7 +15,7 @@ from db_utils import (
     initialise_analysis,
 )
 from generic_utils import get_api_key_from_key_name
-import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes, agent_routes, imgo_routes, user_history_routes
+import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes, agent_routes, imgo_routes, user_history_routes, oracle_report_routes
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,13 +35,13 @@ app.include_router(slack_routes.router)
 app.include_router(agent_routes.router)
 app.include_router(user_history_routes.router)
 if ORACLE_ENABLED:
-    import oracle_routes, data_connector_routes, imported_tables_routes, xdb_routes
+    import oracle_routes, data_connector_routes, imported_tables_routes, xdb_routes, oracle_report_routes
 
     app.include_router(data_connector_routes.router)
     app.include_router(imported_tables_routes.router)
     app.include_router(oracle_routes.router)
     app.include_router(xdb_routes.router)
-
+    app.include_router(oracle_report_routes.router)
     from oracle.setup import setup_dir
 
     # check if the oracle directory structure exists and create if not
