@@ -293,6 +293,32 @@ async def feedback_report(req: ReportFeedbackRequest):
             )
 
 
+@router.post("/oracle/get_report_analysis_list")
+async def get_report_analysis_list(req: ReportRequest):
+    """
+    Given a report_id, this endpoint will return the list of analyses for the report,
+    stored as a list of dictionaries in the key `analyses`.
+    """
+    if not validate_user(req.token, user_type=None, get_username=False):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    api_key = get_api_key_from_key_name(req.key_name)
+
+    with Session(engine) as session:
+        stmt = select(OracleReports.outputs).where(
+            OracleReports.api_key == api_key,
+            OracleReports.report_id == req.report_id,
+        )
+        result = session.execute(stmt)
+        outputs = result.scalar_one_or_none()
+        explore = outputs.get(TaskStage.EXPLORE.value, {})
+        analyses = explore.get("analyses", [])
+        # replace qn_id with analysis_id
+        for analysis in analyses:
+            analysis["analysis_id"] = analysis["qn_id"]
+            del analysis["qn_id"]
+        return JSONResponse(status_code=200, content={"analyses": analyses})
+
+
 @router.post("/oracle/get_report_analysis")
 async def get_report_analysis(req: ReportAnalysisRequest):
     """
