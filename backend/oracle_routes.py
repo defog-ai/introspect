@@ -322,30 +322,27 @@ async def oracle_test_stage(req: Request):
         api_key = body.get("api_key", None)
         outputs = body.get("outputs", {})
         task_type = body.get("task_type", TaskType.OPTIMIZATION.value)
-        question = body.get("question", None)
         report_id = body.get("report_id", None)
 
         res = await optimize(
             api_key=api_key,
             report_id=report_id,
             task_type=TaskType(task_type),
-            inputs={"user_question": question},
+            inputs={},
             outputs=outputs,
         )
         return JSONResponse(content=res)
-    elif stage == "export":
+    elif stage == TaskStage.EXPORT.value:
         api_key = body.get("api_key", None)
         outputs = body.get("outputs", {})
+        inputs = body.get("inputs", {})
         task_type = body.get("task_type", "")
-        question = body.get(
-            "question", body.get("inputs", {}).get("user_question", None)
-        )
         report_id = body.get("report_id", None)
         res = await generate_report(
             api_key=api_key,
             report_id=report_id,
             task_type=TaskType(task_type),
-            inputs={"user_question": question},
+            inputs=inputs,
             outputs=outputs,
         )
         return JSONResponse(content=res)
