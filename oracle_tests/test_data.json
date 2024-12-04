@@ -1,180 +1,159 @@
 {
-  "data": {
-    "report_id": 217,
-    "report_name": null,
-    "status": "done",
-    "created_ts": "2024-12-04T09:00:01.925876",
-    "api_key": "test_restaurant",
-    "username": "admin",
-    "inputs": {
-      "user_question": "suggest me restaurants for an outing. I want a variety of foods and at least 5 restaurants visited",
-      "sources": [],
-      "clarifications": [
+  "report_id": 240,
+  "report_name": null,
+  "status": "done",
+  "task_type": "optimization",
+  "created_ts": "2024-12-04T12:25:03.034199",
+  "api_key": "test_restaurant",
+  "username": "admin",
+  "inputs": {
+    "user_question": "suggest me restaurants for an outing. I want a variety of foods and at least 5 restaurants visited",
+    "sources": [],
+    "clarifications": [
+      {
+        "clarification": "Could you please confirm if the objective is to find at least 5 restaurants with a variety of food types based on their ratings?",
+        "input_type": "single_choice",
+        "options": ["yes", "no", "Other"]
+      },
+      {
+        "clarification": "What specific types of food are you interested in for the variety? Please list any preferences.",
+        "input_type": "text",
+        "options": []
+      },
+      {
+        "clarification": "In which city or region are you looking for these restaurants?",
+        "input_type": "text",
+        "options": []
+      }
+    ]
+  },
+  "outputs": {
+    "gather_context": {
+      "context": "",
+      "objective": "Identify at least 5 restaurants with a variety of food types and calculate the average rating of these restaurants. This can be achieved by fetching data from the restaurant table and aggregating over the food_type and rating columns.",
+      "decision_variables": ["restaurant_id", "food_type"],
+      "constraints": [
+        "At least 5 restaurants must be selected",
+        "Selected restaurants must offer different food types"
+      ],
+      "problem_statement": "Select at least 5 restaurant_ids that offer a variety of food types, subject to the constraint that the selected restaurants must have different food types.",
+      "issues": [],
+      "sources": []
+    },
+    "explore": {
+      "analyses": [
         {
-          "clarification": "Could you please confirm if the objective is to suggest at least 5 restaurants based on a variety of food types and their ratings?",
-          "input_type": "single_choice",
-          "options": ["yes", "no", "Other"]
+          "qn_id": 1,
+          "generated_qn": "What are the different food types offered by the selected restaurants? Return the food type and the number of restaurants offering each type.",
+          "independent_variable_group": {
+            "name": "foodType",
+            "description": "Different types of food offered by restaurants",
+            "table_column": ["restaurant.food_type"]
+          },
+          "artifacts": {
+            "fetched_table_csv": {
+              "artifact_content": "food_type,number_of_restaurants\nVegan,1\nSeafood,2\nAmerican,3\nJapanese,2\nMexican,1\nItalian,2\n"
+            }
+          },
+          "working": {
+            "generated_sql": "SELECT food_type, COUNT(*) AS number_of_restaurants FROM restaurant GROUP BY food_type;"
+          },
+          "title": "Distribution of Food Types Offered by Selected Restaurants",
+          "summary": "American cuisine is the most commonly offered food type among the selected restaurants, while Vegan and Mexican options are less prevalent.",
+          "round": 0
         },
         {
-          "clarification": "What specific types of food are you interested in for the variety?",
-          "input_type": "text",
-          "options": []
+          "qn_id": 3,
+          "generated_qn": "What is the distribution of the selected restaurants across cities? Return the city name, number of restaurants per city, and their average ratings.",
+          "independent_variable_group": {
+            "name": "city",
+            "description": "Cities where the restaurants are located",
+            "table_column": ["restaurant.city_name"]
+          },
+          "artifacts": {
+            "fetched_table_csv": {
+              "artifact_content": "city_name,number_of_restaurants,average_rating\nLos Angeles,3,4.167\nNew York,3,4.300\nSan Francisco,3,4.133\nMiami,2,4.500\n"
+            }
+          },
+          "working": {
+            "generated_sql": "SELECT city_name, COUNT(*) AS number_of_restaurants, AVG(rating) AS average_rating FROM restaurant GROUP BY city_name;"
+          },
+          "title": "Distribution and Average Ratings of Selected Restaurants Across Major Cities",
+          "summary": "Three cities—Los Angeles, New York, and San Francisco—each have three selected restaurants with average ratings ranging from 4.13 to 4.30, while Miami has two restaurants with the highest average rating of 4.50, suggesting a higher customer satisfaction in Miami despite having fewer establishments.",
+          "round": 0
         },
         {
-          "clarification": "Are there any specific cities or regions you would like to focus on for the restaurant suggestions?",
-          "input_type": "text",
-          "options": []
-        },
-        {
-          "clarification": "What minimum rating do you consider acceptable for the restaurants?",
-          "input_type": "number",
-          "options": []
+          "qn_id": 4,
+          "generated_qn": "What are the ratings of the selected restaurants across different rating ranges? Return the rating range, number of restaurants in each range, and the average rating.",
+          "independent_variable_group": {
+            "name": "ratingRange",
+            "description": "Rating ranges of the restaurants",
+            "table_column": ["restaurant.rating"]
+          },
+          "artifacts": {
+            "fetched_table_csv": {
+              "artifact_content": "rating_range,number_of_restaurants,average_rating\n3-4,3,3.800\n4-5,8,4.425\n"
+            }
+          },
+          "working": {
+            "generated_sql": "SELECT CASE WHEN rating >= 0 AND rating < 1 THEN '0-1' WHEN rating >= 1 AND rating < 2 THEN '1-2' WHEN rating >= 2 AND rating < 3 THEN '2-3' WHEN rating >= 3 AND rating < 4 THEN '3-4' WHEN rating >= 4 AND rating <= 5 THEN '4-5' ELSE 'Unknown' END AS rating_range, COUNT(*) AS number_of_restaurants, AVG(rating) AS average_rating FROM restaurant GROUP BY rating_range ORDER BY rating_range;"
+          },
+          "title": "Restaurant Ratings Distribution and Averages",
+          "summary": "A majority of the selected restaurants fall within the higher rating range of 4-5, indicating strong customer satisfaction. Additionally, the average rating in the 4-5 range is significantly higher than in the 3-4 range, highlighting better performance among these establishments.",
+          "round": 0
         }
+      ],
+      "dependent_variable": {
+        "description": "Restaurant IDs and their ratings",
+        "table_column": ["restaurant.id", "restaurant.rating"],
+        "data_available": true
+      },
+      "summary": ""
+    },
+    "optimize": {
+      "processed_items": [],
+      "recommendations": [
+        "Explore local food blogs or restaurant review sites to find a diverse selection of restaurants in your area.",
+        "Consider visiting a food festival or market where multiple food vendors offer different cuisines.",
+        "Use restaurant discovery apps to filter by food type and find highly rated options.",
+        "Ask friends or family for recommendations based on their experiences with various cuisines.",
+        "Check social media platforms for trending restaurants that offer a variety of food types."
       ]
     },
-    "outputs": {
-      "gather_context": {
-        "context": "",
-        "objective": "Identify at least 5 restaurants with a variety of food types and calculate the average rating of these restaurants. This can be done by fetching data from the restaurant table and aggregating over the food_type and rating columns.",
-        "decision_variables": ["restaurant_id", "food_type"],
-        "constraints": [
-          "At least 5 restaurants must be selected",
-          "Restaurants must offer different food types"
-        ],
-        "problem_statement": "Select at least 5 restaurant_ids that offer a variety of food_types, subject to the constraint that the selected restaurants must have different food types.",
-        "issues": [],
-        "sources": []
-      },
-      "explore": {
-        "analyses": [
-          {
-            "qn_id": 1,
-            "generated_qn": "What are the different food types offered by the selected restaurants? Return the restaurant ID, food type, and rating.",
-            "independent_variable_group": {
-              "name": "foodType",
-              "description": "The type of food offered by the restaurant",
-              "table_column": ["restaurant.food_type"]
-            },
-            "artifacts": {
-              "fetched_table_csv": {
-                "artifact_content": "id,food_type,rating\n1,Italian,4.500\n2,American,3.800\n3,Japanese,4.200\n4,Italian,4.700\n5,American,3.900\n6,Japanese,4.300\n7,Mexican,4.100\n8,Vegan,4.600\n9,American,3.700\n10,Seafood,4.400\n11,Seafood,4.600\n"
-              }
-            },
-            "working": {
-              "generated_sql": "SELECT id, food_type, rating FROM restaurant;"
-            },
-            "title": "Diversity of Food Types and Customer Ratings in Selected Restaurants",
-            "summary": "American cuisine is the most prevalent among the selected restaurants but tends to receive lower ratings compared to other food types such as Italian, Japanese, Vegan, and Seafood. Overall, most restaurants enjoy positive ratings, ranging from 3.70 to 4.70, indicating general customer satisfaction. There are no missing values or significant outliers in the dataset.",
-            "round": 0
-          },
-          {
-            "qn_id": 2,
-            "generated_qn": "How do the ratings of the selected restaurants vary by city? Return the city name, restaurant ID, and rating.",
-            "independent_variable_group": {
-              "name": "city",
-              "description": "The city where the restaurant is located",
-              "table_column": ["restaurant.city_name"]
-            },
-            "artifacts": {
-              "fetched_table_csv": {
-                "artifact_content": "city_name,id,rating\nLos Angeles,1,4.500\nLos Angeles,2,3.800\nLos Angeles,3,4.200\nNew York,4,4.700\nNew York,5,3.900\nNew York,6,4.300\nSan Francisco,7,4.100\nSan Francisco,8,4.600\nSan Francisco,9,3.700\nMiami,10,4.400\nMiami,11,4.600\n"
-              }
-            },
-            "working": {
-              "generated_sql": "SELECT city_name, id, rating FROM restaurant;"
-            },
-            "title": "Comparative Analysis of Restaurant Ratings by City",
-            "summary": "Restaurant ratings are consistently high across cities, with Miami and New York exhibiting slightly higher average ratings compared to Los Angeles and San Francisco. Each city has a similar number of restaurants sampled, except Miami, which has two entries that may influence its higher average rating. There are no significant outliers in the ratings data.",
-            "round": 0
-          },
-          {
-            "qn_id": 3,
-            "generated_qn": "How do the ratings of the selected restaurants vary by county? Return the county name, restaurant ID, and rating.",
-            "independent_variable_group": {
-              "name": "county",
-              "description": "The county where the restaurant is located",
-              "table_column": ["geographic.county"]
-            },
-            "artifacts": {
-              "fetched_table_csv": {
-                "artifact_content": "county,restaurant_id,rating\nLos Angeles,3,4.200\nLos Angeles,2,3.800\nLos Angeles,1,4.500\nNew York,6,4.300\nNew York,5,3.900\nNew York,4,4.700\nSan Francisco,9,3.700\nSan Francisco,8,4.600\nSan Francisco,7,4.100\nMiami-Dade,11,4.600\nMiami-Dade,10,4.400\n"
-              }
-            },
-            "working": {
-              "generated_sql": "SELECT geographic.county, restaurant.id AS restaurant_id, restaurant.rating FROM restaurant JOIN geographic ON restaurant.city_name = geographic.city_name;"
-            },
-            "title": "Consistently High Restaurant Ratings Across Counties with Miami-Dade and New York Leading",
-            "summary": "Restaurant ratings are consistently high across all counties, with Miami-Dade and New York counties achieving the highest average ratings. Los Angeles and San Francisco also maintain strong ratings, though slightly lower than the top counties. There are no missing values or significant outliers in the dataset.",
-            "round": 0
-          },
-          {
-            "qn_id": 4,
-            "generated_qn": "How do the ratings of the selected restaurants vary by region? Return the region name, restaurant ID, and rating.",
-            "independent_variable_group": {
-              "name": "region",
-              "description": "The region where the restaurant is located",
-              "table_column": ["geographic.region"]
-            },
-            "artifacts": {
-              "fetched_table_csv": {
-                "artifact_content": "region,id,rating\nCalifornia,3,4.200\nCalifornia,2,3.800\nCalifornia,1,4.500\nNew York,6,4.300\nNew York,5,3.900\nNew York,4,4.700\nCalifornia,9,3.700\nCalifornia,8,4.600\nCalifornia,7,4.100\nFlorida,11,4.600\nFlorida,10,4.400\n"
-              }
-            },
-            "working": {
-              "generated_sql": "SELECT geographic.region, restaurant.id, restaurant.rating FROM restaurant JOIN geographic ON restaurant.city_name = geographic.city_name;"
-            },
-            "title": "Regional Variations in Restaurant Ratings",
-            "summary": "Restaurant ratings differ across regions, with New York leading with the highest average rating, followed by Florida, and California having the most restaurants but a lower average rating. This suggests regional variations in customer satisfaction or restaurant quality.",
-            "round": 0
-          }
-        ],
-        "dependent_variable": {
-          "description": "The rating of the restaurant",
-          "table_column": ["restaurant.rating"],
-          "data_available": true
-        },
-        "summary": ""
-      },
-      "optimize": {
-        "processed_items": [],
+    "export": {
+      "md": "# Restaurant Selection and Customer Satisfaction Executive Summary\n\nThis report analyzes the distribution of food types and customer ratings across selected restaurants in major cities. It highlights key trends in cuisine diversity and regional performance in customer satisfaction. The findings provide actionable insights to enhance restaurant offerings and strategic placement.\n\nEnhance Cuisine Diversity \n\n\n\nAmerican cuisine is the most prevalent among selected restaurants, while Vegan and Mexican options are less represented [1].\n\n*Recommendation*\n- **Expand** menu offerings to include more Vegan and Mexican options.\n- **Promote** diverse food types to attract a wider customer base.\n- **Monitor** the performance of newly added cuisines.\n\nOptimize Geographic Distribution \n\n\n\nLos Angeles, New York, and San Francisco each have three restaurants with average ratings between **4.13** and **4.30**, while Miami has two restaurants with the highest average rating of **4.50** [3].\n\n*Recommendation*\n- **Increase** presence in high-performing regions like Miami.\n- **Assess** market potential in existing cities to identify growth opportunities.\n- **Balance** restaurant distribution to maximize coverage and ratings.\n\nMaintain High Customer Satisfaction \n\n\n\nA majority of selected restaurants fall within the **4-5** rating range with an average rating of **4.425**, indicating strong customer satisfaction [4].\n\n*Recommendation*\n- **Implement** quality control measures to sustain high ratings.\n- **Gather** customer feedback regularly to identify improvement areas.\n- **Reward** high-performing restaurants to encourage excellence.\n\n\n\n# Optimizing Restaurant Selection for Diverse Culinary Outings\n\n## Problem Statement\n\nOrganizations and individuals often seek to curate memorable dining experiences by visiting multiple restaurants that offer a variety of cuisines. The primary challenge lies in selecting at least five restaurants that each provide different types of food, ensuring a diverse and enriching culinary outing. This optimization problem not only enhances the dining experience but also accommodates varied taste preferences, making the selection process both strategic and satisfying.\n\n## Context\n\nTo address this problem, the following database schema is available:\n\n```sql\nCREATE TABLE geographic (\n  city_name text,\n  county text,\n  region text\n);\nCREATE TABLE location (\n  restaurant_id bigint,\n  house_number bigint,\n  street_name text,\n  city_name text\n);\nCREATE TABLE restaurant (\n  id bigint,\n  name text,\n  food_type text,\n  city_name text,\n  rating real\n);\n```\n\nThese tables provide comprehensive information about restaurants, including their locations, types of cuisine, and ratings. Utilizing this data, we can identify and select restaurants that not only offer diverse food types but also meet specific location and quality criteria. This structured approach ensures that the selected restaurants align with the desired variety and meet the requirements for an optimal dining outing.\n\n\n## Data Exploration\n### Distribution of Food Types Offered by Selected Restaurants\nIn this section, we analyze the distribution of food types offered by the selected restaurants to identify the variety and prevalence of different cuisines. This examination reveals that American cuisine is the most commonly offered, while Vegan and Mexican options are less prevalent. Understanding these distributions is essential for selecting restaurants that meet the diversity constraints of our selection criteria.\n\n\nThis was generated with:\n```sql\nSELECT food_type,\n       COUNT(*) AS number_of_restaurants\nFROM restaurant\nGROUP BY food_type;\n```\n\nAmerican cuisine is the most commonly offered food type among the selected restaurants, while Vegan and Mexican options are less prevalent.\n### Distribution and Average Ratings of Selected Restaurants Across Major Cities\nIn this section, we explore the distribution of the selected restaurants across key cities, presenting the number of establishments per city alongside their average ratings. This analysis is vital for assessing regional representation and customer satisfaction, ensuring that our selected restaurants offer a diverse range of food types while maintaining high quality standards. Insights from this distribution help in making informed decisions aligned with our objective to curate a varied and exceptional restaurant portfolio.\n\n\nThis was generated with:\n```sql\nSELECT city_name,\n       COUNT(*) AS number_of_restaurants,\n       AVG(rating) AS average_rating\nFROM restaurant\nGROUP BY city_name;\n```\n\nThree cities—Los Angeles, New York, and San Francisco—each have three selected restaurants with average ratings ranging from 4.13 to 4.30, while Miami has two restaurants with the highest average rating of 4.50, suggesting a higher customer satisfaction in Miami despite having fewer establishments.\n### Restaurant Ratings Distribution and Averages\nIn this section, we analyze the ratings of the selected restaurants across different rating ranges, detailing the number of establishments in each range and their average ratings. This distribution provides valuable insights into customer satisfaction and the overall quality of the restaurants, supporting the selection of diverse and highly-rated establishments as outlined in the problem statement.\n\n\nThis was generated with:\n```sql\nSELECT CASE\n           WHEN rating >= 0\n                AND rating < 1 THEN '0-1'\n           WHEN rating >= 1\n                AND rating < 2 THEN '1-2'\n           WHEN rating >= 2\n                AND rating < 3 THEN '2-3'\n           WHEN rating >= 3\n                AND rating < 4 THEN '3-4'\n           WHEN rating >= 4\n                AND rating <= 5 THEN '4-5'\n           ELSE 'Unknown'\n       END AS rating_range,\n       COUNT(*) AS number_of_restaurants,\n       AVG(rating) AS average_rating\nFROM restaurant\nGROUP BY rating_range\nORDER BY rating_range;\n```\n\nA majority of the selected restaurants fall within the higher rating range of 4-5, indicating strong customer satisfaction. Additionally, the average rating in the 4-5 range is significantly higher than in the 3-4 range, highlighting better performance among these establishments.\n\n## Recommendations\n\n1. Explore local food blogs or restaurant review sites to find a diverse selection of restaurants in your area.\n2. Consider visiting a food festival or market where multiple food vendors offer different cuisines.\n3. Use restaurant discovery apps to filter by food type and find highly rated options.\n4. Ask friends or family for recommendations based on their experiences with various cuisines.\n5. Check social media platforms for trending restaurants that offer a variety of food types.\n",
+      "mdx": "# Restaurant Selection and Customer Satisfaction Executive Summary\n\nThis report analyzes the distribution of food types and customer ratings across selected restaurants in major cities. It highlights key trends in cuisine diversity and regional performance in customer satisfaction. The findings provide actionable insights to enhance restaurant offerings and strategic placement.\n\n<ORACLE-RECOMMENDATION-TITLE analysis_reference=\"1\">Enhance Cuisine Diversity</ORACLE-RECOMMENDATION-TITLE> \n\n\n\nAmerican cuisine is the most prevalent among selected restaurants, while Vegan and Mexican options are less represented [1].\n\n*Recommendation*\n- **Expand** menu offerings to include more Vegan and Mexican options.\n- **Promote** diverse food types to attract a wider customer base.\n- **Monitor** the performance of newly added cuisines.\n\n<ORACLE-RECOMMENDATION-TITLE analysis_reference=\"3\">Optimize Geographic Distribution</ORACLE-RECOMMENDATION-TITLE> \n\n\n\nLos Angeles, New York, and San Francisco each have three restaurants with average ratings between **4.13** and **4.30**, while Miami has two restaurants with the highest average rating of **4.50** [3].\n\n*Recommendation*\n- **Increase** presence in high-performing regions like Miami.\n- **Assess** market potential in existing cities to identify growth opportunities.\n- **Balance** restaurant distribution to maximize coverage and ratings.\n\n<ORACLE-RECOMMENDATION-TITLE analysis_reference=\"4\">Maintain High Customer Satisfaction</ORACLE-RECOMMENDATION-TITLE> \n\n\n\nA majority of selected restaurants fall within the **4-5** rating range with an average rating of **4.425**, indicating strong customer satisfaction [4].\n\n*Recommendation*\n- **Implement** quality control measures to sustain high ratings.\n- **Gather** customer feedback regularly to identify improvement areas.\n- **Reward** high-performing restaurants to encourage excellence.\n\n\n\n# Optimizing Restaurant Selection for Diverse Culinary Outings\n\n## Problem Statement\n\nOrganizations and individuals often seek to curate memorable dining experiences by visiting multiple restaurants that offer a variety of cuisines. The primary challenge lies in selecting at least five restaurants that each provide different types of food, ensuring a diverse and enriching culinary outing. This optimization problem not only enhances the dining experience but also accommodates varied taste preferences, making the selection process both strategic and satisfying.\n\n## Context\n\nTo address this problem, the following database schema is available:\n\n```sql\nCREATE TABLE geographic (\n  city_name text,\n  county text,\n  region text\n);\nCREATE TABLE location (\n  restaurant_id bigint,\n  house_number bigint,\n  street_name text,\n  city_name text\n);\nCREATE TABLE restaurant (\n  id bigint,\n  name text,\n  food_type text,\n  city_name text,\n  rating real\n);\n```\n\nThese tables provide comprehensive information about restaurants, including their locations, types of cuisine, and ratings. Utilizing this data, we can identify and select restaurants that not only offer diverse food types but also meet specific location and quality criteria. This structured approach ensures that the selected restaurants align with the desired variety and meet the requirements for an optimal dining outing.\n\n\n## Data Exploration\n### Distribution of Food Types Offered by Selected Restaurants\nIn this section, we analyze the distribution of food types offered by the selected restaurants to identify the variety and prevalence of different cuisines. This examination reveals that American cuisine is the most commonly offered, while Vegan and Mexican options are less prevalent. Understanding these distributions is essential for selecting restaurants that meet the diversity constraints of our selection criteria.\n<MultiTable><Table type={fetched_table_csv} csv={Food Type,Number of Restaurants\nVegan,1\nSeafood,2\nAmerican,3\nJapanese,2\nMexican,1\nItalian,2\n} /></MultiTable>\n\n\nThis was generated with:\n```sql\nSELECT food_type,\n       COUNT(*) AS number_of_restaurants\nFROM restaurant\nGROUP BY food_type;\n```\n\nAmerican cuisine is the most commonly offered food type among the selected restaurants, while Vegan and Mexican options are less prevalent.\n### Distribution and Average Ratings of Selected Restaurants Across Major Cities\nIn this section, we explore the distribution of the selected restaurants across key cities, presenting the number of establishments per city alongside their average ratings. This analysis is vital for assessing regional representation and customer satisfaction, ensuring that our selected restaurants offer a diverse range of food types while maintaining high quality standards. Insights from this distribution help in making informed decisions aligned with our objective to curate a varied and exceptional restaurant portfolio.\n<MultiTable><Table type={fetched_table_csv} csv={City Name,Number of Restaurants,Average Rating\nLos Angeles,3,4.167\nNew York,3,4.3\nSan Francisco,3,4.133\nMiami,2,4.5\n} /></MultiTable>\n\n\nThis was generated with:\n```sql\nSELECT city_name,\n       COUNT(*) AS number_of_restaurants,\n       AVG(rating) AS average_rating\nFROM restaurant\nGROUP BY city_name;\n```\n\nThree cities—Los Angeles, New York, and San Francisco—each have three selected restaurants with average ratings ranging from 4.13 to 4.30, while Miami has two restaurants with the highest average rating of 4.50, suggesting a higher customer satisfaction in Miami despite having fewer establishments.\n### Restaurant Ratings Distribution and Averages\nIn this section, we analyze the ratings of the selected restaurants across different rating ranges, detailing the number of establishments in each range and their average ratings. This distribution provides valuable insights into customer satisfaction and the overall quality of the restaurants, supporting the selection of diverse and highly-rated establishments as outlined in the problem statement.\n<MultiTable><Table type={fetched_table_csv} csv={Rating Range,Number of Restaurants,Average Rating\n4-5,8,4.425\n3-4,3,3.8\n} /></MultiTable>\n\n\nThis was generated with:\n```sql\nSELECT CASE\n           WHEN rating >= 0\n                AND rating < 1 THEN '0-1'\n           WHEN rating >= 1\n                AND rating < 2 THEN '1-2'\n           WHEN rating >= 2\n                AND rating < 3 THEN '2-3'\n           WHEN rating >= 3\n                AND rating < 4 THEN '3-4'\n           WHEN rating >= 4\n                AND rating <= 5 THEN '4-5'\n           ELSE 'Unknown'\n       END AS rating_range,\n       COUNT(*) AS number_of_restaurants,\n       AVG(rating) AS average_rating\nFROM restaurant\nGROUP BY rating_range\nORDER BY rating_range;\n```\n\nA majority of the selected restaurants fall within the higher rating range of 4-5, indicating strong customer satisfaction. Additionally, the average rating in the 4-5 range is significantly higher than in the 3-4 range, highlighting better performance among these establishments.\n\n## Recommendations\n\n1. Explore local food blogs or restaurant review sites to find a diverse selection of restaurants in your area.<br />\n2. Consider visiting a food festival or market where multiple food vendors offer different cuisines.<br />\n3. Use restaurant discovery apps to filter by food type and find highly rated options.<br />\n4. Ask friends or family for recommendations based on their experiences with various cuisines.<br />\n5. Check social media platforms for trending restaurants that offer a variety of food types.\n",
+      "executive_summary": {
+        "title": "Restaurant Selection and Customer Satisfaction Executive Summary",
+        "introduction": "This report analyzes the distribution of food types and customer ratings across selected restaurants in major cities. It highlights key trends in cuisine diversity and regional performance in customer satisfaction. The findings provide actionable insights to enhance restaurant offerings and strategic placement.",
         "recommendations": [
-          "Explore additional restaurant options in the database to identify at least 5 restaurants with different food types.",
-          "Consider expanding the search criteria to include restaurants from nearby cities or regions to meet the requirement of variety in food types.",
-          "Check for any new entries in the restaurant table that may not have been included in the initial exploration.",
-          "Utilize filters based on food types to ensure a diverse selection of restaurants.",
-          "If available, look into user reviews or ratings to help identify popular restaurants that may meet the criteria."
+          {
+            "title": "Enhance Cuisine Diversity",
+            "insight": "American cuisine is the most prevalent among selected restaurants, while Vegan and Mexican options are less represented [1].",
+            "action": "- **Expand** menu offerings to include more Vegan and Mexican options.\n- **Promote** diverse food types to attract a wider customer base.\n- **Monitor** the performance of newly added cuisines.",
+            "analysis_reference": [1]
+          },
+          {
+            "title": "Optimize Geographic Distribution",
+            "insight": "Los Angeles, New York, and San Francisco each have three restaurants with average ratings between **4.13** and **4.30**, while Miami has two restaurants with the highest average rating of **4.50** [3].",
+            "action": "- **Increase** presence in high-performing regions like Miami.\n- **Assess** market potential in existing cities to identify growth opportunities.\n- **Balance** restaurant distribution to maximize coverage and ratings.",
+            "analysis_reference": [3]
+          },
+          {
+            "title": "Maintain High Customer Satisfaction",
+            "insight": "A majority of selected restaurants fall within the **4-5** rating range with an average rating of **4.425**, indicating strong customer satisfaction [4].",
+            "action": "- **Implement** quality control measures to sustain high ratings.\n- **Gather** customer feedback regularly to identify improvement areas.\n- **Reward** high-performing restaurants to encourage excellence.",
+            "analysis_reference": [4]
+          }
         ]
       },
-      "export": {
-        "md": "# Optimizing Restaurant Selections for Enhanced Diversity and Customer Satisfaction\n\nThis report evaluates the diversity of food types and customer ratings across various regions to identify key opportunities for improvement. It highlights the dominance of American cuisine and regional variations in restaurant performance. Based on these insights, actionable strategies are proposed to enhance restaurant offerings and optimize customer satisfaction.\n\n## Diversify Food Offerings\n\n**American cuisine** is the most prevalent among selected restaurants but receives lower ratings compared to other food types such as **Italian (4.5)**, **Japanese (4.2)**, **Vegan (4.6)**, and **Seafood (4.4)** [1].\n\n*Recommendation*\n- **Expand** higher-rated cuisine options.\n- **Reduce** focus on lower-rated food types.\n- **Promote** diverse menu offerings to attract a broader clientele.\n\n## Target High-Rating Regions\n\nRestaurant ratings are consistently highest in **Miami-Dade** and **New York** regions, indicating higher customer satisfaction levels compared to other regions [2, 3, 4].\n\n*Recommendation*\n- **Focus** marketing efforts on Miami-Dade and New York.\n- **Invest** in expanding restaurant presence in top-performing regions.\n- **Leverage** high customer satisfaction to enhance brand reputation.\n\n## Maintain Consistent Quality Across All Locations\n\nAll counties maintain **high ratings**, with **Miami-Dade (4.6)** and **New York (4.7)** leading, suggesting a need for consistent quality across regions [3].\n\n*Recommendation*\n- **Implement** quality assurance programs in all regions.\n- **Monitor** customer feedback regularly.\n- **Standardize** training to ensure consistent service quality.\n\n\n\n# Restaurant Selection Optimization Report\n\n## Problem Statement\n\nThe goal is to identify and select a minimum of five restaurants that offer a diverse range of food types, ensuring each chosen establishment serves a unique cuisine. This selection aims to provide a varied and enjoyable dining experience for an outing, catering to different culinary preferences and enhancing the overall satisfaction of the group.\n\n## Context\n\nTo address this optimization task, we have access to the restaurant database, which includes comprehensive information such as restaurant IDs, names, food types, city locations, and ratings. The relevant tables—`geographic`, `location`, and `restaurant`—provide necessary data points to identify restaurants that meet the criteria of variety and diversity in food offerings. Utilizing this data will allow us to effectively analyze and select the optimal set of restaurants that satisfy the requirement of having different food types for the outing.\n\n\n## Data Exploration\n### Diversity of Food Types and Customer Ratings in Selected Restaurants\nIn this section, we explore the range of food types provided by the selected restaurants, presenting each restaurant’s ID, food category, and customer ratings. This analysis is integral to identifying establishments that offer diverse culinary options while ensuring each restaurant specializes in a unique food type. Understanding these distinctions supports our objective of selecting restaurants that enhance our overall variety and meet quality standards.\n\n\nThis was generated with:\n```sql\nSELECT id,\n       food_type,\n       rating\nFROM restaurant;\n```\n\nAmerican cuisine is the most prevalent among the selected restaurants but tends to receive lower ratings compared to other food types such as Italian, Japanese, Vegan, and Seafood. Overall, most restaurants enjoy positive ratings, ranging from 3.70 to 4.70, indicating general customer satisfaction. There are no missing values or significant outliers in the dataset.\n### Comparative Analysis of Restaurant Ratings by City\nIn this section, we analyze the distribution of ratings for the selected restaurants across different cities. This evaluation is crucial to ensure that each restaurant not only offers a unique food type but also maintains high-quality standards within its respective urban market. By comparing city-specific performance, we can make informed decisions that align with our diversity and quality objectives.\n\n\nThis was generated with:\n```sql\nSELECT city_name,\n       id,\n       rating\nFROM restaurant;\n```\n\nRestaurant ratings are consistently high across cities, with Miami and New York exhibiting slightly higher average ratings compared to Los Angeles and San Francisco. Each city has a similar number of restaurants sampled, except Miami, which has two entries that may influence its higher average rating. There are no significant outliers in the ratings data.\n### Consistently High Restaurant Ratings Across Counties with Miami-Dade and New York Leading\nIn this section, we examine how the ratings of selected restaurants differ across various counties by analyzing county name, restaurant ID, and rating. This evaluation highlights regional performance trends and identifies top-performing areas such as Miami-Dade and New York. Understanding these rating distributions is essential for selecting a diverse set of highly-rated restaurants that meet our criteria.\n\n\nThis was generated with:\n```sql\nSELECT geographic.county,\n       restaurant.id AS restaurant_id,\n       restaurant.rating\nFROM restaurant\nJOIN geographic ON restaurant.city_name = geographic.city_name;\n```\n\nRestaurant ratings are consistently high across all counties, with Miami-Dade and New York counties achieving the highest average ratings. Los Angeles and San Francisco also maintain strong ratings, though slightly lower than the top counties. There are no missing values or significant outliers in the dataset.\n### Regional Variations in Restaurant Ratings\nIn this section, we analyze the variation in restaurant ratings across different regions by examining the ratings of selected restaurants in each area. Our assessment reveals that New York achieves the highest average ratings, followed by Florida, while California, despite hosting the most restaurants, records a lower average rating. These findings underscore significant regional differences in customer satisfaction and overall restaurant quality.\n\n\nThis was generated with:\n```sql\nSELECT geographic.region,\n       restaurant.id,\n       restaurant.rating\nFROM restaurant\nJOIN geographic ON restaurant.city_name = geographic.city_name;\n```\n\nRestaurant ratings differ across regions, with New York leading with the highest average rating, followed by Florida, and California having the most restaurants but a lower average rating. This suggests regional variations in customer satisfaction or restaurant quality.\n\n## Recommendations\n\n1. Explore additional restaurant options in the database to identify at least 5 restaurants with different food types.\n2. Consider expanding the search criteria to include restaurants from nearby cities or regions to meet the requirement of variety in food types.\n3. Check for any new entries in the restaurant table that may not have been included in the initial exploration.\n4. Utilize filters based on food types to ensure a diverse selection of restaurants.\n5. If available, look into user reviews or ratings to help identify popular restaurants that may meet the criteria.\n",
-        "mdx": "# Optimizing Restaurant Selections for Enhanced Diversity and Customer Satisfaction\n\nThis report evaluates the diversity of food types and customer ratings across various regions to identify key opportunities for improvement. It highlights the dominance of American cuisine and regional variations in restaurant performance. Based on these insights, actionable strategies are proposed to enhance restaurant offerings and optimize customer satisfaction.\n\n## Diversify Food Offerings\n\n**American cuisine** is the most prevalent among selected restaurants but receives lower ratings compared to other food types such as **Italian (4.5)**, **Japanese (4.2)**, **Vegan (4.6)**, and **Seafood (4.4)** [1].\n\n*Recommendation*\n- **Expand** higher-rated cuisine options.\n- **Reduce** focus on lower-rated food types.\n- **Promote** diverse menu offerings to attract a broader clientele.\n\n## Target High-Rating Regions\n\nRestaurant ratings are consistently highest in **Miami-Dade** and **New York** regions, indicating higher customer satisfaction levels compared to other regions [2, 3, 4].\n\n*Recommendation*\n- **Focus** marketing efforts on Miami-Dade and New York.\n- **Invest** in expanding restaurant presence in top-performing regions.\n- **Leverage** high customer satisfaction to enhance brand reputation.\n\n## Maintain Consistent Quality Across All Locations\n\nAll counties maintain **high ratings**, with **Miami-Dade (4.6)** and **New York (4.7)** leading, suggesting a need for consistent quality across regions [3].\n\n*Recommendation*\n- **Implement** quality assurance programs in all regions.\n- **Monitor** customer feedback regularly.\n- **Standardize** training to ensure consistent service quality.\n\n\n\n# Restaurant Selection Optimization Report\n\n## Problem Statement\n\nThe goal is to identify and select a minimum of five restaurants that offer a diverse range of food types, ensuring each chosen establishment serves a unique cuisine. This selection aims to provide a varied and enjoyable dining experience for an outing, catering to different culinary preferences and enhancing the overall satisfaction of the group.\n\n## Context\n\nTo address this optimization task, we have access to the restaurant database, which includes comprehensive information such as restaurant IDs, names, food types, city locations, and ratings. The relevant tables—`geographic`, `location`, and `restaurant`—provide necessary data points to identify restaurants that meet the criteria of variety and diversity in food offerings. Utilizing this data will allow us to effectively analyze and select the optimal set of restaurants that satisfy the requirement of having different food types for the outing.\n\n\n## Data Exploration\n### Diversity of Food Types and Customer Ratings in Selected Restaurants\nIn this section, we explore the range of food types provided by the selected restaurants, presenting each restaurant’s ID, food category, and customer ratings. This analysis is integral to identifying establishments that offer diverse culinary options while ensuring each restaurant specializes in a unique food type. Understanding these distinctions supports our objective of selecting restaurants that enhance our overall variety and meet quality standards.\n<MultiTable><Table type={fetched_table_csv} csv={ID,Food Type,Rating\n4,Italian,4.7\n8,Vegan,4.6\n11,Seafood,4.6\n1,Italian,4.5\n10,Seafood,4.4\n6,Japanese,4.3\n3,Japanese,4.2\n7,Mexican,4.1\n5,American,3.9\n2,American,3.8\n9,American,3.7\n} /></MultiTable>\n\n\nThis was generated with:\n```sql\nSELECT id,\n       food_type,\n       rating\nFROM restaurant;\n```\n\nAmerican cuisine is the most prevalent among the selected restaurants but tends to receive lower ratings compared to other food types such as Italian, Japanese, Vegan, and Seafood. Overall, most restaurants enjoy positive ratings, ranging from 3.70 to 4.70, indicating general customer satisfaction. There are no missing values or significant outliers in the dataset.\n### Comparative Analysis of Restaurant Ratings by City\nIn this section, we analyze the distribution of ratings for the selected restaurants across different cities. This evaluation is crucial to ensure that each restaurant not only offers a unique food type but also maintains high-quality standards within its respective urban market. By comparing city-specific performance, we can make informed decisions that align with our diversity and quality objectives.\n<MultiTable><Table type={fetched_table_csv} csv={City Name,ID,Rating\nLos Angeles,1,4.5\nLos Angeles,2,3.8\nLos Angeles,3,4.2\nMiami,10,4.4\nMiami,11,4.6\nNew York,4,4.7\nNew York,5,3.9\nNew York,6,4.3\nSan Francisco,7,4.1\nSan Francisco,8,4.6\nSan Francisco,9,3.7\n} /></MultiTable>\n\n\nThis was generated with:\n```sql\nSELECT city_name,\n       id,\n       rating\nFROM restaurant;\n```\n\nRestaurant ratings are consistently high across cities, with Miami and New York exhibiting slightly higher average ratings compared to Los Angeles and San Francisco. Each city has a similar number of restaurants sampled, except Miami, which has two entries that may influence its higher average rating. There are no significant outliers in the ratings data.\n### Consistently High Restaurant Ratings Across Counties with Miami-Dade and New York Leading\nIn this section, we examine how the ratings of selected restaurants differ across various counties by analyzing county name, restaurant ID, and rating. This evaluation highlights regional performance trends and identifies top-performing areas such as Miami-Dade and New York. Understanding these rating distributions is essential for selecting a diverse set of highly-rated restaurants that meet our criteria.\n<MultiTable><Table type={fetched_table_csv} csv={County,Restaurant ID,Rating\nLos Angeles,3,4.2\nLos Angeles,2,3.8\nLos Angeles,1,4.5\nNew York,6,4.3\nNew York,5,3.9\nNew York,4,4.7\nSan Francisco,9,3.7\nSan Francisco,8,4.6\nSan Francisco,7,4.1\nMiami-Dade,11,4.6\nMiami-Dade,10,4.4\n} /></MultiTable>\n\n\nThis was generated with:\n```sql\nSELECT geographic.county,\n       restaurant.id AS restaurant_id,\n       restaurant.rating\nFROM restaurant\nJOIN geographic ON restaurant.city_name = geographic.city_name;\n```\n\nRestaurant ratings are consistently high across all counties, with Miami-Dade and New York counties achieving the highest average ratings. Los Angeles and San Francisco also maintain strong ratings, though slightly lower than the top counties. There are no missing values or significant outliers in the dataset.\n### Regional Variations in Restaurant Ratings\nIn this section, we analyze the variation in restaurant ratings across different regions by examining the ratings of selected restaurants in each area. Our assessment reveals that New York achieves the highest average ratings, followed by Florida, while California, despite hosting the most restaurants, records a lower average rating. These findings underscore significant regional differences in customer satisfaction and overall restaurant quality.\n<MultiTable><Table type={fetched_table_csv} csv={Region,ID,Rating\nCalifornia,3,4.2\nCalifornia,2,3.8\nCalifornia,1,4.5\nNew York,6,4.3\nNew York,5,3.9\nNew York,4,4.7\nCalifornia,9,3.7\nCalifornia,8,4.6\nCalifornia,7,4.1\nFlorida,11,4.6\nFlorida,10,4.4\n} /></MultiTable>\n\n\nThis was generated with:\n```sql\nSELECT geographic.region,\n       restaurant.id,\n       restaurant.rating\nFROM restaurant\nJOIN geographic ON restaurant.city_name = geographic.city_name;\n```\n\nRestaurant ratings differ across regions, with New York leading with the highest average rating, followed by Florida, and California having the most restaurants but a lower average rating. This suggests regional variations in customer satisfaction or restaurant quality.\n\n## Recommendations\n\n1. Explore additional restaurant options in the database to identify at least 5 restaurants with different food types.<br />\n2. Consider expanding the search criteria to include restaurants from nearby cities or regions to meet the requirement of variety in food types.<br />\n3. Check for any new entries in the restaurant table that may not have been included in the initial exploration.<br />\n4. Utilize filters based on food types to ensure a diverse selection of restaurants.<br />\n5. If available, look into user reviews or ratings to help identify popular restaurants that may meet the criteria.\n",
-        "executive_summary": {
-          "title": "Optimizing Restaurant Selections for Enhanced Diversity and Customer Satisfaction",
-          "introduction": "This report evaluates the diversity of food types and customer ratings across various regions to identify key opportunities for improvement. It highlights the dominance of American cuisine and regional variations in restaurant performance. Based on these insights, actionable strategies are proposed to enhance restaurant offerings and optimize customer satisfaction.",
-          "recommendations": [
-            {
-              "title": "Diversify Food Offerings",
-              "insight": "**American cuisine** is the most prevalent among selected restaurants but receives lower ratings compared to other food types such as **Italian (4.5)**, **Japanese (4.2)**, **Vegan (4.6)**, and **Seafood (4.4)** [1].",
-              "action": "- **Expand** higher-rated cuisine options.\n- **Reduce** focus on lower-rated food types.\n- **Promote** diverse menu offerings to attract a broader clientele.",
-              "analysis_reference": [1]
-            },
-            {
-              "title": "Target High-Rating Regions",
-              "insight": "Restaurant ratings are consistently highest in **Miami-Dade** and **New York** regions, indicating higher customer satisfaction levels compared to other regions [2, 3, 4].",
-              "action": "- **Focus** marketing efforts on Miami-Dade and New York.\n- **Invest** in expanding restaurant presence in top-performing regions.\n- **Leverage** high customer satisfaction to enhance brand reputation.",
-              "analysis_reference": [2, 3, 4]
-            },
-            {
-              "title": "Maintain Consistent Quality Across All Locations",
-              "insight": "All counties maintain **high ratings**, with **Miami-Dade (4.6)** and **New York (4.7)** leading, suggesting a need for consistent quality across regions [3].",
-              "action": "- **Implement** quality assurance programs in all regions.\n- **Monitor** customer feedback regularly.\n- **Standardize** training to ensure consistent service quality.",
-              "analysis_reference": [3]
-            }
-          ]
-        }
-      },
-      "done": null
+      "analyses_mdx": {
+        "1": "### Distribution of Food Types Offered by Selected Restaurants\nIn this section, we analyze the distribution of food types offered by the selected restaurants to identify the variety and prevalence of different cuisines. This examination reveals that American cuisine is the most commonly offered, while Vegan and Mexican options are less prevalent. Understanding these distributions is essential for selecting restaurants that meet the diversity constraints of our selection criteria.\n<MultiTable><Table type={fetched_table_csv} csv={Food Type,Number of Restaurants\nVegan,1\nSeafood,2\nAmerican,3\nJapanese,2\nMexican,1\nItalian,2\n} /></MultiTable>\n\n\nThis was generated with:\n```sql\nSELECT food_type,\n       COUNT(*) AS number_of_restaurants\nFROM restaurant\nGROUP BY food_type;\n```\n\nAmerican cuisine is the most commonly offered food type among the selected restaurants, while Vegan and Mexican options are less prevalent.\n",
+        "3": "### Distribution and Average Ratings of Selected Restaurants Across Major Cities\nIn this section, we explore the distribution of the selected restaurants across key cities, presenting the number of establishments per city alongside their average ratings. This analysis is vital for assessing regional representation and customer satisfaction, ensuring that our selected restaurants offer a diverse range of food types while maintaining high quality standards. Insights from this distribution help in making informed decisions aligned with our objective to curate a varied and exceptional restaurant portfolio.\n<MultiTable><Table type={fetched_table_csv} csv={City Name,Number of Restaurants,Average Rating\nLos Angeles,3,4.167\nNew York,3,4.3\nSan Francisco,3,4.133\nMiami,2,4.5\n} /></MultiTable>\n\n\nThis was generated with:\n```sql\nSELECT city_name,\n       COUNT(*) AS number_of_restaurants,\n       AVG(rating) AS average_rating\nFROM restaurant\nGROUP BY city_name;\n```\n\nThree cities—Los Angeles, New York, and San Francisco—each have three selected restaurants with average ratings ranging from 4.13 to 4.30, while Miami has two restaurants with the highest average rating of 4.50, suggesting a higher customer satisfaction in Miami despite having fewer establishments.\n",
+        "4": "### Restaurant Ratings Distribution and Averages\nIn this section, we analyze the ratings of the selected restaurants across different rating ranges, detailing the number of establishments in each range and their average ratings. This distribution provides valuable insights into customer satisfaction and the overall quality of the restaurants, supporting the selection of diverse and highly-rated establishments as outlined in the problem statement.\n<MultiTable><Table type={fetched_table_csv} csv={Rating Range,Number of Restaurants,Average Rating\n4-5,8,4.425\n3-4,3,3.8\n} /></MultiTable>\n\n\nThis was generated with:\n```sql\nSELECT CASE\n           WHEN rating >= 0\n                AND rating < 1 THEN '0-1'\n           WHEN rating >= 1\n                AND rating < 2 THEN '1-2'\n           WHEN rating >= 2\n                AND rating < 3 THEN '2-3'\n           WHEN rating >= 3\n                AND rating < 4 THEN '3-4'\n           WHEN rating >= 4\n                AND rating <= 5 THEN '4-5'\n           ELSE 'Unknown'\n       END AS rating_range,\n       COUNT(*) AS number_of_restaurants,\n       AVG(rating) AS average_rating\nFROM restaurant\nGROUP BY rating_range\nORDER BY rating_range;\n```\n\nA majority of the selected restaurants fall within the higher rating range of 4-5, indicating strong customer satisfaction. Additionally, the average rating in the 4-5 range is significantly higher than in the 3-4 range, highlighting better performance among these establishments.\n"
+      }
     },
-    "feedback": null
-  }
+    "done": null
+  },
+  "feedback": null
 }
