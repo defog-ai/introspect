@@ -36,8 +36,8 @@ const RecommendationTitleComponent = ({ node }) => {
         onClick={() => setDrawerOpen(true)}
       >
         {node.content.content?.[0]?.text || ""}
-        <span className="absolute bottom-1 ml-1 text-right text-gray-400 italic text-xs font-light opacity-0 group-hover:opacity-100">
-          Click for details
+        <span className="absolute bottom-1 ml-1 text-right text-gray-400 text-sm font-light">
+        ✨ Dig Deeper
         </span>
       </p>
       <Drawer
