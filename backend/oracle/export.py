@@ -68,7 +68,7 @@ async def generate_report(
         )
     return {
         "md": summary_md + "\n\n" + md,
-        "mdx": summary_mdx + "\n\n" + mdx,
+        "mdx": summary_mdx,
         "executive_summary": summary_dict,
         "analyses_mdx": analyses_mdx,
     }
