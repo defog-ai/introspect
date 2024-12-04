@@ -1,7 +1,7 @@
 import os
 import time
 import traceback
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 
 from celery.utils.log import get_task_logger
 from prophet import Prophet

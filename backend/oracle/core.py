@@ -231,13 +231,20 @@ async def generate_report(
         "outputs": outputs,
     }
 
-    # generate the initial markdown
-    response = await make_request(
-        DEFOG_BASE_URL + "/oracle/generate_report", json_data, timeout=300
+    # generate the full report markdown and mdx
+    mdx_task = make_request(
+        DEFOG_BASE_URL + "/oracle/generate_report_mdx", json_data, timeout=300
     )
-
-    md = response.get("md")
-    mdx = response.get("mdx")
+    # generate a synthesized executive summary to the report
+    summary_task = make_request(
+        DEFOG_BASE_URL + "/oracle/generate_report_summary",
+        json_data,
+        timeout=300,
+    )
+    responses = await asyncio.gather(mdx_task, summary_task)
+    md = responses[0].get("md")
+    mdx = responses[0].get("mdx")
+    summary = responses[1].get("executive_summary")
     if md is None:
         LOGGER.error("No MD returned from backend.")
     else:
@@ -245,44 +252,16 @@ async def generate_report(
         trunc_md = truncate_obj(md, max_len_str=1000, to_str=True)
         LOGGER.debug(f"MD generated for report {report_id}\n{trunc_md}")
 
-    # generate a synthesized introduction to the report
-    introduction_md = await make_request(
-        DEFOG_BASE_URL + "/oracle/synthesize_report",
-        {"md": md, "api_key": api_key},
-        timeout=300,
-    )
-
-    intro_md = introduction_md.get("md")
-    if intro_md is None:
-        LOGGER.error("No introduction MD returned from backend.")
+    if summary is None:
+        LOGGER.error("No Executive Summary MD returned from backend.")
     else:
-        trunc_intro_md = truncate_obj(intro_md, max_len_str=1000, to_str=True)
+        trunc_summary = truncate_obj(summary, max_len_str=1000, to_str=True)
         LOGGER.debug(
-            f"Introduction MD generated for report {report_id}\n{trunc_intro_md}"
+            f"Executive Summary MD generated for report {report_id}\n{trunc_summary}"
         )
 
     return {
-        "md": "# Executive Summary\n\n" + intro_md + "\n\n" + md,
-        "mdx": "# Executive Summary\n\n" + intro_md + "\n\n" + mdx,
+        "md": "# Executive Summary\n\n" + summary + "\n\n" + md,
+        "mdx": "# Executive Summary\n\n" + summary + "\n\n" + mdx,
+        "executive_summary": summary,
     }
-
-
-def get_report_image_path(api_key: str, report_id: str, image_file_name: str) -> str:
-    """
-    Helper function for getting the report image path based on the api_key, report_id and image file name.
-    """
-    return f"oracle/reports/{api_key}/report_{report_id}/{image_file_name}"
-
-
-def get_report_file_path(api_key: str, report_id: str) -> str:
-    """
-    Helper function for getting the report file path based on the api_key and report_id.
-    Reports are organized in the following directory structure:
-    oracle/reports/{api_key}/report_{report_id}.pdf
-    """
-    report_dir = f"oracle/reports/{api_key}"
-    if not os.path.exists(report_dir):
-        os.makedirs(report_dir, exist_ok=True)
-        LOGGER.debug(f"Created directory {report_dir}")
-    report_file_path = f"{report_dir}/report_{report_id}.pdf"
-    return report_file_path

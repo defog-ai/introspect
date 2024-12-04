@@ -13,7 +13,11 @@
       {
         "clarification": "Could you please confirm if the objective is to find at least 5 restaurants that offer a variety of food types based on their food_type?",
         "input_type": "single_choice",
-        "options": ["yes", "no", "Other"],
+        "options": [
+          "yes",
+          "no",
+          "Other"
+        ],
         "answer": "yes"
       },
       {
@@ -46,7 +50,10 @@
     "gather_context": {
       "context": "",
       "objective": "Identify at least 5 restaurants that offer a variety of food types. This can be achieved by fetching data from the restaurant table and aggregating the unique food types available.",
-      "decision_variables": ["restaurant_id", "food_type"],
+      "decision_variables": [
+        "restaurant_id",
+        "food_type"
+      ],
       "constraints": [],
       "problem_statement": "Select at least 5 restaurant IDs that provide a variety of food types without any specific rating or city constraints.",
       "issues": [],
@@ -60,7 +67,7 @@
           "independent_variable_group": {
             "name": "restaurantLocation",
             "description": "The location details of the restaurants",
-            "table.column": [
+            "table_column": [
               "location.restaurant_id",
               "location.city_name",
               "location.street_name",
@@ -84,7 +91,7 @@
           "independent_variable_group": {
             "name": "restaurantGeography",
             "description": "The geographic details of the restaurants",
-            "table.column": [
+            "table_column": [
               "geographic.city_name",
               "geographic.county",
               "geographic.region"
@@ -107,7 +114,7 @@
           "independent_variable_group": {
             "name": "restaurantDetails",
             "description": "The details of the restaurants including name and rating",
-            "table.column": [
+            "table_column": [
               "restaurant.id",
               "restaurant.name",
               "restaurant.rating"
@@ -130,7 +137,7 @@
           "independent_variable_group": {
             "name": "restaurantLocation",
             "description": "The location details of the restaurants",
-            "table.column": [
+            "table_column": [
               "location.restaurant_id",
               "location.city_name",
               "location.street_name",
@@ -174,7 +181,7 @@
           "independent_variable_group": {
             "name": "restaurantGeography",
             "description": "The geographic details of the restaurants",
-            "table.column": [
+            "table_column": [
               "geographic.city_name",
               "geographic.county",
               "geographic.region"
@@ -194,7 +201,10 @@
       ],
       "dependent_variable": {
         "description": "Identify restaurant IDs that provide a variety of food types.",
-        "table.column": ["restaurant.id", "restaurant.food_type"],
+        "table_column": [
+          "restaurant.id",
+          "restaurant.food_type"
+        ],
         "data_available": true
       },
       "summary": ""

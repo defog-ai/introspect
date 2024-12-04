@@ -236,11 +236,11 @@ async def explore_generated_question(
     - generated_qn: str
     - dependent_variable: Dict[str, Any]
         - description: str
-        - table.column: List[str]
+        - table_column: List[str]
     - independent_variable_group: Dict[str, Any]
         - name: str
         - description: str
-        - table.column: List[str]
+        - table_column: List[str]
     - artifacts: Dict[str, Dict[str, str]]
         - outer key: str, artifact type, one of FETCHED_TABLE_CSV, TABLE_CSV, IMAGE
         - inner keys
@@ -300,8 +300,8 @@ async def explore_generated_question(
             elif err_msg is not None:
                 LOGGER.error(f"Error occurred in executing SQL: {err_msg}")
             elif isinstance(data, pd.DataFrame) and data.empty:
-                dependent_variable_str = f"{dependent_variable['description']} ({dependent_variable['table.column']})"
-                independent_variable_str = f"{independent_variable_group['description']} ({independent_variable_group['table.column']})"
+                dependent_variable_str = f"{dependent_variable['description']} ({dependent_variable['table_column']})"
+                independent_variable_str = f"{independent_variable_group['description']} ({independent_variable_group['table_column']})"
                 expand_sql_qn_response = await make_request(
                     DEFOG_BASE_URL + "/oracle/expand_sql_qn",
                     data={
@@ -351,13 +351,14 @@ async def explore_generated_question(
             )
         }
     }
+    LOGGER.debug(f"independent_variable_group: {independent_variable_group}")
     outputs = {
         "qn_id": qn_id,
         "generated_qn": generated_qn,
         "independent_variable_group": {
             "name": independent_variable_group["name"],
             "description": independent_variable_group["description"],
-            "table.column": independent_variable_group["table.column"],
+            "table_column": independent_variable_group["table_column"],
         },
         "artifacts": artifacts,
         "working": {"generated_sql": sql},

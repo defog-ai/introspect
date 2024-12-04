@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, JSONResponse
@@ -9,7 +10,6 @@ from sqlalchemy.sql import select
 from db_utils import OracleReports, engine, validate_user
 from generic_utils import get_api_key_from_key_name
 from oracle.constants import TaskStage
-from oracle.core import get_report_file_path, get_report_image_path
 from utils import encode_image
 from utils_logging import LOGGER
 
@@ -345,3 +345,60 @@ async def get_report_analysis(req: ReportAnalysisRequest):
                 del analysis["qn_id"]
                 return JSONResponse(status_code=200, content=analysis)
         return JSONResponse(status_code=404, content={"error": "Analysis not found"})
+
+
+@router.post("/oracle/get_report_summary")
+async def get_report_summary(req: ReportRequest):
+    """
+    Given a report_id, this endpoint will return the executive summary of the report.
+    The executive summary will have links to the relevant analyses should the user want to
+    dive deeper into a particular answer/insight.
+    """
+    if not validate_user(req.token, user_type=None, get_username=False):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    api_key = get_api_key_from_key_name(req.key_name)
+    # get from export key's executive_summary
+    executive_summary = None
+    with Session(engine) as session:
+        stmt = select(OracleReports.outputs).where(
+            OracleReports.api_key == api_key,
+            OracleReports.report_id == req.report_id,
+        )
+        result = session.execute(stmt)
+        outputs = result.scalar_one_or_none()
+        executive_summary = outputs.get(TaskStage.EXPORT.value, {}).get(
+            "executive_summary", None
+        )
+    if executive_summary:
+        return JSONResponse(
+            status_code=200, content={"executive_summary": executive_summary}
+        )
+    else:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Executive summary not found"},
+        )
+
+
+### HELPER FUNCTIONS ###
+
+
+def get_report_image_path(api_key: str, report_id: str, image_file_name: str) -> str:
+    """
+    Helper function for getting the report image path based on the api_key, report_id and image file name.
+    """
+    return f"oracle/reports/{api_key}/report_{report_id}/{image_file_name}"
+
+
+def get_report_file_path(api_key: str, report_id: str) -> str:
+    """
+    Helper function for getting the report file path based on the api_key and report_id.
+    Reports are organized in the following directory structure:
+    oracle/reports/{api_key}/report_{report_id}.pdf
+    """
+    report_dir = f"oracle/reports/{api_key}"
+    if not os.path.exists(report_dir):
+        os.makedirs(report_dir, exist_ok=True)
+        LOGGER.debug(f"Created directory {report_dir}")
+    report_file_path = f"{report_dir}/report_{report_id}.pdf"
+    return report_file_path
