@@ -33,6 +33,10 @@ users = [
         "username": "webshop",
         "password": "test",
     },
+    {
+        "username": "cricket",
+        "password": "test",
+    }
 ]
 databases = [
     {
@@ -59,6 +63,10 @@ databases = [
         "api_key": "test_webshop",
         "database": "webshop",
     },
+    {
+        "api_key": "test_cricket",
+        "database": "cricket",
+    }
 ]
 DB_CREDS = {
     "host": "host.docker.internal",
