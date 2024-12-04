@@ -1,5 +1,4 @@
 import asyncio
-import os
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
@@ -7,16 +6,16 @@ from datetime import datetime
 from typing import Any, Dict
 
 from db_utils import OracleReports, engine
-from generic_utils import make_request
-from oracle.celery_app import celery_app, LOGGER
-from oracle.constants import TaskStage, TaskType, DEFOG_BASE_URL, STAGE_TO_STATUS
+from oracle.celery_app import celery_app
+from oracle.constants import TaskStage, TaskType, STAGE_TO_STATUS
 from oracle.explore import explore_data
+from oracle.export import generate_report
 from oracle.gather_context import gather_context
 from oracle.predict import predict
 from oracle.optimize import optimize
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from utils_logging import save_and_log, save_timing, truncate_obj
+from utils_logging import LOGGER, save_and_log, save_timing
 
 
 celery_async_executors = ThreadPoolExecutor(max_workers=4)
@@ -205,63 +204,4 @@ async def execute_stage(
     elif stage == TaskStage.DONE:
         stage_result = None
     # add more stages here for new report sections if necessary in the future
-    else:
-        raise ValueError(f"Stage {stage} not recognized.")
     return stage_result
-
-
-async def generate_report(
-    api_key: str,
-    report_id: str,
-    task_type: TaskType,
-    inputs: Dict[str, Any],
-    outputs: Dict[str, Any],
-):
-    """
-    This function will generate the final report, by consolidating all the
-    information gathered, explored, predicted, and optimized.
-    """
-    LOGGER.info(f"Exporting for report {report_id}")
-    LOGGER.debug(f"inputs: {inputs}")
-    LOGGER.debug(f"inputs: {outputs}")
-    json_data = {
-        "api_key": api_key,
-        "task_type": task_type.value,
-        "inputs": inputs,
-        "outputs": outputs,
-    }
-
-    # generate the full report markdown and mdx
-    mdx_task = make_request(
-        DEFOG_BASE_URL + "/oracle/generate_report_mdx", json_data, timeout=300
-    )
-    # generate a synthesized executive summary to the report
-    summary_task = make_request(
-        DEFOG_BASE_URL + "/oracle/generate_report_summary",
-        json_data,
-        timeout=300,
-    )
-    responses = await asyncio.gather(mdx_task, summary_task)
-    md = responses[0].get("md")
-    mdx = responses[0].get("mdx")
-    summary = responses[1].get("executive_summary")
-    if md is None:
-        LOGGER.error("No MD returned from backend.")
-    else:
-        # log truncated markdown for debugging
-        trunc_md = truncate_obj(md, max_len_str=1000, to_str=True)
-        LOGGER.debug(f"MD generated for report {report_id}\n{trunc_md}")
-
-    if summary is None:
-        LOGGER.error("No Executive Summary MD returned from backend.")
-    else:
-        trunc_summary = truncate_obj(summary, max_len_str=1000, to_str=True)
-        LOGGER.debug(
-            f"Executive Summary MD generated for report {report_id}\n{trunc_summary}"
-        )
-
-    return {
-        "md": "# Executive Summary\n\n" + summary + "\n\n" + md,
-        "mdx": "# Executive Summary\n\n" + summary + "\n\n" + mdx,
-        "executive_summary": summary,
-    }
