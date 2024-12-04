@@ -16,7 +16,12 @@ function OracleReportTable(props) {
       {
         name: "Table",
         content: (
-          <Table columns={columns} rows={data} columnHeaderClassNames="py-2" skipColumns={["index"]} />
+          <Table
+            columns={columns}
+            rows={data}
+            columnHeaderClassNames="py-2"
+            skipColumns={["index"]}
+          />
         ),
       },
       {

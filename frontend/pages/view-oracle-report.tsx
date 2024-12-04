@@ -8,25 +8,26 @@ import {
   MessageManagerContext,
   TextArea,
 } from "@defogdotai/agents-ui-components/core-ui";
-import { parseTables, parseImages } from "$utils/oracleUtils";
+import {
+  parseTables,
+  parseImages,
+  getReportMDX,
+  getReportFeedback,
+  getReportAnalyses,
+  getReportExecutiveSummary,
+  extensions,
+  getReportAnalysesMdx,
+  parseTablesAndImagesInMdx,
+} from "$utils/oracleUtils";
 
-import StarterKit from "@tiptap/starter-kit";
-import { Markdown } from "tiptap-markdown";
 import { EditorProvider } from "@tiptap/react";
 import React from "react";
-import { OracleReportContext } from "$components/context/OracleReportContext";
-import { OracleReportImageExtension } from "$components/oracle/reports/OracleReportImage";
+import {
+  Analysis,
+  OracleReportContext,
+  Summary,
+} from "$components/context/OracleReportContext";
 import { LeftOutlined } from "@ant-design/icons";
-import { OracleReportMultiTableExtension } from "$components/oracle/reports/OracleReportMultiTable";
-import { OracleReportTableExtension } from "$components/oracle/reports/OracleReportTable";
-
-const extensions = [
-  StarterKit,
-  OracleReportMultiTableExtension,
-  OracleReportTableExtension,
-  OracleReportImageExtension,
-  Markdown,
-];
 
 export default function ViewOracleReport() {
   const router = useRouter();
@@ -34,10 +35,17 @@ export default function ViewOracleReport() {
   const [tables, setTables] = useState<any>({});
   const [multiTables, setMultiTables] = useState<any>({});
   const [images, setImages] = useState<any>({});
+  const [analysesMdx, setAnalysesMdx] = useState<{ [key: string]: string }>(
+    null
+  );
 
   const feedbackTextArea = useRef<HTMLTextAreaElement>(null);
 
   const [mdx, setMDX] = useState<string | null>(null);
+  const [analyses, setAnalyses] = useState<{ [key: string]: Analysis }>({});
+  const [executiveSummary, setExecutiveSummary] = useState<Summary | null>(
+    null
+  );
 
   const [currentFeedback, setCurrentFeedback] = useState<string | null>(
     undefined
@@ -50,56 +58,52 @@ export default function ViewOracleReport() {
   const message = useContext(MessageManagerContext);
 
   useEffect(() => {
-    const getMDX = async (reportId: string, keyName: string) => {
+    const setup = async (reportId: string, keyName: string) => {
       try {
         const token = localStorage.getItem("defogToken");
-        const res = await fetch(setupBaseUrl("http", `oracle/get_report_mdx`), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/pdf",
-            // disable cors for the download
-            mode: "no-cors",
-          },
-          body: JSON.stringify({
-            key_name: keyName,
-            token: token,
-            report_id: reportId,
-          }),
-        });
-
-        const data = await res.json();
-
-        let mdx = data.mdx;
+        let mdx = await getReportMDX(reportId, keyName, token);
 
         if (!mdx) {
           throw Error();
         }
 
-        if (!data.mdx) {
-          throw Error();
-        }
+        const parsed = parseTablesAndImagesInMdx(mdx);
 
-        let parsed = {
-          ...parseTables(mdx),
-        };
-
-        parsed = {
-          ...parsed,
-          ...parseImages(parsed.mdx),
-        };
-
-        console.log(parsed);
         setTables(parsed.tables);
         // @ts-ignore
         setImages(parsed.images);
         setMultiTables(parsed.multiTables);
-        setCurrentFeedback(data.feedback || undefined);
+        const feedback = await getReportFeedback(reportId, keyName, token);
+        setCurrentFeedback(feedback || undefined);
+
+        const analyses = await getReportAnalyses(reportId, keyName, token);
+        setAnalyses(analyses);
+
+        const sum: Summary = await getReportExecutiveSummary(
+          reportId,
+          keyName,
+          token
+        );
+
+        // add ids to each recommendation
+        sum.recommendations = sum.recommendations.map((rec) => ({
+          id: crypto.randomUUID(),
+          ...rec,
+        }));
+
+        setExecutiveSummary(sum);
+        const analysesMdx = await getReportAnalysesMdx(
+          reportId,
+          keyName,
+          token
+        );
+
+        setAnalysesMdx(analysesMdx);
 
         setMDX(parsed.mdx);
       } catch (e) {
         console.error(e);
-        setError("Could not fetch MDX for report: " + reportId);
+        setError(e.message);
       }
     };
 
@@ -112,7 +116,7 @@ export default function ViewOracleReport() {
       : router?.query?.keyName;
 
     if (reportId && keyName) {
-      getMDX(reportId, keyName);
+      setup(reportId, keyName);
     }
   }, [router.query]);
 
@@ -178,6 +182,9 @@ export default function ViewOracleReport() {
         tables: tables,
         multiTables: multiTables,
         images: images,
+        analyses: analyses,
+        analysesMdx: analysesMdx,
+        executiveSummary: executiveSummary,
         reportId: Array.isArray(router.query.reportId)
           ? router.query.reportId[0]
           : router.query.reportId,

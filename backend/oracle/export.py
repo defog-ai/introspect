@@ -20,7 +20,7 @@ async def generate_report(
     """
     LOGGER.info(f"Exporting for report {report_id}")
     LOGGER.debug(f"inputs: {inputs}")
-    LOGGER.debug(f"inputs: {outputs}")
+    LOGGER.debug(f"outputs: {outputs}")
     json_data = {
         "api_key": api_key,
         "task_type": task_type.value,
@@ -41,7 +41,17 @@ async def generate_report(
     responses = await asyncio.gather(mdx_task, summary_task)
     md = responses[0].get("md")
     mdx = responses[0].get("mdx")
-    summary_dict = responses[1]
+    analyses_mdx = responses[0].get("analyses_mdx")
+
+    LOGGER.info(f"Generated MDX for report {report_id}")
+
+    summary_response = responses[1]
+
+    summary_dict = summary_response.get("summary_dict")
+    summary_md = summary_response.get("summary_md")
+    summary_mdx = summary_response.get("summary_mdx")
+
+    # log the md and summary
     if md is None:
         LOGGER.error("No MD returned from backend.")
     else:
@@ -56,11 +66,11 @@ async def generate_report(
         LOGGER.debug(
             f"Summary dictionary generated for report {report_id}\n{trunc_summary}"
         )
-        summary_md = summary_dict_to_markdown(summary_dict)
     return {
         "md": summary_md + "\n\n" + md,
-        "mdx": summary_md + "\n\n" + mdx,
+        "mdx": summary_mdx + "\n\n" + mdx,
         "executive_summary": summary_dict,
+        "analyses_mdx": analyses_mdx,
     }
 
 
@@ -69,33 +79,3 @@ class Recommendation(BaseModel):
     insight: str
     action: str
     analysis_reference: List[int]
-
-
-class GenerateReportSummaryResponse(BaseModel):
-    title: str
-    introduction: str
-    recommendations: List[Recommendation]
-
-
-def summary_dict_to_markdown(summary_dict: Dict[str, Any]) -> str:
-    """
-    Converts the summary dictionary to markdown for compatibility with the
-    existing report markdown display.
-    """
-    try:
-        summary = GenerateReportSummaryResponse.model_validate(summary_dict)
-    except ValidationError as e:
-        LOGGER.error(f"Invalid summary dictionary generated: {e}")
-        return ""
-
-    md = f"# {summary.title}\n\n{summary.introduction}\n\n"
-    for recommendation in summary.recommendations:
-        md += f"""## {recommendation.title}
-
-{recommendation.insight}
-
-*Recommendation*
-{recommendation.action}
-
-"""
-    return md

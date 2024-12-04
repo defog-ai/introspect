@@ -201,11 +201,37 @@ async def get_report_mdx(req: ReportRequest):
         if report:
             mdx = report.outputs.get("export", {}).get("mdx", None)
             md = report.outputs.get("export", {}).get("md", None)
-            feedback = report.feedback
 
             return JSONResponse(
-                status_code=200, content={"mdx": mdx, "md": md, "feedback": feedback}
+                status_code=200,
+                content={"mdx": mdx, "md": md},
             )
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Report not found"},
+            )
+
+
+@router.post("/oracle/get_report_feedback")
+async def get_report_feedback(req: ReportRequest):
+    """
+    Given a report_id, this endpoint will return the feedback for the report.
+    """
+    if not validate_user(req.token, user_type=None, get_username=False):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    api_key = get_api_key_from_key_name(req.key_name)
+
+    with Session(engine) as session:
+        stmt = select(OracleReports).where(
+            OracleReports.api_key == api_key,
+            OracleReports.report_id == req.report_id,
+        )
+        result = session.execute(stmt)
+        report = result.scalar_one_or_none()
+
+        if report:
+            return JSONResponse(status_code=200, content={"feedback": report.feedback})
         else:
             return JSONResponse(
                 status_code=404,
@@ -345,6 +371,33 @@ async def get_report_analysis(req: ReportAnalysisRequest):
                 del analysis["qn_id"]
                 return JSONResponse(status_code=200, content=analysis)
         return JSONResponse(status_code=404, content={"error": "Analysis not found"})
+
+
+@router.post("/oracle/get_report_analyses_mdx")
+async def get_report_analyses_mdx(req: ReportRequest):
+    """
+    Given a report_id, this endpoint will return the mdx of individual analyses of the report.
+    """
+    if not validate_user(req.token, user_type=None, get_username=False):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    api_key = get_api_key_from_key_name(req.key_name)
+    # get from export key's analyses_mdx
+    analyses_mdx = None
+    with Session(engine) as session:
+        stmt = select(OracleReports.outputs).where(
+            OracleReports.api_key == api_key,
+            OracleReports.report_id == req.report_id,
+        )
+        result = session.execute(stmt)
+        outputs = result.scalar_one_or_none()
+        analyses_mdx = outputs.get(TaskStage.EXPORT.value, {}).get("analyses_mdx", None)
+    if analyses_mdx:
+        return JSONResponse(status_code=200, content={"analyses_mdx": analyses_mdx})
+    else:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Analyses mdx not found"},
+        )
 
 
 @router.post("/oracle/get_report_summary")

@@ -3,7 +3,7 @@ import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { useContext, useEffect, useState } from "react";
 import { OracleReportContext } from "$components/context/OracleReportContext";
 import { SpinningLoader } from "@defogdotai/agents-ui-components/core-ui";
-import setupBaseUrl from "$utils/setupBaseUrl";
+import { getReportImage } from "$utils/oracleUtils";
 
 function OracleReportImage(props) {
   const { images, keyName, reportId } = useContext(OracleReportContext);
@@ -17,31 +17,8 @@ function OracleReportImage(props) {
   useEffect(() => {
     async function fetchImage() {
       try {
-        const res = await fetch(
-          setupBaseUrl("http", `oracle/get_report_image`),
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/pdf",
-              // disable cors for the download
-              mode: "no-cors",
-            },
-            body: JSON.stringify({
-              image_file_name: src,
-              key_name: keyName,
-              report_id: reportId,
-            }),
-          }
-        );
-
-        const data = await res.json();
-
-        if (!data.encoded) {
-          throw new Error("Error fetching image");
-        }
-
-        const encoded = data.encoded;
+        const token = localStorage.getItem("defogToken");
+        const encoded = await getReportImage(reportId, keyName, token, src);
         setError(null);
 
         setBase64("data:image/png;base64," + encoded);
