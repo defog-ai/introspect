@@ -184,7 +184,6 @@ async def get_metadata(request: Request):
     params = await request.json()
     token = params.get("token")
     is_temp = params.get("temp", False)
-    format = params.get("format", "json")
     if not validate_user(token):
         return JSONResponse(
             status_code=401,
@@ -204,12 +203,19 @@ async def get_metadata(request: Request):
         table_metadata = md["table_metadata"]
 
         metadata = convert_nested_dict_to_list(table_metadata)
-        if format == "csv":
-            metadata = pd.DataFrame(metadata)[
-                ["table_name", "column_name", "data_type", "column_description"]
-            ].to_csv(index=False)
+        
+        # save the keys to selected tables
+        try:
+            with open(
+                os.path.join(defog_path, f"selected_tables_{api_key}.json"), "w"
+            ) as f:
+                json.dump(list(table_metadata.keys()), f)
+        except Exception as e:
+            LOGGER.info(e)
+            LOGGER.info("Error saving selected tables to JSON")
+
         return {"metadata": metadata}
-    except:
+    except Exception:
         return {"error": "no metadata found"}
 
 
