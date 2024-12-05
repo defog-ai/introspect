@@ -20,7 +20,7 @@ function OracleReportMultiTable(props) {
     // tabs within tabs
     const tableTabs = {};
     tableIds.forEach((tableId) => {
-      const { columns, data } = tables[tableId] || {};
+      const { columns, data, attributes } = tables[tableId] || {};
       tableTabs[tableId] = [
         {
           name: "Table",
@@ -45,6 +45,16 @@ function OracleReportMultiTable(props) {
             </ErrorBoundary>
           ),
         },
+        attributes.sql
+          ? {
+              name: "SQL",
+              content: (
+                <pre className="whitespace-pre-wrap px-2 py-4 bg-gray-800">
+                  <code>{attributes.sql}</code>
+                </pre>
+              ),
+            }
+          : null,
       ];
     });
 

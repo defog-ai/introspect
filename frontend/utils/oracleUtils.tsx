@@ -1,9 +1,6 @@
 import { parseData } from "@defogdotai/agents-ui-components/agent";
 import setupBaseUrl from "./setupBaseUrl";
-import type {
-  Analysis,
-  Summary,
-} from "$components/context/OracleReportContext";
+import type { Summary } from "$components/context/OracleReportContext";
 
 import { OracleReportMultiTableExtension } from "$components/oracle/reports/OracleReportMultiTable";
 import { OracleReportTableExtension } from "$components/oracle/reports/OracleReportTable";
@@ -21,20 +18,53 @@ export const extensions = [
   Markdown,
 ];
 
-interface TableAttributes {
-  /**
-   * The type of the table.
-   */
-  type: string;
-  /**
-   * The csv data of the table.
-   */
-  csv: string;
-  /**
-   * The id of the table.
-   */
-  id: string;
-  [key: string]: string;
+/**
+ *
+ * Parses all matches for an HTML-esque tag from the given string.
+ * Returns the matching string, and the attributes that were found.
+ */
+function findTag(
+  text: string,
+  tag: string
+): {
+  fullText: string;
+  attributes: { [key: string]: string };
+  innerContent: string;
+}[] {
+  // full match of a tag
+  const fullMatchRegex = new RegExp(
+    `<${tag}(\\s+[^>]*?)?>(?:[^<]|<(?!</${tag}>))*?</${tag}>|<${tag}(\\s+[^>]*?)?/>`,
+    "gi"
+  );
+
+  const attributesRegex = /([\w-]+)=[\{'\"]([\s\S]+?)[\}'\"]/gi;
+  // everything *inside* the tag. This doesn't include attributes
+  const innerContentRegex = />([\s\S]+?)</;
+  const matches = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = fullMatchRegex.exec(text)) !== null) {
+    const fullText = match[0];
+    // we want to find the opening tag separately, to avoid getting attributes of nested tags
+    const tagOpenRegex = new RegExp(`<${tag}([\\s\\S]*?)/?>`, "gi");
+    const tagOpenMatch = tagOpenRegex.exec(fullText);
+
+    const attributes = {};
+    if (tagOpenMatch) {
+      let attributeMatch;
+      while (
+        (attributeMatch = attributesRegex.exec(tagOpenMatch[1])) !== null
+      ) {
+        attributes[attributeMatch[1]] = attributeMatch[2];
+      }
+    }
+
+    const innerContentMatch = innerContentRegex.exec(fullText);
+    const innerContent = innerContentMatch ? innerContentMatch[1] : "";
+    matches.push({ fullText, attributes, innerContent: innerContent });
+  }
+
+  return matches;
 }
 
 /**
@@ -60,69 +90,44 @@ interface TableAttributes {
  *
  */
 export function parseTables(mdx: string) {
-  const tables = {};
-  const multiTables = {};
-  const multiTableRegex = /<MultiTable>([\s\S]*?)<\/MultiTable>/g;
-  const tableRegex = /<Table\s+([^>]*?)\s*\/>/g;
-  const attributesRegex = /([\w-]+)=[\{'\"]([\s\S]+?)[\}'\"]/g;
-  let newMdx = mdx;
+  const parsed = {
+    tables: {},
+    multiTables: {},
+  };
+  const tables = findTag(mdx, "table");
 
-  // first find all tables
-  let tableMatch: RegExpExecArray | null;
-  while ((tableMatch = tableRegex.exec(mdx)) !== null) {
-    // find all attributes
-    const tableId = crypto.randomUUID();
-    const attributes: TableAttributes = {
-      csv: null,
-      type: null,
-      id: tableId,
+  // replace tables with oracle-tables
+  for (const table of tables) {
+    const id = crypto.randomUUID();
+    mdx = mdx.replace(
+      table.fullText,
+      `<oracle-table id="${id}"></oracle-table>`
+    );
+    const { columns, data } = parseData(table.attributes.csv);
+    parsed.tables[id] = { columns, data, ...table };
+  }
+
+  // find multi tables
+  const multiTables = findTag(mdx, "multitable");
+
+  // replace multiTables with oracle-multi-tables
+  for (const multiTable of multiTables) {
+    const id = crypto.randomUUID();
+    //   find table ids
+    const tables = findTag(multiTable.fullText, "oracle-table");
+
+    mdx = mdx.replace(
+      multiTable.fullText,
+      `<oracle-multi-table id="${id}"></oracle-multi-table>`
+    );
+
+    parsed.multiTables[id] = {
+      tableIds: tables.map((t) => t.attributes.id),
+      ...multiTable,
     };
-    let attributeMatch;
-
-    while ((attributeMatch = attributesRegex.exec(tableMatch[1])) !== null) {
-      attributes[attributeMatch[1]] = attributeMatch[2];
-    }
-
-    const { columns, data } = parseData(attributes.csv);
-    tables[tableId] = { columns, data, ...attributes };
-
-    // replace the table with an oracle-table tag
-    newMdx = newMdx.replace(
-      tableMatch[0],
-      `<oracle-table id="${tableId}"></oracle-table>`
-    );
   }
 
-  // handle MultiTables
-  mdx = newMdx;
-
-  let multiMatch: RegExpExecArray | null;
-  while ((multiMatch = multiTableRegex.exec(mdx)) !== null) {
-    const multiTableContent = multiMatch[1];
-    const multiTableId = crypto.randomUUID();
-    const tableIds = [];
-
-    // Find all tables within this MultiTable
-    let localTableIdMatch: RegExpExecArray | null;
-    const localTableIdRegex = /id=["'](.*?)["']/g;
-    while (
-      (localTableIdMatch = localTableIdRegex.exec(multiTableContent)) !== null
-    ) {
-      const tableId = localTableIdMatch[1];
-      tableIds.push(tableId);
-    }
-
-    // Store MultiTable metadata
-    multiTables[multiTableId] = { tableIds };
-
-    // Replace the entire MultiTable with a single oracle-multi-table tag
-    newMdx = newMdx.replace(
-      multiMatch[0],
-      `<oracle-multi-table id="${multiTableId}"></oracle-multi-table>`
-    );
-  }
-
-  return { mdx: newMdx, tables, multiTables };
+  return { mdx: mdx, ...parsed };
 }
 
 /**
@@ -132,28 +137,23 @@ export function parseTables(mdx: string) {
  * Looks for `<Image src={SRC} alt={ALT_TEXT} />`
  */
 export function parseImages(mdx: string) {
-  const images = {};
-  const imageRegex =
-    /<Image src=[\{'\"]([\s\S]+?)[\}'\"] alt=[\{'\"]([\s\S]+?)[\}'\"] \/>/g;
+  // parse images
+  const parsed = {
+    images: {},
+  };
+  const images = findTag(mdx, "image");
 
-  let newMdx = mdx;
-
-  let match: RegExpExecArray | null;
-  while ((match = imageRegex.exec(mdx)) !== null) {
-    const src = match[1];
-    const alt = match[2];
-
+  // replace images with oracle-images
+  for (const image of images) {
     const id = crypto.randomUUID();
-
-    newMdx = newMdx.replace(
-      match[0],
+    mdx = mdx.replace(
+      image.fullText,
       `<oracle-image id="${id}"></oracle-image>`
     );
-
-    images[id] = { src, alt };
+    parsed.images[id] = image;
   }
 
-  return { mdx: newMdx, images };
+  return { mdx: mdx, ...parsed };
 }
 
 export const TABLE_TYPE_TO_NAME = {
@@ -162,22 +162,58 @@ export const TABLE_TYPE_TO_NAME = {
   anomalies_csv: "Anomalies data",
 };
 
+class MDX {
+  mdx: string;
+  tables: {};
+  multiTables: {};
+  images: {};
+
+  constructor(mdx: string) {
+    this.mdx = mdx;
+  }
+
+  parseTables = () => {
+    let parsed = parseTables(this.mdx);
+    this.tables = parsed.tables;
+    this.multiTables = parsed.multiTables;
+    this.mdx = parsed.mdx;
+
+    return this;
+  };
+
+  parseImages = () => {
+    let parsed = parseImages(this.mdx);
+    this.images = parsed.images;
+    this.mdx = parsed.mdx;
+
+    return this;
+  };
+
+  getParsed = () => {
+    return Object.assign(
+      {},
+      {
+        mdx: this.mdx,
+        tables: Object.assign({}, this.tables),
+        multiTables: Object.assign({}, this.multiTables),
+        images: Object.assign({}, this.images),
+      }
+    );
+  };
+}
+
 /**
  *
- * Parse tables, multitables and images from an mdx string
+ * Parse an mdx string
  *
  */
-export const parseTablesAndImagesInMdx = (mdx: string) => {
-  let parsed = {
-    ...parseTables(mdx),
-  };
+export const parseMDX = (mdx: string): ReturnType<MDX["getParsed"]> => {
+  let parsed = new MDX(mdx);
+  parsed.parseTables().parseImages();
 
-  parsed = {
-    ...parsed,
-    ...parseImages(parsed.mdx),
-  };
+  const t = parsed.getParsed();
 
-  return parsed;
+  return t;
 };
 
 /**

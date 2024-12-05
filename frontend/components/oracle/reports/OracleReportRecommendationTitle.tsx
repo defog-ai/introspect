@@ -9,23 +9,19 @@ import {
 import React, { useContext, useMemo, useRef } from "react";
 import { OracleReportContext } from "../../context/OracleReportContext";
 import { Drawer } from "antd";
-import { extensions, parseTablesAndImagesInMdx } from "$utils/oracleUtils";
+import { extensions, parseMDX } from "$utils/oracleUtils";
 
 const RecommendationTitleComponent = ({ node }) => {
-  const { analyses, analysesMdx } = useContext(OracleReportContext);
-  const analysisReference = useRef(node.attrs.analysis_reference || "");
+  const { analysesMdx } = useContext(OracleReportContext);
+  const analysisReference = useRef(node.attrs.analysis_reference + "" || "");
 
   const analysisIds = useRef(
     analysisReference.current.split(",").map((id) => parseInt(id.trim()))
   );
 
   const mdx = useRef(
-    parseTablesAndImagesInMdx(
-      analysisIds.current.map((id) => analysesMdx[id]).join("\n\n")
-    )
+    parseMDX(analysisIds.current.map((id) => analysesMdx[id]).join("\n\n"))
   );
-
-  console.log(mdx);
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
@@ -37,7 +33,7 @@ const RecommendationTitleComponent = ({ node }) => {
       >
         {node.content.content?.[0]?.text || ""}
         <span className="absolute bottom-1 ml-1 text-right text-gray-400 text-sm font-light">
-        ✨ Dig Deeper
+          ✨ Dig Deeper
         </span>
       </p>
       <Drawer
@@ -79,7 +75,6 @@ export const RecommendationTitle = Node.create({
     return {
       analysis_reference: {
         default: "",
-        parseHTML: (element) => "" + element.getAttribute("analysis_reference"),
       },
     };
   },

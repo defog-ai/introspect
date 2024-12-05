@@ -9,15 +9,13 @@ import {
   TextArea,
 } from "@defogdotai/agents-ui-components/core-ui";
 import {
-  parseTables,
-  parseImages,
   getReportMDX,
   getReportFeedback,
   getReportAnalyses,
   getReportExecutiveSummary,
   extensions,
   getReportAnalysesMdx,
-  parseTablesAndImagesInMdx,
+  parseMDX,
 } from "$utils/oracleUtils";
 
 import { EditorProvider } from "@tiptap/react";
@@ -67,10 +65,9 @@ export default function ViewOracleReport() {
           throw Error();
         }
 
-        const parsed = parseTablesAndImagesInMdx(mdx);
+        const parsed = parseMDX(mdx);
 
         setTables(parsed.tables);
-        // @ts-ignore
         setImages(parsed.images);
         setMultiTables(parsed.multiTables);
         const feedback = await getReportFeedback(reportId, keyName, token);

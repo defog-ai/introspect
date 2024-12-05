@@ -75,6 +75,8 @@ export interface OracleReportContext {
       src: string;
       /** Alt text */
       alt: string;
+      attributes?: Object;
+      fullText?: string;
     };
   };
 
@@ -84,6 +86,8 @@ export interface OracleReportContext {
   multiTables: {
     [key: string]: {
       tableIds: string[];
+      attributes?: Object;
+      fullText?: string;
     };
   };
 
@@ -97,6 +101,8 @@ export interface OracleReportContext {
       id?: string;
       type?: string;
       csv?: string;
+      attributes?: Object;
+      fullText?: string;
     };
   };
 }
