@@ -41,15 +41,15 @@ async def generate_report(
     responses = await asyncio.gather(mdx_task, summary_task)
     md = responses[0].get("md")
     mdx = responses[0].get("mdx")
-    analyses_mdx = responses[0].get("analyses_mdx")
+    analyses_mdx = responses[0].get("analyses_mdx", "")
 
     LOGGER.info(f"Generated MDX for report {report_id}")
 
     summary_response = responses[1]
 
-    summary_dict = summary_response.get("summary_dict")
-    summary_md = summary_response.get("summary_md")
-    summary_mdx = summary_response.get("summary_mdx")
+    summary_dict = summary_response.get("summary_dict", {})
+    summary_md = summary_response.get("summary_md", "")
+    summary_mdx = summary_response.get("summary_mdx", "")
 
     # log the md and summary
     if md is None:
