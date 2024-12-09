@@ -680,7 +680,8 @@ function ClarificationItem({
               />
             ) : null}
           </div>
-        ) : clarificationObject.input_type === "multiple_choice" ? (
+        ) : clarificationObject.input_type === "multiple_choice" &&
+          clarificationObject?.options?.length ? (
           <Checkbox.Group
             className="flex w-5/6"
             options={clarificationObject.options.map((option) => ({
