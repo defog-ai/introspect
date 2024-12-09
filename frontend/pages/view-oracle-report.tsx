@@ -104,8 +104,6 @@ export default function ViewOracleReport() {
           };
         }
 
-        console.log(analyses);
-
         setAnalyses(analyses);
 
         setMDX(parsed.mdx);

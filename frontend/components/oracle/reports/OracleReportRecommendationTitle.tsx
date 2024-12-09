@@ -3,20 +3,20 @@ import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import React, { useContext, useMemo, useRef, useState } from "react";
 import { OracleReportContext } from "../../context/OracleReportContext";
 import { Drawer } from "antd";
-import { extensions, parseMDX } from "$utils/oracleUtils";
 import { OracleAnalysisFollowOn } from "./OracleAnalysisFollowOn";
 
 const RecommendationTitleComponent = ({ node }) => {
   const { analyses } = useContext(OracleReportContext);
   const analysisReference = useRef(node.attrs.analysis_reference + "" || "");
+  const recommendationIdx = useRef(node.attrs.idx);
 
-  const analysisIds = useRef(
-    analysisReference.current.split(",").map((id) => parseInt(id.trim()))
-  );
+  const analysisIds = useRef(analysisReference.current.split(","));
 
   const analysisParsed = useRef(analysisIds.current.map((id) => analyses[id]));
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  console.log(analysisIds, analyses);
 
   return (
     <NodeViewWrapper className="react-component not-prose underline underline-offset-2 group">
@@ -36,7 +36,10 @@ const RecommendationTitleComponent = ({ node }) => {
         size="large"
         title="Details"
       >
-        <OracleAnalysisFollowOn initialAnalyses={analysisParsed.current} />
+        <OracleAnalysisFollowOn
+          initialAnalyses={analysisParsed.current}
+          recommendationIdx={recommendationIdx.current}
+        />
       </Drawer>
     </NodeViewWrapper>
   );
@@ -50,6 +53,9 @@ export const RecommendationTitle = Node.create({
     return {
       analysis_reference: {
         default: "",
+      },
+      idx: {
+        default: 100000,
       },
     };
   },

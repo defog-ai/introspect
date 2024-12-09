@@ -4,25 +4,30 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from utils import longest_substring_overlap
-from db_utils import OracleReports, engine, get_report_data, redis_client, validate_user
+from db_utils import (
+    OracleReports,
+    engine,
+    get_report_data,
+    redis_client,
+    update_summary_dict,
+    validate_user,
+)
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from generic_utils import get_api_key_from_key_name, make_request
 from oracle.constants import TaskStage, TaskType
 from oracle.core import (
+    generate_report,
     begin_generation_task,
     gather_context,
     predict,
 )
 from oracle.explore import explore_data
 from oracle.optimize import optimize
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert
 
-from oracle.optimize import optimize
-from oracle.explore import explore_data
-from oracle.core import generate_report, gather_context, predict
 from db_utils import OracleReports, engine, validate_user
 from generic_utils import get_api_key_from_key_name, make_request
 from utils_logging import LOGGER, save_and_log, save_timing
@@ -224,6 +229,7 @@ class GenerateAnalysis(BaseModel):
     key_name: str
     previous_analyses: list
     new_analysis_question: str
+    recommendation_idx: int = -1
 
 
 @router.post("/oracle/generate_analysis")
@@ -291,7 +297,7 @@ async def generate_analysis(req: GenerateAnalysis):
     analysis = result["analyses"][0]
 
     # generate mdx for this analysis
-    mdx = await make_request(
+    res = await make_request(
         DEFOG_BASE_URL + "/oracle/generate_analysis_mdx",
         {
             "api_key": api_key,
@@ -302,9 +308,36 @@ async def generate_analysis(req: GenerateAnalysis):
         },
     )
 
+    # add this analysis to the list of analyses for this report
+    # change the qn_id of this analysis to be length of the list
+    new_qn_id = len(
+        report_data.get("outputs", {})
+        .get(TaskStage.EXPLORE.value, {})
+        .get("analyses", [])
+    )
+
+    summary_dict = (
+        report_data.get("outputs", {})
+        .get(TaskStage.EXPORT.value, {})
+        .get("executive_summary", None)
+    )
+
+    if summary_dict:
+        # put this analysis in the summary dict at the correct recommendation_idx
+        curr_refs = summary_dict["recommendations"][req.recommendation_idx][
+            "analysis_reference"
+        ]
+        if not curr_refs or type(curr_refs) != list:
+            curr_refs = []
+        curr_refs.append(new_qn_id)
+        summary_dict["recommendations"][req.recommendation_idx][
+            "analysis_reference"
+        ] = curr_refs
+        await update_summary_dict(report_id=req.report_id, summary_dict=summary_dict)
+
     return {
         "analysis": analysis,
-        "mdx": mdx,
+        "mdx": res["mdx"],
     }
 
 

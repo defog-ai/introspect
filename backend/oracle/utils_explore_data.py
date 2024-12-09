@@ -21,7 +21,7 @@ DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 FETCHED_TABLE_CSV = "fetched_table_csv"  # raw table fetched using sql
 TABLE_CSV = "table_csv"  # table represented in the chart
 ANOMALIES_CSV = "anomalies_csv"  # anomalies in the data
-CORRELATION = "correlation" # correlation between x and y columns
+CORRELATION = "correlation"  # correlation between x and y columns
 IMAGE = "image"  # image of the chart
 SUPPORTED_CHART_TYPES = [
     "relplot",
@@ -96,7 +96,9 @@ async def get_chart_fn(
             "name": "displot",
             "parameters": {"kind": "hist", "x": data.columns[0], "bins": len(data)},
         }
-    numeric_columns_summary, qualitative_columns_summary, date_columns_summary = get_columns_summary(data)
+    numeric_columns_summary, qualitative_columns_summary, date_columns_summary = (
+        get_columns_summary(data)
+    )
     json_data = {
         "api_key": api_key,
         "question": question,
@@ -332,7 +334,9 @@ def get_chart_df(data: pd.DataFrame, chart_fn_params: Dict[str, Any]) -> pd.Data
         return data
 
 
-def get_correlation(data: pd.DataFrame, chart_fn_params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def get_correlation(
+    data: pd.DataFrame, chart_fn_params: Dict[str, Any]
+) -> Optional[Dict[str, Any]]:
     """
     Get the correlation between the x and y columns.
     """
@@ -342,8 +346,13 @@ def get_correlation(data: pd.DataFrame, chart_fn_params: Dict[str, Any]) -> Opti
     if not x_col or not y_col or x_col not in data.columns or y_col not in data.columns:
         LOGGER.debug(f"x or y column not found in data: {x_col}, {y_col}")
         return None
-    if pd.api.types.is_numeric_dtype(data[x_col]) is False or pd.api.types.is_numeric_dtype(data[y_col]) is False:
-        LOGGER.debug(f"x or y column is not numeric. dtypes: {data[x_col].dtype}, {data[y_col].dtype}")
+    if (
+        pd.api.types.is_numeric_dtype(data[x_col]) is False
+        or pd.api.types.is_numeric_dtype(data[y_col]) is False
+    ):
+        LOGGER.debug(
+            f"x or y column is not numeric. dtypes: {data[x_col].dtype}, {data[y_col].dtype}"
+        )
         return None
     return {
         "x_col": x_col,
@@ -368,7 +377,9 @@ def get_anomalies(
     kind = kwargs.get("kind", None)
     y_colname_original = kwargs.get("y", None)
     if y_colname_original:
-        non_y_columns = [col for col in chart_df.columns if not col.startswith(y_colname_original)]
+        non_y_columns = [
+            col for col in chart_df.columns if not col.startswith(y_colname_original)
+        ]
     # hist charts have no y column, and only numeric columns can have z-scores
     if chart_fn == "displot":
         return None
@@ -384,7 +395,9 @@ def get_anomalies(
     ):
         y_colname = f"{y_colname_original}_mean"
     else:
-        raise ValueError(f"Unsupported chart_fn x kind combination: {chart_fn} x {kind}")
+        raise ValueError(
+            f"Unsupported chart_fn x kind combination: {chart_fn} x {kind}"
+        )
     if y_colname not in chart_df.columns:
         LOGGER.error(f"y column not found in data: {y_colname}")
         return None
@@ -443,7 +456,9 @@ async def gen_data_analysis(
         "data_anomalies_csv": data_anomalies_csv,
         "correlation_dict": correlation_dict,
         "chart_fn": chart_fn_params.get("name") if chart_fn_params else None,
-        "chart_params": chart_fn_params.get("parameters", {}) if chart_fn_params else {},
+        "chart_params": (
+            chart_fn_params.get("parameters", {}) if chart_fn_params else {}
+        ),
     }
     resp = await make_request(
         f"{DEFOG_BASE_URL}/oracle/gen_explorer_data_analysis", data=json_data

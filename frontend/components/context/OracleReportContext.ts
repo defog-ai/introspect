@@ -46,7 +46,7 @@ export interface Analysis {
 interface MultiTable {
   [key: string]: {
     tableIds: string[];
-    attributes?: Object;
+    attributes?: { [key: string]: string };
     fullText?: string;
   };
 }
@@ -57,7 +57,7 @@ interface Table {
   id?: string;
   type?: string;
   csv?: string;
-  attributes?: Object;
+  attributes?: { [key: string]: string };
   fullText?: string;
 }
 
@@ -133,5 +133,4 @@ export const OracleReportContext = createContext<OracleReportContext>({
   images: {},
   analyses: {},
   executiveSummary: "",
-  analysesMdx: {},
 });

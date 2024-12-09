@@ -3,6 +3,7 @@ import os
 import time
 import traceback
 from typing import Any, Dict
+from uuid import uuid4
 
 import pandas as pd
 from db_utils import get_db_type_creds
@@ -211,6 +212,11 @@ async def explore_data(
         independent_variable_groups = response["independent_variable_groups"]
         # this is the summary across all analyses so far
         summary_all = response.get("summary", "")
+
+    # give each analysis a unique id and add these analyses to the report
+    for analysis in analyses:
+        analysis["analysis_id"] = str(uuid4())
+
     return {
         "analyses": analyses,
         "full_context_with_previous_analyses": generated_qns_response.get(

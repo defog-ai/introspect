@@ -40,7 +40,7 @@ function findTag(
     "gi"
   );
 
-  const attributesRegex = /([\w-]+)=[\{'\"]([\s\S]+?)[\}'\"]/gi;
+  const attributesRegex = /([\w-]+)=[\{'"]([\s\S]+?)[\}'"][ \>]/gi;
   // everything *inside* the tag. This doesn't include attributes
   const innerContentRegex = />([\s\S]+?)</;
   const matches = [];
@@ -56,7 +56,7 @@ function findTag(
     if (tagOpenMatch) {
       let attributeMatch;
       while (
-        (attributeMatch = attributesRegex.exec(tagOpenMatch[1])) !== null
+        (attributeMatch = attributesRegex.exec(tagOpenMatch[0])) !== null
       ) {
         attributes[attributeMatch[1]] = attributeMatch[2];
       }
@@ -212,6 +212,7 @@ class MDX {
  */
 export const parseMDX = (mdx: string): ReturnType<MDX["getParsed"]> => {
   let parsed = new MDX(mdx);
+
   parsed.parseTables().parseImages();
 
   const t = parsed.getParsed();
@@ -219,30 +220,9 @@ export const parseMDX = (mdx: string): ReturnType<MDX["getParsed"]> => {
   return t;
 };
 
-/**
- * Converts the summary dictionary to markdown for compatibility with the
- * report markdown display.
- *
- * @param summary The summary object containing title, introduction and recommendations
- * @returns A markdown string with the formatted content
- */
-export const createMdxFromExecutiveSummary = (summary: Summary): string => {
-  if (!summary) {
-    console.error("Invalid summary object provided");
-    return "";
-  }
-
-  let md = `# ${summary.title}\n\n${summary.introduction}\n\n`;
-
-  summary.recommendations.forEach((recommendation) => {
-    md += `<oracle-recommendation id="${recommendation.id}></oracle-recommendation>\n\n`;
-  });
-
-  return md;
-};
-
 export const generateNewAnalysis = async (
   reportId: string,
+  recommendationIdx: number,
   keyName: string,
   token: string,
   question: string,
@@ -262,6 +242,7 @@ export const generateNewAnalysis = async (
       report_id: reportId,
       new_analysis_question: question,
       previous_analyses: previousAnalyses,
+      recommendation_idx: recommendationIdx,
     }),
   });
 
@@ -275,13 +256,7 @@ export const generateNewAnalysis = async (
     throw new Error(data.error);
   }
 
-  console.log(data);
-
-  if (!data.analyses) {
-    return [];
-  }
-
-  return data.analyses;
+  return data;
 };
 
 export const getReportAnalyses = async (

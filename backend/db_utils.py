@@ -7,6 +7,7 @@ import uuid
 from typing import Dict, Tuple
 
 import redis
+from oracle.constants import TaskStage
 from generic_utils import make_request
 from sqlalchemy import (
     Boolean,
@@ -253,6 +254,15 @@ if ORACLE_ENABLED:
         inputs = Column(JSON)
         outputs = Column(JSON)
         feedback = Column(Text)
+
+    class OracleAnalyses(Base):
+        __tablename__ = "oracle_analyses"
+        api_key = Column(Text, primary_key=True)
+        report_id = Column(Integer, primary_key=True)
+        analysis_id = Column(Text, primary_key=True)
+        status = Column(Text, default="pending")
+        json = Column(JSON)
+        mdx = Column(Text, default=None)
 
     class OracleClarifications(Base):
         __tablename__ = "oracle_clarifications"
@@ -1462,3 +1472,63 @@ def get_report_data(report_id: int, api_key: str):
             return {"data": report_data}
         else:
             return {"error": "Report not found"}
+
+
+async def add_analysis(
+    api_key: str,
+    analysis_id: str,
+    report_id: int,
+    json: Dict,
+    status: str = "pending",
+    mdx: str = None,
+):
+    """
+    Given a report_id, this endpoint will update the report data in the database in the oracle_analyses table.
+    """
+    from sqlalchemy.orm import Session
+
+    with Session(engine) as session:
+        # give this analysis a unique id
+        stmt = insert(OracleAnalyses).values(
+            report_id=report_id,
+            api_key=api_key,
+            analysis_id=analysis_id,
+            status=status,
+            json=json,
+            mdx=mdx,
+        )
+        session.execute(stmt)
+        session.commit()
+
+
+async def get_analysis_status(api_key: str, analysis_id: str, report_id: int):
+    """
+    Given an api_key, analysis_id and report_id, this endpoint will return the status of the analysis.
+    If the analysis is not found, it will return a 404 error.
+    """
+    from sqlalchemy.orm import Session
+
+    with Session(engine) as session:
+        stmt = select(OracleAnalyses).where(
+            OracleAnalyses.analysis_id == analysis_id,
+            OracleAnalyses.report_id == report_id,
+            OracleAnalyses.api_key == api_key,
+        )
+
+        result = session.execute(stmt)
+        row = result.scalar_one_or_none()
+
+        if row:
+            return row.status
+
+
+async def update_summary_dict(report_id: int, summary_dict: Dict):
+    from sqlalchemy.orm import Session
+
+    with Session(engine) as session:
+        stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+        result = session.execute(stmt)
+        report = result.scalar_one_or_none()
+        if report:
+            report.outputs[TaskStage.EXPORT.value]["executive_summary"] = summary_dict
+            session.commit()

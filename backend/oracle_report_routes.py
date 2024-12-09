@@ -1,11 +1,12 @@
 import os
+from typing import Dict, List
 
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
-
+from oracle.utils_report import ReportSummary, summary_dict_to_markdown
 from db_utils import OracleReports, engine, get_report_data, validate_user
 from generic_utils import get_api_key_from_key_name
 from oracle.constants import TaskStage
@@ -198,8 +199,16 @@ async def get_report_mdx(req: ReportRequest):
         report = result.scalar_one_or_none()
 
         if report:
-            mdx = report.outputs.get("export", {}).get("mdx", None)
-            md = report.outputs.get("export", {}).get("md", None)
+            mdx = report.outputs.get(TaskStage.EXPLORE.value, {}).get("mdx", None)
+            md = report.outputs.get(TaskStage.EXPLORE.value, {}).get("md", None)
+            summary_dict = ReportSummary.model_validate(
+                report.outputs.get(TaskStage.EXPORT.value, {}).get(
+                    "executive_summary", None
+                )
+            )
+
+            _, summary_mdx = summary_dict_to_markdown(summary_dict)
+            mdx = f"{summary_mdx}\n\n{mdx}".strip()
 
             return JSONResponse(
                 status_code=200,
@@ -320,9 +329,8 @@ async def get_report_analysis_list(req: ReportRequest):
         outputs = result.scalar_one_or_none()
         explore = outputs.get(TaskStage.EXPLORE.value, {})
         analyses = explore.get("analyses", [])
-        # replace qn_id with analysis_id
+        # remove qn_id key
         for analysis in analyses:
-            analysis["analysis_id"] = analysis["qn_id"]
             del analysis["qn_id"]
         return JSONResponse(status_code=200, content={"analyses": analyses})
 

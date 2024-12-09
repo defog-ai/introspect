@@ -2,7 +2,7 @@ import {
   AnalysisParsed,
   OracleReportContext,
 } from "$components/context/OracleReportContext";
-import { extensions, generateNewAnalysis } from "$utils/oracleUtils";
+import { extensions, generateNewAnalysis, parseMDX } from "$utils/oracleUtils";
 import { sentenceCase } from "$utils/utils";
 import {
   Input,
@@ -13,8 +13,10 @@ import { useContext, useEffect, useRef, useState } from "react";
 
 export function OracleAnalysisFollowOn({
   initialAnalyses = [],
+  recommendationIdx = 0,
 }: {
   initialAnalyses: AnalysisParsed[];
+  recommendationIdx: number;
 }) {
   const [analyses, setAnalyses] = useState(initialAnalyses);
 
@@ -26,22 +28,9 @@ export function OracleAnalysisFollowOn({
 
   const { reportId, keyName } = useContext(OracleReportContext);
 
-  useEffect(() => {
-    if (!ctr.current) return;
-    console.log("Scrolling to bottom");
-    setTimeout(
-      () =>
-        ctr.current.scrollTo({
-          top: ctr.current.scrollHeight,
-          behavior: "smooth",
-        }),
-      1000
-    );
-  }, [analyses]);
-
   return (
     <div>
-      <div className="flex flex-col bg-gray-100 p-4 gap-4 pb-20" ref={ctr}>
+      <div className="flex flex-col bg-gray-100 p-4 gap-4 pb-28" ref={ctr}>
         {analyses.map((analysis: AnalysisParsed, i) => {
           return (
             <div className="rounded-lg border drop-shadow-md bg-white py-4">
@@ -89,28 +78,21 @@ export function OracleAnalysisFollowOn({
               setLoading(true);
               generateNewAnalysis(
                 reportId,
+                recommendationIdx,
                 keyName,
                 token,
                 e.target.value,
                 analyses.map((d) => d.json)
               )
                 .then((d) => {
-                  // const newAnalyses = [...analyses];
-                  // newAnalyses.push({
-                  //   mdx: "### " + sentenceCase(e.target.value),
-                  //   tables: {},
-                  //   multiTables: {},
-                  //   images: {},
-                  //   json: {},
-                  // });
+                  const newAnalysis = {
+                    ...parseMDX(d.mdx),
+                    json: d.analysis,
+                  };
 
-                  console.log(d);
-
-                  // setAnalyses(newAnalyses);
+                  setAnalyses([...analyses, newAnalysis]);
 
                   setLoading(false);
-
-                  // searchRef.current.value = "";
                 })
                 .catch((e) => {
                   console.error(e);

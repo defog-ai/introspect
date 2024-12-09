@@ -155,6 +155,17 @@ oracle_reports = Table(
     Column("feedback", Text),
 )
 
+oracle_analyses = Table(
+    "oracle_analyses",
+    metadata,
+    Column("api_key", Text, primary_key=True),
+    Column("report_id", Integer, primary_key=True),
+    Column("analysis_id", Text, primary_key=True),
+    Column("status", Text, default="pending"),
+    Column("json", JSON),
+    Column("mdx", Text, default=None),
+)
+
 oracle_clarifications = Table(
     "oracle_clarifications",
     metadata,
