@@ -22,6 +22,7 @@ import { EditorProvider } from "@tiptap/react";
 import React from "react";
 import {
   Analysis,
+  AnalysisParsed,
   OracleReportContext,
   Summary,
 } from "$components/context/OracleReportContext";
@@ -33,14 +34,13 @@ export default function ViewOracleReport() {
   const [tables, setTables] = useState<any>({});
   const [multiTables, setMultiTables] = useState<any>({});
   const [images, setImages] = useState<any>({});
-  const [analysesMdx, setAnalysesMdx] = useState<{ [key: string]: string }>(
-    null
-  );
+  const [analyses, setAnalyses] = useState<{
+    [key: string]: AnalysisParsed;
+  }>({});
 
   const feedbackTextArea = useRef<HTMLTextAreaElement>(null);
 
   const [mdx, setMDX] = useState<string | null>(null);
-  const [analyses, setAnalyses] = useState<{ [key: string]: Analysis }>({});
   const [executiveSummary, setExecutiveSummary] = useState<Summary | null>(
     null
   );
@@ -73,8 +73,7 @@ export default function ViewOracleReport() {
         const feedback = await getReportFeedback(reportId, keyName, token);
         setCurrentFeedback(feedback || undefined);
 
-        const analyses = await getReportAnalyses(reportId, keyName, token);
-        setAnalyses(analyses);
+        const analysesJsons = await getReportAnalyses(reportId, keyName, token);
 
         const sum: Summary = await getReportExecutiveSummary(
           reportId,
@@ -95,7 +94,19 @@ export default function ViewOracleReport() {
           token
         );
 
-        setAnalysesMdx(analysesMdx);
+        const analyses = {};
+
+        for (const analysisId in analysesMdx) {
+          analyses[analysisId] = {
+            mdx: analysesMdx[analysisId],
+            json: analysesJsons[analysisId],
+            ...parseMDX(analysesMdx[analysisId]),
+          };
+        }
+
+        console.log(analyses);
+
+        setAnalyses(analyses);
 
         setMDX(parsed.mdx);
       } catch (e) {
@@ -180,7 +191,6 @@ export default function ViewOracleReport() {
         multiTables: multiTables,
         images: images,
         analyses: analyses,
-        analysesMdx: analysesMdx,
         executiveSummary: executiveSummary,
         reportId: Array.isArray(router.query.reportId)
           ? router.query.reportId[0]

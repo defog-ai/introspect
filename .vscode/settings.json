@@ -9,5 +9,6 @@
   },
   "eslint.validate": ["javascript", "javascriptreact"],
   "eslint.workingDirectories": ["./frontend"],
-  "tailwindCSS.experimental.classRegex": ["class:\\s*?[\"'`]([^\"'`]*).*?,"]
+  "tailwindCSS.experimental.classRegex": ["class:\\s*?[\"'`]([^\"'`]*).*?,"],
+  "python.languageServer": "None"
 }

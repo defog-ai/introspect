@@ -1,6 +1,9 @@
 import { parseData } from "@defogdotai/agents-ui-components/agent";
 import setupBaseUrl from "./setupBaseUrl";
-import type { Summary } from "$components/context/OracleReportContext";
+import type {
+  Analysis,
+  Summary,
+} from "$components/context/OracleReportContext";
 
 import { OracleReportMultiTableExtension } from "$components/oracle/reports/OracleReportMultiTable";
 import { OracleReportTableExtension } from "$components/oracle/reports/OracleReportTable";
@@ -236,6 +239,49 @@ export const createMdxFromExecutiveSummary = (summary: Summary): string => {
   });
 
   return md;
+};
+
+export const generateNewAnalysis = async (
+  reportId: string,
+  keyName: string,
+  token: string,
+  question: string,
+  previousAnalyses: Analysis[]
+) => {
+  const res = await fetch(setupBaseUrl("http", `oracle/generate_analysis`), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/pdf",
+      // disable cors for the download
+      mode: "no-cors",
+    },
+    body: JSON.stringify({
+      key_name: keyName,
+      token: token,
+      report_id: reportId,
+      new_analysis_question: question,
+      previous_analyses: previousAnalyses,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to generate new analysis");
+  }
+
+  const data = await res.json();
+
+  if (data.error) {
+    throw new Error(data.error);
+  }
+
+  console.log(data);
+
+  if (!data.analyses) {
+    return [];
+  }
+
+  return data.analyses;
 };
 
 export const getReportAnalyses = async (

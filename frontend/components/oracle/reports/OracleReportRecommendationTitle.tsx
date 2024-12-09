@@ -1,29 +1,22 @@
 import { mergeAttributes, Node } from "@tiptap/core";
-import {
-  EditorContent,
-  EditorProvider,
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-  useCurrentEditor,
-} from "@tiptap/react";
-import React, { useContext, useMemo, useRef } from "react";
+import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import React, { useContext, useMemo, useRef, useState } from "react";
 import { OracleReportContext } from "../../context/OracleReportContext";
 import { Drawer } from "antd";
 import { extensions, parseMDX } from "$utils/oracleUtils";
+import { OracleAnalysisFollowOn } from "./OracleAnalysisFollowOn";
 
 const RecommendationTitleComponent = ({ node }) => {
-  const { analysesMdx } = useContext(OracleReportContext);
+  const { analyses } = useContext(OracleReportContext);
   const analysisReference = useRef(node.attrs.analysis_reference + "" || "");
 
   const analysisIds = useRef(
     analysisReference.current.split(",").map((id) => parseInt(id.trim()))
   );
 
-  const mdx = useRef(
-    parseMDX(analysisIds.current.map((id) => analysesMdx[id]).join("\n\n"))
-  );
+  const analysisParsed = useRef(analysisIds.current.map((id) => analyses[id]));
 
-  const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
     <NodeViewWrapper className="react-component not-prose underline underline-offset-2 group">
@@ -43,25 +36,7 @@ const RecommendationTitleComponent = ({ node }) => {
         size="large"
         title="Details"
       >
-        <OracleReportContext.Provider
-          value={{
-            tables: mdx.current.tables,
-            multiTables: mdx.current.multiTables,
-            images: mdx.current.images,
-          }}
-        >
-          <EditorProvider
-            extensions={extensions}
-            content={mdx.current.mdx}
-            editable={false}
-            editorProps={{
-              attributes: {
-                class:
-                  "oracle-report-tiptap prose prose-base mx-auto p-2 mb-12 md:mb-0 focus:outline-none [&_.react-multitable-container]:lg:mx-0",
-              },
-            }}
-          />
-        </OracleReportContext.Provider>
+        <OracleAnalysisFollowOn initialAnalyses={analysisParsed.current} />
       </Drawer>
     </NodeViewWrapper>
   );

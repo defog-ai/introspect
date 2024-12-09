@@ -39,7 +39,49 @@ export interface Analysis {
   artifacts: Artifacts;
   working: Working;
   summary?: string;
+  title?: string;
   round?: number;
+}
+
+interface MultiTable {
+  [key: string]: {
+    tableIds: string[];
+    attributes?: Object;
+    fullText?: string;
+  };
+}
+
+interface Table {
+  columns: [];
+  data: [];
+  id?: string;
+  type?: string;
+  csv?: string;
+  attributes?: Object;
+  fullText?: string;
+}
+
+interface Image {
+  /** Source path on the backend */
+  src: string;
+  /** Alt text */
+  alt: string;
+  attributes?: Object;
+  fullText?: string;
+}
+
+export interface AnalysisParsed {
+  mdx: string;
+  tables: {
+    [key: string]: Table;
+  };
+  multiTables: {
+    [key: string]: MultiTable;
+  };
+  images: {
+    [key: string]: Image;
+  };
+  json: Analysis;
 }
 
 export interface OracleReportContext {
@@ -51,14 +93,7 @@ export interface OracleReportContext {
    * Holds all the analysis data for an oracle report
    */
   analyses: {
-    [key: string]: Analysis;
-  };
-
-  /**
-   * Holds the mdx for all the analyses for a report
-   */
-  analysesMdx: {
-    [key: string]: string;
+    [key: string]: AnalysisParsed;
   };
 
   /**
@@ -70,40 +105,20 @@ export interface OracleReportContext {
    * Holds the images for an oracle report
    */
   images: {
-    [key: string]: {
-      /** Source path on the backend */
-      src: string;
-      /** Alt text */
-      alt: string;
-      attributes?: Object;
-      fullText?: string;
-    };
+    [key: string]: Image;
   };
 
   /**
    * Holds the multi tables for an oracle report
    */
   multiTables: {
-    [key: string]: {
-      tableIds: string[];
-      attributes?: Object;
-      fullText?: string;
-    };
+    [key: string]: MultiTable;
   };
-
   /**
    * Holds the tables for an oracle report
    */
   tables: {
-    [key: string]: {
-      columns: [];
-      data: [];
-      id?: string;
-      type?: string;
-      csv?: string;
-      attributes?: Object;
-      fullText?: string;
-    };
+    [key: string]: Table;
   };
 }
 

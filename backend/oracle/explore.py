@@ -88,6 +88,9 @@ async def explore_data(
         "n_gen_qns": inputs.get("max_analyses", MAX_ANALYSES),
         "task_type": task_type.value,
         "gather_context": gather_context,
+        "previous_analyses": inputs.get(
+            "previous_analyses", []
+        ),  # Add parent analyses to the request
     }
     LOGGER.info(f"Generating explorer questions")
     generated_qns_response = await make_request(
@@ -119,7 +122,9 @@ async def explore_data(
             # question used by 1st round question generation
             generated_qn = question_dict["question"]
             independent_variable_group_name = question_dict["group_name"]
-            independent_variable_group = independent_variable_groups.get(independent_variable_group_name)
+            independent_variable_group = independent_variable_groups.get(
+                independent_variable_group_name
+            )
             if independent_variable_group is None:
                 LOGGER.error(
                     f"Independent variable group not found for {qn_id}: {generated_qn}"
@@ -150,7 +155,9 @@ async def explore_data(
                 )
             )
         update_status_task = asyncio.create_task(
-            independent_status_updater(report_id=report_id, generated_qns_summaries=generated_qns_summaries)
+            independent_status_updater(
+                report_id=report_id, generated_qns_summaries=generated_qns_summaries
+            )
         )
         try:
             # Await primary tasks
@@ -162,7 +169,9 @@ async def explore_data(
                 try:
                     await update_status_task
                 except asyncio.CancelledError:
-                    LOGGER.info("Background task of updating status terminated successfully.")
+                    LOGGER.info(
+                        "Background task of updating status terminated successfully."
+                    )
 
         # remove None answers and add to analyses
         non_empty_answers = []
@@ -192,7 +201,10 @@ async def explore_data(
             get_deeper_qns_request,
             timeout=300,
         )
-        if "generated_questions" not in response or "independent_variable_groups" not in response:
+        if (
+            "generated_questions" not in response
+            or "independent_variable_groups" not in response
+        ):
             LOGGER.error(f"Error occurred in generating deeper questions: {response}")
             break
         generated_qns = response["generated_questions"]
@@ -201,6 +213,9 @@ async def explore_data(
         summary_all = response.get("summary", "")
     return {
         "analyses": analyses,
+        "full_context_with_previous_analyses": generated_qns_response.get(
+            "full_context_with_previous_analyses", ""
+        ),
         "dependent_variable": dependent_variable,
         "summary": summary_all,
     }

@@ -1,4 +1,3 @@
-from datetime import datetime
 import os
 
 from fastapi import APIRouter
@@ -7,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 
-from db_utils import OracleReports, engine, validate_user
+from db_utils import OracleReports, engine, get_report_data, validate_user
 from generic_utils import get_api_key_from_key_name
 from oracle.constants import TaskStage
 from utils import encode_image
@@ -240,7 +239,7 @@ async def get_report_feedback(req: ReportRequest):
 
 
 @router.post("/oracle/get_report_data")
-async def get_report_data(req: ReportRequest):
+async def get_report_data_endpoint(req: ReportRequest):
     """
     Given a report_id, this endpoint will returns all the data for this report. Returns the full row stored in the db.
     """
@@ -248,29 +247,12 @@ async def get_report_data(req: ReportRequest):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
-    with Session(engine) as session:
-        stmt = select(OracleReports).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
-        )
-        result = session.execute(stmt)
-        row = result.scalar_one_or_none()
+    report_data = get_report_data(req.report_id, api_key)
 
-        if row:
-            report_data = {
-                column.name: (
-                    getattr(row, column.name).isoformat()
-                    if isinstance(getattr(row, column.name), datetime)
-                    else getattr(row, column.name)
-                )
-                for column in row.__table__.columns
-            }
-            return JSONResponse(status_code=200, content={"data": report_data})
-        else:
-            return JSONResponse(
-                status_code=404,
-                content={"error": "Report not found"},
-            )
+    if "error" in report_data:
+        return JSONResponse(status_code=404, content=report_data)
+    else:
+        return JSONResponse(status_code=200, content=report_data)
 
 
 @router.post("/oracle/get_report_image")

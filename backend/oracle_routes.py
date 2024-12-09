@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from utils import longest_substring_overlap
-from db_utils import OracleReports, engine, redis_client, validate_user
+from db_utils import OracleReports, engine, get_report_data, redis_client, validate_user
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from generic_utils import get_api_key_from_key_name, make_request
@@ -16,7 +16,7 @@ from oracle.core import (
 )
 from oracle.explore import explore_data
 from oracle.optimize import optimize
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert
 
@@ -215,6 +215,96 @@ class BeginGenerationRequest(BaseModel):
                 }
             ]
         }
+    }
+
+
+class GenerateAnalysis(BaseModel):
+    report_id: int
+    token: str
+    key_name: str
+    previous_analyses: list
+    new_analysis_question: str
+
+
+@router.post("/oracle/generate_analysis")
+async def generate_analysis(req: GenerateAnalysis):
+    username = validate_user(req.token, user_type=None, get_username=True)
+
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    api_key = get_api_key_from_key_name(req.key_name)
+
+    # get report's data
+    # send a request to this server's own endpoint /oracle/get_report_data
+    report_data = get_report_data(req.report_id, api_key)
+
+    if "error" in report_data:
+        return JSONResponse(status_code=404, content=report_data)
+
+    report_data = report_data["data"]
+
+    LOGGER.debug(f"Previous analyses: {req.previous_analyses}")
+
+    # Call explore_data with a single analysis request
+    # We'll reuse the explore_data function but with a single question
+    inputs = {
+        "user_question": req.new_analysis_question,
+        "sources": report_data["inputs"].get("sources", []),
+        "max_analyses": 1,
+        "max_rounds": 1,
+        "previous_analyses": req.previous_analyses,
+    }
+
+    # Reuse the outputs from the parent analyses to maintain context
+    outputs = {
+        "gather_context": report_data["outputs"].get("gather_context", {}),
+        "explore": report_data["outputs"].get("explore", {}),
+    }
+
+    # also change the problem statement to the new analysis question
+    outputs["gather_context"]["problem_statement"] = req.new_analysis_question
+
+    result = await explore_data(
+        api_key=api_key,
+        report_id=str(req.report_id),
+        task_type=TaskType.EXPLORATION,
+        inputs=inputs,
+        outputs=outputs,
+    )
+
+    if "error" in result or "analyses" not in result or len(result["analyses"]) == 0:
+        return JSONResponse(
+            status_code=500, content={"error": "Error generating analysis"}
+        )
+
+    full_context_with_previous_analyses = result.get(
+        "full_context_with_previous_analyses", []
+    )
+
+    analysis = result["analyses"][0]
+
+    # generate mdx for this analysis
+    mdx = await make_request(
+        DEFOG_BASE_URL + "/oracle/generate_analysis_mdx",
+        {
+            "api_key": api_key,
+            "problem_statement": req.new_analysis_question,
+            "task_type": TaskType.EXPLORATION.value,
+            "analysis": analysis,
+            "context": full_context_with_previous_analyses,
+        },
+    )
+
+    return {
+        "analysis": analysis,
+        "mdx": mdx,
     }
 
 

@@ -1,5 +1,5 @@
 import asyncio
-import datetime
+from datetime import datetime
 import logging
 import os
 import traceback
@@ -408,7 +408,7 @@ async def initialise_analysis(
         return "Invalid token.", None
 
     err = None
-    timestamp = str(datetime.datetime.now())
+    timestamp = str(datetime.now())
     new_analysis_data = None
 
     try:
@@ -804,7 +804,7 @@ async def get_doc_data(api_key, doc_id, token, col_name="doc_blocks"):
     if not username:
         return "Invalid token.", None
     err = None
-    timestamp = str(datetime.datetime.now())
+    timestamp = str(datetime.now())
     doc_data = None
 
     try:
@@ -1436,3 +1436,29 @@ def update_status(report_id: int, new_status: str):
             session.commit()
     except Exception as e:
         LOGGER.error(f"Error updating status for report {report_id}: {str(e)}")
+
+
+def get_report_data(report_id: int, api_key: str):
+    from sqlalchemy.orm import Session
+
+    with Session(engine) as session:
+        stmt = select(OracleReports).where(
+            OracleReports.api_key == api_key,
+            OracleReports.report_id == report_id,
+        )
+
+        result = session.execute(stmt)
+        row = result.scalar_one_or_none()
+
+        if row:
+            report_data = {
+                column.name: (
+                    getattr(row, column.name).isoformat()
+                    if isinstance(getattr(row, column.name), datetime)
+                    else getattr(row, column.name)
+                )
+                for column in row.__table__.columns
+            }
+            return {"data": report_data}
+        else:
+            return {"error": "Report not found"}
