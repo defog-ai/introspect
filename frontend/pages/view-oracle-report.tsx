@@ -14,7 +14,6 @@ import {
   getReportAnalyses,
   getReportExecutiveSummary,
   extensions,
-  getReportAnalysesMdx,
   parseMDX,
 } from "$utils/oracleUtils";
 
@@ -93,6 +92,7 @@ export default function ViewOracleReport() {
 
         analysesJsons.map((analysis) => {
           analyses[analysis.analysis_id] = {
+            analysis_id: analysis.analysis_id,
             ...analysis,
             ...parseMDX(analysis.mdx),
           };

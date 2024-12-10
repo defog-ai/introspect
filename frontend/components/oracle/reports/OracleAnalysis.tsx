@@ -11,7 +11,7 @@ import { toSentenceCase } from "$utils/utils";
 
 interface OracleAnalysisProps {
   analysis: AnalysisParsed;
-  isLoader: boolean;
+  isLoader?: boolean;
 }
 
 export const OracleAnalysis = ({
@@ -29,7 +29,7 @@ export const OracleAnalysis = ({
       try {
         const status = await getAnalysisStatus(
           reportId,
-          analysis.json.analysis_id,
+          analysis.analysis_id,
           keyName,
           token
         );
@@ -45,7 +45,7 @@ export const OracleAnalysis = ({
       }
     }
 
-    if (isLoader && analysis.json.analysis_id) {
+    if (isLoader && analysis.analysis_id) {
       getStatus();
     }
 

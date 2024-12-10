@@ -34,10 +34,10 @@ export interface Working {
 
 export interface Analysis {
   analysis_id: string;
-  generated_qn: string;
-  independent_variable_group: IndependentVariableGroup;
-  artifacts: Artifacts;
-  working: Working;
+  generated_qn?: string;
+  independent_variable_group?: IndependentVariableGroup;
+  artifacts?: Artifacts;
+  working?: Working;
   summary?: string;
   title?: string;
   round?: number;
@@ -71,17 +71,18 @@ interface Image {
 }
 
 export interface AnalysisParsed {
-  mdx: string;
-  tables: {
+  analysis_id: string;
+  mdx?: string;
+  tables?: {
     [key: string]: Table;
   };
-  multiTables: {
+  multiTables?: {
     [key: string]: MultiTable;
   };
-  images: {
+  images?: {
     [key: string]: Image;
   };
-  json: Analysis;
+  analysis_json: Analysis;
 }
 
 export interface OracleReportContext {

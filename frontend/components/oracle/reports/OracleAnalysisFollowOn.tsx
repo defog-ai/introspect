@@ -35,11 +35,16 @@ export function OracleAnalysisFollowOn({
     <div>
       <div className="flex flex-col bg-gray-100 p-4 gap-4 pb-28" ref={ctr}>
         {analyses.map((analysis: AnalysisParsed, i) => {
-          return <OracleAnalysis analysis={analysis} />;
+          return (
+            <OracleAnalysis analysis={analysis} key={analysis.analysis_id} />
+          );
         })}
         {loading && (
           <OracleAnalysis
-            analysis={{ json: { analysis_id: loadingAnalysisId } }}
+            analysis={{
+              analysis_id: loadingAnalysisId,
+              analysis_json: { analysis_id: loadingAnalysisId },
+            }}
             isLoader={true}
           />
         )}
@@ -68,12 +73,12 @@ export function OracleAnalysisFollowOn({
                 keyName,
                 token,
                 e.target.value,
-                analyses.map((d) => d.json)
+                analyses.map((d) => d.analysis_json)
               )
                 .then((d) => {
                   const newAnalysis = {
                     ...parseMDX(d.mdx),
-                    json: d.analysis,
+                    analysis_json: d.analysis,
                   };
 
                   setAnalyses([...analyses, newAnalysis]);

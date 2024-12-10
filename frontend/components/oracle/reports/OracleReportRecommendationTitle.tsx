@@ -12,11 +12,11 @@ const RecommendationTitleComponent = ({ node }) => {
 
   const analysisIds = useRef(analysisReference.current.split(","));
 
-  const analysisParsed = useRef(analysisIds.current.map((id) => analyses[id]));
+  const analysisParsed = useRef(
+    analysisIds.current.map((id) => analyses[id]).filter((d) => d)
+  );
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  console.log(analysisIds, analyses);
 
   return (
     <NodeViewWrapper className="react-component not-prose underline underline-offset-2 group">
