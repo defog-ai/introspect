@@ -88,7 +88,7 @@ async def explore_data(
     json_data = {
         "api_key": api_key,
         "user_question": user_question,
-        "n_gen_qns": 1,
+        "n_gen_qns": inputs.get("max_analyses", MAX_ANALYSES),
         "task_type": task_type.value,
         "gather_context": gather_context,
         "previous_analyses": inputs.get(
