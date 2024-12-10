@@ -233,16 +233,21 @@ function OracleDashboard() {
   }, []);
 
   useEffect(() => {
-    const fetchInitialReports = async () => {
-      await fetchReports(apiKeyName, setReports);
-    };
-
-    // Fetch reports once when the page loads
-    fetchInitialReports();
-  }, [apiKeyName]);
-
-  useEffect(() => {
     let intervalId;
+
+    // fetch initial reports
+    const fetchInitial = async () => {
+      const reports = await fetchReports(apiKeyName, setReports);
+      if (reports) {
+        const allTerminal = reports.every(
+          (report) => report.status === "done" || report.status === "error"
+        );
+        if (!allTerminal) {
+          setIsPolling(true);
+        }
+      }
+    };
+    fetchInitial();
 
     const pollReports = async () => {
       const reports = await fetchReports(apiKeyName, setReports);
