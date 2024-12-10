@@ -38,7 +38,7 @@ export const OracleAnalysis = ({
       } catch (e) {
         console.error(e);
       } finally {
-        if (analysisStatus !== "completed") {
+        if (analysisStatus !== "done") {
           clearTimeout(timeout);
           timeout = setTimeout(getStatus, 1000);
         }

@@ -231,7 +231,7 @@ class AnalysisRequest(BaseModel):
     report_id: int
     token: str
     key_name: str
-    analysis_id: str = None
+    analysis_id: Optional[str] = None
 
 
 class GenerateAnalysis(AnalysisRequest):
@@ -381,7 +381,7 @@ async def generate_analysis(req: GenerateAnalysis):
         api_key=api_key,
         analysis_id=analysis["analysis_id"],
         report_id=req.report_id,
-        status="completed",
+        status="done",
         json=analysis,
         mdx=mdx,
     )

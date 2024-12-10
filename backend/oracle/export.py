@@ -106,7 +106,7 @@ async def generate_report(
             analysis_id=analysis_id,
             report_id=report_id,
             json=analysis,
-            status="completed",
+            status="done",
             mdx=analyses_mdx[analysis_id],
         )
 
