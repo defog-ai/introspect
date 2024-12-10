@@ -6,7 +6,7 @@ from typing import Any, Dict
 from uuid import uuid4
 
 import pandas as pd
-from db_utils import get_db_type_creds
+from db_utils import get_db_type_creds, update_analysis_status
 from generic_utils import make_request
 from oracle.celery_app import LOGGER
 from oracle.constants import TaskType
@@ -42,6 +42,8 @@ async def explore_data(
     task_type: TaskType,
     inputs: Dict[str, Any],
     outputs: Dict[str, Any],
+    is_follow_on: bool = False,
+    follow_on_id: str = None,
 ):
     """
     This function will explore the data, by generating a series of exploratory
@@ -155,11 +157,30 @@ async def explore_data(
                     inputs.get("retry_data_fetch", RETRY_DATA_FETCH),
                 )
             )
-        update_status_task = asyncio.create_task(
-            independent_status_updater(
-                report_id=report_id, generated_qns_summaries=generated_qns_summaries
+
+        if (
+            is_follow_on
+            and follow_on_id
+            and generated_qns_summaries
+            and len(generated_qns_summaries)
+        ):
+            # we will update the status of the analysis instead of the report
+            update_status_task = asyncio.create_task(
+                update_analysis_status(
+                    api_key=api_key,
+                    analysis_id=follow_on_id,
+                    report_id=report_id,
+                    new_status=(
+                        generated_qns_summaries[0] if generated_qns_summaries else ""
+                    ),
+                )
             )
-        )
+        else:
+            update_status_task = asyncio.create_task(
+                independent_status_updater(
+                    report_id=report_id, generated_qns_summaries=generated_qns_summaries
+                )
+            )
         try:
             # Await primary tasks
             answers = await asyncio.gather(*tasks)

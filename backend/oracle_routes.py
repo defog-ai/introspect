@@ -316,7 +316,7 @@ async def generate_analysis(req: GenerateAnalysis):
         "previous_analyses": req.previous_analyses,
     }
 
-    # Reuse the outputs from the parent analyses to maintain context
+    # Reuse the outputs from the main report
     outputs = {
         "gather_context": report_data["outputs"].get("gather_context", {}),
         "explore": report_data["outputs"].get("explore", {}),
@@ -331,6 +331,8 @@ async def generate_analysis(req: GenerateAnalysis):
         task_type=TaskType.EXPLORATION,
         inputs=inputs,
         outputs=outputs,
+        is_follow_on=True,
+        follow_on_id=req.analysis_id,
     )
 
     if "error" in result or "analyses" not in result or len(result["analyses"]) == 0:
