@@ -14,22 +14,22 @@ const taskOptions = [
       </span>
     ),
   },
-  {
-    value: "prediction",
-    label: (
-      <span>
-        <LineChartOutlined className="text-[#1B1B16]/30 ml-2" /> Prediction
-      </span>
-    ),
-  },
-  {
-    value: "optimization",
-    label: (
-      <span>
-        <ThunderboltOutlined className="text-[#1B1B16]/30 ml-2" /> Optimization
-      </span>
-    ),
-  },
+  // {
+  //   value: "prediction",
+  //   label: (
+  //     <span>
+  //       <LineChartOutlined className="text-[#1B1B16]/30 ml-2" /> Prediction
+  //     </span>
+  //   ),
+  // },
+  // {
+  //   value: "optimization",
+  //   label: (
+  //     <span>
+  //       <ThunderboltOutlined className="text-[#1B1B16]/30 ml-2" /> Optimization
+  //     </span>
+  //   ),
+  // },
 ];
 
 export default function TaskType({ taskType, onChange }) {

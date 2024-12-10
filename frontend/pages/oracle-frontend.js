@@ -146,7 +146,9 @@ function OracleDashboard() {
     setWaitClarifications(false);
     if (res.ok) {
       const data = await res.json();
-      setTaskType(data.task_type);
+
+      // hard-code all task types to exploration
+      setTaskType("exploration");
       // get the updated answered clarifications, since the user might have
       // answered some clarifications while the request was processing
       let answeredClarifications = clarifications.filter(
