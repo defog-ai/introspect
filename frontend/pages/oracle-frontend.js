@@ -484,10 +484,10 @@ function OracleDashboard() {
           </Row>
         ) : null}
 
-        <div className="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold mb-2">The Oracle</h1>
-            <p className="text-gray-600">
+            <h1 className="text-2xl font-semibold mb-2 dark:text-gray-200">The Oracle</h1>
+            <p className="text-gray-600 dark:text-gray-400">
               The Oracle is a background assistant, helping you to dig into your
               dataset for insights. To begin, please let us know what you are
               interested in below.
@@ -497,7 +497,7 @@ function OracleDashboard() {
           <div className="flex items-center mb-6">
             <TextArea
               placeholder="Describe what you would like the Oracle to do..."
-              className="w-full p-3 border rounded-lg text-gray-700 focus:outline-none focus:border-purple-500"
+              className="w-full p-3 border rounded-lg text-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 focus:outline-none focus:border-purple-500 dark:focus:border-purple-700"
               value={userQuestion}
               onChange={(e) => {
                 setUserQuestion(e.target.value);
@@ -515,22 +515,22 @@ function OracleDashboard() {
                 (!ready ? (
                   <CloseCircleOutlined style={{ color: "#b80617" }} />
                 ) : (
-                  <CheckCircleOutlined style={{ color: "green" }} />
+                  <CheckCircleOutlined style={{ color: "#22c55e" }} />
                 ))
               )}
             </div>
           </div>
 
           {!ready && readyErrorMsg ? (
-            <div className="bg-light-red p-4 rounded-lg my-2">
-              <p className="text-red">{readyErrorMsg}</p>
+            <div className="bg-light-red dark:bg-red-900 p-4 rounded-lg my-2">
+              <p className="text-red dark:text-red-400">{readyErrorMsg}</p>
             </div>
           ) : null}
 
           {clarifications.length > 0 && (
             // show clarifications only when there are some
             <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">Clarifications</h2>
+              <h2 className="text-xl font-semibold mb-2 dark:text-gray-200">Clarifications</h2>
               <TaskType taskType={taskType} onChange={handleTaskTypeChange} />
               {clarifications.map((clarificationObject, index) => (
                 <ClarificationItem
@@ -550,7 +550,7 @@ function OracleDashboard() {
           </div>
 
           <Button
-            className="bg-purple-500 text-white py-4 px-4 mt-2 mb-2 rounded-lg hover:bg-purple-600 disabled:bg-gray-300"
+            className="bg-purple-500 text-white py-4 px-4 mt-2 mb-2 rounded-lg hover:bg-purple-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 dark:hover:bg-purple-700"
             onClick={generateReport}
             disabled={userQuestion.length < 5 || taskType === ""}
           >
@@ -559,17 +559,17 @@ function OracleDashboard() {
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold mb-4">Past Reports</h2>
+          <h2 className="text-xl font-semibold mb-4 dark:text-gray-200">Past Reports</h2>
           {reports.map((report, index) => (
-            <div key={index} className="bg-purple-100 p-4 rounded-lg mb-4">
-              <h3 className="text-lg font-semibold">{report.report_id}</h3>
-              <p className="text-purple-700">{report.report_name}</p>
+            <div key={index} className="bg-purple-100 dark:bg-purple-900/30 p-4 rounded-lg mb-4">
+              <h3 className="text-lg font-semibold dark:text-gray-200">{report.report_id}</h3>
+              <p className="text-purple-700 dark:text-purple-400">{report.report_name}</p>
               {/* <p className="text-gray-600">{report.status}</p> */}
-              <div className="text-gray-600 flex items-center">
+              <div className="text-gray-600 dark:text-gray-400 flex items-center">
                 <ReportStatus status={report.status} />
               </div>
 
-              <p className="text-gray-400">
+              <p className="text-gray-400 dark:text-gray-500">
                 Generated at {report.date_created}
               </p>
               <div className="flex space-x-4 mt-2">
@@ -582,7 +582,7 @@ function OracleDashboard() {
                   Download PDF
                 </Button> */}
                 <Button
-                  className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300"
+                  className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300 dark:text-purple-400 dark:hover:text-purple-300 dark:disabled:text-gray-600"
                   disabled={report.status !== "done"}
                   onClick={() =>
                     window.open(
@@ -594,7 +594,7 @@ function OracleDashboard() {
                   View
                 </Button>
                 <Button
-                  className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300"
+                  className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300 dark:text-purple-400 dark:hover:text-purple-300 dark:disabled:text-gray-600"
                   icon={<DeleteOutlined />}
                   disabled={
                     report.status !== "done" && report.status !== "error"
@@ -635,8 +635,8 @@ function ClarificationItem({
   }
 
   return (
-    <div className="bg-amber-100 p-4 rounded-lg my-2 relative flex flex-row">
-      <div className="text-amber-500 w-3/4">
+    <div className="bg-amber-100 dark:bg-amber-900/30 p-4 rounded-lg my-2 relative flex flex-row">
+      <div className="text-amber-500 dark:text-amber-400 w-3/4">
         {clarificationObject.clarification}
       </div>
       <div className="w-1/4 mt-2 mx-2">
@@ -644,9 +644,9 @@ function ClarificationItem({
           <div>
             <Select
               allowClear={true}
-              className="flex w-5/6"
+              className="flex w-5/6 dark:bg-gray-800 dark:text-gray-200"
               optionRender={(opt, info) => (
-                <div className="text-wrap break-words hyphens-auto">
+                <div className="text-wrap break-words hyphens-auto dark:text-gray-200">
                   {opt.label}
                 </div>
               )}
@@ -667,7 +667,7 @@ function ClarificationItem({
             {otherSelected ? (
               <TextArea
                 placeholder="Type here"
-                className="my-2 w-5/6"
+                className="my-2 w-5/6 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
                 autoSize={true}
                 onChange={(value) => {
                   // if this is empty, then just set answer back to to selectedOption
@@ -705,7 +705,7 @@ function ClarificationItem({
         ) : (
           <TextArea
             autoSize={true}
-            className="flex w-5/6 rounded-lg"
+            className="flex w-5/6 rounded-lg dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
             onChange={(value) =>
               updateAnsweredClarifications(
                 clarificationObject.clarification,
@@ -716,7 +716,7 @@ function ClarificationItem({
         )}
       </div>
       <CloseOutlined
-        className="text-amber-500 absolute top-2 right-2 cursor-pointer"
+        className="text-amber-500 dark:text-amber-400 absolute top-2 right-2 cursor-pointer"
         onClick={deleteClarification}
       />
     </div>
