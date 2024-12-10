@@ -7,6 +7,7 @@ import uuid
 from typing import Dict, Tuple
 
 import redis
+from sqlalchemy.orm.attributes import flag_modified
 from oracle.constants import TaskStage
 from generic_utils import make_request
 from sqlalchemy import (
@@ -1474,61 +1475,147 @@ def get_report_data(report_id: int, api_key: str):
             return {"error": "Report not found"}
 
 
-async def add_analysis(
+async def add_or_update_analysis(
     api_key: str,
     analysis_id: str,
     report_id: int,
     json: Dict,
     status: str = "pending",
     mdx: str = None,
-):
+) -> str:
     """
     Given a report_id, this endpoint will update the report data in the database in the oracle_analyses table.
     """
     from sqlalchemy.orm import Session
 
-    with Session(engine) as session:
-        # give this analysis a unique id
-        stmt = insert(OracleAnalyses).values(
-            report_id=report_id,
-            api_key=api_key,
-            analysis_id=analysis_id,
-            status=status,
-            json=json,
-            mdx=mdx,
-        )
-        session.execute(stmt)
-        session.commit()
+    err = None
+
+    try:
+        with Session(engine) as session:
+            # if the analysis id exists, update it
+            stmt = select(OracleAnalyses).where(
+                OracleAnalyses.analysis_id == analysis_id,
+                OracleAnalyses.report_id == report_id,
+                OracleAnalyses.api_key == api_key,
+            )
+            result = session.execute(stmt)
+            analysis = result.scalar_one_or_none()
+            if analysis:
+                analysis.status = status
+                analysis.json = json
+                analysis.mdx = mdx
+                session.commit()
+            else:
+                stmt = insert(OracleAnalyses).values(
+                    report_id=report_id,
+                    api_key=api_key,
+                    analysis_id=analysis_id,
+                    status=status,
+                    json=json,
+                    mdx=mdx,
+                )
+                session.execute(stmt)
+                session.commit()
+    except Exception as e:
+        LOGGER.error(f"Error adding analysis {analysis_id}: {str(e)}")
+        err = str(e)[:300]
+    finally:
+        return err
 
 
-async def get_analysis_status(api_key: str, analysis_id: str, report_id: int):
+async def get_analysis_status(api_key: str, analysis_id: str, report_id: int) -> str:
     """
     Given an api_key, analysis_id and report_id, this endpoint will return the status of the analysis.
-    If the analysis is not found, it will return a 404 error.
     """
     from sqlalchemy.orm import Session
 
-    with Session(engine) as session:
-        stmt = select(OracleAnalyses).where(
-            OracleAnalyses.analysis_id == analysis_id,
-            OracleAnalyses.report_id == report_id,
-            OracleAnalyses.api_key == api_key,
-        )
+    err = None
+    status = None
+
+    try:
+        with Session(engine) as session:
+            stmt = select(OracleAnalyses).where(
+                OracleAnalyses.analysis_id == analysis_id,
+                OracleAnalyses.report_id == report_id,
+                OracleAnalyses.api_key == api_key,
+            )
+
+            result = session.execute(stmt)
+            row = result.scalar_one_or_none()
+
+            if row:
+                status = row.status
+            else:
+                raise Exception("Analysis not found")
+    except Exception as e:
+        LOGGER.error(f"Error getting analysis status {analysis_id}: {str(e)}")
+        status = None
+        err = str(e)[:300]
+    finally:
+        return err, status
+
+
+async def update_analysis_status(
+    api_key: str, analysis_id: str, report_id: int, new_status: str
+):
+    """
+    Given an api_key, analysis_id and report_id, this endpoint will update the status of the analysis.
+    If the analysis is not found, it will error.
+    """
+    from sqlalchemy.orm import Session
+
+    err = None
+
+    try:
+        with Session(engine) as session:
+            stmt = select(OracleAnalyses).where(
+                OracleAnalyses.analysis_id == analysis_id,
+                OracleAnalyses.report_id == report_id,
+                OracleAnalyses.api_key == api_key,
+            )
 
         result = session.execute(stmt)
         row = result.scalar_one_or_none()
 
         if row:
-            return row.status
+            row.status = new_status
+            session.commit()
+        else:
+            raise Exception("Analysis not found")
+    except Exception as e:
+        LOGGER.error(f"Error updating analysis status {analysis_id}: {str(e)}")
+        err = str(e)[:300]
+    finally:
+        return err
 
 
-async def update_summary_dict(report_id: int, summary_dict: Dict):
+async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
+    """
+    Given a report_id, this endpoint will update the summary_dict in the database in the oracle_reports table.
+    """
     from sqlalchemy.orm import Session
 
-    with Session(engine) as session:
-        stmt = select(OracleReports).where(OracleReports.report_id == report_id)
-        result = session.execute(stmt)
-        report = result.scalar_one_or_none()
-        if report:
-            report.outputs[TaskStage.EXPORT.value]["executive_summary"] = summary_dict
-            session.commit()
+    err = None
+
+    try:
+        with Session(engine) as session:
+            stmt = select(OracleReports).where(
+                OracleReports.api_key == api_key, OracleReports.report_id == report_id
+            )
+            result = session.execute(stmt)
+            report = result.scalar_one_or_none()
+            if report:
+                LOGGER.info(f"Updating summary dict for report {report_id}")
+
+                new_outputs = report.outputs
+                new_outputs[TaskStage.EXPORT.value]["executive_summary"] = summary_dict
+                report.outputs = new_outputs
+                flag_modified(report, "outputs")
+                session.commit()
+            else:
+                raise Exception("Report not found")
+    except Exception as e:
+        LOGGER.error(f"Error updating summary dict for report {report_id}: {str(e)}")
+        err = str(e)[:300]
+    finally:
+        return err

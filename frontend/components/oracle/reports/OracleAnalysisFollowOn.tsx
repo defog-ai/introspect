@@ -10,6 +10,7 @@ import {
 } from "@defogdotai/agents-ui-components/core-ui";
 import { EditorProvider } from "@tiptap/react";
 import { useContext, useEffect, useRef, useState } from "react";
+import { OracleAnalysis } from "./OracleAnalysis";
 
 export function OracleAnalysisFollowOn({
   initialAnalyses = [],
@@ -32,30 +33,7 @@ export function OracleAnalysisFollowOn({
     <div>
       <div className="flex flex-col bg-gray-100 p-4 gap-4 pb-28" ref={ctr}>
         {analyses.map((analysis: AnalysisParsed, i) => {
-          return (
-            <div className="rounded-lg border drop-shadow-md bg-white py-4">
-              <OracleReportContext.Provider
-                key={i}
-                value={{
-                  tables: analysis.tables,
-                  multiTables: analysis.multiTables,
-                  images: analysis.images,
-                }}
-              >
-                <EditorProvider
-                  extensions={extensions}
-                  content={analysis.mdx}
-                  editable={false}
-                  editorProps={{
-                    attributes: {
-                      class:
-                        "oracle-report-tiptap prose prose-base mx-auto p-2 mb-12 md:mb-0 focus:outline-none [&_.react-multitable-container]:lg:mx-0",
-                    },
-                  }}
-                />
-              </OracleReportContext.Provider>
-            </div>
-          );
+          return <OracleAnalysis analysis={analysis} />;
         })}
         {loading && (
           <div className="rounded-lg border drop-shadow-md bg-white py-4 h-20 flex items-center justify-center">
@@ -76,8 +54,10 @@ export function OracleAnalysisFollowOn({
 
             try {
               setLoading(true);
+              const analysisId = crypto.randomUUID();
               generateNewAnalysis(
                 reportId,
+                analysisId,
                 recommendationIdx,
                 keyName,
                 token,

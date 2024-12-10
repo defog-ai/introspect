@@ -6,8 +6,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
-from oracle.utils_report import ReportSummary, summary_dict_to_markdown
-from db_utils import OracleReports, engine, get_report_data, validate_user
+from oracle.utils_report import summary_dict_to_markdown
+from db_utils import (
+    OracleAnalyses,
+    OracleReports,
+    engine,
+    get_report_data,
+    validate_user,
+)
 from generic_utils import get_api_key_from_key_name
 from oracle.constants import TaskStage
 from utils import encode_image
@@ -201,10 +207,8 @@ async def get_report_mdx(req: ReportRequest):
         if report:
             mdx = report.outputs.get(TaskStage.EXPLORE.value, {}).get("mdx", None)
             md = report.outputs.get(TaskStage.EXPLORE.value, {}).get("md", None)
-            summary_dict = ReportSummary.model_validate(
-                report.outputs.get(TaskStage.EXPORT.value, {}).get(
-                    "executive_summary", None
-                )
+            summary_dict = report.outputs.get(TaskStage.EXPORT.value, {}).get(
+                "executive_summary", None
             )
 
             _, summary_mdx = summary_dict_to_markdown(summary_dict)
@@ -321,17 +325,21 @@ async def get_report_analysis_list(req: ReportRequest):
     api_key = get_api_key_from_key_name(req.key_name)
 
     with Session(engine) as session:
-        stmt = select(OracleReports.outputs).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
+        stmt = select(OracleAnalyses).where(
+            OracleAnalyses.api_key == api_key,
+            OracleAnalyses.report_id == req.report_id,
         )
-        result = session.execute(stmt)
-        outputs = result.scalar_one_or_none()
-        explore = outputs.get(TaskStage.EXPLORE.value, {})
-        analyses = explore.get("analyses", [])
-        # remove qn_id key
-        for analysis in analyses:
-            del analysis["qn_id"]
+        result = session.execute(stmt).scalars().all()
+        analyses = []
+        for row in result:
+            if not row.json or not row.mdx:
+                continue
+            analysis = {
+                column.name: getattr(row, column.name)
+                for column in OracleAnalyses.__table__.columns
+            }
+            analyses.append(analysis)
+
         return JSONResponse(status_code=200, content={"analyses": analyses})
 
 
@@ -361,33 +369,6 @@ async def get_report_analysis(req: ReportAnalysisRequest):
                 del analysis["qn_id"]
                 return JSONResponse(status_code=200, content=analysis)
         return JSONResponse(status_code=404, content={"error": "Analysis not found"})
-
-
-@router.post("/oracle/get_report_analyses_mdx")
-async def get_report_analyses_mdx(req: ReportRequest):
-    """
-    Given a report_id, this endpoint will return the mdx of individual analyses of the report.
-    """
-    if not validate_user(req.token, user_type=None, get_username=False):
-        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
-    # get from export key's analyses_mdx
-    analyses_mdx = None
-    with Session(engine) as session:
-        stmt = select(OracleReports.outputs).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
-        )
-        result = session.execute(stmt)
-        outputs = result.scalar_one_or_none()
-        analyses_mdx = outputs.get(TaskStage.EXPORT.value, {}).get("analyses_mdx", None)
-    if analyses_mdx:
-        return JSONResponse(status_code=200, content={"analyses_mdx": analyses_mdx})
-    else:
-        return JSONResponse(
-            status_code=404,
-            content={"error": "Analyses mdx not found"},
-        )
 
 
 @router.post("/oracle/get_report_summary")

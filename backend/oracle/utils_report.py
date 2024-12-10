@@ -29,51 +29,41 @@ class Recommendation(BaseModel):
     analysis_reference: List[str]
 
 
-class ReportSummary(BaseModel):
-    title: str
-    introduction: str
-    recommendations: List[Recommendation]
-
-
-class GenerateReportSummaryResponse(BaseModel):
-    summary_dict: ReportSummary
-
-
-def summary_dict_to_markdown(summary: ReportSummary) -> str:
+def summary_dict_to_markdown(summary) -> str:
     """
     Converts the summary dictionary to markdown for compatibility with the
     existing report markdown display.
     """
 
-    md = f"# {summary.title}\n\n{summary.introduction}\n\n"
+    md = f"# {summary['title']}\n\n{summary['introduction']}\n\n"
 
-    mdx = f"# {summary.title}\n\n{summary.introduction}\n\n"
-    for idx, recommendation in enumerate(summary.recommendations):
+    mdx = f"# {summary['title']}\n\n{summary['introduction']}\n\n"
+    for idx, recommendation in enumerate(summary["recommendations"]):
         analysis_references = (
-            ",".join([str(i) for i in recommendation.analysis_reference])
-            if recommendation.analysis_reference
+            ",".join([str(i) for i in recommendation["analysis_reference"]])
+            if recommendation["analysis_reference"]
             else ""
         )
         rec_mdx_title = wrap_in_mdx_tags(
-            recommendation.title,
+            recommendation["title"],
             ORACLE_MDX_TAGS.RECOMMENDATION_TITLE,
             {"analysis_reference": analysis_references, "idx": idx},
         )
 
-        rec_md = f"""{recommendation.title} \n\n
+        rec_md = f"""{recommendation['title']} \n\n
 
-{recommendation.insight}
+{recommendation['insight']}
 
 *Recommendation*
-{recommendation.action}
+{recommendation['action']}
 
 """
         rec_mdx = f"""{rec_mdx_title} \n\n
 
-{recommendation.insight}
+{recommendation['insight']}
 
 *Recommendation*
-{recommendation.action}
+{recommendation['action']}
 
 """
         # mdx += wrap_in_mdx_tags(rec_md, ORACLE_MDX_TAGS.RECOMMENDATION)

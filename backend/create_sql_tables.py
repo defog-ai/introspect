@@ -161,9 +161,9 @@ oracle_analyses = Table(
     Column("api_key", Text, primary_key=True),
     Column("report_id", Integer, primary_key=True),
     Column("analysis_id", Text, primary_key=True),
-    Column("status", Text, default="pending"),
-    Column("json", JSON),
-    Column("mdx", Text, default=None),
+    Column("status", Text, default="pending", nullable=True),
+    Column("json", JSON, nullable=True),
+    Column("mdx", Text, default=None, nullable=True),
 )
 
 oracle_clarifications = Table(

@@ -2,13 +2,17 @@ import os
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from uuid import uuid4
 
 from utils import longest_substring_overlap
 from db_utils import (
     OracleReports,
+    add_or_update_analysis,
     engine,
+    get_analysis_status,
     get_report_data,
     redis_client,
+    update_analysis_status,
     update_summary_dict,
     validate_user,
 )
@@ -223,13 +227,44 @@ class BeginGenerationRequest(BaseModel):
     }
 
 
-class GenerateAnalysis(BaseModel):
+class AnalysisRequest(BaseModel):
     report_id: int
     token: str
     key_name: str
+    analysis_id: str = None
+
+
+class GenerateAnalysis(AnalysisRequest):
     previous_analyses: list
     new_analysis_question: str
     recommendation_idx: int = -1
+
+
+@router.post("/oracle/get_analysis_status")
+async def get_analysis_status_endpoint(req: AnalysisRequest):
+    username = validate_user(req.token, user_type=None, get_username=True)
+
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    api_key = get_api_key_from_key_name(req.key_name)
+
+    err, status = await get_analysis_status(
+        api_key=api_key,
+        analysis_id=req.analysis_id,
+        report_id=req.report_id,
+    )
+
+    if err:
+        return JSONResponse(status_code=500, content={"error": err})
+
+    return JSONResponse(content={"status": status})
 
 
 @router.post("/oracle/generate_analysis")
@@ -257,6 +292,19 @@ async def generate_analysis(req: GenerateAnalysis):
     report_data = report_data["data"]
 
     LOGGER.debug(f"Previous analyses: {req.previous_analyses}")
+
+    # start an empty analysis
+    err = await add_or_update_analysis(
+        api_key=api_key,
+        report_id=str(req.report_id),
+        analysis_id=req.analysis_id,
+        json={},
+        status="Exploring your data to answer your question",
+        mdx=None,
+    )
+
+    if err:
+        return JSONResponse(status_code=500, content={"error": err})
 
     # Call explore_data with a single analysis request
     # We'll reuse the explore_data function but with a single question
@@ -296,6 +344,18 @@ async def generate_analysis(req: GenerateAnalysis):
 
     analysis = result["analyses"][0]
 
+    analysis["analysis_id"] = req.analysis_id or str(uuid4())
+
+    err = await update_analysis_status(
+        api_key=api_key,
+        analysis_id=analysis["analysis_id"],
+        report_id=req.report_id,
+        new_status="Exploration complete. Generating analysis",
+    )
+
+    if err:
+        return JSONResponse(status_code=500, content={"error": err})
+
     # generate mdx for this analysis
     res = await make_request(
         DEFOG_BASE_URL + "/oracle/generate_analysis_mdx",
@@ -308,14 +368,23 @@ async def generate_analysis(req: GenerateAnalysis):
         },
     )
 
-    # add this analysis to the list of analyses for this report
-    # change the qn_id of this analysis to be length of the list
-    new_qn_id = len(
-        report_data.get("outputs", {})
-        .get(TaskStage.EXPLORE.value, {})
-        .get("analyses", [])
+    mdx = res["mdx"]
+    if not mdx:
+        return JSONResponse(
+            status_code=500, content={"error": "Error generating analysis mdx"}
+        )
+
+    # add this analysis to the database
+    await add_or_update_analysis(
+        api_key=api_key,
+        analysis_id=analysis["analysis_id"],
+        report_id=req.report_id,
+        status="completed",
+        json=analysis,
+        mdx=mdx,
     )
 
+    # put this analysis in the summary dict at the correct recommendation_idx
     summary_dict = (
         report_data.get("outputs", {})
         .get(TaskStage.EXPORT.value, {})
@@ -323,22 +392,25 @@ async def generate_analysis(req: GenerateAnalysis):
     )
 
     if summary_dict:
-        # put this analysis in the summary dict at the correct recommendation_idx
         curr_refs = summary_dict["recommendations"][req.recommendation_idx][
             "analysis_reference"
         ]
         if not curr_refs or type(curr_refs) != list:
             curr_refs = []
-        curr_refs.append(new_qn_id)
+        curr_refs.append(analysis["analysis_id"])
         summary_dict["recommendations"][req.recommendation_idx][
             "analysis_reference"
         ] = curr_refs
-        await update_summary_dict(report_id=req.report_id, summary_dict=summary_dict)
+        await update_summary_dict(
+            api_key=api_key, report_id=req.report_id, summary_dict=summary_dict
+        )
 
-    return {
-        "analysis": analysis,
-        "mdx": res["mdx"],
-    }
+    return JSONResponse(
+        content={
+            "analysis": analysis,
+            "mdx": res["mdx"],
+        }
+    )
 
 
 @router.post("/oracle/begin_generation")

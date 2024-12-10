@@ -1,8 +1,8 @@
 import asyncio
 from typing import Any, Dict, List
 
-from db_utils import add_analysis
-from oracle.utils_report import summary_dict_to_markdown, ReportSummary
+from db_utils import add_or_update_analysis, update_summary_dict
+from oracle.utils_report import summary_dict_to_markdown
 from generic_utils import make_request
 from pydantic import BaseModel
 from oracle.constants import DEFOG_BASE_URL, TaskStage, TaskType
@@ -49,9 +49,7 @@ async def generate_report(
 
     summary_response = responses[1]
 
-    summary_dict = ReportSummary.model_validate(
-        summary_response.get("summary_dict", {})
-    )
+    summary_dict = summary_response.get("summary_dict", {})
     LOGGER.info(f"Generated Summary for report {report_id}")
     summary_md, _ = summary_dict_to_markdown(summary_dict)
 
@@ -83,12 +81,14 @@ async def generate_report(
         str(analysis["qn_id"]): analysis["analysis_id"] for analysis in analyses
     }
 
-    for summary_rec in summary_dict.recommendations:
+    for summary_rec in summary_dict["recommendations"]:
         uuid_refs = []
-        for qn_id in summary_rec.analysis_reference:
+        for qn_id in summary_rec["analysis_reference"]:
             uuid_refs.append(qn_ids_to_analysis_id_map[str(qn_id)])
 
-        summary_rec.analysis_reference = uuid_refs
+        summary_rec["analysis_reference"] = uuid_refs
+
+    await update_summary_dict(api_key, report_id, summary_dict)
 
     # the same for analyses_mdx
     for qn_id, analysis_id in qn_ids_to_analysis_id_map.items():
@@ -101,7 +101,7 @@ async def generate_report(
             f"Adding analysis with id {analysis['analysis_id']} to report {report_id}"
         )
         analysis_id = analysis["analysis_id"]
-        await add_analysis(
+        await add_or_update_analysis(
             api_key=api_key,
             analysis_id=analysis_id,
             report_id=report_id,
@@ -116,9 +116,9 @@ async def generate_report(
         # we will just generate it again when requested for the report
         # this is to allow for easier future updates to the mdx
         "mdx": "",
-        # but we keep the md because it's not important for the front end
-        "md": summary_md + "\n\n" + md,
-        "executive_summary": summary_dict.model_dump(),
+        # but we keep the md because it's not important for the front end and can be used to generate a pdf file later.
+        "md": summary_md + "\n\n" + "" if not md else md,
+        "executive_summary": summary_dict,
         "analyses_mdx": analyses_mdx,
     }
 

@@ -88,21 +88,17 @@ export default function ViewOracleReport() {
         }));
 
         setExecutiveSummary(sum);
-        const analysesMdx = await getReportAnalysesMdx(
-          reportId,
-          keyName,
-          token
-        );
 
         const analyses = {};
 
-        for (const analysisId in analysesMdx) {
-          analyses[analysisId] = {
-            mdx: analysesMdx[analysisId],
-            json: analysesJsons[analysisId],
-            ...parseMDX(analysesMdx[analysisId]),
+        analysesJsons.map((analysis) => {
+          analyses[analysis.analysis_id] = {
+            ...analysis,
+            ...parseMDX(analysis.mdx),
           };
-        }
+        });
+
+        console.log(analyses);
 
         setAnalyses(analyses);
 

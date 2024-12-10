@@ -222,6 +222,7 @@ export const parseMDX = (mdx: string): ReturnType<MDX["getParsed"]> => {
 
 export const generateNewAnalysis = async (
   reportId: string,
+  analysisId: string,
   recommendationIdx: number,
   keyName: string,
   token: string,
@@ -240,6 +241,7 @@ export const generateNewAnalysis = async (
       key_name: keyName,
       token: token,
       report_id: reportId,
+      analysis_id: analysisId,
       new_analysis_question: question,
       previous_analyses: previousAnalyses,
       recommendation_idx: recommendationIdx,
@@ -291,13 +293,7 @@ export const getReportAnalyses = async (
     throw new Error("No analyses found");
   }
 
-  // Convert the array of analyses into an object with analysis_id as keys
-  const analysesMap = data.analyses.reduce((acc: any, analysis: any) => {
-    acc[analysis.analysis_id] = analysis;
-    return acc;
-  }, {});
-
-  return analysesMap;
+  return data.analyses;
 };
 
 export const getReportMDX = async (
