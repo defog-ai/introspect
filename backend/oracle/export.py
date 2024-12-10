@@ -34,6 +34,8 @@ async def generate_report(
     mdx_task = make_request(
         DEFOG_BASE_URL + "/oracle/generate_report_mdx", json_data, timeout=300
     )
+    # recall that in JSON, keys are ALWAYS strings. Therefore, we MUST expect a string in the keys returned from mdx_task
+
     # generate a synthesized executive summary to the report
     summary_task = make_request(
         DEFOG_BASE_URL + "/oracle/generate_report_summary",
@@ -46,6 +48,7 @@ async def generate_report(
     analyses_mdx = responses[0].get("analyses_mdx", "")
 
     LOGGER.info(f"Generated MDX for report {report_id}")
+    LOGGER.debug(f"Analysis MDX: {analyses_mdx}")
 
     summary_response = responses[1]
 
@@ -77,23 +80,33 @@ async def generate_report(
     # so we need to replace the initial analysis_references with the analysis_ids instead of qn_ids
     # but keep the rest the same
     analyses = outputs.get(TaskStage.EXPLORE.value, {}).get("analyses", [])
-    qn_ids_to_analysis_id_map = {
-        str(analysis["qn_id"]): analysis["analysis_id"] for analysis in analyses
-    }
+
+    qn_ids = [analysis["qn_id"] for analysis in analyses]
+    analysis_ids = [analysis["analysis_id"] for analysis in analyses]
 
     for summary_rec in summary_dict["recommendations"]:
         uuid_refs = []
         for qn_id in summary_rec["analysis_reference"]:
-            uuid_refs.append(qn_ids_to_analysis_id_map[str(qn_id)])
+            qn_id_idx = qn_ids.index(qn_id)
+            analysis_id = analysis_ids[qn_id_idx]
+            uuid_refs.append(analysis_id)
 
         summary_rec["analysis_reference"] = uuid_refs
 
     await update_summary_dict(api_key, report_id, summary_dict)
 
     # the same for analyses_mdx
-    for qn_id, analysis_id in qn_ids_to_analysis_id_map.items():
-        analyses_mdx[analysis_id] = analyses_mdx[qn_id]
-        del analyses_mdx[qn_id]
+    for idx in range(len(analyses)):
+        analysis_id = analyses[idx]["analysis_id"]
+        qn_id = analyses[idx]["qn_id"]
+        if str(qn_id) in analyses_mdx:
+            analyses_mdx[analysis_id] = analyses_mdx[str(qn_id)]
+            del analyses_mdx[str(qn_id)]
+        else:
+            LOGGER.error(
+                f"No mdx found for analysis with id {analysis_id} and qn_id {qn_id}"
+            )
+            LOGGER.error(f"analyses_mdx keys: {analyses_mdx.keys()}")
 
     LOGGER.info(f"Adding analyses to database for report {report_id}")
     for analysis in analyses:
@@ -107,7 +120,7 @@ async def generate_report(
             report_id=report_id,
             analysis_json=analysis,
             status="done",
-            mdx=analyses_mdx[analysis_id],
+            mdx=analyses_mdx.get(analysis_id, ""),
         )
 
     return {
