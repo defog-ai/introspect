@@ -97,10 +97,10 @@ const GoldenQueries = ({
             }}
             rows={4}
             disabled={isLoading || isUpdatingGoldenQueries}
-            className="font-mono text-sm p-2 bg-gray-50 border border-gray-300"
+            className="font-mono text-sm p-2 bg-gray-50 dark:bg-dark-bg-secondary border border-gray-300 dark:border-dark-border dark:text-dark-text-primary"
           />
         ) : (
-          <pre className="whitespace-pre-wrap bg-gray-100 max-h-72 overflow-auto">
+          <pre className="whitespace-pre-wrap bg-gray-100 dark:bg-dark-bg-secondary dark:text-dark-text-primary max-h-72 overflow-auto">
             {text}
           </pre>
         ),

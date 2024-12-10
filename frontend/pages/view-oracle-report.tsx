@@ -157,10 +157,10 @@ export default function ViewOracleReport() {
     return (
       <div
         className={
-          "w-full h-full min-h-60 flex flex-col justify-center items-center bg-rose-100 text-red text-center rounded-md p-2"
+          "w-full h-full min-h-60 flex flex-col justify-center items-center bg-rose-100 dark:bg-rose-900 text-red text-center rounded-md p-2"
         }
       >
-        <div className="mb-2 text-sm text-rose-500">{error}</div>
+        <div className="mb-2 text-sm text-rose-500 dark:text-rose-400">{error}</div>
       </div>
     );
   }
@@ -169,11 +169,11 @@ export default function ViewOracleReport() {
     return (
       <div
         className={
-          "w-full h-full min-h-60 flex flex-col justify-center items-center "
+          "w-full h-full min-h-60 flex flex-col justify-center items-center"
         }
       >
-        <div className="mb-2 text-sm text-gray-400">Fetching</div>
-        <SpinningLoader classNames="w-5 h-5 text-gray-500" />
+        <div className="mb-2 text-sm text-gray-400 dark:text-gray-500">Fetching</div>
+        <SpinningLoader classNames="w-5 h-5 text-gray-500 dark:text-gray-400" />
       </div>
     );
   }
@@ -195,11 +195,11 @@ export default function ViewOracleReport() {
       }}
     >
       <div className="relative">
-        <div className="flex flex-row fixed min-h-12 bottom-0 w-full bg-gray-50 md:bg-transparent md:w-auto md:sticky md:top-0 p-2 z-10 md:h-0">
+        <div className="flex flex-row fixed min-h-12 bottom-0 w-full bg-gray-50 dark:bg-gray-800 md:bg-transparent dark:md:bg-transparent md:w-auto md:sticky md:top-0 p-2 z-10 md:h-0">
           {/* @ts-ignore */}
           <Button
             onClick={() => router.push("/oracle-frontend")}
-            className="bg-transparent border-none hover:bg-transparent"
+            className="bg-transparent border-none hover:bg-transparent text-gray-700 dark:text-gray-300"
           >
             <LeftOutlined className="w-2" /> All reports
           </Button>
@@ -207,7 +207,7 @@ export default function ViewOracleReport() {
           {/* @ts-ignore */}
           <Button
             onClick={() => setFeedbackModalOpen(true)}
-            className="ml-auto"
+            className="ml-auto text-gray-700 dark:text-gray-300"
           >
             Give feedback
           </Button>
@@ -219,6 +219,7 @@ export default function ViewOracleReport() {
             onCancel={() => setFeedbackModalOpen(false)}
             title="Write your feedback and press submit"
             okText="Submit"
+            className="dark:bg-gray-800 dark:text-gray-200"
           >
             <TextArea
               autoResize={true}
@@ -234,7 +235,7 @@ export default function ViewOracleReport() {
           editorProps={{
             attributes: {
               class:
-                "oracle-report-tiptap prose prose-base mx-auto p-2 mb-12 md:mb-0 focus:outline-none",
+                "oracle-report-tiptap prose prose-base dark:prose-invert mx-auto p-2 mb-12 md:mb-0 focus:outline-none",
             },
           }}
         />

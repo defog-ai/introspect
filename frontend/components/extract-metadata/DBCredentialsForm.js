@@ -134,69 +134,54 @@ const DbCredentialsForm = ({
   };
 
   return (
-    <div className="mx-auto bg-white shadow-md rounded-md p-6 mt-8 w-full md:w-2/3">
-      <div className="text-2xl mb-4 text-center">
-        <DatabaseOutlined className="text-2xl mr-2" />
-        Database Credentials
+    <div className="space-y-4 dark:bg-dark-bg-primary">
+      <div className="flex flex-col items-center text-2xl mb-10">
+        <DatabaseOutlined className="text-4xl mb-2 dark:text-dark-text-primary" />
+        <span className="dark:text-dark-text-primary">Update Database Credentials</span>
       </div>
       <Form
         form={form}
-        onFinish={handleSubmit}
-        initialValues={{ db_type: dbData.db_type, ...dbData }}
         layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={{
+          db_type: dbType,
+          ...dbData.db_creds,
+        }}
+        className="dark:text-dark-text-primary"
       >
-        <Form.Item label="Database Type">
+        <Form.Item
+          label="Database Type"
+          name="db_type"
+          className="dark:text-dark-text-primary"
+        >
           <Select
             options={dbOptions}
             onChange={handleDbTypeChange}
-            value={dbType}
-            loading={loading}
-            disabled={loading}
+            className="dark:bg-dark-bg-secondary dark:border-dark-border"
           />
         </Form.Item>
-        {dbCredOptions[dbType]?.map((field) => (
+
+        {dbCredOptions[dbType].map((field) => (
           <Form.Item
             key={field}
-            name={field}
             label={field.charAt(0).toUpperCase() + field.slice(1)}
-            rules={
-              dbType !== "sqlserver"
-                ? [{ required: true, message: `Please input the ${field}!` }]
-                : []
-            }
+            name={field}
+            className="dark:text-dark-text-primary"
           >
-            {field !== "credentials_file_content" ? (
-              <Input
-                type={
-                  field === "password" || field === "access_token"
-                    ? "password"
-                    : "text"
-                }
-                placeholder={
-                  dbType === "sqlserver" && field === "database"
-                    ? "Leave blank if you want to query multiple databases inside the same server"
-                    : placeholders?.[field] || `Enter ${field}`
-                }
-                className="w-full p-2 border rounded bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={loading}
-              />
-            ) : (
-              <Input.TextArea
-                placeholder="Paste the contents of your credentials file here"
-                className="w-full p-2 border rounded bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={loading}
-                rows={10}
-              />
-            )}
+            <Input
+              placeholder={placeholders[field] || `Enter ${field}`}
+              type={field === "password" ? "password" : "text"}
+              className="dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary"
+            />
           </Form.Item>
         ))}
+
         <Form.Item>
           <Button
             type="primary"
             htmlType="submit"
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white"
             loading={loading}
-            disabled={loading}
+            className="w-full dark:border-dark-border"
           >
             Update
           </Button>

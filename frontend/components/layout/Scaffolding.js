@@ -5,6 +5,7 @@ import Link from "next/link";
 import { NavBar } from "@defogdotai/agents-ui-components/core-ui";
 import { usePathname } from "next/navigation";
 import { twMerge } from "tailwind-merge";
+import { useTheme } from "../context/ThemeContext";
 
 const Scaffolding = ({
   id,
@@ -16,6 +17,7 @@ const Scaffolding = ({
 }) => {
   const [items, setItems] = useState([]);
   const [context, setContext] = useContext(UserContext);
+  const [darkMode] = useTheme();
 
   const router = useRouter();
 
@@ -52,11 +54,11 @@ const Scaffolding = ({
         //   title: "View your notebook",
         //   href: "/view-notebooks",
         // },
-        {
-          key: "manage-tools",
-          title: "Manage tools",
-          href: "/manage-tools",
-        },
+        // {
+        //   key: "manage-tools",
+        //   title: "Manage tools",
+        //   href: "/manage-tools",
+        // },
         {
           key: "test-regression",
           title: "Test Regression",
@@ -121,7 +123,21 @@ const Scaffolding = ({
   return (
     <div className={twMerge(containerClassNames, rootClassNames)}>
       {items.length ? (
-        <NavBar rootClassNames="border-b" items={items}></NavBar>
+        <NavBar
+          rootClassNames={twMerge(
+            "border-b dark:border-dark-border",
+            "bg-white dark:bg-dark-bg-primary",
+            "text-primary-text dark:text-dark-text-primary"
+          )}
+          items={items.map((item) => ({
+            ...item,
+            classNames: twMerge(
+              item.classNames,
+              "hover:bg-gray-100 dark:hover:bg-dark-hover",
+              item.current && "bg-gray-100 dark:bg-dark-hover"
+            ),
+          }))}
+        />
       ) : (
         <></>
       )}

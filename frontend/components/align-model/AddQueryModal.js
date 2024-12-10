@@ -30,7 +30,7 @@ const AddQueryModal = ({
   return (
     <Modal
       title={
-        <div className="flex flex-col justify-center items-center text-xl mb-4">
+        <div className="flex flex-col justify-center items-center text-xl mb-4 dark:text-dark-text-primary">
           <StarFilled
             className="text-yellow-500 mb-4 font-bold"
             style={{ fontSize: "3em" }}
@@ -56,7 +56,7 @@ const AddQueryModal = ({
           value={newSql}
           onChange={(e) => setNewSql(e.target.value)}
           rows={4}
-          className="min-h-52 font-mono text-sm p-2 bg-gray-50 border border-gray-300"
+          className="min-h-52 font-mono text-sm p-2 bg-gray-50 dark:bg-dark-bg-secondary border border-gray-300 dark:border-dark-border dark:text-dark-text-primary"
         />
       </Spin>
 

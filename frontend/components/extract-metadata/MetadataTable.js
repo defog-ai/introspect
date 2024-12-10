@@ -210,7 +210,7 @@ const MetadataTable = ({
             optionFilterProp="children"
             onChange={handleFilterChange}
             allowClear={true}
-            className="w-full mt-1 focus:outline-none focus:ring-0"
+            className="w-full mt-1 focus:outline-none focus:ring-0 dark:bg-dark-bg-secondary dark:border-dark-border"
             options={[
               ...uniqueTableNames.map((table) => ({
                 value: table,
@@ -365,64 +365,71 @@ const MetadataTable = ({
   };
 
   return (
-    <div className="mx-auto bg-white shadow-md rounded-md p-6">
-      <div className="flex flex-col items-center text-2xl mb-10">
-        <TableOutlined className="text-4xl mb-2" />
-        <span>View and Update Metadata</span>
-      </div>
-      <Form
-        className="flex flex-col w-full mb-4"
-        form={form}
-        onFinish={reIndexTables}
-      >
-        <Form.Item
-          className="w-full"
-          label="Select tables"
-          name="tables"
-          initialValue={selectedTablesForIndexing}
+    <div className="space-y-4 dark:bg-dark-bg-primary">
+      <div className="space-y-2">
+        <div className="text-lg font-medium dark:text-dark-text-primary">
+          View and Update Metadata
+        </div>
+        <Form
+          className="flex flex-col w-full mb-4 dark:bg-dark-bg-secondary"
+          form={form}
+          onFinish={reIndexTables}
         >
-          <Select
-            mode="tags"
-            placeholder="Add tables to index"
-            onChange={setSelectedTablesForIndexing}
-            options={(tables || []).map((table) => ({
-              value: table,
-              label: table,
-            }))}
-            dropdownRender={(menu) => (
-              <>
-                <div
-                  style={{ padding: "8px", justifyContent: "space-between" }}
-                >
-                  <button
-                    type="button"
-                    className="mr-4 px-4 py-1 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200 transition-colors duration-200"
-                    onClick={addAllTables}
+          <Form.Item
+            className="w-full dark:bg-dark-bg-secondary"
+            label="Select tables"
+            name="tables"
+            initialValue={selectedTablesForIndexing}
+          >
+            <Select
+              mode="tags"
+              placeholder="Add tables to index"
+              onChange={setSelectedTablesForIndexing}
+              options={(tables || []).map((table) => ({
+                value: table,
+                label: table,
+              }))}
+              dropdownRender={(menu) => (
+                <>
+                  <div
+                    style={{
+                      padding: "8px",
+                      justifyContent: "space-between",
+                    }}
                   >
-                    Add All ➕
-                  </button>
-                  <button
-                    type="button"
-                    className="px-4 py-1 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200 transition-colors duration-200"
-                    onClick={clearAllTables}
-                  >
-                    Clear All ❌
-                  </button>
-                </div>
-                <hr style={{ margin: "4px 0" }} />
-                {menu}
-              </>
-            )}
-          />
-        </Form.Item>
+                    <button
+                      type="button"
+                      className="mr-4 px-4 py-1 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200 transition-colors duration-200 dark:bg-dark-bg-secondary dark:border-dark-border"
+                      onClick={addAllTables}
+                    >
+                      Add All ➕
+                    </button>
+                    <button
+                      type="button"
+                      className="px-4 py-1 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200 transition-colors duration-200 dark:bg-dark-bg-secondary dark:border-dark-border"
+                      onClick={clearAllTables}
+                    >
+                      Clear All ❌
+                    </button>
+                  </div>
+                  <hr style={{ margin: "4px 0" }} />
+                  {menu}
+                </>
+              )}
+              className="dark:bg-dark-bg-secondary dark:border-dark-border"
+            />
+          </Form.Item>
+        </Form>
+
         <Button
           type="dashed"
           htmlType="submit"
-          className="w-64 bg-white border border-gray-300 text-blue-500 hover:bg-blue-500 hover:text-white self-center"
+          className="w-64 bg-white border border-gray-300 text-blue-500 hover:bg-blue-500 hover:text-white self-center dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary dark:hover:bg-dark-hover"
         >
           Extract Table Metadata
         </Button>
-      </Form>
+      </div>
+
       {loading ? (
         <div className="flex justify-center items-center">
           <Spin size="large" tip="Fetching metadata..." />
@@ -431,7 +438,7 @@ const MetadataTable = ({
         <>
           <div className="flex justify-center my-4 gap-4">
             <Button
-              className="rounded bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              className="rounded bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:border-dark-border dark:hover:bg-dark-hover"
               loading={loading}
               onClick={updateMetadata}
             >
@@ -439,7 +446,7 @@ const MetadataTable = ({
             </Button>
 
             <Button
-              className="rounded px-2 py-1 text-xs font-semibold text-black shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              className="rounded px-2 py-1 text-xs font-semibold text-black shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:border-dark-border dark:hover:bg-dark-hover"
               loading={loading}
               onClick={downloadMetadata}
             >
@@ -447,7 +454,7 @@ const MetadataTable = ({
             </Button>
 
             <Button
-              className="rounded px-2 py-1 text-xs font-semibold text-black shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              className="rounded px-2 py-1 text-xs font-semibold text-black shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:border-dark-border dark:hover:bg-dark-hover"
               loading={loading}
               onClick={uploadMetadata}
             >
@@ -458,7 +465,7 @@ const MetadataTable = ({
             message="This table is a preview for your changes. Please hit 'Save Changes' to update metadata on the defog server, or upload your metadata as a CSV"
             type="info"
             showIcon
-            className="mb-4"
+            className="mb-4 dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary"
           />
 
           <Table
@@ -474,6 +481,7 @@ const MetadataTable = ({
             onChange={(pagination) => {
               setPageSize(pagination.pageSize);
             }}
+            className="dark:bg-dark-bg-secondary"
           />
         </>
       )}

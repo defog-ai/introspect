@@ -213,7 +213,7 @@ const ExtractMetadata = () => {
     <>
       <Meta />
       <Scaffolding id={"manage-database"} userType={"admin"}>
-        <div className="w-full">
+        <div className="w-full dark:bg-dark-bg-primary">
           {apiKeyNames.length > 1 ? (
             <Row type={"flex"} height={"100vh"}>
               <Col span={24} style={{ paddingBottom: "1em" }}>
@@ -226,6 +226,7 @@ const ExtractMetadata = () => {
                     return { value: item, key: item, label: item };
                   })}
                   value={apiKeyName}
+                  className="dark:bg-dark-bg-secondary dark:border-dark-border"
                 />
               </Col>
             </Row>
@@ -235,17 +236,21 @@ const ExtractMetadata = () => {
               loading={loading}
               isDatabaseSetupWell={dbConnectionstatus}
               isTablesIndexed={isTablesIndexed}
-              hasNonEmptyDescription={
-                hasNonEmptyDescription && columnDescriptionCheck
-              }
+              hasNonEmptyDescription={hasNonEmptyDescription && columnDescriptionCheck}
             />
           </div>
 
-          <Tabs
-            rootClassNames="w-full mt-4"
-            tabs={tabs}
-            disableSingleSelect={true}
-          />
+          <div className="dark:bg-dark-bg-primary">
+            <Tabs
+              rootClassNames="w-full mt-4 dark:bg-dark-bg-primary"
+              tabs={tabs.map(tab => ({
+                ...tab,
+                className: 'dark:bg-dark-bg-primary dark:text-dark-text-primary dark:hover:bg-dark-hover dark:border-dark-border',
+                selectedClassName: 'dark:bg-dark-hover dark:text-dark-text-primary dark:border-b-2 dark:border-blue-500'
+              }))}
+              disableSingleSelect={true}
+            />
+          </div>
         </div>
       </Scaffolding>
     </>
