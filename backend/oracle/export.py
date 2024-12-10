@@ -105,7 +105,7 @@ async def generate_report(
             api_key=api_key,
             analysis_id=analysis_id,
             report_id=report_id,
-            json=analysis,
+            analysis_json=analysis,
             status="done",
             mdx=analyses_mdx[analysis_id],
         )
