@@ -3,7 +3,6 @@ import {
   OracleReportContext,
 } from "$components/context/OracleReportContext";
 import { extensions, generateNewAnalysis, parseMDX } from "$utils/oracleUtils";
-import { sentenceCase } from "$utils/utils";
 import {
   Input,
   SpinningLoader,
@@ -21,7 +20,10 @@ export function OracleAnalysisFollowOn({
 }) {
   const [analyses, setAnalyses] = useState(initialAnalyses);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [loadingAnalysisId, setLoadingAnalysisId] = useState<string | null>(
+    null
+  );
 
   const ctr = useRef(null);
 
@@ -36,9 +38,10 @@ export function OracleAnalysisFollowOn({
           return <OracleAnalysis analysis={analysis} />;
         })}
         {loading && (
-          <div className="rounded-lg border drop-shadow-md bg-white py-4 h-20 flex items-center justify-center">
-            <SpinningLoader />
-          </div>
+          <OracleAnalysis
+            analysis={{ json: { analysis_id: loadingAnalysisId } }}
+            isLoader={true}
+          />
         )}
       </div>
       <div className="sticky h-0 bottom-0 overflow-visible">
@@ -55,6 +58,9 @@ export function OracleAnalysisFollowOn({
             try {
               setLoading(true);
               const analysisId = crypto.randomUUID();
+
+              setLoadingAnalysisId(analysisId);
+
               generateNewAnalysis(
                 reportId,
                 analysisId,
@@ -73,14 +79,18 @@ export function OracleAnalysisFollowOn({
                   setAnalyses([...analyses, newAnalysis]);
 
                   setLoading(false);
+
+                  setLoadingAnalysisId(null);
                 })
                 .catch((e) => {
                   console.error(e);
                   setLoading(false);
+                  setLoadingAnalysisId(null);
                 });
             } catch (error) {
               console.error(error);
               setLoading(false);
+              setLoadingAnalysisId(null);
             }
           }}
           placeholder="Explore further"

@@ -449,3 +449,34 @@ export const getReportAnalysesMdx = async (
 
   return data.analyses_mdx;
 };
+
+export const getAnalysisStatus = async (
+  reportId: string,
+  analysisId: string,
+  keyName: string,
+  token: string
+) => {
+  const res = await fetch(setupBaseUrl("http", `oracle/get_analysis_status`), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/pdf",
+      // disable cors for the download
+      mode: "no-cors",
+    },
+    body: JSON.stringify({
+      key_name: keyName,
+      token: token,
+      report_id: reportId,
+      analysis_id: analysisId,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch analysis status");
+  }
+
+  const data = await res.json();
+
+  return data.status;
+};

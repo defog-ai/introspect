@@ -33,7 +33,7 @@ export interface Working {
 }
 
 export interface Analysis {
-  analysis_id: number;
+  analysis_id: string;
   generated_qn: string;
   independent_variable_group: IndependentVariableGroup;
   artifacts: Artifacts;

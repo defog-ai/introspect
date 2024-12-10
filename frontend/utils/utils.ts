@@ -97,7 +97,7 @@ export function toLowerCase(str: string) {
   }
 }
 
-export const sentenceCase = (str: string) => {
+export const toSentenceCase = (str: string) => {
   if (!str) return "";
   return str[0].toUpperCase() + str.slice(1);
 };
