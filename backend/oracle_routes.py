@@ -298,7 +298,7 @@ async def generate_analysis(req: GenerateAnalysis):
         api_key=api_key,
         report_id=str(req.report_id),
         analysis_id=req.analysis_id,
-        json={},
+        analysis_json={},
         status="Exploring your data to answer your question",
         mdx=None,
     )
@@ -382,7 +382,7 @@ async def generate_analysis(req: GenerateAnalysis):
         analysis_id=analysis["analysis_id"],
         report_id=req.report_id,
         status="done",
-        json=analysis,
+        analysis_json=analysis,
         mdx=mdx,
     )
 

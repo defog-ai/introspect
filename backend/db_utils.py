@@ -262,7 +262,7 @@ if ORACLE_ENABLED:
         report_id = Column(Integer, primary_key=True)
         analysis_id = Column(Text, primary_key=True)
         status = Column(Text, default="pending")
-        json = Column(JSON)
+        analysis_json = Column(JSON)
         mdx = Column(Text, default=None)
 
     class OracleClarifications(Base):
@@ -1479,7 +1479,7 @@ async def add_or_update_analysis(
     api_key: str,
     analysis_id: str,
     report_id: int,
-    json: Dict,
+    analysis_json: Dict,
     status: str = "pending",
     mdx: str = None,
 ) -> str:
@@ -1502,7 +1502,7 @@ async def add_or_update_analysis(
             analysis = result.scalar_one_or_none()
             if analysis:
                 analysis.status = status
-                analysis.json = json
+                analysis.analysis_json = analysis_json
                 analysis.mdx = mdx
                 session.commit()
             else:
@@ -1511,7 +1511,7 @@ async def add_or_update_analysis(
                     api_key=api_key,
                     analysis_id=analysis_id,
                     status=status,
-                    json=json,
+                    analysis_json=analysis_json,
                     mdx=mdx,
                 )
                 session.execute(stmt)

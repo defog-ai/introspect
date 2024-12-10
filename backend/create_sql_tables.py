@@ -162,7 +162,7 @@ oracle_analyses = Table(
     Column("report_id", Integer, primary_key=True),
     Column("analysis_id", Text, primary_key=True),
     Column("status", Text, default="pending", nullable=True),
-    Column("json", JSON, nullable=True),
+    Column("analysis_json", JSON, nullable=True),
     Column("mdx", Text, default=None, nullable=True),
 )
 

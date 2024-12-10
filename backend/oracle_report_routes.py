@@ -332,7 +332,7 @@ async def get_report_analysis_list(req: ReportRequest):
         result = session.execute(stmt).scalars().all()
         analyses = []
         for row in result:
-            if not row.json or not row.mdx:
+            if not row.analysis_json or not row.mdx:
                 continue
             analysis = {
                 column.name: getattr(row, column.name)
