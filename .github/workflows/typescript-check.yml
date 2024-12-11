@@ -3,6 +3,8 @@ name: TypeScript Type Check
 on:
   pull_request:
     branches: [main]
+    paths:
+      - "frontend/**"
 
 jobs:
   typecheck:
