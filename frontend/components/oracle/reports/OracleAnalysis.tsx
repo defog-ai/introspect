@@ -83,8 +83,8 @@ export const OracleAnalysis = ({
             executiveSummary: {
               title: "",
               introduction: "",
-              recommendations: []
-            }
+              recommendations: [],
+            },
           }}
         >
           <EditorProvider
