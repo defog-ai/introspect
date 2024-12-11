@@ -31,7 +31,7 @@ const RecommendationTitleComponent = ({ node }: NodeViewProps) => {
         onClick={() => setDrawerOpen(true)}
       >
         <NodeViewContent />
-        <span className="absolute bottom-1 ml-1 text-right text-gray-400 text-sm font-light">
+        <span className="text-gray-400 text-sm font-light dark:text-gray-200">
           ✨ Dig Deeper
         </span>
       </p>
