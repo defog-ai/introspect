@@ -14,6 +14,8 @@ import { ConfigProvider } from "antd";
 import { useTheme } from "$components/context/ThemeContext";
 import { lightTheme, darkTheme } from "../styles/theme";
 
+console.log("Test action");
+
 function AppContent({ Component, pageProps }) {
   const [context, setContext] = useState({});
   const [darkMode] = useTheme();
