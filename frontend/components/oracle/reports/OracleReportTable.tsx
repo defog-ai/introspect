@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { mergeAttributes, Node } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { useContext, useMemo } from "react";

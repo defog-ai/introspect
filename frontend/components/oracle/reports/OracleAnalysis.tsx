@@ -74,9 +74,17 @@ export const OracleAnalysis = ({
       <div className="rounded-lg border drop-shadow-md bg-white py-4">
         <OracleReportContext.Provider
           value={{
-            tables: analysis.tables,
-            multiTables: analysis.multiTables,
-            images: analysis.images,
+            tables: analysis.tables || {},
+            multiTables: analysis.multiTables || {},
+            images: analysis.images || {},
+            keyName,
+            reportId,
+            analyses: {},
+            executiveSummary: {
+              title: "",
+              introduction: "",
+              recommendations: []
+            }
           }}
         >
           <EditorProvider

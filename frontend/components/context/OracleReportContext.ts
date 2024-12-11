@@ -1,4 +1,3 @@
-import { Summary } from "$utils/oracleUtils";
 import { createContext } from "react";
 
 export interface IndependentVariableGroup {
@@ -52,8 +51,8 @@ interface MultiTable {
 }
 
 interface Table {
-  columns: [];
-  data: [];
+  columns: any[];
+  data: any[];
   id?: string;
   type?: string;
   csv?: string;
@@ -133,5 +132,9 @@ export const OracleReportContext = createContext<OracleReportContext>({
   tables: {},
   images: {},
   analyses: {},
-  executiveSummary: "",
+  executiveSummary: {
+    title: "",
+    introduction: "",
+    recommendations: []
+  }
 });

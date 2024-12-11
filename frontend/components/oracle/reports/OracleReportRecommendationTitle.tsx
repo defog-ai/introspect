@@ -1,14 +1,20 @@
 import { mergeAttributes, Node } from "@tiptap/core";
-import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
-import React, { useContext, useMemo, useRef, useState } from "react";
+import { NodeViewContent, NodeViewProps, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import React, { useContext, useRef, useState } from "react";
 import { OracleReportContext } from "../../context/OracleReportContext";
 import { Drawer } from "antd";
 import { OracleAnalysisFollowOn } from "./OracleAnalysisFollowOn";
 
-const RecommendationTitleComponent = ({ node }) => {
+interface RecommendationTitleAttrs {
+  analysis_reference: string;
+  idx: number;
+}
+
+const RecommendationTitleComponent = ({ node }: NodeViewProps) => {
   const { analyses } = useContext(OracleReportContext);
-  const analysisReference = useRef(node.attrs.analysis_reference + "" || "");
-  const recommendationIdx = useRef(node.attrs.idx);
+  const attrs = node.attrs as RecommendationTitleAttrs;
+  const analysisReference = useRef(attrs.analysis_reference + "" || "");
+  const recommendationIdx = useRef(attrs.idx);
 
   const analysisIds = useRef(analysisReference.current.split(","));
 
@@ -24,7 +30,7 @@ const RecommendationTitleComponent = ({ node }) => {
         className="relative font-bold text-lg cursor-pointer"
         onClick={() => setDrawerOpen(true)}
       >
-        {node.content.content?.[0]?.text || ""}
+        <NodeViewContent />
         <span className="absolute bottom-1 ml-1 text-right text-gray-400 text-sm font-light">
           ✨ Dig Deeper
         </span>
@@ -53,9 +59,11 @@ export const RecommendationTitle = Node.create({
     return {
       analysis_reference: {
         default: "",
+        isRequired: true,
       },
       idx: {
         default: 100000,
+        isRequired: true,
       },
     };
   },

@@ -1,5 +1,5 @@
 import { mergeAttributes, Node } from "@tiptap/core";
-import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import { NodeViewProps, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { useContext, useMemo, useState } from "react";
 import { OracleReportContext } from "$components/context/OracleReportContext";
 import { Table, Tabs } from "@defogdotai/agents-ui-components/core-ui";
@@ -7,19 +7,29 @@ import ErrorBoundary from "$components/layout/ErrorBoundary";
 import { ChartContainer } from "@defogdotai/agents-ui-components/agent";
 import { TABLE_TYPE_TO_NAME } from "$utils/oracleUtils";
 
-function OracleReportMultiTable(props) {
+interface OracleReportMultiTableProps {
+  node: {
+    attrs: {
+      id: string;
+    };
+  };
+}
+
+function OracleReportMultiTable({ node }: NodeViewProps) {
   const { multiTables, tables } = useContext(OracleReportContext);
 
-  const { tableIds } = multiTables[props.node.attrs.id] || { tableIds: [] };
+  const multiTableId = node.attrs.id as string;
+  const multiTableEntry = multiTables[multiTableId];
+  const tableIdList = Array.isArray(multiTableEntry?.tableIds) ? multiTableEntry.tableIds : [];
 
-  const [selectedTableId, setSelectedTableId] = useState(
-    tableIds.length ? tableIds[0] : null
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(
+    tableIdList.length > 0 ? tableIdList[0] : null
   );
 
   const tabs = useMemo(() => {
     // tabs within tabs
-    const tableTabs = {};
-    tableIds.forEach((tableId) => {
+    const tableTabs: Record<string, any[]> = {};
+    tableIdList.forEach((tableId) => {
       const { columns, data, attributes } = tables[tableId] || {};
       tableTabs[tableId] = [
         {
@@ -64,9 +74,9 @@ function OracleReportMultiTable(props) {
   return (
     <NodeViewWrapper className="react-component react-multitable-container not-prose lg:-mx-40 my-10">
       {/* chips to select tables if there's more than one table */}
-      {tableIds && tableIds.length > 1 && (
+      {tableIdList && tableIdList.length > 1 && (
         <div className="table-selection flex flex-row gap-2 w-100 overflow-scroll mb-4">
-          {tableIds.map((id) => (
+          {tableIdList.map((id) => (
             <div
               className={`p-2 bg-gray-200 border border-gray-300 rounded-full cursor-pointer whitespace-nowrap text-xs ${selectedTableId === id ? "bg-gray-600 border-transparent text-white" : "text-gray-500 hover:bg-gray-300"}`}
               key={id}
@@ -82,8 +92,7 @@ function OracleReportMultiTable(props) {
 
       {tabs[selectedTableId] && (
         <Tabs
-          // @ts-ignore
-          tabs={tabs[selectedTableId]}
+          tabs={tabs[selectedTableId].filter(Boolean)}
           size="small"
           contentClassNames="border"
           defaultSelected={selectedTableId}
@@ -101,6 +110,7 @@ export const OracleReportMultiTableExtension = Node.create({
     return {
       id: {
         default: null,
+        isRequired: true,
       },
     };
   },

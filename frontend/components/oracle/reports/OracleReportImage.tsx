@@ -1,14 +1,14 @@
 import { mergeAttributes, Node } from "@tiptap/core";
-import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import { NodeViewProps, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { useContext, useEffect, useState } from "react";
 import { OracleReportContext } from "$components/context/OracleReportContext";
 import { SpinningLoader } from "@defogdotai/agents-ui-components/core-ui";
 import { getReportImage } from "$utils/oracleUtils";
 
-function OracleReportImage(props) {
+function OracleReportImage({ node }: NodeViewProps) {
   const { images, keyName, reportId } = useContext(OracleReportContext);
 
-  const { src, alt } = images[props.node.attrs.id] || {};
+  const { src, alt } = images[node.attrs.id as string] || {};
 
   const [base64, setBase64] = useState<string | null>(null);
 
@@ -54,6 +54,7 @@ export const OracleReportImageExtension = Node.create({
     return {
       id: {
         default: null,
+        isRequired: true,
       },
     };
   },

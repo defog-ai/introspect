@@ -2,8 +2,9 @@ import { parseData } from "@defogdotai/agents-ui-components/agent";
 import setupBaseUrl from "./setupBaseUrl";
 import type {
   Analysis,
-  Summary,
 } from "$components/context/OracleReportContext";
+
+export type { Analysis };
 
 import { OracleReportMultiTableExtension } from "$components/oracle/reports/OracleReportMultiTable";
 import { OracleReportTableExtension } from "$components/oracle/reports/OracleReportTable";
@@ -167,12 +168,15 @@ export const TABLE_TYPE_TO_NAME = {
 
 class MDX {
   mdx: string;
-  tables: {};
-  multiTables: {};
-  images: {};
+  tables: { [key: string]: { columns: any[]; data: any[]; attributes?: { [key: string]: string }; fullText?: string } };
+  multiTables: { [key: string]: { tableIds: string[]; attributes?: { [key: string]: string }; fullText?: string } };
+  images: { [key: string]: { src: string; alt: string; attributes?: { [key: string]: string }; fullText?: string } };
 
   constructor(mdx: string) {
     this.mdx = mdx;
+    this.tables = {};
+    this.multiTables = {};
+    this.images = {};
   }
 
   parseTables = () => {

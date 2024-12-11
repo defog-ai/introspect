@@ -27,8 +27,6 @@ export function OracleAnalysisFollowOn({
 
   const ctr = useRef(null);
 
-  const searchRef = useRef(null);
-
   const { reportId, keyName } = useContext(OracleReportContext);
 
   return (
@@ -54,7 +52,6 @@ export function OracleAnalysisFollowOn({
           disabled={loading}
           rootClassNames="bg-gray-50 rounded-lg border border-gray-300 shadow-custom overflow-hidden p-2 h-20 absolute w-10/12 bottom-4 left-0 right-0 mx-auto mb-1"
           inputClassNames="h-9 border-b-2 border-b-gray-300/50"
-          ref={searchRef}
           onPressEnter={(e) => {
             if (!e.target.value) return;
 
@@ -76,9 +73,13 @@ export function OracleAnalysisFollowOn({
                 analyses.map((d) => d.analysis_json)
               )
                 .then((d) => {
-                  const newAnalysis = {
-                    ...parseMDX(d.mdx),
-                    analysis_json: d.analysis,
+                  const newAnalysis: AnalysisParsed = {
+                    analysis_id: analysisId,
+                    mdx: d.mdx,
+                    tables: d.tables || {},
+                    multiTables: d.multiTables || {},
+                    images: d.images || {},
+                    analysis_json: d.analysis
                   };
 
                   setAnalyses([...analyses, newAnalysis]);
