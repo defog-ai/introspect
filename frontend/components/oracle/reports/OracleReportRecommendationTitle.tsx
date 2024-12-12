@@ -1,5 +1,10 @@
 import { mergeAttributes, Node } from "@tiptap/core";
-import { NodeViewContent, NodeViewProps, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import {
+  NodeViewContent,
+  NodeViewProps,
+  NodeViewWrapper,
+  ReactNodeViewRenderer,
+} from "@tiptap/react";
 import React, { useContext, useRef, useState } from "react";
 import { OracleReportContext } from "../../context/OracleReportContext";
 import { Drawer } from "antd";
@@ -26,7 +31,7 @@ const RecommendationTitleComponent = ({ node }: NodeViewProps) => {
 
   return (
     <NodeViewWrapper className="react-component not-prose underline underline-offset-2 group">
-      <p
+      <div
         className="relative font-bold text-lg cursor-pointer"
         onClick={() => setDrawerOpen(true)}
       >
@@ -34,7 +39,7 @@ const RecommendationTitleComponent = ({ node }: NodeViewProps) => {
         <span className="text-gray-400 text-sm font-light dark:text-gray-200">
           ✨ Dig Deeper
         </span>
-      </p>
+      </div>
       <Drawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}

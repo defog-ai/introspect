@@ -101,3 +101,17 @@ export const toSentenceCase = (str: string) => {
   if (!str) return "";
   return str[0].toUpperCase() + str.slice(1);
 };
+
+/**
+ * Clips a string to a certain length and optionally adds an ellipsis if the string is longer than the length
+ */
+export const clipStringToLength = (
+  str: string,
+  length: number,
+  addEllipsis = true
+) => {
+  if (str.length > length) {
+    return str.slice(0, length) + (addEllipsis ? "..." : "");
+  }
+  return str;
+};
