@@ -2,6 +2,7 @@ import asyncio
 import os
 import time
 import traceback
+import json
 from typing import Any, Dict
 from uuid import uuid4
 
@@ -31,7 +32,7 @@ from utils_sql import execute_sql
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 MAX_ANALYSES = 5
-MAX_ROUNDS = 1
+MAX_ROUNDS = 2
 RETRY_DATA_FETCH = 1
 RETRY_CHART_GEN = 1
 
@@ -120,6 +121,7 @@ async def explore_data(
     while True:
         tasks = []
         generated_qns_summaries = []
+        LOGGER.info(f"Starting round {round} of analysis")
         for question_dict in generated_qns:
             qn_id += 1
             # question used by 1st round question generation
@@ -194,7 +196,23 @@ async def explore_data(
                     LOGGER.info(
                         "Background task of updating status terminated successfully."
                     )
+        # Convert answers to serializable format
+        serializable_answers = []
+        for ans in answers:
+            if ans is not None:
+                # Convert all values to strings to ensure JSON serialization
+                serializable_ans = {
+                    k: (
+                        str(v)
+                        if not isinstance(v, (str, int, float, bool, list, dict))
+                        else v
+                    )
+                    for k, v in ans.items()
+                }
+                serializable_answers.append(serializable_ans)
 
+        with open(f"answers_round_{round}.json", "w") as f:
+            json.dump(serializable_answers, f, indent=2)
         # remove None answers and add to analyses
         non_empty_answers = []
         for ans in answers:
