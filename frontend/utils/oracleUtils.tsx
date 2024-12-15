@@ -23,9 +23,10 @@ export const extensions = [
 ];
 
 /**
- *
- * Parses all matches for an HTML-esque tag from the given string.
- * Returns the matching string, and the attributes that were found.
+ * Parses HTML-like tags from a string and extracts their attributes and content.
+ * @param text - The input text to search for tags
+ * @param tag - The tag name to search for
+ * @returns Array of objects containing the full text, attributes, and inner content of each tag
  */
 function findTag(
   text: string,
@@ -35,40 +36,27 @@ function findTag(
   attributes: { [key: string]: string };
   innerContent: string;
 }[] {
-  // full match of a tag
-  const fullMatchRegex = new RegExp(
-    `<${tag}(\\s+[^>]*?)?>(?:[^<]|<(?!</${tag}>))*?</${tag}>|<${tag}(\\s+[^>]*?)?/>`,
-    "gi"
-  );
+  const results = []; // array of objects to store the results, each object has the key "fullText", "attributes", and "innerContent"
 
-  const attributesRegex = /([\w-]+)=[\{'"]([\s\S]+?)[\}'"][ \>]/gi;
-  // everything *inside* the tag. This doesn't include attributes
-  const innerContentRegex = />([\s\S]+?)</;
-  const matches = [];
-  let match: RegExpExecArray | null;
+  // DO NOT USE REGEX, USE DOM PARSE
 
-  while ((match = fullMatchRegex.exec(text)) !== null) {
-    const fullText = match[0];
-    // we want to find the opening tag separately, to avoid getting attributes of nested tags
-    const tagOpenRegex = new RegExp(`<${tag}([\\s\\S]*?)/?>`, "gi");
-    const tagOpenMatch = tagOpenRegex.exec(fullText);
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, "text/html");
+  const tags = doc.querySelectorAll(tag);
 
+  for (let i = 0; i < tags.length; i++) {
+    const tag = tags[i];
+    const fullText = tag.outerHTML;
     const attributes = {};
-    if (tagOpenMatch) {
-      let attributeMatch;
-      while (
-        (attributeMatch = attributesRegex.exec(tagOpenMatch[0])) !== null
-      ) {
-        attributes[attributeMatch[1]] = attributeMatch[2];
-      }
+    for (let j = 0; j < tag.attributes.length; j++) {
+      const attr = tag.attributes[j];
+      attributes[attr.name] = attr.value;
     }
-
-    const innerContentMatch = innerContentRegex.exec(fullText);
-    const innerContent = innerContentMatch ? innerContentMatch[1] : "";
-    matches.push({ fullText, attributes, innerContent: innerContent });
+    const innerContent = tag.innerHTML;
+    results.push({ fullText, attributes, innerContent });
   }
 
-  return matches;
+  return results;
 }
 
 /**
@@ -98,6 +86,7 @@ export function parseTables(mdx: string) {
     tables: {},
     multiTables: {},
   };
+
   const tables = findTag(mdx, "table");
 
   // replace tables with oracle-tables
@@ -110,7 +99,6 @@ export function parseTables(mdx: string) {
     const { columns, data } = parseData(table.attributes.csv);
     parsed.tables[id] = { columns, data, ...table };
   }
-
   // find multi tables
   const multiTables = findTag(mdx, "multitable");
 
