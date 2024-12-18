@@ -1,5 +1,4 @@
 import { PhotoIcon } from "@heroicons/react/20/solid";
-import { range } from "d3";
 
 export function ToolEditorInput({ name = null, description = null }) {
   return (
