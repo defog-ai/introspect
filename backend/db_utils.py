@@ -1611,12 +1611,12 @@ async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
                 new_outputs = report.outputs
                 new_outputs[TaskStage.EXPORT.value]["executive_summary"] = summary_dict
                 report.outputs = new_outputs
-                
+
                 # Update report title if present in summary_dict
                 title = summary_dict.get("title")
                 if title:
                     report.report_name = title
-                
+
                 flag_modified(report, "outputs")
                 session.commit()
             else:
@@ -1631,11 +1631,13 @@ async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
 def update_report_name(report_id: int, report_name: str) -> None:
     """
     Updates the report_name for a given report_id in the oracle_reports table.
-    
+
     Args:
         report_id: The ID of the report to update
         report_name: The new report name to set
     """
+    from sqlalchemy.orm import Session
+
     with Session(engine) as session:
         stmt = select(OracleReports).where(OracleReports.report_id == report_id)
         result = session.execute(stmt)

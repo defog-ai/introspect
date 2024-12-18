@@ -225,7 +225,6 @@ function OracleDashboard() {
 
       if (res.ok) {
         const data = await res.json();
-        console.log("reports data", data);
         setReportsCallback(data.reports);
         return data.reports;
       } else {
