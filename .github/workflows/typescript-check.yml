@@ -19,14 +19,19 @@ jobs:
         with:
           node-version: "18"
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
       - name: Install Dependencies
         working-directory: ./frontend
-        run: npm install
+        run: pnpm install --no-strict-peer-dependencies
 
       - name: Type Check
         working-directory: ./frontend
-        run: npx tsc --noEmit
+        run: pnpm exec tsc --noEmit
 
       - name: Export Check
         working-directory: ./frontend
-        run: npm run export
+        run: pnpm run export
