@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y python3-pip cmake netcat-openbsd
 
 COPY ./backend /backend
 
-RUN pip install -r /backend/requirements_export.txt
+RUN pip install -r /backend/requirements_export.txt && pip install -r /backend/requirements_oracle.txt
 
 # expose python server port
 EXPOSE 1235
@@ -47,4 +47,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # start startup script
-CMD sh ./startup_export.sh
+CMD sh ./startup.sh
