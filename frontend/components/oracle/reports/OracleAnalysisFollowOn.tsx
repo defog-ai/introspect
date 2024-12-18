@@ -2,13 +2,9 @@ import {
   AnalysisParsed,
   OracleReportContext,
 } from "$components/context/OracleReportContext";
-import { extensions, generateNewAnalysis, parseMDX } from "$utils/oracleUtils";
-import {
-  Input,
-  SpinningLoader,
-} from "@defogdotai/agents-ui-components/core-ui";
-import { EditorProvider } from "@tiptap/react";
-import { useContext, useEffect, useRef, useState } from "react";
+import { generateNewAnalysis } from "$utils/oracleUtils";
+import { Input } from "@defogdotai/agents-ui-components/core-ui";
+import { useContext, useRef, useState } from "react";
 import { OracleAnalysis } from "./OracleAnalysis";
 
 export function OracleAnalysisFollowOn({
@@ -79,7 +75,7 @@ export function OracleAnalysisFollowOn({
                     tables: d.tables || {},
                     multiTables: d.multiTables || {},
                     images: d.images || {},
-                    analysis_json: d.analysis
+                    analysis_json: d.analysis,
                   };
 
                   setAnalyses([...analyses, newAnalysis]);

@@ -468,31 +468,31 @@ function OracleDashboard() {
 
   const getFormattedTimezone = () => {
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const city = timeZone.split('/')[1]?.replace('_', ' ') || timeZone;
+    const city = timeZone.split("/")[1]?.replace("_", " ") || timeZone;
     const offset = new Date().getTimezoneOffset();
     const hours = Math.abs(Math.floor(offset / 60));
     const minutes = Math.abs(offset % 60);
-    const sign = offset < 0 ? '+' : '-';
-    const formattedOffset = `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    const sign = offset < 0 ? "+" : "-";
+    const formattedOffset = `${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
     return `${city} (UTC${formattedOffset})`;
   };
 
   const ReportDateTime = ({ date }) => (
     <div className="text-gray-400 dark:text-gray-500 flex items-center space-x-2">
       <span>
-        {new Date(date).toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
+        {new Date(date).toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
         })}
       </span>
       <span className="text-gray-300 dark:text-gray-600">•</span>
       <span>
-        {new Date(date).toLocaleTimeString('en-GB', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
+        {new Date(date).toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
         })}
       </span>
       <Tooltip title={getFormattedTimezone()} placement="top">
@@ -524,7 +524,9 @@ function OracleDashboard() {
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold mb-2 dark:text-gray-200">The Oracle</h1>
+            <h1 className="text-2xl font-semibold mb-2 dark:text-gray-200">
+              The Oracle
+            </h1>
             <p className="text-gray-600 dark:text-gray-400">
               The Oracle is a background assistant, helping you to dig into your
               dataset for insights. To begin, please let us know what you are
@@ -568,7 +570,9 @@ function OracleDashboard() {
           {clarifications.length > 0 && (
             // show clarifications only when there are some
             <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2 dark:text-gray-200">Clarifications</h2>
+              <h2 className="text-xl font-semibold mb-2 dark:text-gray-200">
+                Clarifications
+              </h2>
               <TaskType taskType={taskType} onChange={handleTaskTypeChange} />
               {clarifications.map((clarificationObject, index) => (
                 <ClarificationItem
@@ -597,9 +601,14 @@ function OracleDashboard() {
         </div>
 
         <div>
-          <h2 className="text-2xl font-semibold mb-4 dark:text-gray-200">Past Reports</h2>
+          <h2 className="text-2xl font-semibold mb-4 dark:text-gray-200">
+            Past Reports
+          </h2>
           {reports.map((report, index) => (
-            <div key={index} className="bg-purple-100 dark:bg-purple-900/30 shadow-lg rounded-lg mb-4 overflow-hidden border border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700 transition-all">
+            <div
+              key={index}
+              className="bg-purple-100 dark:bg-purple-900/30 shadow-lg rounded-lg mb-4 overflow-hidden border border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700 transition-all"
+            >
               <div className="p-4">
                 {report.report_name ? (
                   <>
@@ -609,7 +618,7 @@ function OracleDashboard() {
                     <div className="text-base mb-3 flex items-center justify-between">
                       <div className="text-gray-500 dark:text-gray-400 flex items-center">
                         <FileTextOutlined className="mr-1" />
-                        <span>{String(report.report_id).padStart(3, '0')}</span>
+                        <span>{String(report.report_id).padStart(3, "0")}</span>
                       </div>
                       <ReportDateTime date={report.date_created} />
                     </div>
@@ -619,13 +628,13 @@ function OracleDashboard() {
                     <div className="text-base flex items-center justify-between">
                       <div className="text-gray-700 dark:text-gray-300 font-semibold flex items-center">
                         <FileTextOutlined className="mr-2" />
-                        <span>{String(report.report_id).padStart(3, '0')}</span>
+                        <span>{report?.inputs?.user_question}</span>
                       </div>
                       <ReportDateTime date={report.date_created} />
                     </div>
                   </div>
                 )}
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <ReportStatus status={report.status} />
@@ -652,7 +661,8 @@ function OracleDashboard() {
                         </Button> */}
                       </>
                     )}
-                    {(report.status === "done" || report.status === "error") && (
+                    {(report.status === "done" ||
+                      report.status === "error") && (
                       <Button
                         className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
                         icon={<DeleteOutlined />}

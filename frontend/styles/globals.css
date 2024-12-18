@@ -6,14 +6,14 @@
   * {
     @apply transition-colors duration-200;
   }
-  
+
   body {
     @apply bg-white dark:bg-dark-bg-primary text-primary-text dark:text-dark-text-primary;
   }
 
   /* Style all inputs and buttons for dark mode */
-  input:not(.ant-input), 
-  textarea:not(.ant-input), 
+  input:not(.ant-input),
+  textarea:not(.ant-input),
   select:not(.ant-select) {
     @apply bg-white dark:bg-dark-bg-secondary border-gray-300 dark:border-dark-border;
   }
@@ -30,34 +30,34 @@
   .ant-table {
     @apply bg-dark-bg-secondary;
   }
-  
+
   /* Input styles */
-  .ant-input, 
+  .ant-input,
   .ant-input-affix-wrapper {
     @apply bg-dark-bg-secondary border-dark-border;
   }
-  
+
   /* Select styles */
   .ant-select:not(.ant-select-customize-input) .ant-select-selector {
     @apply bg-dark-bg-secondary border-dark-border;
   }
-  
+
   /* Button styles */
   .ant-btn:not(.ant-btn-primary) {
     @apply bg-dark-bg-secondary border-dark-border;
   }
-  
+
   /* Modal styles */
   .ant-modal-content,
   .ant-modal-header {
     @apply bg-dark-bg-secondary;
   }
-  
+
   /* Dropdown styles */
   .ant-dropdown-menu {
     @apply bg-dark-bg-secondary;
   }
-  
+
   /* Card styles */
   .ant-card {
     @apply bg-dark-bg-secondary;
@@ -66,7 +66,7 @@
   /* Navbar styles */
   nav {
     @apply border-dark-border;
-    
+
     a {
       @apply text-dark-text-primary hover:text-dark-text-primary;
     }
@@ -75,14 +75,14 @@
   /* Tab styles */
   .tab-container {
     @apply bg-dark-bg-primary border-dark-border;
-    
+
     .tab {
       @apply text-dark-text-primary border-dark-border;
-      
+
       &:hover {
         @apply bg-dark-hover;
       }
-      
+
       &.selected {
         @apply bg-dark-hover border-blue-500;
       }
