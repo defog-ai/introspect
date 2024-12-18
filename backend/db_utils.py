@@ -1592,6 +1592,7 @@ async def update_analysis_status(
 async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
     """
     Given a report_id, this endpoint will update the summary_dict in the database in the oracle_reports table.
+    Also updates the report_name if a title is present in the summary_dict.
     """
     from sqlalchemy.orm import Session
 
@@ -1610,6 +1611,12 @@ async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
                 new_outputs = report.outputs
                 new_outputs[TaskStage.EXPORT.value]["executive_summary"] = summary_dict
                 report.outputs = new_outputs
+                
+                # Update report title if present in summary_dict
+                title = summary_dict.get("title")
+                if title:
+                    report.report_name = title
+                
                 flag_modified(report, "outputs")
                 session.commit()
             else:
@@ -1619,3 +1626,19 @@ async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
         err = str(e)[:300]
     finally:
         return err
+
+
+def update_report_name(report_id: int, report_name: str) -> None:
+    """
+    Updates the report_name for a given report_id in the oracle_reports table.
+    
+    Args:
+        report_id: The ID of the report to update
+        report_name: The new report name to set
+    """
+    with Session(engine) as session:
+        stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+        result = session.execute(stmt)
+        report = result.scalar_one()
+        report.report_name = report_name
+        session.commit()
