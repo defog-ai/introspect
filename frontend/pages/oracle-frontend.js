@@ -599,7 +599,7 @@ function OracleDashboard() {
         <div>
           <h2 className="text-2xl font-semibold mb-4 dark:text-gray-200">Past Reports</h2>
           {reports.map((report, index) => (
-            <div key={index} className="bg-white dark:bg-gray-800 shadow-lg rounded-lg mb-4 overflow-hidden border border-purple-100 dark:border-purple-900/30 hover:border-purple-300 dark:hover:border-purple-700 transition-all">
+            <div key={index} className="bg-purple-100 dark:bg-purple-900/30 shadow-lg rounded-lg mb-4 overflow-hidden border border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700 transition-all">
               <div className="p-4">
                 {report.report_name ? (
                   <>
