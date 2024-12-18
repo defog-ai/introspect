@@ -1,4 +1,4 @@
-name: TypeScript Type Check
+name: Frontent Checks
 
 on:
   pull_request:
@@ -7,8 +7,8 @@ on:
       - "frontend/**"
 
 jobs:
-  typecheck:
-    name: TypeScript Type Check
+  checks:
+    name: Frontend Checks
     runs-on: ubuntu-latest
 
     steps:
@@ -26,3 +26,7 @@ jobs:
       - name: Type Check
         working-directory: ./frontend
         run: npx tsc --noEmit
+
+      - name: Export Check
+        working-directory: ./frontend
+        run: npm run export
