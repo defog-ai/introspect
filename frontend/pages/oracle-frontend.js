@@ -466,6 +466,41 @@ function OracleDashboard() {
 
   // console.log(apiKeyName, reports);
 
+  const getFormattedTimezone = () => {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const city = timeZone.split('/')[1]?.replace('_', ' ') || timeZone;
+    const offset = new Date().getTimezoneOffset();
+    const hours = Math.abs(Math.floor(offset / 60));
+    const minutes = Math.abs(offset % 60);
+    const sign = offset < 0 ? '+' : '-';
+    const formattedOffset = `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    return `${city} (UTC${formattedOffset})`;
+  };
+
+  const ReportDateTime = ({ date }) => (
+    <div className="text-gray-400 dark:text-gray-500 flex items-center space-x-2">
+      <span>
+        {new Date(date).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        })}
+      </span>
+      <span className="text-gray-300 dark:text-gray-600">•</span>
+      <span>
+        {new Date(date).toLocaleTimeString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        })}
+      </span>
+      <Tooltip title={getFormattedTimezone()} placement="top">
+        <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-help" />
+      </Tooltip>
+    </div>
+  );
+
   return (
     <>
       <Meta />
@@ -576,31 +611,7 @@ function OracleDashboard() {
                         <FileTextOutlined className="mr-1" />
                         <span>{String(report.report_id).padStart(3, '0')}</span>
                       </div>
-                      <div className="text-gray-400 dark:text-gray-500 flex items-center space-x-2">
-                        <span>
-                          {new Date(report.date_created).toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                          })}
-                        </span>
-                        <span className="text-gray-300 dark:text-gray-600">•</span>
-                        <span>
-                          {new Date(report.date_created).toLocaleTimeString('en-GB', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: false
-                          })}
-                        </span>
-                        <Tooltip title={(() => {
-                          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                          const city = timeZone.split('/')[1]?.replace('_', ' ') || timeZone;
-                          return `${city} (UTC+05:00)`;
-                        })()} placement="top">
-                          <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-help" />
-                        </Tooltip>
-                      </div>
+                      <ReportDateTime date={report.date_created} />
                     </div>
                   </>
                 ) : (
@@ -610,31 +621,7 @@ function OracleDashboard() {
                         <FileTextOutlined className="mr-2" />
                         <span>{String(report.report_id).padStart(3, '0')}</span>
                       </div>
-                      <div className="text-gray-400 dark:text-gray-500 flex items-center space-x-2">
-                        <span>
-                          {new Date(report.date_created).toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                          })}
-                        </span>
-                        <span className="text-gray-300 dark:text-gray-600">•</span>
-                        <span>
-                          {new Date(report.date_created).toLocaleTimeString('en-GB', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: false
-                          })}
-                        </span>
-                        <Tooltip title={(() => {
-                          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                          const city = timeZone.split('/')[1]?.replace('_', ' ') || timeZone;
-                          return `${city} (UTC+05:00)`;
-                        })()} placement="top">
-                          <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-help" />
-                        </Tooltip>
-                      </div>
+                      <ReportDateTime date={report.date_created} />
                     </div>
                   </div>
                 )}
