@@ -32,7 +32,7 @@ class TaskStage(Enum):
 
 STAGE_TO_STATUS = {
     TaskStage.GATHER_CONTEXT: "gathering context",
-    TaskStage.EXPLORE: "exploring",
+    TaskStage.EXPLORE: "exploring data and digging deeper",
     TaskStage.PREDICT: "predicting",
     TaskStage.OPTIMIZE: "optimizing",
     TaskStage.EXPORT: "finalizing and exporting",
