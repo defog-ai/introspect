@@ -434,7 +434,7 @@ function OracleDashboard() {
         // when doing this, clear the answers
         answers.current = {};
         getClarifications();
-        getSources();
+        // getSources();
       }
     }, 2000);
 
