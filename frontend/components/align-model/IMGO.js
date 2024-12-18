@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useContext } from "react";
 import Instructions from "./Instructions";
 import MetadataEditor from "./EditableMetadata";
 import ResultsPercentages from "./ResultsPercentages";
-import { Modal, Button, Spin, Card } from "antd";
+import { Button, Spin, Card } from "antd";
 import {
   LoadingOutlined,
   CheckCircleOutlined,
@@ -10,7 +10,10 @@ import {
   ArrowUpOutlined,
 } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
+import {
+  Modal,
+  MessageManagerContext,
+} from "@defogdotai/agents-ui-components/core-ui";
 
 const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
   const [modalVisible, setModalVisible] = useState(false);

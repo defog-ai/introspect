@@ -1,44 +1,30 @@
 import { useContext } from "react";
-import { Table, Space, Button, Modal, Spin } from "antd";
+import { Table, Space, Button, Spin } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const UsersTable = ({ userDets, getUserDets, loading, setLoading }) => {
   const message = useContext(MessageManagerContext);
-  const showDeleteConfirm = (username) => {
-    Modal.confirm({
-      title: "Are you sure you want to delete this user?",
-      content: `User: ${username}`,
-      okText: "Yes",
-      okType: "danger",
-      cancelText: "No",
-      className: "w-1/3",
-      onOk: async () => {
-        setLoading(true);
-        const token = localStorage.getItem("defogToken");
-        const res = await fetch(setupBaseUrl("http", `admin/delete_user`), {
-          method: "POST",
-          body: JSON.stringify({
-            username: username,
-            token: token,
-          }),
-          headers: { "Content-Type": "application/json" },
-        });
-        const data = await res.json();
-        if (data.status === "success") {
-          message.success(
-            "User deleted successfully! Refreshing the user data..."
-          );
-        } else {
-          message.error(
-            "There was an error deleting the user. Please try again."
-          );
-        }
-        await getUserDets();
-        setLoading(false);
-      },
+  const showDeleteConfirm = async (username) => {
+    setLoading(true);
+    const token = localStorage.getItem("defogToken");
+    const res = await fetch(setupBaseUrl("http", `admin/delete_user`), {
+      method: "POST",
+      body: JSON.stringify({
+        username: username,
+        token: token,
+      }),
+      headers: { "Content-Type": "application/json" },
     });
+    const data = await res.json();
+    if (data.status === "success") {
+      message.success("User deleted successfully! Refreshing the user data...");
+    } else {
+      message.error("There was an error deleting the user. Please try again.");
+    }
+    await getUserDets();
+    setLoading(false);
   };
 
   return (

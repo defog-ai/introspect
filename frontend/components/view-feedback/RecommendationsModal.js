@@ -3,7 +3,8 @@ import setupBaseUrl from "../../utils/setupBaseUrl";
 import { useRouter } from "next/router";
 import DisplayDataFrame from "./DisplayDataFrame";
 import DisplayQuery from "./DisplayQuery";
-import { Button, Modal, Spin, Input } from "antd";
+import { Button, Spin, Input } from "antd";
+import { Modal } from "@defogdotai/agents-ui-components/core-ui";
 import LineBlock from "../layout/LineBlock";
 const { TextArea } = Input;
 import {
