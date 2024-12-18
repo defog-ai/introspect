@@ -1,5 +1,3 @@
-import { PhotoIcon } from "@heroicons/react/20/solid";
-
 export function ToolEditorInput({ name = null, description = null }) {
   return (
     <div className="w-40">

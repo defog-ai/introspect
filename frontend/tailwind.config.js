@@ -8,7 +8,7 @@ module.exports = {
     "./utils/**/*.{js,ts,jsx,tsx,mdx}",
     "./node_modules/@defogdotai/agents-ui-components/**/*.{js,ts,jsx,tsx,mdx}",
   ],
-  // important: true,
+  important: true,
   darkMode: "class",
   theme: {
     extend: {
