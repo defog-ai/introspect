@@ -1,7 +1,7 @@
 import asyncio
 from typing import Any, Dict, List
 
-from db_utils import add_or_update_analysis, update_summary_dict
+from db_utils import add_or_update_analysis, update_summary_dict, update_report_name
 from oracle.utils_report import summary_dict_to_markdown
 from generic_utils import make_request
 from pydantic import BaseModel
@@ -51,6 +51,13 @@ async def generate_report(
     LOGGER.debug(f"Analysis MDX: {analyses_mdx}")
 
     summary_response = responses[1]
+
+    # Extract title from the summary dict
+    summary_dict = summary_response.get("summary_dict", {})
+    title = summary_dict.get("title", "")
+    # Update report name in database if title is present
+    if title:
+        update_report_name(report_id=report_id, report_name=title)
 
     summary_dict = summary_response.get("summary_dict", {})
     LOGGER.info(f"Generated Summary for report {report_id}")

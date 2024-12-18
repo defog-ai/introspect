@@ -12,7 +12,10 @@ import {
   CloseOutlined,
   DeleteOutlined,
   CloseCircleOutlined,
+  FileTextOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
+import { Tooltip } from "antd";
 
 const { TextArea } = Input;
 
@@ -222,6 +225,7 @@ function OracleDashboard() {
 
       if (res.ok) {
         const data = await res.json();
+        console.log("reports data", data);
         setReportsCallback(data.reports);
         return data.reports;
       } else {
@@ -559,50 +563,118 @@ function OracleDashboard() {
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold mb-4 dark:text-gray-200">Past Reports</h2>
+          <h2 className="text-2xl font-semibold mb-4 dark:text-gray-200">Past Reports</h2>
           {reports.map((report, index) => (
-            <div key={index} className="bg-purple-100 dark:bg-purple-900/30 p-4 rounded-lg mb-4">
-              <h3 className="text-lg font-semibold dark:text-gray-200">{report.report_id}</h3>
-              <p className="text-purple-700 dark:text-purple-400">{report.report_name}</p>
-              {/* <p className="text-gray-600">{report.status}</p> */}
-              <div className="text-gray-600 dark:text-gray-400 flex items-center">
-                <ReportStatus status={report.status} />
-              </div>
-
-              <p className="text-gray-400 dark:text-gray-500">
-                Generated at {report.date_created}
-              </p>
-              <div className="flex space-x-4 mt-2">
-                {/* <Button
-                  className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300"
-                  icon={<DownloadOutlined />}
-                  disabled={report.status !== "done"}
-                  onClick={() => downloadReport(report.report_id)}
-                >
-                  Download PDF
-                </Button> */}
-                <Button
-                  className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300 dark:text-purple-400 dark:hover:text-purple-300 dark:disabled:text-gray-600"
-                  disabled={report.status !== "done"}
-                  onClick={() =>
-                    window.open(
-                      `/view-oracle-report?reportId=${report.report_id}&keyName=${apiKeyName}`,
-                      "_blank"
-                    )
-                  }
-                >
-                  View
-                </Button>
-                <Button
-                  className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300 dark:text-purple-400 dark:hover:text-purple-300 dark:disabled:text-gray-600"
-                  icon={<DeleteOutlined />}
-                  disabled={
-                    report.status !== "done" && report.status !== "error"
-                  }
-                  onClick={() => deleteReport(report.report_id)}
-                >
-                  Delete
-                </Button>
+            <div key={index} className="bg-white dark:bg-gray-800 shadow-lg rounded-lg mb-4 overflow-hidden border border-purple-100 dark:border-purple-900/30 hover:border-purple-300 dark:hover:border-purple-700 transition-all">
+              <div className="p-4">
+                {report.report_name ? (
+                  <>
+                    <h3 className="text-lg font-semibold text-purple-700 dark:text-purple-400 mb-1">
+                      {report.report_name}
+                    </h3>
+                    <div className="text-base mb-3 flex items-center justify-between">
+                      <div className="text-gray-500 dark:text-gray-400 flex items-center">
+                        <FileTextOutlined className="mr-1" />
+                        <span>{String(report.report_id).padStart(3, '0')}</span>
+                      </div>
+                      <div className="text-gray-400 dark:text-gray-500 flex items-center space-x-2">
+                        <span>
+                          {new Date(report.date_created).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </span>
+                        <span className="text-gray-300 dark:text-gray-600">•</span>
+                        <span>
+                          {new Date(report.date_created).toLocaleTimeString('en-GB', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false
+                          })}
+                        </span>
+                        <Tooltip title={(() => {
+                          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                          const city = timeZone.split('/')[1]?.replace('_', ' ') || timeZone;
+                          return `${city} (UTC+05:00)`;
+                        })()} placement="top">
+                          <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-help" />
+                        </Tooltip>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="mb-3">
+                    <div className="text-base flex items-center justify-between">
+                      <div className="text-gray-700 dark:text-gray-300 font-semibold flex items-center">
+                        <FileTextOutlined className="mr-2" />
+                        <span>{String(report.report_id).padStart(3, '0')}</span>
+                      </div>
+                      <div className="text-gray-400 dark:text-gray-500 flex items-center space-x-2">
+                        <span>
+                          {new Date(report.date_created).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </span>
+                        <span className="text-gray-300 dark:text-gray-600">•</span>
+                        <span>
+                          {new Date(report.date_created).toLocaleTimeString('en-GB', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false
+                          })}
+                        </span>
+                        <Tooltip title={(() => {
+                          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                          const city = timeZone.split('/')[1]?.replace('_', ' ') || timeZone;
+                          return `${city} (UTC+05:00)`;
+                        })()} placement="top">
+                          <InfoCircleOutlined className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-help" />
+                        </Tooltip>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <ReportStatus status={report.status} />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {report.status === "done" && (
+                      <>
+                        <Button
+                          className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                          onClick={() =>
+                            window.open(
+                              `/view-oracle-report?reportId=${report.report_id}&keyName=${apiKeyName}`,
+                              "_blank"
+                            )
+                          }
+                        >
+                          View Report
+                        </Button>
+                        {/* <Button
+                          className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                          onClick={() => downloadReport(report.report_id)}
+                        >
+                          Download
+                        </Button> */}
+                      </>
+                    )}
+                    {(report.status === "done" || report.status === "error") && (
+                      <Button
+                        className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                        icon={<DeleteOutlined />}
+                        onClick={() => deleteReport(report.report_id)}
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           ))}
