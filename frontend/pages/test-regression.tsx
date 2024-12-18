@@ -1,12 +1,13 @@
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
-import { Button, Col, Input, message, Upload, Select, Modal } from "antd";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button, Col, Input, Upload, Select } from "antd";
+import { useCallback, useEffect, useMemo, useRef, useState, useContext } from "react";
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   InboxOutlined,
 } from "@ant-design/icons";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { sql as codemirrorSql } from "@codemirror/lang-sql";
@@ -102,6 +103,8 @@ export default function TestRegressionPage() {
   const [filter, setFilter] = useState(""); // filter for search
 
   const [loading, setLoading] = useState<string | boolean>(false);
+
+  const message = useContext(MessageManagerContext);
 
   useEffect(() => {
     const apiKeyName = localStorage.getItem("defogDbSelected");

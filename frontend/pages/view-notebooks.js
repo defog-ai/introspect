@@ -1,11 +1,12 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
 
 import Meta from "$components/layout/Meta";
-import { Collapse, message } from "antd";
+import { Collapse } from "antd";
 import { useRouter } from "next/router";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Scaffolding from "$components/layout/Scaffolding";
 import { UserContext } from "$components/context/UserContext";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 // import dynamic from "next/dynamic";
 
 // const DocIcon = dynamic(
@@ -22,6 +23,7 @@ const ViewNotebooks = () => {
   const [ownDocs, setOwnDocs] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [archivedDocs, setArchivedDocs] = useState([]);
+  const message = useContext(MessageManagerContext);
 
   const router = useRouter();
 

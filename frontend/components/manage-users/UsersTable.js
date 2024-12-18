@@ -1,8 +1,11 @@
-import { Table, Space, message, Button, Modal, Spin } from "antd";
+import { useContext } from "react";
+import { Table, Space, Button, Modal, Spin } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const UsersTable = ({ userDets, getUserDets, loading, setLoading }) => {
+  const message = useContext(MessageManagerContext);
   const showDeleteConfirm = (username) => {
     Modal.confirm({
       title: "Are you sure you want to delete this user?",

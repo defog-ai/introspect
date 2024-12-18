@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import Instructions from "./Instructions";
 import MetadataEditor from "./EditableMetadata";
 import ResultsPercentages from "./ResultsPercentages";
-import { message, Modal, Button, Spin, Card, Slider, Progress } from "antd";
+import { Modal, Button, Spin, Card } from "antd";
 import {
   LoadingOutlined,
   CheckCircleOutlined,
@@ -10,11 +10,13 @@ import {
   ArrowUpOutlined,
 } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [loadingIndex, setLoadingIndex] = useState(null);
   const [loading, setLoading] = useState(false);
+  const message = useContext(MessageManagerContext);
 
   // store the logs/output of each step
   const [results, setResults] = useState({});
@@ -323,7 +325,11 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
 
   return (
     <>
-      <Button type="dashed" onClick={() => setModalVisible(true)} className="w-full mx-auto block">
+      <Button
+        type="dashed"
+        onClick={() => setModalVisible(true)}
+        className="w-full mx-auto block"
+      >
         Magic Finetune - Smart Optimization of Instructions and Metadata
       </Button>
       <Modal

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import Meta from "$components/layout/Meta";
-import { Row, Col, Select, Tooltip, Table, message, Spin } from "antd";
+import { Row, Col, Select, Tooltip, Table, Spin } from "antd";
 import {
   SafetyCertificateOutlined,
   AuditOutlined,
@@ -16,6 +16,7 @@ import { sql as codemirrorSql } from "@codemirror/lang-sql";
 
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Scaffolding from "$components/layout/Scaffolding";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const CheckReadiness = () => {
   // Loading states for each check
@@ -250,6 +251,8 @@ const CheckReadiness = () => {
       checkBasicReadiness();
     }, 100);
   }, [apiKeyName]);
+
+  const message = useContext(MessageManagerContext);
 
   return (
     <>

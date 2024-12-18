@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import setupBaseUrl from "../../utils/setupBaseUrl";
-import { Table, Button, Spin, message } from "antd";
+import { Table, Button, Spin } from "antd";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const FeedbackTable = ({
   token,
@@ -16,6 +17,7 @@ const FeedbackTable = ({
   const [goldenQueryMap, setGoldenQueryMap] = useState({});
   const [addingGoldenQuery, setAddingGoldenQuery] = useState(false);
   const [goldenQueryUpdated, setGoldenQueryUpdated] = useState(false);
+  const message = useContext(MessageManagerContext);
 
   useEffect(() => {
     updateGoldenQueryMap();

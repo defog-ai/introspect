@@ -1,14 +1,16 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { message } from "antd";
 import Meta from "$components/layout/Meta";
 import { UserContext } from "$components/context/UserContext";
 import Scaffolding from "$components/layout/Scaffolding";
 import GoogleLoginButton from "$components/auth/GoogleLogin";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const LogIn = () => {
   const [context, setContext] = useContext(UserContext);
   const router = useRouter();
+  const message = useContext(MessageManagerContext);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // remove analysis trees whenever on the log in page

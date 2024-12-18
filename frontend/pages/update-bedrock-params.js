@@ -1,14 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useContext, useEffect } from "react";
 import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { message } from "antd";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const ManageUsers = () => {
   const [loading, setLoading] = useState(false);
   const [modelId, setModelId] = useState("");
   const [modelPrompt, setModelPrompt] = useState("");
+  const message = useContext(MessageManagerContext);
 
   const router = useRouter();
 

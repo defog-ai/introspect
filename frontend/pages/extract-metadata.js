@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useContext } from "react";
 import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import DbCredentialsForm from "../components/extract-metadata/DBCredentialsForm";
 import MetadataTable from "../components/extract-metadata/MetadataTable";
 import SetupStatus from "../components/extract-metadata/SetupStatus"; // Adjust the import path as needed
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { Select, Row, Col, message } from "antd";
+import { Select, Row, Col } from "antd";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 import Scaffolding from "$components/layout/Scaffolding";
 import { Tabs } from "@defogdotai/agents-ui-components/core-ui";
 
@@ -55,6 +56,7 @@ const ExtractMetadata = () => {
   const [columnDescriptionCheck, setColumnDescriptionCheck] = useState(true);
 
   const [loading, setLoading] = useState(false);
+  const message = useContext(MessageManagerContext);
 
   useEffect(() => {
     const fetchUserData = async () => {

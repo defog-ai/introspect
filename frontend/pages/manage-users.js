@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
@@ -6,12 +6,13 @@ import setupBaseUrl from "$utils/setupBaseUrl";
 import AddUsersViaFile from "components/manage-users/AddUsersViaFile";
 import AddUsersViaForm from "components/manage-users/AddUsersViaForm";
 import UsersTable from "components/manage-users/UsersTable";
-import { message } from "antd";
 import { TeamOutlined } from "@ant-design/icons";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const ManageUsers = () => {
   const [loading, setLoading] = useState(false);
   const [userDets, setUserDets] = useState([]);
+  const message = useContext(MessageManagerContext);
 
   const router = useRouter();
 

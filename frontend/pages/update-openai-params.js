@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { message } from "antd";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const ManageUsers = () => {
   const [loading, setLoading] = useState(false);
@@ -11,6 +11,7 @@ const ManageUsers = () => {
   const [userPrompt, setUserPrompt] = useState("");
 
   const router = useRouter();
+  const message = useContext(MessageManagerContext);
 
   const getOpenaiParams = async () => {
     setLoading(true);

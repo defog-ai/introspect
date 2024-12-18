@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { Form, Input, Button, Select, message } from "antd";
+import { useState, useEffect, useContext } from "react";
+import { Form, Input, Button, Select } from "antd";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 import { IdcardOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
@@ -13,6 +14,7 @@ const AddUsersViaForm = ({ loading, getUserDets }) => {
     "username,password,user_type,allowed_dbs\n"
   );
   const [allowedDbs, setAllowedDbs] = useState([]);
+  const message = useContext(MessageManagerContext);
 
   const getApiKeyNames = async () => {
     const token = localStorage.getItem("defogToken");

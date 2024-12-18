@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
-import { Form, Select, Input, Button, message } from "antd";
+import { useState, useEffect, useContext } from "react";
+import { Form, Select, Input, Button } from "antd";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { DatabaseOutlined } from "@ant-design/icons";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const dbCredOptions = {
   postgres: ["host", "port", "user", "password", "database"],
@@ -35,6 +36,7 @@ const DbCredentialsForm = ({
   const [form] = Form.useForm();
   const [dbType, setDbType] = useState(dbData.db_type || "postgres");
   const [loading, setLoading] = useState(false);
+  const message = useContext(MessageManagerContext);
 
   const dbOptions = [
     { value: "postgres", label: "PostgreSQL" },
@@ -137,7 +139,9 @@ const DbCredentialsForm = ({
     <div className="space-y-4 dark:bg-dark-bg-primary">
       <div className="flex flex-col items-center text-2xl mb-10">
         <DatabaseOutlined className="text-4xl mb-2 dark:text-dark-text-primary" />
-        <span className="dark:text-dark-text-primary">Update Database Credentials</span>
+        <span className="dark:text-dark-text-primary">
+          Update Database Credentials
+        </span>
       </div>
       <Form
         form={form}

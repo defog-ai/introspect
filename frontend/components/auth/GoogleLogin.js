@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
-import { Alert, message } from "antd";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 import { useRouter } from "next/router";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { UserContext } from "$components/context/UserContext";
@@ -8,6 +8,7 @@ import { UserContext } from "$components/context/UserContext";
 const GoogleLoginButton = () => {
   const [clientId, setClientId] = useState("");
   const [context, setContext] = useContext(UserContext);
+  const message = useContext(MessageManagerContext);
   const router = useRouter();
   const onSuccess = async (response) => {
     console.log("Login Success: ", response); // Handle successful login
@@ -64,7 +65,7 @@ const GoogleLoginButton = () => {
 
   const onFailure = (response) => {
     console.error("Login Failed: ", response); // Handle login failure
-    <Alert message={"Login Failed"} type="error" />;
+    message.error(data.error);
   };
 
   return (

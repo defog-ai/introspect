@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Alert, Form, Select, Input, Button, Table, message, Spin } from "antd";
+import { useState, useEffect, useContext } from "react";
+import { Alert, Form, Select, Input, Button, Table, Spin } from "antd";
 import {
   EditOutlined,
   SaveOutlined,
@@ -8,6 +8,8 @@ import {
   UploadOutlined,
 } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
+
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const MetadataTable = ({
   token,
@@ -40,6 +42,8 @@ const MetadataTable = ({
       (item) => item.column_description && item.column_description.trim() !== ""
     );
   };
+
+  const message = useContext(MessageManagerContext);
 
   useEffect(() => {
     if (tablesData) {

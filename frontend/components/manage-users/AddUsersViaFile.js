@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { Form, Input, Button, message, Upload, Typography } from "antd";
+import React, { useState, useEffect, useContext } from "react";
+import { Form, Input, Button, Upload, Typography } from "antd";
 import { FileAddOutlined, UploadOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Papa from "papaparse";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const { Title } = Typography;
 
@@ -13,6 +14,7 @@ const AddUsersViaFile = ({ loading, getUserDets }) => {
   const [csvString, setCsvString] = useState("username,password,user_type\n");
   const [googleSheetsUrl, setGoogleSheetsUrl] = useState("");
   const [isFileUploaded, setFileUploaded] = useState(false);
+  const message = useContext(MessageManagerContext);
 
   useEffect(() => {
     const csv = users
