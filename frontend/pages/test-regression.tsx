@@ -13,8 +13,6 @@ import { sql as codemirrorSql } from "@codemirror/lang-sql";
 import { twMerge } from "tailwind-merge";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
-import { v4 } from "uuid";
-
 const { Dragger } = Upload;
 
 interface ValidationResult {
@@ -61,7 +59,7 @@ export default function TestRegressionPage() {
   const [questionToBeAdded, setQuestionToBeAdded] = useState<RegressionItem>({
     questions: [],
     sql: "",
-    id: v4(),
+    id: crypto.randomUUID(),
   });
 
   const previousQuestions = useMemo(() => {
@@ -223,7 +221,7 @@ export default function TestRegressionPage() {
                         ) {
                           // add an id
                           json.forEach((item) => {
-                            item.id = v4();
+                            item.id = crypto.randomUUID();
                             item.validationResult =
                               item.validationResult || null;
                           });
@@ -278,7 +276,7 @@ export default function TestRegressionPage() {
                           {
                             questions: [input.current.input.value],
                             sql: questionToBeAdded.sql || "",
-                            id: v4(),
+                            id: crypto.randomUUID(),
                             validationResult: null,
                           },
                           ...queries,
@@ -292,7 +290,7 @@ export default function TestRegressionPage() {
                       setQuestionToBeAdded({
                         questions: [],
                         sql: "",
-                        id: v4(),
+                        id: crypto.randomUUID(),
                         validationResult: null,
                       });
 

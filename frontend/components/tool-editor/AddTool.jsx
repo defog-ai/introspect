@@ -15,7 +15,6 @@ import NewToolCodeEditor from "./NewToolCodeEditor";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { twMerge } from "tailwind-merge";
 import { AnalysisAgent, Setup } from "@defogdotai/agents-ui-components/agent";
-import { v4 } from "uuid";
 import ErrorBoundary from "$components/layout/ErrorBoundary";
 import { ToolFlow } from "./ToolFlow";
 
@@ -44,7 +43,7 @@ export function AddTool({
     key_name: apiKeyNames.length ? apiKeyNames[0] : null,
   });
 
-  const [analysisId, setAnalysisId] = useState(v4());
+  const [analysisId, setAnalysisId] = useState(crypto.randomUUID());
 
   const toolName = tool.tool_name;
   const toolDocString = tool.description;
@@ -327,7 +326,7 @@ export function AddTool({
                       }
 
                       // create a new analysis id and reset the test question
-                      setAnalysisId(v4());
+                      setAnalysisId(crypto.randomUUID());
                       setTestQuestion(ev.target.value);
                       ev.target.value = "";
                     }}
