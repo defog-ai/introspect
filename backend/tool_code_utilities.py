@@ -2,11 +2,8 @@
 # top level for a cleaner import statement
 # from tool_code_utilities import xx
 
-import asyncio
-import yaml
-from defog.query import execute_query
+from defog.query import async_execute_query
 import re
-import json
 import pandas as pd
 import os
 from db_utils import get_db_type_creds
@@ -71,8 +68,13 @@ async def fetch_query_into_df(
     if not safe_sql(sql_query):
         raise ValueError("Unsafe SQL Query")
 
-    colnames, data, new_sql_query = await asyncio.to_thread(
-        execute_query, sql_query, api_key, db_type, db_creds, retries=2, temp=temp
+    colnames, data, new_sql_query = await async_execute_query(
+        query=sql_query,
+        api_key=api_key,
+        db_type=db_type,
+        db_creds=db_creds,
+        retries=2,
+        temp=temp,
     )
 
     # again, make sure new query that was run is safe
