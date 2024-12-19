@@ -34,4 +34,4 @@ jobs:
 
       - name: Export Check
         working-directory: ./frontend
-        run: pnpm run export
+        run: pnpm run test-pr-export

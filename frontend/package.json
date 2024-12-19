@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start -p 1236",
     "export": "sh ./rename_env.sh 1 && next build && sh ./export.sh && sh ./rename_env.sh 2",
+    "test-pr-export": "next build && sh ./export.sh",
     "lint": "next lint"
   },
   "dependencies": {
