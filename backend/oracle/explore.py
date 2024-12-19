@@ -302,7 +302,7 @@ async def explore_generated_question(
         DEFOG_BASE_URL + "/prune_glossary",
         data={"question": generated_qn, "api_key": api_key},
     )
-    glossary = f"{glossary_dict.get('glossary_compulsory', '')}\n{glossary_dict.get('glossary', '')}\n{context}"
+    glossary = f"{glossary_dict.get('pruned_glossary', '')}\n{context}"
     ts = save_timing(ts, f"{qn_id}\) Glossary", timings)
 
     err_msg, sql, data = None, None, None
