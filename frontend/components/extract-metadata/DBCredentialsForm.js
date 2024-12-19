@@ -1,5 +1,4 @@
 import { useState, useEffect, useContext } from "react";
-import { Form, Select, Input, Button } from "antd";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { DatabaseOutlined } from "@ant-design/icons";
 import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
@@ -33,7 +32,7 @@ const DbCredentialsForm = ({
   setDbData,
   setDbCredsUpdatedToggle,
 }) => {
-  const [form] = Form.useForm();
+  const [formData, setFormData] = useState({ db_type: dbData.db_type || "postgres", ...dbData.db_creds });
   const [dbType, setDbType] = useState(dbData.db_type || "postgres");
   const [loading, setLoading] = useState(false);
   const message = useContext(MessageManagerContext);
@@ -47,18 +46,17 @@ const DbCredentialsForm = ({
     { value: "sqlserver", label: "Microsoft SQL Server" },
   ];
 
-  const handleDbTypeChange = (value) => {
+  const handleDbTypeChange = (e) => {
+    const value = e.target.value;
     setDbType(value);
-    form.resetFields(); // Reset form fields when dbType changes
+    setFormData({ db_type: value }); // Reset form fields when dbType changes
   };
 
   useEffect(() => {
-    console.log("CALLING");
     const fetchData = async () => {
       if (Object.keys(dbData).length > 0) {
-        // console.log(dbData);
         setDbType(dbData.db_type);
-        form.setFieldsValue({
+        setFormData({
           db_type: dbData.db_type,
           ...dbData.db_creds,
         });
@@ -68,7 +66,6 @@ const DbCredentialsForm = ({
             dbData.db_type,
             dbData.db_creds
           );
-          // console.log("res", res);
           if (res.status === "success") {
             setDbConnectionStatus(true);
             message.success("Database connection validated!");
@@ -85,13 +82,13 @@ const DbCredentialsForm = ({
     };
 
     fetchData();
-  }, [dbData, form]);
+  }, [dbData]);
 
-  const handleSubmit = async (values) => {
-    console.log("Received values of form: ", values);
-    const { ...db_creds } = values;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const { db_type, ...db_creds } = formData;
     const payload = {
-      db_creds: db_creds,
+      db_creds,
       db_type: dbType,
       token: token,
       key_name: apiKeyName,
@@ -118,9 +115,7 @@ const DbCredentialsForm = ({
         }
       );
       const data = await res.json();
-      console.log("data", data);
       if (data?.success === true) {
-        // setDbData({ db_type: payload.db_type, db_creds: payload.db_creds });
         message.success("Database Credentials updated successfully!");
         setDbCredsUpdatedToggle((prev) => !prev);
       } else {
@@ -135,6 +130,14 @@ const DbCredentialsForm = ({
     setLoading(false);
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   return (
     <div className="space-y-4 dark:bg-dark-bg-primary">
       <div className="flex flex-col items-center text-2xl mb-10">
@@ -143,54 +146,49 @@ const DbCredentialsForm = ({
           Update Database Credentials
         </span>
       </div>
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        initialValues={{
-          db_type: dbType,
-          ...dbData.db_creds,
-        }}
-        className="dark:text-dark-text-primary"
-      >
-        <Form.Item
-          label="Database Type"
-          name="db_type"
-          className="dark:text-dark-text-primary"
-        >
-          <Select
-            options={dbOptions}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-dark-text-primary mb-1">
+            Database Type
+          </label>
+          <select
+            name="db_type"
+            value={dbType}
             onChange={handleDbTypeChange}
-            className="dark:bg-dark-bg-secondary dark:border-dark-border"
-          />
-        </Form.Item>
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary"
+          >
+            {dbOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {dbCredOptions[dbType].map((field) => (
-          <Form.Item
-            key={field}
-            label={field.charAt(0).toUpperCase() + field.slice(1)}
-            name={field}
-            className="dark:text-dark-text-primary"
-          >
-            <Input
-              placeholder={placeholders[field] || `Enter ${field}`}
+          <div key={field} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-dark-text-primary mb-1">
+              {field.charAt(0).toUpperCase() + field.slice(1)}
+            </label>
+            <input
               type={field === "password" ? "password" : "text"}
-              className="dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary"
+              name={field}
+              value={formData[field] || ""}
+              onChange={handleInputChange}
+              placeholder={placeholders[field] || `Enter ${field}`}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary"
             />
-          </Form.Item>
+          </div>
         ))}
 
-        <Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={loading}
-            className="w-full dark:border-dark-border"
-          >
-            Update
-          </Button>
-        </Form.Item>
-      </Form>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-md shadow-sm disabled:opacity-50 disabled:cursor-not-allowed dark:border-dark-border"
+        >
+          {loading ? "Updating..." : "Update"}
+        </button>
+      </form>
     </div>
   );
 };

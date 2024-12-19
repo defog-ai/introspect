@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
-import { Form, Input, Button, Upload, Typography } from "antd";
 import { FileAddOutlined, UploadOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Papa from "papaparse";
 import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
-
-const { Title } = Typography;
 
 const AddUsersViaFile = ({ loading, getUserDets }) => {
   const [users, setUsers] = useState([
@@ -15,14 +12,7 @@ const AddUsersViaFile = ({ loading, getUserDets }) => {
   const [googleSheetsUrl, setGoogleSheetsUrl] = useState("");
   const [isFileUploaded, setFileUploaded] = useState(false);
   const message = useContext(MessageManagerContext);
-
-  useEffect(() => {
-    const csv = users
-      .filter((user) => user.username && user.password && user.userType)
-      .map((user) => `${user.username},${user.password},${user.userType}`)
-      .join("\n");
-    setCsvString(`username,password,user_type\n${csv}`);
-  }, [users]);
+  const fileInputRef = React.useRef(null);
 
   useEffect(() => {
     const csv = users
@@ -56,8 +46,8 @@ const AddUsersViaFile = ({ loading, getUserDets }) => {
     return false;
   };
 
-  const handleSubmit = async (values) => {
-    // this assumes user has chosen one of the two options: googleSheetsUrl or upload CSV file
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
       const endpoint = "admin/add_users";
       const token = localStorage.getItem("defogToken");
@@ -65,7 +55,7 @@ const AddUsersViaFile = ({ loading, getUserDets }) => {
       const payload =
         csvString.trim() !== "username,password,user_type"
           ? { users_csv: csvString, token: token }
-          : { ...values, token: token };
+          : { gsheets_url: googleSheetsUrl, token: token };
 
       const res = await fetch(setupBaseUrl("http", endpoint), {
         method: "POST",
@@ -100,6 +90,13 @@ const AddUsersViaFile = ({ loading, getUserDets }) => {
     }
   };
 
+  const handleFileInputChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
   return (
     <div className="w-3/4 p-6 border border-gray-200 rounded-lg shadow-lg">
       <h1 className="text-center text-2xl mb-8">
@@ -107,64 +104,75 @@ const AddUsersViaFile = ({ loading, getUserDets }) => {
         Add Users via File
       </h1>
 
-      <Form layout="vertical" disabled={loading} onFinish={handleSubmit}>
-        <Title level={4} className="mt-6">
-          Upload CSV File
-        </Title>
-        <Form.Item
-          label={
-            isFileUploaded
-              ? ""
-              : "Expected columns in the file: username,password,user_type,allowed_dbs. For users that must login via SSO, please set the password column to blank."
-          }
-        >
-          <Upload
-            beforeUpload={handleFileUpload}
-            accept=".csv"
-            showUploadList={false}
-            disabled={isFileUploaded}
-          >
-            <Button icon={<UploadOutlined />} disabled={isFileUploaded}>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <h4 className="text-lg font-semibold mb-4">Upload CSV File</h4>
+          <div className="mb-4">
+            {!isFileUploaded && (
+              <p className="text-sm text-gray-600 mb-2">
+                Expected columns in the file: username,password,user_type,allowed_dbs. For users that must login via SSO, please set the password column to blank.
+              </p>
+            )}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".csv"
+              onChange={handleFileInputChange}
+              className="hidden"
+              disabled={isFileUploaded || loading}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isFileUploaded || loading}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <UploadOutlined className="mr-2" />
               {isFileUploaded ? "Uploaded" : "Upload CSV"}
-            </Button>
-          </Upload>
-        </Form.Item>
+            </button>
+          </div>
+        </div>
 
-        <Title level={4}>
-          Or a paste publicly accessible Google Sheets URL
-        </Title>
-        <Form.Item label="Google Sheets URL" name="gsheets_url">
-          <Input
-            className="pd-2"
-            value={googleSheetsUrl}
-            onChange={(e) => setGoogleSheetsUrl(e.target.value)}
-          />
-        </Form.Item>
+        <div>
+          <h4 className="text-lg font-semibold mb-4">
+            Or a paste publicly accessible Google Sheets URL
+          </h4>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">
+              Google Sheets URL
+            </label>
+            <input
+              type="text"
+              value={googleSheetsUrl}
+              onChange={(e) => setGoogleSheetsUrl(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              disabled={loading}
+            />
+          </div>
+        </div>
 
         {isFileUploaded && (
-          <Form.Item label="Generated CSV String" className="mt-4">
-            <Input.TextArea
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">
+              Generated CSV String
+            </label>
+            <textarea
               value={csvString}
               readOnly
-              autoSize={{ minRows: 2, maxRows: 4 }}
-              className="font-mono border border-gray-300 bg-gray-100"
+              rows={4}
+              className="mt-1 block w-full font-mono border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-100 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
-          </Form.Item>
+          </div>
         )}
-        <Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            className="w-1/3 mx-auto block"
-            disabled={
-              csvString.trim() === "username,password,user_type" &&
-              !googleSheetsUrl
-            }
-          >
-            Add Users
-          </Button>
-        </Form.Item>
-      </Form>
+
+        <button
+          type="submit"
+          disabled={csvString.trim() === "username,password,user_type" && !googleSheetsUrl || loading}
+          className="w-1/3 mx-auto block px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Add Users
+        </button>
+      </form>
     </div>
   );
 };

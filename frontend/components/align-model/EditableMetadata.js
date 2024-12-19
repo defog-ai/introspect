@@ -4,8 +4,7 @@ import {
   SaveOutlined,
   RollbackOutlined,
 } from "@ant-design/icons";
-import { Table, Input, Button, Form, Spin } from "antd";
-
+import { Table, Spin } from "antd";
 
 const EditableCell = ({
   editing,
@@ -20,16 +19,20 @@ const EditableCell = ({
   return (
     <td {...restProps}>
       {editing ? (
-        <Form.Item name={dataIndex} className="m-0">
+        <div className="m-0">
           {dataIndex === "column_description" ? (
-            <Input.TextArea
-              autoSize={{ minRows: 3 }} 
-              className="max-h-32 overflow-auto p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <textarea
+              autoFocus
+              rows={3}
+              className="w-full max-h-32 overflow-auto p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           ) : (
-            <Input className="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input
+              type="text"
+              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           )}
-        </Form.Item>
+        </div>
       ) : (
         children
       )}
@@ -38,10 +41,9 @@ const EditableCell = ({
 };
 
 const MetadataEditor = ({ title, description, metadata, updateMetadata }) => {
-  const [form] = Form.useForm();
+  const [formData, setFormData] = useState({});
   const [currentData, setCurrentData] = useState([]);
   const [editingKey, setEditingKey] = useState("");
-
   const [updatingMetadata, setUpdatingMetadata] = useState(false);
 
   useEffect(() => {
@@ -60,7 +62,7 @@ const MetadataEditor = ({ title, description, metadata, updateMetadata }) => {
   const isEditing = (record) => record.key === editingKey;
 
   const edit = (record) => {
-    form.setFieldsValue({
+    setFormData({
       table_name: record.table_name,
       column_name: record.column_name,
       data_type: record.data_type,
@@ -75,23 +77,29 @@ const MetadataEditor = ({ title, description, metadata, updateMetadata }) => {
 
   const save = async (key) => {
     try {
-      const row = await form.validateFields();
       const newData = [...currentData];
       const index = newData.findIndex((item) => key === item.key);
 
       if (index > -1) {
         const item = newData[index];
-        newData.splice(index, 1, { ...item, ...row });
+        newData.splice(index, 1, { ...item, ...formData });
         setCurrentData(newData);
         setEditingKey("");
       } else {
-        newData.push(row);
+        newData.push(formData);
         setCurrentData(newData);
         setEditingKey("");
       }
     } catch (errInfo) {
       console.log("Validate Failed:", errInfo);
     }
+  };
+
+  const handleInputChange = (e, dataIndex) => {
+    setFormData(prev => ({
+      ...prev,
+      [dataIndex]: e.target.value
+    }));
   };
 
   const columns = [
@@ -162,6 +170,8 @@ const MetadataEditor = ({ title, description, metadata, updateMetadata }) => {
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),
+        onChange: (e) => handleInputChange(e, col.dataIndex),
+        value: formData[col.dataIndex] || "",
       }),
     };
   });
@@ -170,7 +180,7 @@ const MetadataEditor = ({ title, description, metadata, updateMetadata }) => {
     <div className="w-full p-4 bg-gray-50">
       <h1 className="text-xl mb-3 font-semibold">{title}</h1>
       <p className="mb-4 text-gray-700">{description}</p>
-      <Form form={form} component={false}>
+      <div>
         <Spin spinning={updatingMetadata} tip="Updating Metadata">
           <Table
             components={{
@@ -186,20 +196,19 @@ const MetadataEditor = ({ title, description, metadata, updateMetadata }) => {
               position: ["bottomCenter"],
             }}
             footer={() => (
-              <Button
-                type="primary"
-                className="mt-4 p-2 min-w-56"
+              <button
                 onClick={async () =>
                   await updateMetadata(currentData, setUpdatingMetadata)
                 }
                 disabled={updatingMetadata}
+                className="mt-4 p-2 min-w-56 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {updatingMetadata ? "Updating Metadata" : "Update Metadata"}
-              </Button>
+              </button>
             )}
           />
         </Spin>
-      </Form>
+      </div>
     </div>
   );
 };

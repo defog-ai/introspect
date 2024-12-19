@@ -238,7 +238,9 @@ const ExtractMetadata = () => {
               loading={loading}
               isDatabaseSetupWell={dbConnectionstatus}
               isTablesIndexed={isTablesIndexed}
-              hasNonEmptyDescription={hasNonEmptyDescription && columnDescriptionCheck}
+              hasNonEmptyDescription={
+                hasNonEmptyDescription && columnDescriptionCheck
+              }
             />
           </div>
 

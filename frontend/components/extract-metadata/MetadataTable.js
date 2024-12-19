@@ -1,9 +1,8 @@
 import { useState, useEffect, useContext } from "react";
-import { Alert, Form, Select, Input, Button, Table, Spin } from "antd";
+import { Alert, Table, Spin } from "antd";
 import {
   EditOutlined,
   SaveOutlined,
-  TableOutlined,
   DownloadOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
@@ -33,8 +32,6 @@ const MetadataTable = ({
   const [loading, setLoading] = useState(false);
   const [desc, setDesc] = useState({});
   const [filter, setFilter] = useState([]); // list of table names to filter
-  const [form] = Form.useForm();
-
   const [pageSize, setPageSize] = useState(10);
 
   const hasNonEmptyDescriptionFunction = (metadata) => {
@@ -49,7 +46,6 @@ const MetadataTable = ({
     if (tablesData) {
       setTables(tablesData.tables);
       setSelectedTablesForIndexing(tablesData.indexed_tables);
-      form.setFieldsValue({ tables: tablesData.indexed_tables });
     }
   }, [tablesData]);
 
@@ -200,28 +196,29 @@ const MetadataTable = ({
   // to remove duplicate table names
   const uniqueTableNames = [
     ...new Set(metadata.map((item) => item.table_name)),
-  ];
+  ].filter(Boolean); // Filter out any null or undefined values
 
   const columns = [
     {
       title: (
         <div>
           <div>Table Name</div>
-          <Select
-            mode="multiple"
-            showSearch
-            placeholder="Filter tables"
-            optionFilterProp="children"
-            onChange={handleFilterChange}
-            allowClear={true}
-            className="w-full mt-1 focus:outline-none focus:ring-0 dark:bg-dark-bg-secondary dark:border-dark-border"
-            options={[
-              ...uniqueTableNames.map((table) => ({
-                value: table,
-                label: table,
-              })),
-            ]}
-          />
+          <select
+            multiple
+            value={filter}
+            onChange={(e) =>
+              handleFilterChange(
+                Array.from(e.target.selectedOptions, (option) => option.value)
+              )
+            }
+            className="w-full mt-1 p-2 text-xs border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary"
+          >
+            {uniqueTableNames.map((table) => (
+              <option key={table} value={table}>
+                {table}
+              </option>
+            ))}
+          </select>
         </div>
       ),
       dataIndex: "table_name",
@@ -255,10 +252,11 @@ const MetadataTable = ({
       render: (text, record) => {
         const key = `${record.table_name}_${record.column_name}`;
         return editingKeys[key] ? (
-          <Input.TextArea
+          <textarea
             defaultValue={text}
             onChange={(e) => handleInputChange(e, key)}
-            autoSize={{ minRows: 2, maxRows: 4 }}
+            rows={2}
+            className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary"
           />
         ) : (
           <span className="italic p-1">{text}</span>
@@ -287,12 +285,10 @@ const MetadataTable = ({
 
   const addAllTables = () => {
     setSelectedTablesForIndexing(tables);
-    form.setFieldsValue({ tables: tables });
   };
 
   const clearAllTables = () => {
     setSelectedTablesForIndexing([]);
-    form.setFieldsValue({ tables: [] });
   };
 
   const downloadMetadata = async () => {
@@ -374,64 +370,52 @@ const MetadataTable = ({
         <div className="text-lg font-medium dark:text-dark-text-primary">
           View and Update Metadata
         </div>
-        <Form
-          className="flex flex-col w-full mb-4 dark:bg-dark-bg-secondary"
-          form={form}
-          onFinish={reIndexTables}
-        >
-          <Form.Item
-            className="w-full dark:bg-dark-bg-secondary"
-            label="Select tables"
-            name="tables"
-            initialValue={selectedTablesForIndexing}
+        <div className="w-full dark:bg-dark-bg-secondary">
+          <label className="block text-sm font-medium text-gray-700 dark:text-dark-text-primary mb-1">
+            Select tables (use ctrl/cmd + click to select and unselect multiple)
+          </label>
+          <select
+            multiple
+            value={selectedTablesForIndexing}
+            onChange={(e) =>
+              setSelectedTablesForIndexing(
+                Array.from(e.target.selectedOptions, (option) => option.value)
+              )
+            }
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary min-h-[100px]"
           >
-            <Select
-              mode="tags"
-              placeholder="Add tables to index"
-              onChange={setSelectedTablesForIndexing}
-              options={(tables || []).map((table) => ({
-                value: table,
-                label: table,
-              }))}
-              dropdownRender={(menu) => (
-                <>
-                  <div
-                    style={{
-                      padding: "8px",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      className="mr-4 px-4 py-1 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200 transition-colors duration-200 dark:bg-dark-bg-secondary dark:border-dark-border"
-                      onClick={addAllTables}
-                    >
-                      Add All ➕
-                    </button>
-                    <button
-                      type="button"
-                      className="px-4 py-1 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200 transition-colors duration-200 dark:bg-dark-bg-secondary dark:border-dark-border"
-                      onClick={clearAllTables}
-                    >
-                      Clear All ❌
-                    </button>
-                  </div>
-                  <hr style={{ margin: "4px 0" }} />
-                  {menu}
-                </>
-              )}
-              className="dark:bg-dark-bg-secondary dark:border-dark-border"
-            />
-          </Form.Item>
-        </Form>
+            {(tables || []).map((table) => (
+              <option key={table} value={table}>
+                {table}
+              </option>
+            ))}
+          </select>
+          <div className="flex justify-between mt-2">
+            <button
+              type="button"
+              className="mr-4 px-4 py-1 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200 transition-colors duration-200 dark:bg-dark-bg-secondary dark:border-dark-border"
+              onClick={addAllTables}
+            >
+              Add All ➕
+            </button>
+            <button
+              type="button"
+              className="px-4 py-1 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200 transition-colors duration-200 dark:bg-dark-bg-secondary dark:border-dark-border"
+              onClick={clearAllTables}
+            >
+              Clear All ❌
+            </button>
+          </div>
+        </div>
 
-        <Button
-          type="dashed"
-          htmlType="submit"
-          className="w-64 bg-white border border-gray-300 text-blue-500 hover:bg-blue-500 hover:text-white self-center dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary dark:hover:bg-dark-hover"
+        <button
+          type="submit"
+          className="w-64 bg-white border border-gray-300 text-blue-500 hover:bg-blue-500 hover:text-white self-center dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary dark:hover:bg-dark-hover px-4 py-2 rounded-md"
+          onClick={() => reIndexTables({ tables: selectedTablesForIndexing })}
+          disabled={loading}
         >
           Extract Table Metadata
-        </Button>
+        </button>
       </div>
 
       {loading ? (
@@ -441,30 +425,31 @@ const MetadataTable = ({
       ) : (
         <>
           <div className="flex justify-center my-4 gap-4">
-            <Button
-              className="rounded bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:border-dark-border dark:hover:bg-dark-hover"
-              loading={loading}
+            <button
+              className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:border-dark-border dark:hover:bg-dark-hover disabled:opacity-50"
+              disabled={loading}
               onClick={updateMetadata}
             >
               Save Changes
-            </Button>
+            </button>
 
-            <Button
-              className="rounded px-2 py-1 text-xs font-semibold text-black shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:border-dark-border dark:hover:bg-dark-hover"
-              loading={loading}
+            <button
+              className="rounded px-4 py-2 text-sm font-semibold text-black shadow-sm hover:bg-blue-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:border-dark-border dark:hover:bg-dark-hover disabled:opacity-50"
+              disabled={loading}
               onClick={downloadMetadata}
             >
               Download <DownloadOutlined />
-            </Button>
+            </button>
 
-            <Button
-              className="rounded px-2 py-1 text-xs font-semibold text-black shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:border-dark-border dark:hover:bg-dark-hover"
-              loading={loading}
+            <button
+              className="rounded px-4 py-2 text-sm font-semibold text-black shadow-sm hover:bg-blue-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:border-dark-border dark:hover:bg-dark-hover disabled:opacity-50"
+              disabled={loading}
               onClick={uploadMetadata}
             >
               Upload <UploadOutlined />
-            </Button>
+            </button>
           </div>
+
           <Alert
             message="This table is a preview for your changes. Please hit 'Save Changes' to update metadata on the defog server, or upload your metadata as a CSV"
             type="info"
