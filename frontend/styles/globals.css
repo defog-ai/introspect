@@ -4,7 +4,7 @@
 
 @layer base {
   * {
-    @apply transition-colors duration-200;
+    @apply transition-colors duration-100;
   }
 
   body {
@@ -12,13 +12,13 @@
   }
 
   /* Style all inputs and buttons for dark mode */
-  input:not(.ant-input),
-  textarea:not(.ant-input),
-  select:not(.ant-select) {
+  input:not(.ant-input):not(.agui-item):not(.agui-item *),
+  textarea:not(.ant-input):not(.agui-item):not(.agui-item *),
+  select:not(.ant-select):not(.agui-item):not(.agui-item *) {
     @apply bg-white dark:bg-dark-bg-secondary border-gray-300 dark:border-dark-border;
   }
 
-  button:not(.ant-btn) {
+  button:not(.ant-btn):not(.agui-item):not(.agui-item *) {
     @apply bg-white dark:bg-dark-bg-secondary text-primary-text dark:text-dark-text-primary 
            hover:bg-gray-100 dark:hover:bg-dark-hover;
   }
@@ -87,6 +87,17 @@
         @apply bg-dark-hover border-blue-500;
       }
     }
+  }
+
+  .ant-tabs-top > .ant-tabs-nav::before {
+    @apply border-b-gray-600;
+  }
+
+  .ant-tabs-tab-active span {
+    @apply text-gray-100 border-b-gray-100;
+  }
+  .ant-tabs-ink-bar {
+    @apply !bg-gray-100;
   }
 }
 
