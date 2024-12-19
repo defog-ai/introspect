@@ -27,7 +27,10 @@ export function OracleAnalysisFollowOn({
 
   return (
     <div>
-      <div className="flex flex-col bg-gray-100 p-4 gap-4 pb-28" ref={ctr}>
+      <div
+        className="flex flex-col bg-gray-100 p-4 gap-4 pb-28 dark:bg-gray-600"
+        ref={ctr}
+      >
         {analyses.map((analysis: AnalysisParsed, i) => {
           return (
             <OracleAnalysis analysis={analysis} key={analysis.analysis_id} />

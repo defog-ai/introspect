@@ -12,7 +12,6 @@ const ManageUsers = () => {
   const message = useContext(MessageManagerContext);
 
   const router = useRouter();
-  const message = useContext(MessageManagerContext);
 
   const getOpenaiParams = async () => {
     setLoading(true);

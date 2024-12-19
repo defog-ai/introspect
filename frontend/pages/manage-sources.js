@@ -1,6 +1,6 @@
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
-import Source from "components/manage-sources/Source";
+import Source from "$components/manage-sources/Source";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { Col, Input, Row, Select, Spin } from "antd";
@@ -13,6 +13,9 @@ import {
 const ManageSources = () => {
   const [apiKeyName, setApiKeyName] = useState(null);
   const [apiKeyNames, setApiKeyNames] = useState([]);
+  const [inputLink, setInputLink] = useState("");
+  const [importedSources, setImportedSources] = useState([]);
+  const [waitImport, setWaitImport] = useState(false);
   const message = useContext(MessageManagerContext);
 
   const getApiKeyNames = async (token) => {

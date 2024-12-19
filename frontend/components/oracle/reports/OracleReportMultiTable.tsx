@@ -1,5 +1,9 @@
 import { mergeAttributes, Node } from "@tiptap/core";
-import { NodeViewProps, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import {
+  NodeViewProps,
+  NodeViewWrapper,
+  ReactNodeViewRenderer,
+} from "@tiptap/react";
 import { useContext, useMemo, useState } from "react";
 import { OracleReportContext } from "$components/context/OracleReportContext";
 import { Table, Tabs } from "@defogdotai/agents-ui-components/core-ui";
@@ -20,7 +24,9 @@ function OracleReportMultiTable({ node }: NodeViewProps) {
 
   const multiTableId = node.attrs.id as string;
   const multiTableEntry = multiTables[multiTableId];
-  const tableIdList = Array.isArray(multiTableEntry?.tableIds) ? multiTableEntry.tableIds : [];
+  const tableIdList = Array.isArray(multiTableEntry?.tableIds)
+    ? multiTableEntry.tableIds
+    : [];
 
   const [selectedTableId, setSelectedTableId] = useState<string | null>(
     tableIdList.length > 0 ? tableIdList[0] : null
@@ -78,7 +84,11 @@ function OracleReportMultiTable({ node }: NodeViewProps) {
         <div className="table-selection flex flex-row gap-2 w-100 overflow-scroll mb-4">
           {tableIdList.map((id) => (
             <div
-              className={`p-2 bg-gray-200 border border-gray-300 rounded-full cursor-pointer whitespace-nowrap text-xs ${selectedTableId === id ? "bg-gray-600 border-transparent text-white" : "text-gray-500 hover:bg-gray-300"}`}
+              className={`p-2 bg-gray-200 border border-gray-300 rounded-full cursor-pointer whitespace-nowrap text-xs ${
+                selectedTableId === id
+                  ? "bg-gray-600 border-transparent text-white"
+                  : "text-gray-500 hover:bg-gray-300"
+              }`}
               key={id}
               onClick={() => setSelectedTableId(id)}
             >
@@ -94,7 +104,7 @@ function OracleReportMultiTable({ node }: NodeViewProps) {
         <Tabs
           tabs={tabs[selectedTableId].filter(Boolean)}
           size="small"
-          contentClassNames="border"
+          contentClassNames="border dark:border-gray-700"
           defaultSelected={selectedTableId}
         />
       )}

@@ -3,7 +3,6 @@ import setupBaseUrl from "./setupBaseUrl";
 import type { Analysis } from "$components/context/OracleReportContext";
 
 import { OracleReportMultiTableExtension } from "$components/oracle/reports/OracleReportMultiTable";
-import { OracleReportTableExtension } from "$components/oracle/reports/OracleReportTable";
 import { RecommendationTitle } from "$components/oracle/reports/OracleReportRecommendationTitle";
 import StarterKit from "@tiptap/starter-kit";
 import { OracleReportImageExtension } from "$components/oracle/reports/OracleReportImage";
@@ -13,7 +12,6 @@ export const extensions = [
   StarterKit,
   RecommendationTitle,
   OracleReportMultiTableExtension,
-  OracleReportTableExtension,
   OracleReportImageExtension,
   Markdown,
 ];

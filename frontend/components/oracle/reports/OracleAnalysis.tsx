@@ -54,7 +54,7 @@ export const OracleAnalysis = ({
 
   if (isLoader) {
     return (
-      <div className="rounded-lg border drop-shadow-md text-center text-gray-500 bg-white p-4 min-h-20">
+      <div className="rounded-lg border drop-shadow-md text-center text-gray-500 bg-white dark:bg-gray-700 dark:border-gray-500 p-4 min-h-20">
         <SpinningLoader classNames="m-0 mb-2" />
         <p> {analysisStatus || "Exploring..."}</p>
       </div>
@@ -71,7 +71,7 @@ export const OracleAnalysis = ({
 
   return (
     <ErrorBoundary>
-      <div className="rounded-lg border drop-shadow-md bg-white py-4">
+      <div className="rounded-lg border drop-shadow-md bg-white dark:bg-gray-700 dark:border-gray-500 py-4">
         <OracleReportContext.Provider
           value={{
             tables: analysis.tables || {},
@@ -94,7 +94,7 @@ export const OracleAnalysis = ({
             editorProps={{
               attributes: {
                 class:
-                  "oracle-report-tiptap prose prose-base mx-auto p-2 mb-12 md:mb-0 focus:outline-none [&_.react-multitable-container]:lg:mx-0",
+                  "oracle-report-tiptap prose prose-base mx-auto p-2 mb-12 md:mb-0 focus:outline-none [&_.react-multitable-container]:lg:mx-0 dark:prose-invert",
               },
             }}
           />

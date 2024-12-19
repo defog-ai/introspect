@@ -6,7 +6,7 @@ export default {
   reactStrictMode: false,
   assetPrefix: "./",
   // need this for docker build
-  output: "standalone",
+  output: "export",
   webpack: (config) => {
     config.resolve.fallback = { fs: false };
     return config;

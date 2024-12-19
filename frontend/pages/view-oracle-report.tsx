@@ -63,8 +63,6 @@ export default function ViewOracleReport() {
     string | null
   >(null);
 
-  const message = useContext(MessageManagerContext);
-
   useEffect(() => {
     const setup = async (reportId: string, keyName: string) => {
       try {

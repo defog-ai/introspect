@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
-import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 import { useRouter } from "next/router";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { UserContext } from "$components/context/UserContext";
