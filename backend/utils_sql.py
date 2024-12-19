@@ -7,9 +7,8 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 from sqlalchemy import text
 from sqlglot import exp, parse_one
 from utils_df import mk_df
-from utils_logging import LOGGER, truncate_obj
-from sqlalchemy.ext.asyncio import create_async_engine
 from generic_utils import is_sorry
+from defog.query import async_execute_query_once
 
 # Functions mostly lifted from https://github.com/defog-ai/sql-eval/blob/main/eval/eval.py
 # but adapted to use the engine from db_utils and without some extra labels like
@@ -35,37 +34,14 @@ async def execute_sql(
         err_msg = "Obtained Sorry SQL query"
         return None, err_msg
 
-    if db_type == "postgres":
-        connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
-        async_engine = create_async_engine(connection_uri)
-    elif db_type == "sqlite":
-        connection_uri = f"sqlite+aiosqlite:///{db_creds['database']}"
-        async_engine = create_async_engine(connection_uri)
-    elif db_type == "mysql":
-        connection_uri = f"mysql+aiomysql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
-        async_engine = create_async_engine(connection_uri)
-    elif db_type == "sqlserver":
-        connection_uri = f"mssql+aioodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
-        async_engine = create_async_engine(connection_uri)
-    else:
-        err_msg = f"Unsupported db_type for executing query: {db_type}. Must be one of 'postgres', 'sqlite', 'mysql', 'sqlserver'"
-        return None, err_msg
-    LOGGER.debug(f"db_type: {db_type}, connection_uri: {connection_uri}")
     try:
-        async with async_engine.connect() as conn:
-            result = await conn.execute(text(sql))
-            data = result.all()
-            colnames = list(result.keys())
-            data_str = truncate_obj([tuple(row) for row in data])
-            LOGGER.info(
-                f"Query successfully executed.\nCol names: {colnames}\nData: {data_str}\nSQL: {sql}"
-            )
-            df = mk_df(data, colnames)
+
+        colnames, rows = await async_execute_query_once(db_type, db_creds, sql)
+        data = [list(row) for row in rows]
+        df = mk_df(data, colnames)
     except Exception as e:
         err_msg = f"Error occurred in running SQL: {e}\nSQL: {sql}"
         df = None
-    finally:
-        await async_engine.dispose()
 
     return df, err_msg
 
