@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 
-// import removeImports from "next-remove-imports";
+import removeImports from "next-remove-imports";
 
-export default {
+export default removeImports()({
   reactStrictMode: false,
   assetPrefix: "./",
   // need this for docker build
@@ -18,4 +18,4 @@ export default {
   images: {
     unoptimized: true,
   },
-};
+});
