@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 import Meta from "$components/layout/Meta";
 import { Row, Col, Select, Tooltip, Table, Spin } from "antd";
 import {
@@ -62,6 +62,8 @@ const CheckReadiness = () => {
   const [regressionStartFrom, setRegressionStartFrom] = useState(0);
   const [regressionResultsRemaining, setRegressionResultsRemaining] =
     useState(null);
+
+  const message = useContext(MessageManagerContext);
 
   const [apiKeyNames, setApiKeyNames] = useState([]);
 
@@ -251,8 +253,6 @@ const CheckReadiness = () => {
       checkBasicReadiness();
     }, 100);
   }, [apiKeyName]);
-
-  const message = useContext(MessageManagerContext);
 
   return (
     <>

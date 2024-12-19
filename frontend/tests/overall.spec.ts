@@ -46,7 +46,7 @@ test('test', async ({ page }) => {
   // see if a clarifying question is asked after 3 seconds
   await page.waitForTimeout(3000);
   const buttonFirstTry = page.getByRole('button', { name: 'Click here or press enter to' });
-  if (await buttonFirstTry.count() > 0) {
+  if ((await buttonFirstTry.count()) > 0) {
     await buttonFirstTry.click();
   }
 
@@ -77,7 +77,7 @@ test('test', async ({ page }) => {
   // see if a clarifying question is asked after 3 seconds
   await page.waitForTimeout(3000);
   const buttonSecondTry = page.getByRole('button', { name: 'Click here or press enter to' });
-  if (await buttonSecondTry.count() > 0) {
+  if ((await buttonSecondTry.count()) > 0) {
     await buttonSecondTry.click();
   }
 });

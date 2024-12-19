@@ -10,38 +10,49 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@ant-design/icons": "^5.4.0",
+    "@ant-design/icons": "^5.5.2",
     "@codemirror/lang-sql": "^6.7.0",
-    "@defogdotai/agents-ui-components": "^1.0.1",
+    "@defogdotai/agents-ui-components": "^1.0.2",
+    "@notionhq/client": "^2.2.14",
     "@react-oauth/google": "^0.12.1",
-    "@tiptap/react": "^2.9.1",
-    "@tiptap/starter-kit": "^2.9.1",
-    "antd": "^5.12.8",
-    "next": "^13.1.2",
+    "@tiptap/core": "^2.10.3",
+    "@tiptap/react": "^2.10.3",
+    "@tiptap/starter-kit": "^2.10.3",
+    "@uiw/react-codemirror": "^4.23.7",
+    "antd": "^5.22.5",
+    "chroma-js": "^2.4.2",
+    "d3": "^7.8.5",
+    "js-base64": "^3.7.7",
+    "next": "15.1.1",
     "next-remove-imports": "^1.0.12",
     "papaparse": "^5.4.1",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "recharts": "^2.12.7",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-fast-marquee": "^1.6.2",
+    "recharts": "^2.15.0",
     "sass": "^1.69.7",
     "tailwind-merge": "^2.3.0",
     "tiptap-markdown": "^0.8.10"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "^13.1.2",
+    "@next/bundle-analyzer": "15.1.1",
     "@playwright/test": "^1.47.1",
     "@tailwindcss/forms": "^0.5.7",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^20.11.6",
-    "@types/react": "^19.0.0",
+    "@types/react": "19.0.2",
     "autoprefixer": "^10.4.19",
     "babel-plugin-styled-components": "^2.1.4",
-    "eslint": "^8.30.0",
-    "eslint-config-next": "^13.1.2",
-    "eslint-config-prettier": "^9.0.0",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "15.1.1",
+    "eslint-config-prettier": "^9.1.0",
     "postcss": "^8.4.38",
     "prettier": "^3.0.3",
-    "tailwindcss": "^3.4.3",
-    "typescript": "5.7.2"
+    "tailwindcss": "^3.4.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.0.2"
+    }
   }
 }

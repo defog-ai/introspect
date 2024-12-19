@@ -1,7 +1,7 @@
-import { useContext } from "react";
-import { Table, Space, Button, Spin } from "antd";
+import { Table, Space, Button, Modal, Spin } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import { useContext } from "react";
 import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const UsersTable = ({ userDets, getUserDets, loading, setLoading }) => {

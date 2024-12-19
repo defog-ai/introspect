@@ -10,7 +10,6 @@ const LogIn = () => {
   const [context, setContext] = useContext(UserContext);
   const router = useRouter();
   const message = useContext(MessageManagerContext);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // remove analysis trees whenever on the log in page

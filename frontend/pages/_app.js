@@ -19,7 +19,10 @@ function AppContent({ Component, pageProps }) {
   const [darkMode] = useTheme();
 
   return (
-    <ConfigProvider theme={darkMode ? darkTheme : lightTheme}>
+    <ConfigProvider
+      theme={darkMode ? darkTheme : lightTheme}
+      wave={{ disabled: true }}
+    >
       <UserContext.Provider value={[context, setContext]}>
         <MessageManagerContext.Provider value={MessageManager()}>
           <div className="min-h-screen bg-white dark:bg-dark-bg-primary text-primary-text dark:text-dark-text-primary transition-colors">

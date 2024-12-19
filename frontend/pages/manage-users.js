@@ -3,9 +3,9 @@ import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import AddUsersViaFile from "components/manage-users/AddUsersViaFile";
-import AddUsersViaForm from "components/manage-users/AddUsersViaForm";
-import UsersTable from "components/manage-users/UsersTable";
+import AddUsersViaFile from "$components/manage-users/AddUsersViaFile";
+import AddUsersViaForm from "$components/manage-users/AddUsersViaForm";
+import UsersTable from "$components/manage-users/UsersTable";
 import { TeamOutlined } from "@ant-design/icons";
 import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 

@@ -1,18 +1,26 @@
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import { Button, Col, Input, Upload, Select } from "antd";
-import { useCallback, useEffect, useMemo, useRef, useState, useContext } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   InboxOutlined,
 } from "@ant-design/icons";
-import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { sql as codemirrorSql } from "@codemirror/lang-sql";
 import { twMerge } from "tailwind-merge";
 import setupBaseUrl from "$utils/setupBaseUrl";
+
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const { Dragger } = Upload;
 
@@ -56,6 +64,7 @@ export default function TestRegressionPage() {
   const editor = useRef(null);
 
   const [queries, setQueries] = useState<RegressionItems>([]);
+  const message = useContext(MessageManagerContext);
 
   const [questionToBeAdded, setQuestionToBeAdded] = useState<RegressionItem>({
     questions: [],
@@ -103,8 +112,6 @@ export default function TestRegressionPage() {
   const [filter, setFilter] = useState(""); // filter for search
 
   const [loading, setLoading] = useState<string | boolean>(false);
-
-  const message = useContext(MessageManagerContext);
 
   useEffect(() => {
     const apiKeyName = localStorage.getItem("defogDbSelected");

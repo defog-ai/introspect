@@ -2,12 +2,11 @@ import { useState, useEffect, useContext } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import IMGO from "$components/align-model/IMGO";
 import Instructions from "../components/align-model/Instructions";
 import GoldenQueries from "../components/align-model/GoldenQueries";
-import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 import { SettingOutlined } from "@ant-design/icons";
 import { Row, Col, Select } from "antd";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const AlignModel = () => {
   const [devMode, setDevMode] = useState(false);
@@ -20,6 +19,7 @@ const AlignModel = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingInstructions, setIsUpdatingInstructions] = useState(false);
   const [isUpdatingGoldenQueries, setIsUpdatingGoldenQueries] = useState(false);
+  const message = useContext(MessageManagerContext);
 
   // state that triggers an update in the golden queries
   const [updatedGoldenQueriesToggle, setUpdatedGoldenQueriesToggle] =
@@ -193,8 +193,6 @@ const AlignModel = () => {
       setLoading(false);
     }
   };
-
-  const message = useContext(MessageManagerContext);
 
   return (
     <>

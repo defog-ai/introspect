@@ -7,7 +7,6 @@ import {
   UploadOutlined,
 } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
-
 import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const MetadataTable = ({
@@ -146,7 +145,8 @@ const MetadataTable = ({
     }
   };
 
-  const reIndexTables = async (values) => {
+  const reIndexTables = async () => {
+    console.log("Received tables: ", selectedTablesForIndexing);
     setLoading(true);
     try {
       message.info(
@@ -157,7 +157,7 @@ const MetadataTable = ({
         {
           method: "POST",
           body: JSON.stringify({
-            tables: values.tables,
+            tables: selectedTablesForIndexing,
             token: token,
             key_name: apiKeyName,
           }),

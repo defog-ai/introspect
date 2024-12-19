@@ -2,18 +2,17 @@ import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import Source from "components/manage-sources/Source";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { useCallback, useEffect, useState, useContext } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { Col, Input, Row, Select, Spin } from "antd";
 import { BookOutlined } from "@ant-design/icons";
-import { Button } from "@defogdotai/agents-ui-components/core-ui";
-import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
+import {
+  Button,
+  MessageManagerContext,
+} from "@defogdotai/agents-ui-components/core-ui";
 
 const ManageSources = () => {
   const [apiKeyName, setApiKeyName] = useState(null);
   const [apiKeyNames, setApiKeyNames] = useState([]);
-  const [inputLink, setInputLink] = useState("");
-  const [importedSources, setImportedSources] = useState([]);
-  const [waitImport, setWaitImport] = useState(false);
   const message = useContext(MessageManagerContext);
 
   const getApiKeyNames = async (token) => {

@@ -42,7 +42,9 @@ const AddUsersViaForm = ({ loading, getUserDets }) => {
       .filter((user) => user.username && user.userType)
       .map(
         (user) =>
-          `${user.username},${user.password || ""},${user.userType},${user.userDb.join("|")}`
+          `${user.username},${user.password || ""},${
+            user.userType
+          },${user.userDb.join("|")}`
       )
       .join("\n");
     setCsvString(`username,password,user_type,allowed_dbs\n${csv}`);

@@ -41,6 +41,7 @@ export default function ViewOracleReport() {
     [key: string]: AnalysisParsed;
   }>({});
 
+  const message = useContext(MessageManagerContext);
   const feedbackTextArea = useRef<HTMLTextAreaElement>(null);
 
   const [mdx, setMDX] = useState<string | null>(null);

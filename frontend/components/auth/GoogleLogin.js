@@ -4,12 +4,14 @@ import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui"
 import { useRouter } from "next/router";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { UserContext } from "$components/context/UserContext";
+import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const GoogleLoginButton = () => {
   const [clientId, setClientId] = useState("");
   const [context, setContext] = useContext(UserContext);
   const message = useContext(MessageManagerContext);
   const router = useRouter();
+
   const onSuccess = async (response) => {
     console.log("Login Success: ", response); // Handle successful login
     const resp = await fetch(setupBaseUrl("http", "login_google"), {

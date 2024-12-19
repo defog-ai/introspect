@@ -501,183 +501,181 @@ function OracleDashboard() {
     </div>
   );
 
-  return (
-    <>
-      <Meta />
-      <Scaffolding id="align-model" userType="admin">
-        {apiKeyNames.length > 1 ? (
-          <Row type={"flex"} height={"100vh"}>
-            <Col span={24} style={{ paddingBottom: "1em" }}>
-              <Select
-                style={{ width: "100%" }}
-                onChange={(e) => {
-                  setApiKeyName(e);
-                }}
-                options={apiKeyNames.map((item) => {
-                  return { value: item, key: item, label: item };
-                })}
-                value={apiKeyName}
-              />
-            </Col>
-          </Row>
-        ) : null}
-
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-2xl font-semibold mb-2 dark:text-gray-200">
-              The Oracle
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              The Oracle is a background assistant, helping you to dig into your
-              dataset for insights. To begin, please let us know what you are
-              interested in below.
-            </p>
-          </div>
-
-          <div className="flex items-center mb-6">
-            <TextArea
-              placeholder="Describe what you would like the Oracle to do..."
-              className="w-full p-3 border rounded-lg text-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 focus:outline-none focus:border-purple-500 dark:focus:border-purple-700"
-              value={userQuestion}
+  return (<>
+    <Meta />
+    <Scaffolding id="align-model" userType="admin">
+      {apiKeyNames.length > 1 ? (
+        <Row type={"flex"} height={"100vh"}>
+          <Col span={24} style={{ paddingBottom: "1em" }}>
+            <Select
+              style={{ width: "100%" }}
               onChange={(e) => {
-                setUserQuestion(e.target.value);
-                // let the user type a few characters before fetching clarifications
+                setApiKeyName(e);
               }}
-              autoSize={{ minRows: 2, maxRows: 10 }}
-              style={{ flexBasis: "90%" }}
+              options={apiKeyNames.map((item) => {
+                return { value: item, key: item, label: item };
+              })}
+              value={apiKeyName}
             />
-            <div className="ml-2">
-              {waitClarifications ? (
-                <Spin />
-              ) : (
-                userQuestion &&
-                userQuestion.length >= 5 &&
-                (!ready ? (
-                  <CloseCircleOutlined style={{ color: "#b80617" }} />
-                ) : (
-                  <CheckCircleOutlined style={{ color: "#22c55e" }} />
-                ))
-              )}
-            </div>
-          </div>
+          </Col>
+        </Row>
+      ) : null}
 
-          {!ready && readyErrorMsg ? (
-            <div className="bg-light-red dark:bg-red-900 p-4 rounded-lg my-2">
-              <p className="text-red dark:text-red-400">{readyErrorMsg}</p>
-            </div>
-          ) : null}
-
-          {clarifications.length > 0 && (
-            // show clarifications only when there are some
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2 dark:text-gray-200">
-                Clarifications
-              </h2>
-              <TaskType taskType={taskType} onChange={handleTaskTypeChange} />
-              {clarifications.map((clarificationObject, index) => (
-                <ClarificationItem
-                  key={String(clarificationObject.clarification)}
-                  clarificationObject={clarificationObject}
-                  updateAnsweredClarifications={updateAnsweredClarifications}
-                  deleteClarification={() =>
-                    deleteClarification(index, clarificationObject)
-                  }
-                />
-              ))}
-            </div>
-          )}
-
-          <div className="mt-6">
-            <Sources sources={sources} setSources={setSources} />
-          </div>
-
-          <Button
-            className="bg-purple-500 text-white py-4 px-4 mt-2 mb-2 rounded-lg hover:bg-purple-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 dark:hover:bg-purple-700"
-            onClick={generateReport}
-            disabled={userQuestion.length < 5 || taskType === ""}
-          >
-            Generate
-          </Button>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold mb-2 dark:text-gray-200">
+            The Oracle
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            The Oracle is a background assistant, helping you to dig into your
+            dataset for insights. To begin, please let us know what you are
+            interested in below.
+          </p>
         </div>
 
-        <div>
-          <h2 className="text-2xl font-semibold mb-4 dark:text-gray-200">
-            Past Reports
-          </h2>
-          {reports.map((report, index) => (
-            <div
-              key={index}
-              className="bg-purple-100 dark:bg-purple-900/30 shadow-lg rounded-lg mb-4 overflow-hidden border border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700 transition-all"
-            >
-              <div className="p-4">
-                {report.report_name ? (
-                  <>
-                    <h3 className="text-lg font-semibold text-purple-700 dark:text-purple-400 mb-1">
-                      {report.report_name}
-                    </h3>
-                    <div className="text-base mb-3 flex items-center justify-between">
-                      <div className="text-gray-500 dark:text-gray-400 flex items-center">
-                        <FileTextOutlined className="mr-1" />
-                        <span>{String(report.report_id).padStart(3, "0")}</span>
-                      </div>
-                      <ReportDateTime date={report.date_created} />
-                    </div>
-                  </>
-                ) : (
-                  <div className="mb-3">
-                    <div className="text-base flex items-center justify-between">
-                      <div className="text-gray-700 dark:text-gray-300 font-semibold flex items-center">
-                        <FileTextOutlined className="mr-2" />
-                        <span>{report?.inputs?.user_question}</span>
-                      </div>
-                      <ReportDateTime date={report.date_created} />
-                    </div>
-                  </div>
-                )}
+        <div className="flex items-center mb-6">
+          <TextArea
+            placeholder="Describe what you would like the Oracle to do..."
+            className="w-full p-3 border rounded-lg text-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 focus:outline-none focus:border-purple-500 dark:focus:border-purple-700"
+            value={userQuestion}
+            onChange={(e) => {
+              setUserQuestion(e.target.value);
+              // let the user type a few characters before fetching clarifications
+            }}
+            autoSize={{ minRows: 2, maxRows: 10 }}
+            style={{ flexBasis: "90%" }}
+          />
+          <div className="ml-2">
+            {waitClarifications ? (
+              <Spin />
+            ) : (
+              userQuestion &&
+              userQuestion.length >= 5 &&
+              (!ready ? (
+                <CloseCircleOutlined style={{ color: "#b80617" }} />
+              ) : (
+                <CheckCircleOutlined style={{ color: "#22c55e" }} />
+              ))
+            )}
+          </div>
+        </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <ReportStatus status={report.status} />
+        {!ready && readyErrorMsg ? (
+          <div className="bg-light-red dark:bg-red-900 p-4 rounded-lg my-2">
+            <p className="text-red dark:text-red-400">{readyErrorMsg}</p>
+          </div>
+        ) : null}
+
+        {clarifications.length > 0 && (
+          // show clarifications only when there are some
+          (<div className="mt-6">
+            <h2 className="text-xl font-semibold mb-2 dark:text-gray-200">
+              Clarifications
+            </h2>
+            <TaskType taskType={taskType} onChange={handleTaskTypeChange} />
+            {clarifications.map((clarificationObject, index) => (
+              <ClarificationItem
+                key={String(clarificationObject.clarification)}
+                clarificationObject={clarificationObject}
+                updateAnsweredClarifications={updateAnsweredClarifications}
+                deleteClarification={() =>
+                  deleteClarification(index, clarificationObject)
+                }
+              />
+            ))}
+          </div>)
+        )}
+
+        <div className="mt-6">
+          <Sources sources={sources} setSources={setSources} />
+        </div>
+
+        <Button
+          className="bg-purple-500 text-white py-4 px-4 mt-2 mb-2 rounded-lg hover:bg-purple-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 dark:hover:bg-purple-700"
+          onClick={generateReport}
+          disabled={userQuestion.length < 5 || taskType === ""}
+        >
+          Generate
+        </Button>
+      </div>
+
+      <div>
+        <h2 className="text-2xl font-semibold mb-4 dark:text-gray-200">
+          Past Reports
+        </h2>
+        {reports.map((report, index) => (
+          <div
+            key={index}
+            className="bg-purple-100 dark:bg-purple-900/30 shadow-lg rounded-lg mb-4 overflow-hidden border border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700 transition-all"
+          >
+            <div className="p-4">
+              {report.report_name ? (
+                <>
+                  <h3 className="text-lg font-semibold text-purple-700 dark:text-purple-400 mb-1">
+                    {report.report_name}
+                  </h3>
+                  <div className="text-base mb-3 flex items-center justify-between">
+                    <div className="text-gray-500 dark:text-gray-400 flex items-center">
+                      <FileTextOutlined className="mr-1" />
+                      <span>{String(report.report_id).padStart(3, "0")}</span>
+                    </div>
+                    <ReportDateTime date={report.date_created} />
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {report.status === "done" && (
-                      <>
-                        <Button
-                          className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
-                          onClick={() =>
-                            window.open(
-                              `/view-oracle-report?reportId=${report.report_id}&keyName=${apiKeyName}`,
-                              "_blank"
-                            )
-                          }
-                        >
-                          View Report
-                        </Button>
-                        {/* <Button
-                          className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
-                          onClick={() => downloadReport(report.report_id)}
-                        >
-                          Download
-                        </Button> */}
-                      </>
-                    )}
-                    {(report.status === "done" ||
-                      report.status === "error") && (
+                </>
+              ) : (
+                <div className="mb-3">
+                  <div className="text-base flex items-center justify-between">
+                    <div className="text-gray-700 dark:text-gray-300 font-semibold flex items-center">
+                      <FileTextOutlined className="mr-2" />
+                      <span>{report?.inputs?.user_question}</span>
+                    </div>
+                    <ReportDateTime date={report.date_created} />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <ReportStatus status={report.status} />
+                </div>
+                <div className="flex items-center space-x-2">
+                  {report.status === "done" && (
+                    <>
                       <Button
-                        className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                        icon={<DeleteOutlined />}
-                        onClick={() => deleteReport(report.report_id)}
-                      />
-                    )}
-                  </div>
+                        className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                        onClick={() =>
+                          window.open(
+                            `/view-oracle-report?reportId=${report.report_id}&keyName=${apiKeyName}`,
+                            "_blank"
+                          )
+                        }
+                      >
+                        View Report
+                      </Button>
+                      {/* <Button
+                        className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                        onClick={() => downloadReport(report.report_id)}
+                      >
+                        Download
+                      </Button> */}
+                    </>
+                  )}
+                  {(report.status === "done" ||
+                    report.status === "error") && (
+                    <Button
+                      className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                      icon={<DeleteOutlined />}
+                      onClick={() => deleteReport(report.report_id)}
+                    />
+                  )}
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      </Scaffolding>
-    </>
-  );
+          </div>
+        ))}
+      </div>
+    </Scaffolding>
+  </>);
 }
 
 function ClarificationItem({

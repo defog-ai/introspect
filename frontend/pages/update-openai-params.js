@@ -9,6 +9,7 @@ const ManageUsers = () => {
   const [loading, setLoading] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [userPrompt, setUserPrompt] = useState("");
+  const message = useContext(MessageManagerContext);
 
   const router = useRouter();
   const message = useContext(MessageManagerContext);
