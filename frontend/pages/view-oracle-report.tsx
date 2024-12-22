@@ -98,12 +98,15 @@ export default function ViewOracleReport() {
         setExecutiveSummary(sum);
 
         const analyses = {};
-
         analysesJsons.map((analysis) => {
           analyses[analysis.analysis_id] = {
             analysis_id: analysis.analysis_id,
             ...analysis,
-            ...parseMDX(analysis.mdx),
+            ...parseMDX(
+              analysis.mdx,
+              analysis.analysis_json?.artifacts?.fetched_table_csv?.artifact_content,
+              analysis.analysis_json?.working?.generated_sql
+            ),
           };
         });
 
