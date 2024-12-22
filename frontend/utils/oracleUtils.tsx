@@ -75,7 +75,7 @@ function findTag(
  * 5. Replace all content inside a multi table tag with nothing.
  *
  */
-export function parseTables(mdx: string) {
+export function parseTables(mdx: string, table_csv?: string, sql?: string) {
   const parsed = {
     tables: {},
     multiTables: {},
@@ -92,6 +92,7 @@ export function parseTables(mdx: string) {
     );
     const { columns, data } = parseData(table.attributes.csv);
     parsed.tables[id] = { columns, data, ...table };
+    console.log(parsed.tables[id]);
   }
   // find multi tables
   const multiTables = findTag(mdx, "multitable");
@@ -111,6 +112,29 @@ export function parseTables(mdx: string) {
       tableIds: tables.map((t) => t.attributes.id),
       ...multiTable,
     };
+  }
+
+  // if no multitables, add one with all tables
+  if ((Object.keys(parsed.multiTables).length === 0) && (table_csv && sql)) {
+    const { columns, data } = parseData(table_csv);
+    parsed.tables["default-table"] = {
+      columns,
+      data,
+      attributes: {
+        sql: sql,
+        csv: table_csv,
+        type: "fetched_table_csv",
+      }
+    };
+
+    parsed.multiTables["default-multi-table"] = {
+      tableIds: ["default-table"],
+      attributes: {},
+      fullText: '<multitable><oracle-table id="default-table"></oracle-table></multitable>',
+      innerText: '<oracle-table id="default-table"></oracle-table>',
+    };
+    console.log(parsed.tables["default-table"]);
+    mdx+= `<oracle-multi-table id="default-multi-table"><oracle-table id="default-table"></oracle-table></oracle-multi-table>`;
   }
 
   return { mdx: mdx, ...parsed };
@@ -173,16 +197,20 @@ class MDX {
       fullText?: string;
     };
   };
+  table_csv: string;
+  sql: string;
 
-  constructor(mdx: string) {
+  constructor(mdx: string, fetched_table_csv?: string, sql?: string) {
     this.mdx = mdx;
     this.tables = {};
     this.multiTables = {};
     this.images = {};
+    this.table_csv = fetched_table_csv || "";
+    this.sql = sql || "";
   }
 
   parseTables = () => {
-    let parsed = parseTables(this.mdx);
+    let parsed = parseTables(this.mdx, this.table_csv, this.sql);
     this.tables = parsed.tables;
     this.multiTables = parsed.multiTables;
     this.mdx = parsed.mdx;
@@ -216,8 +244,8 @@ class MDX {
  * Parse an mdx string
  *
  */
-export const parseMDX = (mdx: string): ReturnType<MDX["getParsed"]> => {
-  let parsed = new MDX(mdx);
+export const parseMDX = (mdx: string, fetched_table_csv?: string, generated_sql?: string): ReturnType<MDX["getParsed"]> => {
+  let parsed = new MDX(mdx, fetched_table_csv, generated_sql);
 
   parsed.parseTables().parseImages();
 
