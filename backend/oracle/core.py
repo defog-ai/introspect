@@ -11,7 +11,6 @@ from db_utils import (
     add_or_update_analysis,
     engine,
     get_report_data,
-    update_summary_dict,
 )
 from oracle.celery_app import celery_app
 from oracle.constants import TaskStage, TaskType, STAGE_TO_STATUS
@@ -20,6 +19,7 @@ from oracle.export import generate_report
 from oracle.gather_context import gather_context
 from oracle.predict import predict
 from oracle.optimize import optimize
+from oracle.redis_utils import delete_analysis_task_id
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from utils_logging import LOGGER, save_and_log, save_timing
@@ -233,6 +233,7 @@ def generate_analysis_task(
             # get report's data
             report_data = get_report_data(report_id, api_key)
             if "error" in report_data:
+                delete_analysis_task_id(analysis_id)
                 return {"error": report_data["error"]}
 
             report_data = report_data["data"]
@@ -270,6 +271,7 @@ def generate_analysis_task(
                 or "analyses" not in result
                 or len(result["analyses"]) == 0
             ):
+                delete_analysis_task_id(analysis_id)
                 return {"error": "Error generating analysis"}
 
             full_context_with_previous_analyses = result.get(
@@ -293,6 +295,7 @@ def generate_analysis_task(
 
             mdx = res["mdx"]
             if not mdx:
+                delete_analysis_task_id(analysis_id)
                 return {"error": "Error generating analysis mdx"}
 
             # add this analysis to the database
@@ -305,6 +308,8 @@ def generate_analysis_task(
                 mdx=mdx,
             )
 
+            # Analysis is complete, remove the Redis key
+            delete_analysis_task_id(analysis_id)
             return {"success": True}
         except Exception as e:
             LOGGER.error(f"Error in generate_analysis_task: {str(e)}")
@@ -316,6 +321,7 @@ def generate_analysis_task(
                 analysis_json={"error": str(e)},
                 mdx=None,
             )
+            delete_analysis_task_id(analysis_id)
             return {"error": str(e)}
 
     return asyncio.run(_run_analysis())
