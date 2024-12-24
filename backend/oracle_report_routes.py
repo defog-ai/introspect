@@ -90,7 +90,7 @@ class ReportAnalysisRequest(ReportRequest):
     Request model for requesting a specific analysis of a report.
     """
 
-    analysis_id: int
+    analysis_id: str
 
     model_config = {
         "json_schema_extra": {
@@ -314,11 +314,10 @@ async def feedback_report(req: ReportFeedbackRequest):
             )
 
 
-@router.post("/oracle/get_report_analysis_list")
-async def get_report_analysis_list(req: ReportRequest):
+@router.post("/oracle/get_report_analysis_ids")
+async def get_report_analysis_ids(req: ReportRequest):
     """
-    Given a report_id, this endpoint will return the list of analyses for the report,
-    stored as a list of dictionaries in the key `analyses`.
+    Given a report_id, this endpoint will return the list of analyses ids for the report.
     """
     if not validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
@@ -330,15 +329,7 @@ async def get_report_analysis_list(req: ReportRequest):
             OracleAnalyses.report_id == req.report_id,
         )
         result = session.execute(stmt).scalars().all()
-        analyses = []
-        for row in result:
-            if not row.analysis_json or not row.mdx:
-                continue
-            analysis = {
-                column.name: getattr(row, column.name)
-                for column in OracleAnalyses.__table__.columns
-            }
-            analyses.append(analysis)
+        analyses = [row.analysis_id for row in result]
 
         return JSONResponse(status_code=200, content={"analyses": analyses})
 
@@ -354,20 +345,22 @@ async def get_report_analysis(req: ReportAnalysisRequest):
 
     # get the report
     with Session(engine) as session:
-        stmt = select(OracleReports.outputs).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
+        stmt = select(OracleAnalyses).where(
+            OracleAnalyses.api_key == api_key,
+            OracleAnalyses.report_id == req.report_id,
+            OracleAnalyses.analysis_id == req.analysis_id,
         )
         result = session.execute(stmt)
-        outputs = result.scalar_one_or_none()
-        explore = outputs.get(TaskStage.EXPLORE.value, {})
-        analyses = explore.get("analyses", {})
-        for analysis in analyses:
-            if analysis["qn_id"] == req.analysis_id:
-                # replace qn_id with analysis_id
-                analysis["analysis_id"] = req.analysis_id
-                del analysis["qn_id"]
-                return JSONResponse(status_code=200, content=analysis)
+        row = result.scalar_one_or_none()
+        if row:
+            analysis = {
+                column.name: getattr(row, column.name)
+                for column in OracleAnalyses.__table__.columns
+            }
+            return JSONResponse(
+                status_code=200,
+                content=analysis,
+            )
         return JSONResponse(status_code=404, content={"error": "Analysis not found"})
 
 

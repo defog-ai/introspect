@@ -8,6 +8,7 @@ from utils import longest_substring_overlap
 from db_utils import (
     OracleReports,
     add_or_update_analysis,
+    delete_analysis,
     engine,
     get_analysis_status,
     get_report_data,
@@ -15,6 +16,7 @@ from db_utils import (
     update_analysis_status,
     update_summary_dict,
     validate_user,
+    get_multiple_analyses,
 )
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -35,6 +37,13 @@ from sqlalchemy.sql import insert
 from db_utils import OracleReports, engine, validate_user
 from generic_utils import get_api_key_from_key_name, make_request
 from utils_logging import LOGGER, save_and_log, save_timing
+from oracle.redis_utils import (
+    get_analysis_task_id,
+    delete_analysis_task_id,
+    store_analysis_task_id,
+)
+from oracle.celery_app import celery_app
+
 
 router = APIRouter()
 
@@ -232,10 +241,11 @@ class AnalysisRequest(BaseModel):
     token: str
     key_name: str
     analysis_id: Optional[str] = None
+    recommendation_idx: Optional[int] = None
 
 
 class GenerateAnalysis(AnalysisRequest):
-    previous_analyses: list
+    previous_analysis_ids: list[str]
     new_analysis_question: str
     recommendation_idx: int = -1
 
@@ -267,6 +277,70 @@ async def get_analysis_status_endpoint(req: AnalysisRequest):
     return JSONResponse(content={"status": status})
 
 
+@router.post("/oracle/delete_analysis")
+async def delete_analysis_endpoint(req: AnalysisRequest):
+    """
+    Deletes an analysis given an analysis_id.
+    If recommendation_idx is provided, deletes the analysis for that recommendation.
+    Also cancels any running Celery task for this analysis.
+    """
+    username = validate_user(req.token, user_type=None, get_username=True)
+
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    api_key = get_api_key_from_key_name(req.key_name)
+
+    # First try to cancel any running task
+    task_id = get_analysis_task_id(req.analysis_id)
+    if task_id:
+        try:
+            celery_app.control.revoke(task_id, terminate=True)
+            delete_analysis_task_id(req.analysis_id)
+            LOGGER.info(f"Cancelled task {task_id} for analysis {req.analysis_id}")
+        except Exception as e:
+            LOGGER.error(f"Error cancelling task {task_id}: {str(e)}")
+
+    err = await delete_analysis(
+        api_key=api_key,
+        analysis_id=req.analysis_id,
+        report_id=req.report_id,
+    )
+
+    if err:
+        return JSONResponse(status_code=500, content={"error": err})
+
+    # update summary dict if applicable
+    if req.recommendation_idx is not None:
+        summary_dict = (
+            get_report_data(req.report_id, api_key)["data"]
+            .get("outputs", {})
+            .get(TaskStage.EXPORT.value, {})
+            .get("executive_summary", None)
+        )
+
+        if summary_dict:
+            curr_refs = summary_dict["recommendations"][req.recommendation_idx][
+                "analysis_reference"
+            ]
+            if not curr_refs or type(curr_refs) != list:
+                curr_refs = []
+            if req.analysis_id in curr_refs:
+                curr_refs.remove(req.analysis_id)
+                summary_dict["recommendations"][req.recommendation_idx][
+                    "analysis_reference"
+                ] = curr_refs
+                await update_summary_dict(api_key, req.report_id, summary_dict)
+
+    return JSONResponse(content={"message": "Analysis deleted"})
+
+
 @router.post("/oracle/generate_analysis")
 async def generate_analysis(req: GenerateAnalysis):
     username = validate_user(req.token, user_type=None, get_username=True)
@@ -281,9 +355,26 @@ async def generate_analysis(req: GenerateAnalysis):
         )
 
     api_key = get_api_key_from_key_name(req.key_name)
+    analysis_id = req.analysis_id or str(uuid4())
+
+    # start an empty analysis
+    err = await add_or_update_analysis(
+        api_key=api_key,
+        report_id=str(req.report_id),
+        analysis_id=analysis_id,
+        analysis_json={
+            # initialise the title to just the question for now
+            "title": req.new_analysis_question,
+            "analysis_id": analysis_id,
+        },
+        status="STARTED",
+        mdx=None,
+    )
+
+    if err:
+        return JSONResponse(status_code=500, content={"error": err})
 
     # get report's data
-    # send a request to this server's own endpoint /oracle/get_report_data
     report_data = get_report_data(req.report_id, api_key)
 
     if "error" in report_data:
@@ -291,102 +382,23 @@ async def generate_analysis(req: GenerateAnalysis):
 
     report_data = report_data["data"]
 
-    LOGGER.debug(f"Previous analyses: {req.previous_analyses}")
-
-    # start an empty analysis
-    err = await add_or_update_analysis(
-        api_key=api_key,
-        report_id=str(req.report_id),
-        analysis_id=req.analysis_id,
-        analysis_json={},
-        status="Exploring your data to answer your question",
-        mdx=None,
+    # Get previous analyses data
+    err, previous_analyses = get_multiple_analyses(
+        analysis_ids=req.previous_analysis_ids,
+        columns=["analysis_id", "analysis_json", "status"],
     )
 
     if err:
         return JSONResponse(status_code=500, content={"error": err})
 
-    # Call explore_data with a single analysis request
-    # We'll reuse the explore_data function but with a single question
-    inputs = {
-        "user_question": req.new_analysis_question,
-        "sources": report_data["inputs"].get("sources", []),
-        "max_analyses": 1,
-        "max_rounds": 1,
-        "previous_analyses": req.previous_analyses,
-    }
+    # Filter out any analyses that are not complete
+    previous_analyses = [
+        analysis["analysis_json"]
+        for analysis in previous_analyses
+        if analysis["status"] == "DONE"
+    ]
 
-    # Reuse the outputs from the main report
-    outputs = {
-        "gather_context": report_data["outputs"].get("gather_context", {}),
-        "explore": report_data["outputs"].get("explore", {}),
-    }
-
-    # also change the problem statement to the new analysis question
-    outputs["gather_context"]["problem_statement"] = req.new_analysis_question
-
-    result = await explore_data(
-        api_key=api_key,
-        report_id=str(req.report_id),
-        task_type=TaskType.EXPLORATION,
-        inputs=inputs,
-        outputs=outputs,
-        is_follow_on=True,
-        follow_on_id=req.analysis_id,
-    )
-
-    if "error" in result or "analyses" not in result or len(result["analyses"]) == 0:
-        return JSONResponse(
-            status_code=500, content={"error": "Error generating analysis"}
-        )
-
-    full_context_with_previous_analyses = result.get(
-        "full_context_with_previous_analyses", []
-    )
-
-    analysis = result["analyses"][0]
-
-    analysis["analysis_id"] = req.analysis_id or str(uuid4())
-
-    err = await update_analysis_status(
-        api_key=api_key,
-        analysis_id=analysis["analysis_id"],
-        report_id=req.report_id,
-        new_status="Exploration complete. Generating analysis",
-    )
-
-    if err:
-        return JSONResponse(status_code=500, content={"error": err})
-
-    # generate mdx for this analysis
-    res = await make_request(
-        DEFOG_BASE_URL + "/oracle/generate_analysis_mdx",
-        {
-            "api_key": api_key,
-            "problem_statement": req.new_analysis_question,
-            "task_type": TaskType.EXPLORATION.value,
-            "analysis": analysis,
-            "context": full_context_with_previous_analyses,
-        },
-    )
-
-    mdx = res["mdx"]
-    if not mdx:
-        return JSONResponse(
-            status_code=500, content={"error": "Error generating analysis mdx"}
-        )
-
-    # add this analysis to the database
-    await add_or_update_analysis(
-        api_key=api_key,
-        analysis_id=analysis["analysis_id"],
-        report_id=req.report_id,
-        status="done",
-        analysis_json=analysis,
-        mdx=mdx,
-    )
-
-    # put this analysis in the summary dict at the correct recommendation_idx
+    # update summary dict
     summary_dict = (
         report_data.get("outputs", {})
         .get(TaskStage.EXPORT.value, {})
@@ -399,7 +411,7 @@ async def generate_analysis(req: GenerateAnalysis):
         ]
         if not curr_refs or type(curr_refs) != list:
             curr_refs = []
-        curr_refs.append(analysis["analysis_id"])
+        curr_refs.append(analysis_id)
         summary_dict["recommendations"][req.recommendation_idx][
             "analysis_reference"
         ] = curr_refs
@@ -407,11 +419,23 @@ async def generate_analysis(req: GenerateAnalysis):
             api_key=api_key, report_id=req.report_id, summary_dict=summary_dict
         )
 
+    # Start the Celery task
+    from oracle.core import generate_analysis_task
+
+    task = generate_analysis_task.delay(
+        api_key=api_key,
+        report_id=str(req.report_id),
+        analysis_id=analysis_id,
+        new_analysis_question=req.new_analysis_question,
+        recommendation_idx=req.recommendation_idx,
+        previous_analyses=previous_analyses,
+    )
+
+    # Store the task ID in Redis
+    store_analysis_task_id(analysis_id, task.id)
+
     return JSONResponse(
-        content={
-            "analysis": analysis,
-            "mdx": res["mdx"],
-        }
+        content={"status": "started", "analysis_id": analysis_id, "task_id": task.id}
     )
 
 

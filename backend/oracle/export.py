@@ -90,7 +90,8 @@ async def generate_report(
 
     qn_ids = [analysis["qn_id"] for analysis in analyses]
     analysis_ids = [analysis["analysis_id"] for analysis in analyses]
-
+    LOGGER.info(qn_ids)
+    LOGGER.info(summary_dict["recommendations"])
     for summary_rec in summary_dict["recommendations"]:
         uuid_refs = []
         for qn_id in summary_rec["analysis_reference"]:
@@ -126,7 +127,7 @@ async def generate_report(
             analysis_id=analysis_id,
             report_id=report_id,
             analysis_json=analysis,
-            status="done",
+            status="DONE",
             mdx=analyses_mdx.get(analysis_id, ""),
         )
 

@@ -1475,6 +1475,29 @@ def get_report_data(report_id: int, api_key: str):
             return {"error": "Report not found"}
 
 
+async def delete_analysis(api_key: str, analysis_id: str, report_id: int):
+    """
+    Given an api_key, analysis_id and report_id, this endpoint will delete the analysis from the database in the oracle_analyses table.
+    """
+    from sqlalchemy.orm import Session
+
+    err = None
+
+    try:
+        with Session(engine) as session:
+            stmt = delete(OracleAnalyses).where(
+                OracleAnalyses.analysis_id == analysis_id,
+                OracleAnalyses.report_id == report_id,
+                OracleAnalyses.api_key == api_key,
+            )
+            session.execute(stmt)
+            session.commit()
+    except Exception as e:
+        LOGGER.error(f"Error deleting analysis {analysis_id}: {str(e)}")
+        err = str(e)[:300]
+    finally:
+        return err
+
 async def add_or_update_analysis(
     api_key: str,
     analysis_id: str,

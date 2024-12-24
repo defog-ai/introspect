@@ -5,7 +5,14 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Dict
 
-from db_utils import OracleReports, engine
+from generic_utils import make_request
+from db_utils import (
+    OracleReports,
+    add_or_update_analysis,
+    engine,
+    get_report_data,
+    update_summary_dict,
+)
 from oracle.celery_app import celery_app
 from oracle.constants import TaskStage, TaskType, STAGE_TO_STATUS
 from oracle.explore import explore_data
@@ -16,9 +23,12 @@ from oracle.optimize import optimize
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from utils_logging import LOGGER, save_and_log, save_timing
+import os
 
 
 celery_async_executors = ThreadPoolExecutor(max_workers=4)
+
+DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 
 @celery_app.task
@@ -205,3 +215,107 @@ async def execute_stage(
         stage_result = None
     # add more stages here for new report sections if necessary in the future
     return stage_result
+
+
+@celery_app.task(name="generate_analysis_task")
+def generate_analysis_task(
+    api_key: str,
+    report_id: str,
+    analysis_id: str,
+    new_analysis_question: str,
+    recommendation_idx: int,
+    previous_analyses: list,
+):
+    """Celery task for generating analysis asynchronously."""
+
+    async def _run_analysis():
+        try:
+            # get report's data
+            report_data = get_report_data(report_id, api_key)
+            if "error" in report_data:
+                return {"error": report_data["error"]}
+
+            report_data = report_data["data"]
+
+            # Call explore_data with a single analysis request
+            inputs = {
+                "user_question": new_analysis_question,
+                "sources": report_data["inputs"].get("sources", []),
+                "max_analyses": 1,
+                "max_rounds": 1,
+                "previous_analyses": previous_analyses,
+            }
+
+            # Reuse the outputs from the main report
+            outputs = {
+                "gather_context": report_data["outputs"].get("gather_context", {}),
+                "explore": report_data["outputs"].get("explore", {}),
+            }
+
+            # Change the problem statement to the new analysis question
+            outputs["gather_context"]["problem_statement"] = new_analysis_question
+
+            result = await explore_data(
+                api_key=api_key,
+                report_id=report_id,
+                task_type=TaskType.EXPLORATION,
+                inputs=inputs,
+                outputs=outputs,
+                is_follow_on=True,
+                follow_on_id=analysis_id,
+            )
+
+            if (
+                "error" in result
+                or "analyses" not in result
+                or len(result["analyses"]) == 0
+            ):
+                return {"error": "Error generating analysis"}
+
+            full_context_with_previous_analyses = result.get(
+                "full_context_with_previous_analyses", []
+            )
+
+            analysis = result["analyses"][0]
+            analysis["analysis_id"] = analysis_id
+
+            # generate mdx for this analysis
+            res = await make_request(
+                DEFOG_BASE_URL + "/oracle/generate_analysis_mdx",
+                {
+                    "api_key": api_key,
+                    "problem_statement": new_analysis_question,
+                    "task_type": TaskType.EXPLORATION.value,
+                    "analysis": analysis,
+                    "context": full_context_with_previous_analyses,
+                },
+            )
+
+            mdx = res["mdx"]
+            if not mdx:
+                return {"error": "Error generating analysis mdx"}
+
+            # add this analysis to the database
+            await add_or_update_analysis(
+                api_key=api_key,
+                analysis_id=analysis["analysis_id"],
+                report_id=report_id,
+                status="DONE",
+                analysis_json=analysis,
+                mdx=mdx,
+            )
+
+            return {"success": True}
+        except Exception as e:
+            LOGGER.error(f"Error in generate_analysis_task: {str(e)}")
+            await add_or_update_analysis(
+                api_key=api_key,
+                analysis_id=analysis_id,
+                report_id=report_id,
+                status="ERROR",
+                analysis_json={"error": str(e)},
+                mdx=None,
+            )
+            return {"error": str(e)}
+
+    return asyncio.run(_run_analysis())

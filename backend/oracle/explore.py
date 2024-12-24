@@ -217,7 +217,9 @@ async def explore_data(
                 "generated_questions" not in response
                 or "independent_variable_groups" not in response
             ):
-                LOGGER.error(f"Error occurred in generating deeper questions: {response}")
+                LOGGER.error(
+                    f"Error occurred in generating deeper questions: {response}"
+                )
                 break
             generated_qns = response["generated_questions"]
             LOGGER.info(f"Generated deeper questions with data: {len(generated_qns)}")
@@ -312,8 +314,9 @@ async def explore_generated_question(
         try:
             if retry_count == 0:
                 sql = await gen_sql(api_key, db_type, generated_qn, glossary)
+                LOGGER.info(f"Sql generated was: {sql}")
             else:
-                LOGGER.debug(f"Retrying SQL generation for {qn_id}: {generated_qn}")
+                LOGGER.info(f"Retrying SQL generation for {qn_id}: {generated_qn}")
                 sql = await retry_sql_gen(api_key, generated_qn, sql, err_msg, db_type)
             err_msg = None
         except Exception as e:
