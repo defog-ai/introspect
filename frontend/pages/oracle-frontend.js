@@ -167,12 +167,11 @@ function OracleDashboard() {
   };
 
   const deleteClarification = (index, clarificationObject) => {
-    // remove the clarification from the list of clarifications
+    // Allow users to delete any clarification through UI
     setClarifications((prevClarifications) =>
       prevClarifications.filter((_, i) => i !== index)
     );
-
-    // remove from answers
+    // Remove from answers as well
     answers.current[clarificationObject.clarification] = undefined;
   };
 
@@ -445,6 +444,7 @@ function OracleDashboard() {
       } else {
         // when doing this, clear the answers
         answers.current = {};
+        setClarifications([]);
         getClarifications();
         // getSources();
       }
