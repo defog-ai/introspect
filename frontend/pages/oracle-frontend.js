@@ -465,7 +465,7 @@ function OracleDashboard() {
 
     // the effect runs shortly only when answerLastUpdateTs changes
     // i.e. when the user answers a clarification
-  }, [answerLastUpdateTs, taskType]);
+  }, [answerLastUpdateTs]);
 
   useEffect(() => {
     if (!apiKeyName) return;
