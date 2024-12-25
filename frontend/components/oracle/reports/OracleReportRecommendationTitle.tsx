@@ -5,9 +5,8 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import React, { useContext, useRef, useState } from "react";
+import React, { useContext, useRef, useState, useEffect } from "react";
 import { OracleReportContext } from "../../context/OracleReportContext";
-import { Drawer } from "antd";
 import { OracleAnalysisFollowOn } from "./OracleAnalysisFollowOn";
 
 interface RecommendationTitleAttrs {
@@ -40,18 +39,47 @@ const RecommendationTitleComponent = ({ node }: NodeViewProps) => {
           ✨ Dig Deeper
         </span>
       </div>
-      <Drawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        placement="left"
-        size="large"
-        title="Details"
+
+      {/* Backdrop */}
+      <div 
+        className={`fixed inset-0 bg-black transition-opacity duration-300 ease-in-out ${drawerOpen ? 'bg-opacity-50 z-40' : 'bg-opacity-0 pointer-events-none -z-10'}`}
+        onClick={() => setDrawerOpen(false)}
+      />
+      
+      {/* Drawer */}
+      <div 
+        className={`fixed inset-y-0 left-0 w-[48rem] bg-white dark:bg-gray-800 shadow-xl transform transition-transform duration-300 ease-in-out ${
+          drawerOpen ? 'translate-x-0 z-50' : '-translate-x-full -z-10'
+        }`}
       >
-        <OracleAnalysisFollowOn
-          initialAnalyses={analysisParsed.current}
-          recommendationIdx={recommendationIdx.current}
-        />
-      </Drawer>
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                Dig Deeper
+              </h2>
+              <button
+                onClick={() => setDrawerOpen(false)}
+                className="p-1 rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+              >
+                <span className="sr-only">Close panel</span>
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto px-4 py-6">
+            <OracleAnalysisFollowOn
+              initialAnalyses={analysisParsed.current}
+              recommendationIdx={recommendationIdx.current}
+            />
+          </div>
+        </div>
+      </div>
     </NodeViewWrapper>
   );
 };
