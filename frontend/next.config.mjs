@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 
-import removeImports from "next-remove-imports";
-
-export default removeImports()({
+export default {
   reactStrictMode: false,
   assetPrefix: "./",
   // need this for docker build
@@ -11,11 +9,11 @@ export default removeImports()({
     config.resolve.fallback = { fs: false };
     return config;
   },
-  experimental: { esmExternals: true },
-  compiler: {
-    styledComponents: true,
+  experimental: {
+    // If you’re on Next 12 or 13, this often helps
+    esmExternals: false,
   },
   images: {
     unoptimized: true,
   },
-});
+};
