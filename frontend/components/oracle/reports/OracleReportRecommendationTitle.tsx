@@ -8,6 +8,7 @@ import {
 import React, { useContext, useRef, useState, useEffect } from "react";
 import { OracleReportContext } from "../../context/OracleReportContext";
 import { OracleAnalysisFollowOn } from "./OracleAnalysisFollowOn";
+import { Pencil, Delete } from "lucide-react"
 
 interface RecommendationTitleAttrs {
   analysis_reference: string;
@@ -28,16 +29,45 @@ const RecommendationTitleComponent = ({ node }: NodeViewProps) => {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const markIrrelevant = () => {
+    console.log('Marked as irrelevant');
+  };
+
+  const editAnalysis = () => {
+    console.log('Edit analysis clicked');
+  };
+
   return (
-    <NodeViewWrapper className="react-component not-prose underline underline-offset-2 group">
-      <div
-        className="relative font-bold text-lg cursor-pointer"
-        onClick={() => setDrawerOpen(true)}
-      >
-        <NodeViewContent />
-        <span className="text-gray-400 text-sm font-light dark:text-gray-200">
-          ✨ Dig Deeper
-        </span>
+    <NodeViewWrapper className="react-component not-prose group">
+      <div className="relative font-bold text-lg flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <div className="cursor-pointer">
+            <NodeViewContent />
+          </div>
+          <span 
+            className="text-gray-400/60 hover:text-gray-600 hover:font-bold dark:text-gray-500/60 dark:hover:text-gray-300 cursor-pointer rounded-md transition-colors duration-200"
+            onClick={editAnalysis}
+            title="Edit this analysis"
+          >
+            <Pencil />
+          </span>
+          <span 
+            className="text-gray-400/60 hover:text-gray-600 hover:font-bold dark:text-gray-500/60 dark:hover:text-gray-300 cursor-pointer rounded-md transition-colors duration-200"
+            onClick={markIrrelevant}
+            title="Mark this analysis as irrelevant"
+          >
+            <Delete />
+          </span>
+        </div>
+        <div className="flex gap-4 text-sm font-light">
+          <span 
+            className="text-gray-600 dark:text-gray-300 cursor-pointer px-3 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 underline hover:font-bold"
+            onClick={() => setDrawerOpen(true)}
+            title="View detailed analysis"
+          >
+            ✨ Dig Deeper
+          </span>
+        </div>
       </div>
 
       {/* Backdrop */}
