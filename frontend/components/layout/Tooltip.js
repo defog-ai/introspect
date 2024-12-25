@@ -1,5 +1,5 @@
 import React from "react";
-import { Tooltip } from "antd/lib";
+import { Tooltip } from "antd";
 
 const CustomTooltip = ({ tooltipText, mainText }) => {
   return (
