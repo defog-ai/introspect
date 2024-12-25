@@ -57,6 +57,7 @@ function OracleReportMultiTable({ node }: NodeViewProps) {
                 rows={data}
                 columns={columns}
                 initialQuestion={attributes.generated_qn}
+                initialOptionsExpanded={false}
               />
             </ErrorBoundary>
           ),
