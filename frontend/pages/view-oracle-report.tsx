@@ -105,7 +105,8 @@ export default function ViewOracleReport() {
             ...parseMDX(
               analysis.mdx,
               analysis.analysis_json?.artifacts?.fetched_table_csv?.artifact_content,
-              analysis.analysis_json?.working?.generated_sql
+              analysis.analysis_json?.working?.generated_sql,
+              analysis.analysis_json?.generated_qn,
             ),
           };
         });

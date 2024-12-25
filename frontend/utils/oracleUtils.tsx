@@ -75,7 +75,7 @@ function findTag(
  * 5. Replace all content inside a multi table tag with nothing.
  *
  */
-export function parseTables(mdx: string, table_csv?: string, sql?: string) {
+export function parseTables(mdx: string, table_csv?: string, sql?: string, generated_qn?: string) {
   const parsed = {
     tables: {},
     multiTables: {},
@@ -92,6 +92,10 @@ export function parseTables(mdx: string, table_csv?: string, sql?: string) {
     );
     const { columns, data } = parseData(table.attributes.csv);
     parsed.tables[id] = { columns, data, ...table };
+    parsed.tables[id].attributes = {
+      ...parsed.tables[id].attributes,
+      generated_qn: generated_qn,
+    }
     console.log(parsed.tables[id]);
   }
   // find multi tables
@@ -123,6 +127,7 @@ export function parseTables(mdx: string, table_csv?: string, sql?: string) {
       attributes: {
         sql: sql,
         csv: table_csv,
+        generated_qn: generated_qn,
         type: "fetched_table_csv",
       }
     };
@@ -199,18 +204,20 @@ class MDX {
   };
   table_csv: string;
   sql: string;
+  generated_qn: string;
 
-  constructor(mdx: string, fetched_table_csv?: string, sql?: string) {
+  constructor(mdx: string, fetched_table_csv?: string, sql?: string, generated_qn?: string) {
     this.mdx = mdx;
     this.tables = {};
     this.multiTables = {};
     this.images = {};
     this.table_csv = fetched_table_csv || "";
     this.sql = sql || "";
+    this.generated_qn = generated_qn || "";
   }
 
   parseTables = () => {
-    let parsed = parseTables(this.mdx, this.table_csv, this.sql);
+    let parsed = parseTables(this.mdx, this.table_csv, this.sql, this.generated_qn);
     this.tables = parsed.tables;
     this.multiTables = parsed.multiTables;
     this.mdx = parsed.mdx;
@@ -244,8 +251,8 @@ class MDX {
  * Parse an mdx string
  *
  */
-export const parseMDX = (mdx: string, fetched_table_csv?: string, generated_sql?: string): ReturnType<MDX["getParsed"]> => {
-  let parsed = new MDX(mdx, fetched_table_csv, generated_sql);
+export const parseMDX = (mdx: string, fetched_table_csv?: string, generated_sql?: string, generated_qn?: string): ReturnType<MDX["getParsed"]> => {
+  let parsed = new MDX(mdx, fetched_table_csv, generated_sql, generated_qn);
 
   parsed.parseTables().parseImages();
 

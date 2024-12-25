@@ -56,7 +56,7 @@ function OracleReportMultiTable({ node }: NodeViewProps) {
               <ChartContainer
                 rows={data}
                 columns={columns}
-                initialQuestion={""}
+                initialQuestion={attributes.generated_qn}
               />
             </ErrorBoundary>
           ),
