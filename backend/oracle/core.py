@@ -310,7 +310,6 @@ def generate_analysis_task(
 
             # Analysis is complete, remove the Redis key
             delete_analysis_task_id(analysis_id)
-            return {"success": True}
         except Exception as e:
             LOGGER.error(f"Error in generate_analysis_task: {str(e)}")
             await add_or_update_analysis(
@@ -318,10 +317,16 @@ def generate_analysis_task(
                 analysis_id=analysis_id,
                 report_id=report_id,
                 status="ERROR",
-                analysis_json={"error": str(e)},
+                analysis_json={
+                    # reset the data to just be the question
+                    "title": new_analysis_question,
+                    "analysis_id": analysis_id,
+                    # store this error and trace for debugging later
+                    "error": str(e),
+                    "trace": traceback.format_exc(),
+                },
                 mdx=None,
             )
             delete_analysis_task_id(analysis_id)
-            return {"error": str(e)}
 
     return asyncio.run(_run_analysis())
