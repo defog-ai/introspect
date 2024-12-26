@@ -599,11 +599,9 @@ function OracleDashboard() {
               ) : (
                 userQuestion &&
                 userQuestion.length >= 5 &&
-                (!ready ? (
+                !ready && (
                   <CloseCircleOutlined className="text-red-500" />
-                ) : (
-                  <CheckCircleOutlined className="text-green-500" />
-                ))
+                )
               )}
               <button
                 onClick={handleSendClick}
@@ -871,7 +869,6 @@ function ClarificationItem({
       {/* Question - 60% width */}
       <div className="text-amber-500 dark:text-amber-400 w-3/5 flex items-center gap-2">
         {clarificationObject.clarification}
-        {isLoading && <Spin size="small" />}
       </div>
 
       {/* Status Label - fixed width */}
