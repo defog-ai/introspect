@@ -14,6 +14,7 @@ import {
   CloseCircleOutlined,
   FileTextOutlined,
   InfoCircleOutlined,
+  SendOutlined,
 } from "@ant-design/icons";
 import { Tooltip } from "antd";
 
@@ -52,12 +53,24 @@ function OracleDashboard() {
     const token = localStorage.getItem("defogToken");
     getApiKeyNames(token);
   }, []);
+
+  useEffect(() => {
+    if (!apiKeyName) return;
+    // check DB / backend API readiness
+    checkReady();
+
+    // the effect runs after the apiKeyName fetches / changes as our checks
+    // depend on the api key
+  }, [apiKeyName]);
+
   const [ready, setReady] = useState(false);
   const [readyErrorMsg, setReadyErrorMsg] = useState("");
   const [userQuestion, setUserQuestion] = useState("");
 
   const answers = useRef({});
   const [clarifications, setClarifications] = useState([]);
+  const [answeredClarifications, setAnsweredClarifications] = useState([]);
+  const [unansweredClarifications, setUnansweredClarifications] = useState([]);
   const [answerLastUpdateTs, setAnswerLastUpdateTs] = useState(Date.now());
   const [waitClarifications, setWaitClarifications] = useState(false);
   const [taskType, setTaskType] = useState(null);
@@ -104,6 +117,48 @@ function OracleDashboard() {
 
     answers.current[clarification] = answer;
 
+    // Move the clarification from unanswered to answered if it has a valid answer
+    if (answer && answer.length > 0) {
+      setUnansweredClarifications((prev) => {
+        const clarificationObj = prev.find(
+          (c) => c.clarification === clarification
+        );
+        if (clarificationObj) {
+          // Remove from unanswered
+          const newUnanswered = prev.filter(
+            (c) => c.clarification !== clarification
+          );
+          // Add to answered
+          setAnsweredClarifications((answered) => [
+            ...answered,
+            { ...clarificationObj, isAnswered: true },
+          ]);
+          return newUnanswered;
+        }
+        return prev;
+      });
+    } else {
+      // If answer is empty, move from answered to unanswered
+      setAnsweredClarifications((prev) => {
+        const clarificationObj = prev.find(
+          (c) => c.clarification === clarification
+        );
+        if (clarificationObj) {
+          // Remove from answered
+          const newAnswered = prev.filter(
+            (c) => c.clarification !== clarification
+          );
+          // Add to unanswered
+          setUnansweredClarifications((unanswered) => [
+            ...unanswered,
+            { ...clarificationObj, isAnswered: false },
+          ]);
+          return newAnswered;
+        }
+        return prev;
+      });
+    }
+
     setAnswerLastUpdateTs(Date.now());
   };
 
@@ -119,19 +174,14 @@ function OracleDashboard() {
       checkReady();
       return;
     }
-    // answeredClarifications would be a list of clarifications that have been answered
-    // by the user.
-    let answeredClarifications = clarifications
-      .filter(
-        (clarificationObject) =>
-          answers.current[clarificationObject.clarification]
-      )
-      .map((clarificationObject) => ({
-        ...clarificationObject,
-        answer: answers.current?.[clarificationObject.clarification],
-      }));
 
-    console.log("answered clarifications:", answeredClarifications);
+    // Send current state to backend
+    const currentAnsweredClarifications = answeredClarifications.map((c) => ({
+      ...c,
+      answer: answers.current[c.clarification],
+    }));
+
+    console.log("Sending answered clarifications:", currentAnsweredClarifications);
 
     const res = await fetch(setupBaseUrl("http", `oracle/clarify_question`), {
       method: "POST",
@@ -139,41 +189,33 @@ function OracleDashboard() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        token: token,
+        token,
         key_name: apiKeyName,
         user_question: userQuestion,
         task_type: taskType,
-        answered_clarifications: answeredClarifications,
+        answered_clarifications: currentAnsweredClarifications,
       }),
     });
-    setWaitClarifications(false);
+
     if (res.ok) {
       const data = await res.json();
-
-      // hard-code all task types to exploration
       setTaskType("exploration");
-      // get the updated answered clarifications, since the user might have
-      // answered some clarifications while the request was processing
-      let answeredClarifications = clarifications.filter(
-        (clarificationObject) =>
-          answers.current[clarificationObject.clarification]
+
+      // Simply replace all unanswered clarifications with new ones from backend
+      // Keep answered clarifications as is since backend doesn't send them back
+      setUnansweredClarifications(
+        data.clarifications.map((c) => ({ ...c, isAnswered: false }))
       );
 
-      // concatenate the new clarifications with the answered clarifications
-      setClarifications(answeredClarifications.concat(data.clarifications));
+      console.log("Updated clarifications state:", {
+        answered: answeredClarifications,
+        newUnanswered: data.clarifications,
+      });
     } else {
       console.error("Failed to fetch clarifications");
     }
-  };
 
-  const deleteClarification = (index, clarificationObject) => {
-    // remove the clarification from the list of clarifications
-    setClarifications((prevClarifications) =>
-      prevClarifications.filter((_, i) => i !== index)
-    );
-
-    // remove from answers
-    answers.current[clarificationObject.clarification] = undefined;
+    setWaitClarifications(false);
   };
 
   const getSources = async () => {
@@ -186,7 +228,7 @@ function OracleDashboard() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          token: token,
+          token,
           key_name: apiKeyName,
           user_question: userQuestion,
         }),
@@ -409,10 +451,26 @@ function OracleDashboard() {
         user_question: userQuestion,
         sources: selectedSourceLinks,
         task_type: taskType,
-        clarifications: clarifications.map((d) => ({
-          ...d,
-          answer: answers.current[d.clarification],
-        })),
+        clarifications: [
+          ...answeredClarifications.map((d) => ({
+            ...d,
+            answer: answers.current[d.clarification],
+          })),
+          ...unansweredClarifications.map((d) => ({
+            ...d,
+            answer: answers.current[d.clarification],
+          })),
+          // Add additional comments as a special clarification if present
+          ...(answers.current["__additional_comments__"]
+            ? [
+                {
+                  clarification: "Additional Comments",
+                  answer: answers.current["__additional_comments__"],
+                  input_type: "text",
+                },
+              ]
+            : []),
+        ],
       }),
     });
 
@@ -424,47 +482,9 @@ function OracleDashboard() {
     }
   };
 
-  useEffect(() => {
-    // after 2000ms, get clarifications
-    const timeout = setTimeout(() => {
-      // fetch clarifications as the user is typing
-      if (userQuestion.length < 5) {
-        console.log("User task is too short, not fetching clarifications yet");
-      } else {
-        // when doing this, clear the answers
-        answers.current = {};
-        getClarifications();
-        // getSources();
-      }
-    }, 2000);
-
-    return () => clearTimeout(timeout);
-
-    // the effect runs shortly after userQuestion changes
-  }, [userQuestion]);
-
-  useEffect(() => {
-    // after 1000ms, get clarifications
-    const timeout = setTimeout(() => {
-      getClarifications();
-    }, 1000);
-
-    return () => clearTimeout(timeout);
-
-    // the effect runs shortly only when answerLastUpdateTs changes
-    // i.e. when the user answers a clarification
-  }, [answerLastUpdateTs, taskType]);
-
-  useEffect(() => {
-    if (!apiKeyName) return;
-    // check DB / backend API readiness
-    checkReady();
-
-    // the effect runs after the apiKeyName fetches / changes as our checks
-    // depend on the api key
-  }, [apiKeyName]);
-
-  // console.log(apiKeyName, reports);
+  const handleAdditionalComments = (value) => {
+    updateAnsweredClarifications("__additional_comments__", value);
+  };
 
   const getFormattedTimezone = () => {
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -501,189 +521,354 @@ function OracleDashboard() {
     </div>
   );
 
-  return (<>
-    <Meta />
-    <Scaffolding id="align-model" userType="admin">
-      {apiKeyNames.length > 1 ? (
-        <Row type={"flex"} height={"100vh"}>
-          <Col span={24} style={{ paddingBottom: "1em" }}>
-            <Select
-              style={{ width: "100%" }}
-              onChange={(e) => {
-                setApiKeyName(e);
-              }}
-              options={apiKeyNames.map((item) => {
-                return { value: item, key: item, label: item };
-              })}
-              value={apiKeyName}
-            />
-          </Col>
-        </Row>
-      ) : null}
+  const [hasInitialClarifications, setHasInitialClarifications] =
+    useState(false);
+  const questionEditTimer = useRef(null);
 
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold mb-2 dark:text-gray-200">
-            The Oracle
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            The Oracle is a background assistant, helping you to dig into your
-            dataset for insights. To begin, please let us know what you are
-            interested in below.
-          </p>
-        </div>
+  const handleQuestionChange = (e) => {
+    const newQuestion = e.target.value;
+    setUserQuestion(newQuestion);
 
-        <div className="flex items-center mb-6">
-          <TextArea
-            placeholder="Describe what you would like the Oracle to do..."
-            className="w-full p-3 border rounded-lg text-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 focus:outline-none focus:border-purple-500 dark:focus:border-purple-700"
-            value={userQuestion}
-            onChange={(e) => {
-              setUserQuestion(e.target.value);
-              // let the user type a few characters before fetching clarifications
-            }}
-            autoSize={{ minRows: 2, maxRows: 10 }}
-            style={{ flexBasis: "90%" }}
-          />
-          <div className="ml-2">
-            {waitClarifications ? (
-              <Spin />
-            ) : (
-              userQuestion &&
-              userQuestion.length >= 5 &&
-              (!ready ? (
-                <CloseCircleOutlined style={{ color: "#b80617" }} />
-              ) : (
-                <CheckCircleOutlined style={{ color: "#22c55e" }} />
-              ))
-            )}
-          </div>
-        </div>
+    // Clear all clarifications when question changes
+    setAnsweredClarifications([]);
+    setUnansweredClarifications([]);
+    answers.current = {};
 
-        {!ready && readyErrorMsg ? (
-          <div className="bg-light-red dark:bg-red-900 p-4 rounded-lg my-2">
-            <p className="text-red dark:text-red-400">{readyErrorMsg}</p>
-          </div>
+    // If we already have initial clarifications, auto-trigger on edit after a delay
+    if (hasInitialClarifications && newQuestion.length >= 5) {
+      if (questionEditTimer.current) {
+        clearTimeout(questionEditTimer.current);
+      }
+      questionEditTimer.current = setTimeout(() => {
+        getClarifications();
+      }, 1000);
+    }
+  };
+
+  const handleSendClick = () => {
+    if (userQuestion.length >= 5) {
+      getClarifications(userQuestion);
+      setHasInitialClarifications(true);
+    }
+  };
+
+  const deleteClarification = (index, clarificationObject) => {
+    // Remove from answered clarifications if it exists there
+    setAnsweredClarifications((prev) =>
+      prev.filter((c) => c.clarification !== clarificationObject.clarification)
+    );
+
+    // Remove from unanswered clarifications if it exists there
+    setUnansweredClarifications((prev) =>
+      prev.filter((c) => c.clarification !== clarificationObject.clarification)
+    );
+
+    // Remove from answers
+    delete answers.current[clarificationObject.clarification];
+  };
+
+  return (
+    <>
+      <Meta />
+      <Scaffolding id="align-model" userType="admin">
+        {apiKeyNames.length > 1 ? (
+          <Row type={"flex"} height={"100vh"}>
+            <Col span={24} style={{ paddingBottom: "1em" }}>
+              <Select
+                style={{ width: "100%" }}
+                onChange={(e) => {
+                  setApiKeyName(e);
+                }}
+                options={apiKeyNames.map((item) => {
+                  return { value: item, key: item, label: item };
+                })}
+                value={apiKeyName}
+              />
+            </Col>
+          </Row>
         ) : null}
 
-        {clarifications.length > 0 && (
-          // show clarifications only when there are some
-          (<div className="mt-6">
-            <h2 className="text-xl font-semibold mb-2 dark:text-gray-200">
-              Clarifications
-            </h2>
-            <TaskType taskType={taskType} onChange={handleTaskTypeChange} />
-            {clarifications.map((clarificationObject, index) => (
-              <ClarificationItem
-                key={String(clarificationObject.clarification)}
-                clarificationObject={clarificationObject}
-                updateAnsweredClarifications={updateAnsweredClarifications}
-                deleteClarification={() =>
-                  deleteClarification(index, clarificationObject)
-                }
-              />
-            ))}
-          </div>)
-        )}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-4xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl font-semibold mb-2 dark:text-gray-200">
+              The Oracle
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              The Oracle is a background assistant, helping you to dig into your
+              dataset for insights. To begin, please let us know what you are
+              interested in below.
+            </p>
+          </div>
 
-        <div className="mt-6">
-          <Sources sources={sources} setSources={setSources} />
-        </div>
-
-        <Button
-          className="bg-purple-500 text-white py-4 px-4 mt-2 mb-2 rounded-lg hover:bg-purple-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 dark:hover:bg-purple-700"
-          onClick={generateReport}
-          disabled={userQuestion.length < 5 || taskType === ""}
-        >
-          Generate
-        </Button>
-      </div>
-
-      <div>
-        <h2 className="text-2xl font-semibold mb-4 dark:text-gray-200">
-          Past Reports
-        </h2>
-        {reports.map((report, index) => (
-          <div
-            key={index}
-            className="bg-purple-100 dark:bg-purple-900/30 shadow-lg rounded-lg mb-4 overflow-hidden border border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700 transition-all"
-          >
-            <div className="p-4">
-              {report.report_name ? (
-                <>
-                  <h3 className="text-lg font-semibold text-purple-700 dark:text-purple-400 mb-1">
-                    {report.report_name}
-                  </h3>
-                  <div className="text-base mb-3 flex items-center justify-between">
-                    <div className="text-gray-500 dark:text-gray-400 flex items-center">
-                      <FileTextOutlined className="mr-1" />
-                      <span>{String(report.report_id).padStart(3, "0")}</span>
-                    </div>
-                    <ReportDateTime date={report.date_created} />
-                  </div>
-                </>
+          <div className="relative mb-6">
+            <TextArea
+              placeholder="Describe what you would like the Oracle to do..."
+              className="w-full p-3 pr-12 border rounded-lg text-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 focus:outline-none focus:border-purple-500 dark:focus:border-purple-700"
+              value={userQuestion}
+              onChange={handleQuestionChange}
+              autoSize={{ minRows: 2, maxRows: 10 }}
+            />
+            <div className="absolute right-3 bottom-3 flex items-center space-x-2">
+              {waitClarifications ? (
+                <Spin />
               ) : (
-                <div className="mb-3">
-                  <div className="text-base flex items-center justify-between">
-                    <div className="text-gray-700 dark:text-gray-300 font-semibold flex items-center">
-                      <FileTextOutlined className="mr-2" />
-                      <span>{report?.inputs?.user_question}</span>
+                userQuestion &&
+                userQuestion.length >= 5 &&
+                !ready && (
+                  <CloseCircleOutlined className="text-red-500" />
+                )
+              )}
+              <button
+                onClick={handleSendClick}
+                disabled={!userQuestion.trim() || userQuestion.length < 5}
+                className={`flex items-center justify-center p-2 rounded-full ${
+                  userQuestion.trim() && userQuestion.length >= 5
+                    ? "text-purple-600 hover:text-purple-800 dark:text-purple-300 dark:hover:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/40"
+                    : "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                }`}
+                title={
+                  !userQuestion.trim() || userQuestion.length < 5
+                    ? "Type at least 5 characters"
+                    : "Send question to get clarifications"
+                }
+              >
+                <SendOutlined className="text-lg" />
+              </button>
+            </div>
+          </div>
+
+          {!ready && readyErrorMsg ? (
+            <div className="bg-light-red dark:bg-red-900 p-4 rounded-lg my-2">
+              <p className="text-red dark:text-red-400">{readyErrorMsg}</p>
+            </div>
+          ) : null}
+
+          {(answeredClarifications.length > 0 ||
+            unansweredClarifications.length > 0) && (
+            <div className="mt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold dark:text-gray-200">
+                  Clarifications
+                </h2>
+              </div>
+              <TaskType taskType={taskType} onChange={handleTaskTypeChange} />
+              
+              {/* Render answered clarifications */}
+              {answeredClarifications.map((clarificationObject, index) => (
+                <ClarificationItem
+                  key={clarificationObject.clarification}
+                  clarificationObject={clarificationObject}
+                  updateAnsweredClarifications={updateAnsweredClarifications}
+                  deleteClarification={() =>
+                    deleteClarification(index, clarificationObject)
+                  }
+                  isAnswered={true}
+                  isLoading={false}
+                  answers={answers}
+                />
+              ))}
+
+              {/* Update section between answered and unanswered */}
+              {answeredClarifications.length > 0 && (
+                <div className="mt-6 mb-6 bg-gradient-to-r from-amber-50 via-amber-100/70 to-amber-50 dark:from-amber-900/30 dark:via-amber-800/20 dark:to-amber-900/30 p-4 rounded-lg border border-amber-200/50 dark:border-amber-700/30 shadow-sm hover:shadow-md transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-amber-600 dark:text-amber-400 group">
+                      <InfoCircleOutlined className="text-lg mr-2 animate-pulse group-hover:animate-none" />
+                      <span className="font-medium">
+                        Get updated clarification questions based on your answers to
+                        the clarifications above.
+                      </span>
                     </div>
-                    <ReportDateTime date={report.date_created} />
+                    <Button
+                      onClick={getClarifications}
+                      className="flex items-center bg-amber-100 hover:bg-amber-200 border-amber-200 text-amber-700 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 dark:border-amber-700/50 dark:text-amber-300 transition-all duration-300 hover:scale-105 active:scale-95"
+                      disabled={waitClarifications}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 mr-1 transition-transform duration-500 ease-in-out hover:rotate-180"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                      </svg>
+                      Update
+                    </Button>
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <ReportStatus status={report.status} />
-                </div>
-                <div className="flex items-center space-x-2">
-                  {report.status === "done" && (
-                    <>
+              {/* Render unanswered clarifications */}
+              {unansweredClarifications.map((clarificationObject, index) => (
+                <ClarificationItem
+                  key={clarificationObject.clarification}
+                  clarificationObject={clarificationObject}
+                  updateAnsweredClarifications={updateAnsweredClarifications}
+                  deleteClarification={() =>
+                    deleteClarification(index + answeredClarifications.length, clarificationObject)
+                  }
+                  isAnswered={false}
+                  isLoading={waitClarifications}
+                  answers={answers}
+                />
+              ))}
+            </div>
+          )}
+          {(answeredClarifications.length > 0 ||
+            unansweredClarifications.length > 0) && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg my-4">
+              <div className="text-amber-600 dark:text-amber-400 mb-2 font-medium">
+                Additional Comments
+              </div>
+              <TextArea
+                placeholder="Any other thoughts or context you'd like to add?"
+                className="w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
+                autoSize={{ minRows: 2 }}
+                onChange={(e) => handleAdditionalComments(e.target.value)}
+                value={answers.current["__additional_comments__"] || ""}
+              />
+            </div>
+          )}
+
+          <div className="mt-6">
+            <Sources sources={sources} setSources={setSources} />
+          </div>
+
+          <Button
+            className={`py-4 px-6 mt-2 mb-2 rounded-lg ${
+              answeredClarifications.length > 0 || unansweredClarifications.length > 0
+                ? "bg-purple-500 text-white hover:bg-purple-600"
+                : "bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600 cursor-not-allowed"
+            }`}
+            onClick={generateReport}
+            disabled={userQuestion.length < 5 || taskType === "" || (answeredClarifications.length === 0 && unansweredClarifications.length === 0)}
+            title={
+              answeredClarifications.length > 0 || unansweredClarifications.length > 0
+                ? "Generate report"
+                : "First send your question to get clarifications"
+            }
+          >
+            Generate
+          </Button>
+        </div>
+
+        <div>
+          <h2 className="text-2xl font-semibold mb-4 dark:text-gray-200">
+            Past Reports
+          </h2>
+          {reports.map((report, index) => (
+            <div
+              key={index}
+              className="bg-purple-100 dark:bg-purple-900/30 shadow-lg rounded-lg mb-4 overflow-hidden border border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700 transition-all"
+            >
+              <div className="p-4">
+                {report.report_name ? (
+                  <>
+                    <h3 className="text-lg font-semibold text-purple-700 dark:text-purple-400 mb-1">
+                      {report.report_name}
+                    </h3>
+                    <div className="text-base mb-3 flex items-center justify-between">
+                      <div className="text-gray-500 dark:text-gray-400 flex items-center">
+                        <FileTextOutlined className="mr-1" />
+                        <span>{String(report.report_id).padStart(3, "0")}</span>
+                      </div>
+                      <ReportDateTime date={report.date_created} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="mb-3">
+                    <div className="text-base flex items-center justify-between">
+                      <div className="text-gray-700 dark:text-gray-300 font-semibold flex items-center">
+                        <FileTextOutlined className="mr-2" />
+                        <span>{report?.inputs?.user_question}</span>
+                      </div>
+                      <ReportDateTime date={report.date_created} />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <ReportStatus status={report.status} />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {report.status === "done" && (
+                      <>
+                        <Button
+                          className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                          onClick={() =>
+                            window.open(
+                              `/view-oracle-report?reportId=${report.report_id}&keyName=${apiKeyName}`,
+                              "_blank"
+                            )
+                          }
+                        >
+                          View Report
+                        </Button>
+                        {/* <Button
+                          className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                          onClick={() => downloadReport(report.report_id)}
+                        >
+                          Download
+                        </Button> */}
+                      </>
+                    )}
+                    {(report.status === "done" ||
+                      report.status === "error") && (
                       <Button
-                        className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
-                        onClick={() =>
-                          window.open(
-                            `/view-oracle-report?reportId=${report.report_id}&keyName=${apiKeyName}`,
-                            "_blank"
-                          )
-                        }
-                      >
-                        View Report
-                      </Button>
-                      {/* <Button
-                        className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
-                        onClick={() => downloadReport(report.report_id)}
-                      >
-                        Download
-                      </Button> */}
-                    </>
-                  )}
-                  {(report.status === "done" ||
-                    report.status === "error") && (
-                    <Button
-                      className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                      icon={<DeleteOutlined />}
-                      onClick={() => deleteReport(report.report_id)}
-                    />
-                  )}
+                        className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                        icon={<DeleteOutlined />}
+                        onClick={() => deleteReport(report.report_id)}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
-    </Scaffolding>
-  </>);
+          ))}
+        </div>
+      </Scaffolding>
+    </>
+  );
 }
 
 function ClarificationItem({
   clarificationObject,
   updateAnsweredClarifications,
   deleteClarification,
+  isAnswered,
+  isLoading,
+  answers,
 }) {
-  const [selectedChoice, setSelectedChoice] = useState(null);
+  // Initialize both text and choice values from answers.current
+  const [selectedChoice, setSelectedChoice] = useState(
+    answers.current[clarificationObject.clarification] || null
+  );
+  const [textValue, setTextValue] = useState(
+    answers.current[clarificationObject.clarification] || ""
+  );
+  const [checkboxValues, setCheckboxValues] = useState(
+    answers.current[clarificationObject.clarification]?.split(", ") || []
+  );
+  const textUpdateTimer = useRef(null);
+
+  // Update all input values when answers.current changes
+  useEffect(() => {
+    const currentAnswer = answers.current[clarificationObject.clarification];
+    if (clarificationObject.input_type === "multiple_choice") {
+      setCheckboxValues(currentAnswer?.split(", ") || []);
+    } else if (clarificationObject.input_type === "single_choice") {
+      setSelectedChoice(currentAnswer || null);
+    } else {
+      setTextValue(currentAnswer || "");
+    }
+  }, [clarificationObject.clarification, answers, clarificationObject.input_type]);
 
   const otherSelected = useMemo(
     () => (selectedChoice || "").toLowerCase() === "other",
@@ -700,17 +885,62 @@ function ClarificationItem({
     opts.push("Other");
   }
 
+  const handleTextChange = (e) => {
+    const value = e.target.value;
+    setTextValue(value);
+
+    // Clear any existing timer
+    if (textUpdateTimer.current) {
+      clearTimeout(textUpdateTimer.current);
+    }
+
+    // Set a new timer to update the answer after 1 second of no typing
+    textUpdateTimer.current = setTimeout(() => {
+      updateAnsweredClarifications(clarificationObject.clarification, value);
+    }, 1000);
+  };
+
+  const handleTextBlur = () => {
+    // Clear any existing timer
+    if (textUpdateTimer.current) {
+      clearTimeout(textUpdateTimer.current);
+    }
+    // Update immediately on blur if there's a value
+    updateAnsweredClarifications(clarificationObject.clarification, textValue);
+  };
+
   return (
-    <div className="bg-amber-100 dark:bg-amber-900/30 p-4 rounded-lg my-2 relative flex flex-row">
-      <div className="text-amber-500 dark:text-amber-400 w-3/4">
+    <div
+      className={`${
+        isAnswered
+          ? "bg-amber-50 dark:bg-amber-900/20"
+          : "bg-amber-100 dark:bg-amber-900/30"
+      } p-4 rounded-lg my-2 relative flex flex-row items-center gap-4 ${
+        isLoading ? "opacity-50" : ""
+      }`}
+    >
+      {/* Question - adjustable width based on answered status */}
+      <div className={`text-amber-500 dark:text-amber-400 ${isAnswered ? 'w-3/5' : 'w-4/5'} flex items-center gap-2`}>
         {clarificationObject.clarification}
       </div>
-      <div className="w-1/4 mt-2 mx-2">
+
+      {/* Status Label - only show if answered */}
+      {isAnswered && (
+        <div className="w-24 flex justify-center">
+          <span className="px-3 py-0.5 text-xs font-medium tracking-wide rounded-md bg-amber-100/70 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-700/50">
+            Answered
+          </span>
+        </div>
+      )}
+
+      {/* Answer Input - remaining width */}
+      <div className={`${isAnswered ? 'flex-1' : 'w-1/5'} pr-8`}>
         {clarificationObject.input_type === "single_choice" ? (
           <div>
             <Select
               allowClear={true}
-              className="flex w-5/6 dark:bg-gray-800 dark:text-gray-200"
+              className="w-full dark:bg-gray-800 dark:text-gray-200"
+              value={selectedChoice}
               optionRender={(opt, info) => (
                 <div className="text-wrap break-words hyphens-auto dark:text-gray-200">
                   {opt.label}
@@ -728,63 +958,57 @@ function ClarificationItem({
                 value: option,
                 label: option,
               }))}
+              disabled={isLoading}
             />
-            {/* if other is selected, show a text input too */}
-            {otherSelected ? (
+            {otherSelected && (
               <TextArea
                 placeholder="Type here"
-                className="my-2 w-5/6 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
+                className="my-2 w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
                 autoSize={true}
-                onChange={(value) => {
-                  // if this is empty, then just set answer back to to selectedOption
-                  if (value.target.value === "") {
-                    updateAnsweredClarifications(
-                      clarificationObject.clarification,
-                      selectedChoice || null
-                    );
-                  } else {
-                    // else set answer to the value of this text area
-                    updateAnsweredClarifications(
-                      clarificationObject.clarification,
-                      value.target.value
-                    );
-                  }
-                }}
+                value={textValue}
+                onChange={handleTextChange}
+                onBlur={handleTextBlur}
+                disabled={isLoading}
               />
-            ) : null}
+            )}
           </div>
         ) : clarificationObject.input_type === "multiple_choice" &&
           clarificationObject?.options?.length ? (
           <Checkbox.Group
-            className="flex w-5/6"
+            className="w-full"
+            value={checkboxValues}
             options={clarificationObject.options.map((option) => ({
               label: option,
               value: option,
             }))}
-            onChange={(value) =>
+            onChange={(value) => {
+              setCheckboxValues(value);
               updateAnsweredClarifications(
                 clarificationObject.clarification,
                 value
-              )
-            }
+              );
+            }}
+            disabled={isLoading}
           />
         ) : (
           <TextArea
             autoSize={true}
-            className="flex w-5/6 rounded-lg dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
-            onChange={(value) =>
-              updateAnsweredClarifications(
-                clarificationObject.clarification,
-                value.target.value
-              )
-            }
+            className="w-full rounded-lg dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
+            value={textValue}
+            onChange={handleTextChange}
+            onBlur={handleTextBlur}
+            disabled={isLoading}
           />
         )}
       </div>
-      <CloseOutlined
-        className="text-amber-500 dark:text-amber-400 absolute top-2 right-2 cursor-pointer"
+
+      <button
+        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
         onClick={deleteClarification}
-      />
+        disabled={isLoading}
+      >
+        <CloseOutlined className="text-sm" />
+      </button>
     </div>
   );
 }
