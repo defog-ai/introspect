@@ -14,6 +14,7 @@ import {
   CloseCircleOutlined,
   FileTextOutlined,
   InfoCircleOutlined,
+  SendOutlined
 } from "@ant-design/icons";
 import { Tooltip } from "antd";
 
@@ -52,6 +53,16 @@ function OracleDashboard() {
     const token = localStorage.getItem("defogToken");
     getApiKeyNames(token);
   }, []);
+
+  useEffect(() => {
+    if (!apiKeyName) return;
+    // check DB / backend API readiness
+    checkReady();
+
+    // the effect runs after the apiKeyName fetches / changes as our checks
+    // depend on the api key
+  }, [apiKeyName]);
+
   const [ready, setReady] = useState(false);
   const [readyErrorMsg, setReadyErrorMsg] = useState("");
   const [userQuestion, setUserQuestion] = useState("");
@@ -435,48 +446,9 @@ function OracleDashboard() {
     }
   };
 
-  useEffect(() => {
-    // after 2000ms, get clarifications
-    const timeout = setTimeout(() => {
-      // fetch clarifications as the user is typing
-      if (userQuestion.length < 5) {
-        console.log("User task is too short, not fetching clarifications yet");
-      } else {
-        // when doing this, clear the answers
-        answers.current = {};
-        setClarifications([]);
-        getClarifications();
-        // getSources();
-      }
-    }, 2000);
-
-    return () => clearTimeout(timeout);
-
-    // the effect runs shortly after userQuestion changes
-  }, [userQuestion]);
-
-  useEffect(() => {
-    // after 1000ms, get clarifications
-    const timeout = setTimeout(() => {
-      getClarifications();
-    }, 1000);
-
-    return () => clearTimeout(timeout);
-
-    // the effect runs shortly only when answerLastUpdateTs changes
-    // i.e. when the user answers a clarification
-  }, [answerLastUpdateTs]);
-
-  useEffect(() => {
-    if (!apiKeyName) return;
-    // check DB / backend API readiness
-    checkReady();
-
-    // the effect runs after the apiKeyName fetches / changes as our checks
-    // depend on the api key
-  }, [apiKeyName]);
-
-  // console.log(apiKeyName, reports);
+  const handleAdditionalComments = (value) => {
+    updateAnsweredClarifications("__additional_comments__", value);
+  };
 
   const getFormattedTimezone = () => {
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -513,8 +485,29 @@ function OracleDashboard() {
     </div>
   );
 
-  const handleAdditionalComments = (value) => {
-    updateAnsweredClarifications("__additional_comments__", value);
+  const [hasInitialClarifications, setHasInitialClarifications] = useState(false);
+  const questionEditTimer = useRef(null);
+
+  const handleQuestionChange = (e) => {
+    const newQuestion = e.target.value;
+    setUserQuestion(newQuestion);
+    
+    // If we already have initial clarifications, auto-trigger on edit after a delay
+    if (hasInitialClarifications && newQuestion.length >= 5) {
+      if (questionEditTimer.current) {
+        clearTimeout(questionEditTimer.current);
+      }
+      questionEditTimer.current = setTimeout(() => {
+        getClarifications();
+      }, 1000);
+    }
+  };
+
+  const handleSendClick = () => {
+    if (userQuestion.length >= 5) {
+      getClarifications(userQuestion);
+      setHasInitialClarifications(true);
+    }
   };
 
   return (
@@ -550,30 +543,38 @@ function OracleDashboard() {
             </p>
           </div>
 
-          <div className="flex items-center mb-6">
+          <div className="relative mb-6">
             <TextArea
               placeholder="Describe what you would like the Oracle to do..."
-              className="w-full p-3 border rounded-lg text-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 focus:outline-none focus:border-purple-500 dark:focus:border-purple-700"
+              className="w-full p-3 pr-12 border rounded-lg text-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 focus:outline-none focus:border-purple-500 dark:focus:border-purple-700"
               value={userQuestion}
-              onChange={(e) => {
-                setUserQuestion(e.target.value);
-                // let the user type a few characters before fetching clarifications
-              }}
+              onChange={handleQuestionChange}
               autoSize={{ minRows: 2, maxRows: 10 }}
-              style={{ flexBasis: "90%" }}
             />
-            <div className="ml-2">
+            <div className="absolute right-3 bottom-3 flex items-center space-x-2">
               {waitClarifications ? (
                 <Spin />
               ) : (
                 userQuestion &&
                 userQuestion.length >= 5 &&
                 (!ready ? (
-                  <CloseCircleOutlined style={{ color: "#b80617" }} />
+                  <CloseCircleOutlined className="text-red-500" />
                 ) : (
-                  <CheckCircleOutlined style={{ color: "#22c55e" }} />
+                  <CheckCircleOutlined className="text-green-500" />
                 ))
               )}
+              <button
+                onClick={handleSendClick}
+                disabled={!userQuestion.trim() || userQuestion.length < 5}
+                className={`flex items-center justify-center p-2 rounded-full transition-colors duration-200 ${
+                  userQuestion.trim() && userQuestion.length >= 5
+                    ? 'text-purple-600 hover:bg-purple-100 dark:text-purple-400 dark:hover:bg-purple-900/30'
+                    : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                }`}
+                title="Send question"
+              >
+                <SendOutlined className="text-lg" />
+              </button>
             </div>
           </div>
 
