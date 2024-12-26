@@ -1,5 +1,5 @@
-import setupBaseUrl from "$utils/setupBaseUrl";
-import { useRouter } from "next/router";
+"use client";
+import setupBaseUrl from "$components/oracle/setupBaseUrl";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   Button,
@@ -7,39 +7,40 @@ import {
   SpinningLoader,
   MessageManagerContext,
   TextArea,
-  Input,
 } from "@defogdotai/agents-ui-components/core-ui";
 import {
   getReportMDX,
   getReportFeedback,
-  getReportAnalyses,
+  getReportAnalysisIds,
   getReportExecutiveSummary,
   extensions,
   parseMDX,
-} from "$utils/oracleUtils";
+} from "$components/oracle/oracleUtils";
 
 import { EditorProvider } from "@tiptap/react";
 import React from "react";
 import {
-  AnalysisParsed,
   OracleReportContext,
   Summary,
-} from "$components/context/OracleReportContext";
-import { LeftOutlined } from "@ant-design/icons";
-import { Drawer, Select } from "antd";
-import { OracleAnalysis } from "$components/oracle/reports/OracleAnalysis";
-import { clipStringToLength } from "$utils/utils";
-import { twMerge } from "tailwind-merge";
+} from "$components/oracle/OracleReportContext";
+import { ArrowLeft } from "lucide-react";
 
 export default function ViewOracleReport() {
-  const router = useRouter();
+  const [urlParams, setUrlParams] = useState<URLSearchParams | null>(null);
+  const [keyName, setKeyName] = useState<string | null>(null);
+  const [reportId, setReportId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setUrlParams(params);
+    setKeyName(params.get("keyName"));
+    setReportId(params.get("reportId"));
+  }, []);
 
   const [tables, setTables] = useState<any>({});
   const [multiTables, setMultiTables] = useState<any>({});
   const [images, setImages] = useState<any>({});
-  const [analyses, setAnalyses] = useState<{
-    [key: string]: AnalysisParsed;
-  }>({});
+  const [analysisIds, setAnalysisIds] = useState<string[]>([]);
 
   const message = useContext(MessageManagerContext);
   const feedbackTextArea = useRef<HTMLTextAreaElement>(null);
@@ -49,9 +50,7 @@ export default function ViewOracleReport() {
     null
   );
 
-  const [currentFeedback, setCurrentFeedback] = useState<string | null>(
-    undefined
-  );
+  const [currentFeedback, setCurrentFeedback] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -63,11 +62,16 @@ export default function ViewOracleReport() {
     string | null
   >(null);
 
+  const [loading, setLoading] = useState<boolean>(true);
+
   useEffect(() => {
     const setup = async (reportId: string, keyName: string) => {
       try {
-        const token = localStorage.getItem("defogToken");
-        let mdx = await getReportMDX(reportId, keyName, token);
+        setLoading(true);
+        const token =
+          localStorage.getItem("defogToken") ||
+          "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0";
+        const mdx = await getReportMDX(reportId, keyName, token);
 
         if (!mdx) {
           throw Error();
@@ -80,9 +84,6 @@ export default function ViewOracleReport() {
         setMultiTables(parsed.multiTables);
         const feedback = await getReportFeedback(reportId, keyName, token);
         setCurrentFeedback(feedback || undefined);
-
-        const analysesJsons = await getReportAnalyses(reportId, keyName, token);
-
         const sum: Summary = await getReportExecutiveSummary(
           reportId,
           keyName,
@@ -97,41 +98,27 @@ export default function ViewOracleReport() {
 
         setExecutiveSummary(sum);
 
-        const analyses = {};
-        analysesJsons.map((analysis) => {
-          analyses[analysis.analysis_id] = {
-            analysis_id: analysis.analysis_id,
-            ...analysis,
-            ...parseMDX(
-              analysis.mdx,
-              analysis.analysis_json?.artifacts?.fetched_table_csv?.artifact_content,
-              analysis.analysis_json?.working?.generated_sql,
-              analysis.analysis_json?.generated_qn,
-            ),
-          };
-        });
+        const analysisIds = await getReportAnalysisIds(
+          reportId,
+          keyName,
+          token
+        );
 
-        setAnalyses(analyses);
+        setAnalysisIds(analysisIds);
 
         setMDX(parsed.mdx);
       } catch (e) {
         console.error(e);
         setError(e.message);
+      } finally {
+        setLoading(false);
       }
     };
-
-    const reportId = Array.isArray(router?.query?.reportId)
-      ? router?.query?.reportId[0]
-      : router?.query?.reportId;
-
-    const keyName = Array.isArray(router?.query?.keyName)
-      ? router?.query?.keyName[0]
-      : router?.query?.keyName;
 
     if (reportId && keyName) {
       setup(reportId, keyName);
     }
-  }, [router.query]);
+  }, [reportId, keyName]);
 
   const submitFeedback = useCallback(async () => {
     if (!feedbackTextArea.current || !feedbackTextArea.current.value) {
@@ -145,8 +132,8 @@ export default function ViewOracleReport() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        report_id: router.query.reportId,
-        key_name: router.query.keyName,
+        report_id: reportId,
+        key_name: keyName,
         feedback: feedbackTextArea.current.value,
       }),
     })
@@ -162,7 +149,22 @@ export default function ViewOracleReport() {
         console.error(e);
         message.error("Could not submit feedback");
       });
-  }, [router.query.reportId, router.query.keyName, message]);
+  }, [message, reportId, keyName]);
+
+  if (loading) {
+    return (
+      <div
+        className={
+          "w-full h-full min-h-60 flex flex-col justify-center items-center text-center rounded-md p-2"
+        }
+      >
+        <div className="mb-2 text-sm text-gray-400 dark:text-gray-200">
+          <SpinningLoader classNames="w-5 h-5" />
+          Loading
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -199,33 +201,29 @@ export default function ViewOracleReport() {
         tables: tables,
         multiTables: multiTables,
         images: images,
-        analyses: analyses,
+        analysisIds: analysisIds,
         executiveSummary: executiveSummary,
-        reportId: Array.isArray(router.query.reportId)
-          ? router.query.reportId[0]
-          : router.query.reportId,
-        keyName: Array.isArray(router.query.keyName)
-          ? router.query.keyName[0]
-          : router.query.keyName,
+        reportId: reportId,
+        keyName: keyName,
       }}
     >
       <div className="relative">
         <div className="flex flex-row fixed min-h-12 bottom-0 w-full bg-gray-50 dark:bg-gray-800 md:bg-transparent dark:md:bg-transparent md:w-auto md:sticky md:top-0 p-2 z-10 md:h-0">
           {/* @ts-ignore */}
           <Button
-            onClick={() => router.push("/oracle-frontend")}
+            onClick={() => window.location.replace("/oracle/create-report")}
             className="bg-transparent border-none hover:bg-transparent text-gray-700 dark:text-gray-300"
           >
-            <LeftOutlined className="w-2" /> All reports
+            <ArrowLeft className="w-2" /> All reports
           </Button>
           <div className="flex flex-row gap-2 ml-auto">
             {/* @ts-ignore */}
-            <Button
+            {/* <Button
               onClick={() => setAnalysisDrawerOpen(true)}
               className="ml-auto text-gray-700 dark:text-gray-300"
             >
               View analyses
-            </Button>
+            </Button> */}
             {/* @ts-ignore */}
             <Button
               onClick={() => setFeedbackModalOpen(true)}
@@ -254,6 +252,7 @@ export default function ViewOracleReport() {
         <EditorProvider
           extensions={extensions}
           content={mdx}
+          immediatelyRender={false}
           editable={false}
           editorProps={{
             attributes: {
@@ -262,7 +261,7 @@ export default function ViewOracleReport() {
             },
           }}
         />
-        <Drawer
+        {/* <Drawer
           open={analysisDrawerOpen}
           onClose={() => setAnalysisDrawerOpen(false)}
           placement="bottom"
@@ -416,7 +415,7 @@ export default function ViewOracleReport() {
               </div>
             </div>
           </div>
-        </Drawer>
+        </Drawer> */}
       </div>
     </OracleReportContext.Provider>
   );
