@@ -271,6 +271,22 @@ def generate_analysis_task(
                 or "analyses" not in result
                 or len(result["analyses"]) == 0
             ):
+                # set status to error
+                await add_or_update_analysis(
+                    api_key=api_key,
+                    analysis_id=analysis_id,
+                    report_id=report_id,
+                    status="ERROR",
+                    analysis_json={
+                        # reset the data to just be the question
+                        "title": new_analysis_question,
+                        "analysis_id": analysis_id,
+                        # store this error and trace for debugging later
+                        "error": str(e),
+                        "trace": traceback.format_exc(),
+                    },
+                    mdx=None,
+                )
                 delete_analysis_task_id(analysis_id)
                 return {"error": "Error generating analysis"}
 
@@ -281,6 +297,20 @@ def generate_analysis_task(
             analysis = result["analyses"][0]
             analysis["analysis_id"] = analysis_id
 
+            # create an mdx for this analysis
+            # just using the table that was generated
+            LOGGER.info(analysis)
+
+            # update the analysis json with the results so far
+            await add_or_update_analysis(
+                api_key=api_key,
+                analysis_id=analysis_id,
+                report_id=report_id,
+                status="Understanding explored data to generate analysis",
+                analysis_json=analysis,
+                mdx=None,
+            )
+
             # generate mdx for this analysis
             res = await make_request(
                 DEFOG_BASE_URL + "/oracle/generate_analysis_mdx",
@@ -290,6 +320,8 @@ def generate_analysis_task(
                     "task_type": TaskType.EXPLORATION.value,
                     "analysis": analysis,
                     "context": full_context_with_previous_analyses,
+                    "skip_rephrase": True,
+                    "table_last": True,
                 },
             )
 
