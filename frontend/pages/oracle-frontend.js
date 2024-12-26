@@ -552,6 +552,21 @@ function OracleDashboard() {
     }
   };
 
+  const deleteClarification = (index, clarificationObject) => {
+    // Remove from answered clarifications if it exists there
+    setAnsweredClarifications((prev) =>
+      prev.filter((c) => c.clarification !== clarificationObject.clarification)
+    );
+
+    // Remove from unanswered clarifications if it exists there
+    setUnansweredClarifications((prev) =>
+      prev.filter((c) => c.clarification !== clarificationObject.clarification)
+    );
+
+    // Remove from answers
+    delete answers.current[clarificationObject.clarification];
+  };
+
   return (
     <>
       <Meta />
@@ -606,12 +621,16 @@ function OracleDashboard() {
               <button
                 onClick={handleSendClick}
                 disabled={!userQuestion.trim() || userQuestion.length < 5}
-                className={`flex items-center justify-center p-2 rounded-full transition-colors duration-200 ${
+                className={`flex items-center justify-center p-2 rounded-full ${
                   userQuestion.trim() && userQuestion.length >= 5
-                    ? "text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                    ? "text-purple-600 hover:text-purple-800 dark:text-purple-300 dark:hover:text-purple-200 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/40"
                     : "text-gray-400 dark:text-gray-600 cursor-not-allowed"
                 }`}
-                title="Send question"
+                title={
+                  !userQuestion.trim() || userQuestion.length < 5
+                    ? "Type at least 5 characters"
+                    : "Send question to get clarifications"
+                }
               >
                 <SendOutlined className="text-lg" />
               </button>
@@ -722,9 +741,18 @@ function OracleDashboard() {
           </div>
 
           <Button
-            className="bg-purple-500 text-white py-4 px-4 mt-2 mb-2 rounded-lg hover:bg-purple-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 dark:hover:bg-purple-700"
+            className={`py-4 px-6 mt-2 mb-2 rounded-lg ${
+              answeredClarifications.length > 0 || unansweredClarifications.length > 0
+                ? "bg-purple-500 text-white hover:bg-purple-600"
+                : "bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600 cursor-not-allowed"
+            }`}
             onClick={generateReport}
-            disabled={userQuestion.length < 5 || taskType === ""}
+            disabled={userQuestion.length < 5 || taskType === "" || (answeredClarifications.length === 0 && unansweredClarifications.length === 0)}
+            title={
+              answeredClarifications.length > 0 || unansweredClarifications.length > 0
+                ? "Generate report"
+                : "First send your question to get clarifications"
+            }
           >
             Generate
           </Button>
