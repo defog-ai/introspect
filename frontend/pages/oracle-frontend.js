@@ -651,35 +651,37 @@ function OracleDashboard() {
 
               {/* Update section between answered and unanswered */}
               {answeredClarifications.length > 0 && (
-                <div className="mt-6 mb-6 bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center text-amber-600 dark:text-amber-400">
-                    <InfoCircleOutlined className="text-lg mr-2" />
-                    <span>
-                      Get new clarification questions based on your answers to
-                      the clarifications above
-                    </span>
-                  </div>
-                  <Button
-                    onClick={getClarifications}
-                    className="flex items-center bg-amber-100 hover:bg-amber-200 border-amber-200 text-amber-700 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 dark:border-amber-700/50 dark:text-amber-300"
-                    disabled={waitClarifications}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 mr-1"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                <div className="mt-6 mb-6 bg-gradient-to-r from-amber-50 via-amber-100/70 to-amber-50 dark:from-amber-900/30 dark:via-amber-800/20 dark:to-amber-900/30 p-4 rounded-lg border border-amber-200/50 dark:border-amber-700/30 shadow-sm hover:shadow-md transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-amber-600 dark:text-amber-400 group">
+                      <InfoCircleOutlined className="text-lg mr-2 animate-pulse group-hover:animate-none" />
+                      <span className="font-medium">
+                        Get updated clarification questions based on your answers to
+                        the clarifications above.
+                      </span>
+                    </div>
+                    <Button
+                      onClick={getClarifications}
+                      className="flex items-center bg-amber-100 hover:bg-amber-200 border-amber-200 text-amber-700 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 dark:border-amber-700/50 dark:text-amber-300 transition-all duration-300 hover:scale-105 active:scale-95"
+                      disabled={waitClarifications}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                      />
-                    </svg>
-                    Update
-                  </Button>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 mr-1 transition-transform duration-500 ease-in-out hover:rotate-180"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                      </svg>
+                      Update
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -889,22 +891,22 @@ function ClarificationItem({
         isLoading ? "opacity-50" : ""
       }`}
     >
-      {/* Question - 60% width */}
-      <div className="text-amber-500 dark:text-amber-400 w-3/5 flex items-center gap-2">
+      {/* Question - adjustable width based on answered status */}
+      <div className={`text-amber-500 dark:text-amber-400 ${isAnswered ? 'w-3/5' : 'w-4/5'} flex items-center gap-2`}>
         {clarificationObject.clarification}
       </div>
 
-      {/* Status Label - fixed width */}
-      <div className="w-24 flex justify-center">
-        {isAnswered && (
+      {/* Status Label - only show if answered */}
+      {isAnswered && (
+        <div className="w-24 flex justify-center">
           <span className="px-3 py-0.5 text-xs font-medium tracking-wide rounded-md bg-amber-100/70 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-700/50">
             Answered
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Answer Input - remaining width */}
-      <div className="flex-1 pr-8">
+      <div className={`${isAnswered ? 'flex-1' : 'w-1/5'} pr-8`}>
         {clarificationObject.input_type === "single_choice" ? (
           <div>
             <Select
