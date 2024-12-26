@@ -645,6 +645,7 @@ function OracleDashboard() {
                   }
                   isAnswered={true}
                   isLoading={false}
+                  answers={answers}
                 />
               ))}
 
@@ -693,6 +694,7 @@ function OracleDashboard() {
                   }
                   isAnswered={false}
                   isLoading={waitClarifications}
+                  answers={answers}
                 />
               ))}
             </div>
@@ -812,10 +814,31 @@ function ClarificationItem({
   deleteClarification,
   isAnswered,
   isLoading,
+  answers,
 }) {
-  const [selectedChoice, setSelectedChoice] = useState(null);
-  const [textValue, setTextValue] = useState("");
+  // Initialize both text and choice values from answers.current
+  const [selectedChoice, setSelectedChoice] = useState(
+    answers.current[clarificationObject.clarification] || null
+  );
+  const [textValue, setTextValue] = useState(
+    answers.current[clarificationObject.clarification] || ""
+  );
+  const [checkboxValues, setCheckboxValues] = useState(
+    answers.current[clarificationObject.clarification]?.split(", ") || []
+  );
   const textUpdateTimer = useRef(null);
+
+  // Update all input values when answers.current changes
+  useEffect(() => {
+    const currentAnswer = answers.current[clarificationObject.clarification];
+    if (clarificationObject.input_type === "multiple_choice") {
+      setCheckboxValues(currentAnswer?.split(", ") || []);
+    } else if (clarificationObject.input_type === "single_choice") {
+      setSelectedChoice(currentAnswer || null);
+    } else {
+      setTextValue(currentAnswer || "");
+    }
+  }, [clarificationObject.clarification, answers, clarificationObject.input_type]);
 
   const otherSelected = useMemo(
     () => (selectedChoice || "").toLowerCase() === "other",
@@ -887,6 +910,7 @@ function ClarificationItem({
             <Select
               allowClear={true}
               className="w-full dark:bg-gray-800 dark:text-gray-200"
+              value={selectedChoice}
               optionRender={(opt, info) => (
                 <div className="text-wrap break-words hyphens-auto dark:text-gray-200">
                   {opt.label}
@@ -922,16 +946,18 @@ function ClarificationItem({
           clarificationObject?.options?.length ? (
           <Checkbox.Group
             className="w-full"
+            value={checkboxValues}
             options={clarificationObject.options.map((option) => ({
               label: option,
               value: option,
             }))}
-            onChange={(value) =>
+            onChange={(value) => {
+              setCheckboxValues(value);
               updateAnsweredClarifications(
                 clarificationObject.clarification,
                 value
-              )
-            }
+              );
+            }}
             disabled={isLoading}
           />
         ) : (
