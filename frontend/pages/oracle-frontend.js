@@ -69,6 +69,8 @@ function OracleDashboard() {
 
   const answers = useRef({});
   const [clarifications, setClarifications] = useState([]);
+  const [answeredClarifications, setAnsweredClarifications] = useState([]);
+  const [unansweredClarifications, setUnansweredClarifications] = useState([]);
   const [answerLastUpdateTs, setAnswerLastUpdateTs] = useState(Date.now());
   const [waitClarifications, setWaitClarifications] = useState(false);
   const [taskType, setTaskType] = useState(null);
@@ -115,6 +117,34 @@ function OracleDashboard() {
 
     answers.current[clarification] = answer;
 
+    // Move the clarification from unanswered to answered if it has a valid answer
+    if (answer && answer.length > 0) {
+      setUnansweredClarifications(prev => {
+        const clarificationObj = prev.find(c => c.clarification === clarification);
+        if (clarificationObj) {
+          // Remove from unanswered
+          const newUnanswered = prev.filter(c => c.clarification !== clarification);
+          // Add to answered
+          setAnsweredClarifications(answered => [...answered, {...clarificationObj, isAnswered: true}]);
+          return newUnanswered;
+        }
+        return prev;
+      });
+    } else {
+      // If answer is empty, move from answered to unanswered
+      setAnsweredClarifications(prev => {
+        const clarificationObj = prev.find(c => c.clarification === clarification);
+        if (clarificationObj) {
+          // Remove from answered
+          const newAnswered = prev.filter(c => c.clarification !== clarification);
+          // Add to unanswered
+          setUnansweredClarifications(unanswered => [...unanswered, {...clarificationObj, isAnswered: false}]);
+          return newAnswered;
+        }
+        return prev;
+      });
+    }
+
     setAnswerLastUpdateTs(Date.now());
   };
 
@@ -130,17 +160,6 @@ function OracleDashboard() {
       checkReady();
       return;
     }
-    // answeredClarifications would be a list of clarifications that have been answered
-    // by the user.
-    let answeredClarifications = clarifications
-      .filter(
-        (clarificationObject) =>
-          answers.current[clarificationObject.clarification]
-      )
-      .map((clarificationObject) => ({
-        ...clarificationObject,
-        answer: answers.current?.[clarificationObject.clarification],
-      }));
 
     console.log("answered clarifications:", answeredClarifications);
 
@@ -154,7 +173,10 @@ function OracleDashboard() {
         key_name: apiKeyName,
         user_question: userQuestion,
         task_type: taskType,
-        answered_clarifications: answeredClarifications,
+        answered_clarifications: answeredClarifications.map(c => ({
+          ...c,
+          answer: answers.current[c.clarification]
+        })),
       }),
     });
     setWaitClarifications(false);
@@ -163,25 +185,28 @@ function OracleDashboard() {
 
       // hard-code all task types to exploration
       setTaskType("exploration");
-      // get the updated answered clarifications, since the user might have
-      // answered some clarifications while the request was processing
-      let answeredClarifications = clarifications.filter(
-        (clarificationObject) =>
-          answers.current[clarificationObject.clarification]
-      );
 
-      // concatenate the new clarifications with the answered clarifications
-      setClarifications(answeredClarifications.concat(data.clarifications));
+      // Add new clarifications to unanswered list
+      setUnansweredClarifications(prev => [
+        ...prev,
+        ...data.clarifications.map(c => ({...c, isAnswered: false}))
+      ]);
     } else {
       console.error("Failed to fetch clarifications");
     }
   };
 
   const deleteClarification = (index, clarificationObject) => {
-    // Allow users to delete any clarification through UI
-    setClarifications((prevClarifications) =>
-      prevClarifications.filter((_, i) => i !== index)
-    );
+    // Remove from either answered or unanswered list
+    if (clarificationObject.isAnswered) {
+      setAnsweredClarifications(prev => 
+        prev.filter(c => c.clarification !== clarificationObject.clarification)
+      );
+    } else {
+      setUnansweredClarifications(prev => 
+        prev.filter(c => c.clarification !== clarificationObject.clarification)
+      );
+    }
     // Remove from answers as well
     answers.current[clarificationObject.clarification] = undefined;
   };
@@ -420,7 +445,11 @@ function OracleDashboard() {
         sources: selectedSourceLinks,
         task_type: taskType,
         clarifications: [
-          ...clarifications.map((d) => ({
+          ...answeredClarifications.map((d) => ({
+            ...d,
+            answer: answers.current[d.clarification],
+          })),
+          ...unansweredClarifications.map((d) => ({
             ...d,
             answer: answers.current[d.clarification],
           })),
@@ -531,7 +560,7 @@ function OracleDashboard() {
           </Row>
         ) : null}
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-4xl mx-auto">
           <div className="mb-6">
             <h1 className="text-2xl font-semibold mb-2 dark:text-gray-200">
               The Oracle
@@ -584,26 +613,26 @@ function OracleDashboard() {
             </div>
           ) : null}
 
-          {clarifications.length > 0 && (
-            // show clarifications only when there are some
+          {(answeredClarifications.length > 0 || unansweredClarifications.length > 0) && (
             <div className="mt-6">
               <h2 className="text-xl font-semibold mb-2 dark:text-gray-200">
                 Clarifications
               </h2>
               <TaskType taskType={taskType} onChange={handleTaskTypeChange} />
-              {clarifications.map((clarificationObject, index) => (
+              
+              {/* Render all clarifications with answered ones first */}
+              {[...answeredClarifications, ...unansweredClarifications].map((clarificationObject, index) => (
                 <ClarificationItem
-                  key={index}
+                  key={clarificationObject.clarification}
                   clarificationObject={clarificationObject}
                   updateAnsweredClarifications={updateAnsweredClarifications}
-                  deleteClarification={() =>
-                    deleteClarification(index, clarificationObject)
-                  }
+                  deleteClarification={() => deleteClarification(index, clarificationObject)}
+                  isAnswered={!!answers.current[clarificationObject.clarification]}
                 />
               ))}
             </div>
           )}
-          {clarifications.length > 0 && (
+          {(answeredClarifications.length > 0 || unansweredClarifications.length > 0) && (
             <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg my-4">
               <div className="text-amber-600 dark:text-amber-400 mb-2 font-medium">
                 Additional Comments
@@ -715,8 +744,11 @@ function ClarificationItem({
   clarificationObject,
   updateAnsweredClarifications,
   deleteClarification,
+  isAnswered
 }) {
   const [selectedChoice, setSelectedChoice] = useState(null);
+  const [textValue, setTextValue] = useState("");
+  const textUpdateTimer = useRef(null);
 
   const otherSelected = useMemo(
     () => (selectedChoice || "").toLowerCase() === "other",
@@ -733,17 +765,63 @@ function ClarificationItem({
     opts.push("Other");
   }
 
+  const handleTextChange = (e) => {
+    const value = e.target.value;
+    setTextValue(value);
+    
+    // Clear any existing timer
+    if (textUpdateTimer.current) {
+      clearTimeout(textUpdateTimer.current);
+    }
+
+    // Set a new timer to update the answer after 1 second of no typing
+    textUpdateTimer.current = setTimeout(() => {
+      updateAnsweredClarifications(
+        clarificationObject.clarification,
+        value
+      );
+    }, 1000);
+  };
+
+  const handleTextBlur = () => {
+    // Clear any existing timer
+    if (textUpdateTimer.current) {
+      clearTimeout(textUpdateTimer.current);
+    }
+    // Update immediately on blur if there's a value
+    updateAnsweredClarifications(
+      clarificationObject.clarification,
+      textValue
+    );
+  };
+
   return (
-    <div className="bg-amber-100 dark:bg-amber-900/30 p-4 rounded-lg my-2 relative flex flex-row">
-      <div className="text-amber-500 dark:text-amber-400 w-3/4">
+    <div className={`${
+      isAnswered 
+        ? "bg-amber-50 dark:bg-amber-900/20" 
+        : "bg-amber-100 dark:bg-amber-900/30"
+    } p-4 rounded-lg my-2 relative flex flex-row items-center gap-4`}>
+      {/* Question - 60% width */}
+      <div className="text-amber-500 dark:text-amber-400 w-3/5">
         {clarificationObject.clarification}
       </div>
-      <div className="w-1/4 mt-2 mx-2">
+
+      {/* Status Label - fixed width */}
+      <div className="w-24 flex justify-center">
+        {isAnswered && (
+          <span className="px-3 py-0.5 text-xs font-medium tracking-wide rounded-md bg-amber-100/70 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-700/50">
+            Answered
+          </span>
+        )}
+      </div>
+
+      {/* Answer Input - remaining width */}
+      <div className="flex-1 pr-8">
         {clarificationObject.input_type === "single_choice" ? (
           <div>
             <Select
               allowClear={true}
-              className="flex w-5/6 dark:bg-gray-800 dark:text-gray-200"
+              className="w-full dark:bg-gray-800 dark:text-gray-200"
               optionRender={(opt, info) => (
                 <div className="text-wrap break-words hyphens-auto dark:text-gray-200">
                   {opt.label}
@@ -762,34 +840,21 @@ function ClarificationItem({
                 label: option,
               }))}
             />
-            {/* if other is selected, show a text input too */}
-            {otherSelected ? (
+            {otherSelected && (
               <TextArea
                 placeholder="Type here"
-                className="my-2 w-5/6 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
+                className="my-2 w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
                 autoSize={true}
-                onChange={(value) => {
-                  // if this is empty, then just set answer back to to selectedOption
-                  if (value.target.value === "") {
-                    updateAnsweredClarifications(
-                      clarificationObject.clarification,
-                      selectedChoice || null
-                    );
-                  } else {
-                    // else set answer to the value of this text area
-                    updateAnsweredClarifications(
-                      clarificationObject.clarification,
-                      value.target.value
-                    );
-                  }
-                }}
+                value={textValue}
+                onChange={handleTextChange}
+                onBlur={handleTextBlur}
               />
-            ) : null}
+            )}
           </div>
         ) : clarificationObject.input_type === "multiple_choice" &&
           clarificationObject?.options?.length ? (
           <Checkbox.Group
-            className="flex w-5/6"
+            className="w-full"
             options={clarificationObject.options.map((option) => ({
               label: option,
               value: option,
@@ -804,20 +869,20 @@ function ClarificationItem({
         ) : (
           <TextArea
             autoSize={true}
-            className="flex w-5/6 rounded-lg dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
-            onChange={(value) =>
-              updateAnsweredClarifications(
-                clarificationObject.clarification,
-                value.target.value
-              )
-            }
+            className="w-full rounded-lg dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
+            value={textValue}
+            onChange={handleTextChange}
+            onBlur={handleTextBlur}
           />
         )}
       </div>
-      <CloseOutlined
-        className="text-amber-500 dark:text-amber-400 absolute top-2 right-2 cursor-pointer"
+
+      <button
+        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
         onClick={deleteClarification}
-      />
+      >
+        <CloseOutlined className="text-sm" />
+      </button>
     </div>
   );
 }
