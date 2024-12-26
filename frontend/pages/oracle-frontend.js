@@ -14,7 +14,7 @@ import {
   CloseCircleOutlined,
   FileTextOutlined,
   InfoCircleOutlined,
-  SendOutlined
+  SendOutlined,
 } from "@ant-design/icons";
 import { Tooltip } from "antd";
 
@@ -119,26 +119,40 @@ function OracleDashboard() {
 
     // Move the clarification from unanswered to answered if it has a valid answer
     if (answer && answer.length > 0) {
-      setUnansweredClarifications(prev => {
-        const clarificationObj = prev.find(c => c.clarification === clarification);
+      setUnansweredClarifications((prev) => {
+        const clarificationObj = prev.find(
+          (c) => c.clarification === clarification
+        );
         if (clarificationObj) {
           // Remove from unanswered
-          const newUnanswered = prev.filter(c => c.clarification !== clarification);
+          const newUnanswered = prev.filter(
+            (c) => c.clarification !== clarification
+          );
           // Add to answered
-          setAnsweredClarifications(answered => [...answered, {...clarificationObj, isAnswered: true}]);
+          setAnsweredClarifications((answered) => [
+            ...answered,
+            { ...clarificationObj, isAnswered: true },
+          ]);
           return newUnanswered;
         }
         return prev;
       });
     } else {
       // If answer is empty, move from answered to unanswered
-      setAnsweredClarifications(prev => {
-        const clarificationObj = prev.find(c => c.clarification === clarification);
+      setAnsweredClarifications((prev) => {
+        const clarificationObj = prev.find(
+          (c) => c.clarification === clarification
+        );
         if (clarificationObj) {
           // Remove from answered
-          const newAnswered = prev.filter(c => c.clarification !== clarification);
+          const newAnswered = prev.filter(
+            (c) => c.clarification !== clarification
+          );
           // Add to unanswered
-          setUnansweredClarifications(unanswered => [...unanswered, {...clarificationObj, isAnswered: false}]);
+          setUnansweredClarifications((unanswered) => [
+            ...unanswered,
+            { ...clarificationObj, isAnswered: false },
+          ]);
           return newAnswered;
         }
         return prev;
@@ -161,7 +175,13 @@ function OracleDashboard() {
       return;
     }
 
-    console.log("answered clarifications:", answeredClarifications);
+    // Send current state to backend
+    const currentAnsweredClarifications = answeredClarifications.map((c) => ({
+      ...c,
+      answer: answers.current[c.clarification],
+    }));
+
+    console.log("Sending answered clarifications:", currentAnsweredClarifications);
 
     const res = await fetch(setupBaseUrl("http", `oracle/clarify_question`), {
       method: "POST",
@@ -169,46 +189,33 @@ function OracleDashboard() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        token: token,
+        token,
         key_name: apiKeyName,
         user_question: userQuestion,
         task_type: taskType,
-        answered_clarifications: answeredClarifications.map(c => ({
-          ...c,
-          answer: answers.current[c.clarification]
-        })),
+        answered_clarifications: currentAnsweredClarifications,
       }),
     });
-    setWaitClarifications(false);
+
     if (res.ok) {
       const data = await res.json();
-
-      // hard-code all task types to exploration
       setTaskType("exploration");
 
-      // Add new clarifications to unanswered list
-      setUnansweredClarifications(prev => [
-        ...prev,
-        ...data.clarifications.map(c => ({...c, isAnswered: false}))
-      ]);
+      // Simply replace all unanswered clarifications with new ones from backend
+      // Keep answered clarifications as is since backend doesn't send them back
+      setUnansweredClarifications(
+        data.clarifications.map((c) => ({ ...c, isAnswered: false }))
+      );
+
+      console.log("Updated clarifications state:", {
+        answered: answeredClarifications,
+        newUnanswered: data.clarifications,
+      });
     } else {
       console.error("Failed to fetch clarifications");
     }
-  };
 
-  const deleteClarification = (index, clarificationObject) => {
-    // Remove from either answered or unanswered list
-    if (clarificationObject.isAnswered) {
-      setAnsweredClarifications(prev => 
-        prev.filter(c => c.clarification !== clarificationObject.clarification)
-      );
-    } else {
-      setUnansweredClarifications(prev => 
-        prev.filter(c => c.clarification !== clarificationObject.clarification)
-      );
-    }
-    // Remove from answers as well
-    answers.current[clarificationObject.clarification] = undefined;
+    setWaitClarifications(false);
   };
 
   const getSources = async () => {
@@ -221,7 +228,7 @@ function OracleDashboard() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          token: token,
+          token,
           key_name: apiKeyName,
           user_question: userQuestion,
         }),
@@ -514,13 +521,19 @@ function OracleDashboard() {
     </div>
   );
 
-  const [hasInitialClarifications, setHasInitialClarifications] = useState(false);
+  const [hasInitialClarifications, setHasInitialClarifications] =
+    useState(false);
   const questionEditTimer = useRef(null);
 
   const handleQuestionChange = (e) => {
     const newQuestion = e.target.value;
     setUserQuestion(newQuestion);
-    
+
+    // Clear all clarifications when question changes
+    setAnsweredClarifications([]);
+    setUnansweredClarifications([]);
+    answers.current = {};
+
     // If we already have initial clarifications, auto-trigger on edit after a delay
     if (hasInitialClarifications && newQuestion.length >= 5) {
       if (questionEditTimer.current) {
@@ -597,8 +610,8 @@ function OracleDashboard() {
                 disabled={!userQuestion.trim() || userQuestion.length < 5}
                 className={`flex items-center justify-center p-2 rounded-full transition-colors duration-200 ${
                   userQuestion.trim() && userQuestion.length >= 5
-                    ? 'text-purple-600 hover:bg-purple-100 dark:text-purple-400 dark:hover:bg-purple-900/30'
-                    : 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                    ? "text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                    : "text-gray-400 dark:text-gray-600 cursor-not-allowed"
                 }`}
                 title="Send question"
               >
@@ -613,26 +626,81 @@ function OracleDashboard() {
             </div>
           ) : null}
 
-          {(answeredClarifications.length > 0 || unansweredClarifications.length > 0) && (
+          {(answeredClarifications.length > 0 ||
+            unansweredClarifications.length > 0) && (
             <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2 dark:text-gray-200">
-                Clarifications
-              </h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold dark:text-gray-200">
+                  Clarifications
+                </h2>
+              </div>
               <TaskType taskType={taskType} onChange={handleTaskTypeChange} />
               
-              {/* Render all clarifications with answered ones first */}
-              {[...answeredClarifications, ...unansweredClarifications].map((clarificationObject, index) => (
+              {/* Render answered clarifications */}
+              {answeredClarifications.map((clarificationObject, index) => (
                 <ClarificationItem
                   key={clarificationObject.clarification}
                   clarificationObject={clarificationObject}
                   updateAnsweredClarifications={updateAnsweredClarifications}
-                  deleteClarification={() => deleteClarification(index, clarificationObject)}
-                  isAnswered={!!answers.current[clarificationObject.clarification]}
+                  deleteClarification={() =>
+                    deleteClarification(index, clarificationObject)
+                  }
+                  isAnswered={true}
+                  isLoading={false}
+                />
+              ))}
+
+              {/* Update section between answered and unanswered */}
+              {answeredClarifications.length > 0 && (
+                <div className="mt-6 mb-6 bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center text-amber-600 dark:text-amber-400">
+                    <InfoCircleOutlined className="text-lg mr-2" />
+                    <span>
+                      Get new clarification questions based on your answers to
+                      the clarifications above
+                    </span>
+                  </div>
+                  <Button
+                    onClick={getClarifications}
+                    className="flex items-center bg-amber-100 hover:bg-amber-200 border-amber-200 text-amber-700 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 dark:border-amber-700/50 dark:text-amber-300"
+                    disabled={waitClarifications}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 mr-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                    Update
+                  </Button>
+                </div>
+              )}
+
+              {/* Render unanswered clarifications */}
+              {unansweredClarifications.map((clarificationObject, index) => (
+                <ClarificationItem
+                  key={clarificationObject.clarification}
+                  clarificationObject={clarificationObject}
+                  updateAnsweredClarifications={updateAnsweredClarifications}
+                  deleteClarification={() =>
+                    deleteClarification(index + answeredClarifications.length, clarificationObject)
+                  }
+                  isAnswered={false}
+                  isLoading={waitClarifications}
                 />
               ))}
             </div>
           )}
-          {(answeredClarifications.length > 0 || unansweredClarifications.length > 0) && (
+          {(answeredClarifications.length > 0 ||
+            unansweredClarifications.length > 0) && (
             <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg my-4">
               <div className="text-amber-600 dark:text-amber-400 mb-2 font-medium">
                 Additional Comments
@@ -744,7 +812,8 @@ function ClarificationItem({
   clarificationObject,
   updateAnsweredClarifications,
   deleteClarification,
-  isAnswered
+  isAnswered,
+  isLoading,
 }) {
   const [selectedChoice, setSelectedChoice] = useState(null);
   const [textValue, setTextValue] = useState("");
@@ -768,7 +837,7 @@ function ClarificationItem({
   const handleTextChange = (e) => {
     const value = e.target.value;
     setTextValue(value);
-    
+
     // Clear any existing timer
     if (textUpdateTimer.current) {
       clearTimeout(textUpdateTimer.current);
@@ -776,10 +845,7 @@ function ClarificationItem({
 
     // Set a new timer to update the answer after 1 second of no typing
     textUpdateTimer.current = setTimeout(() => {
-      updateAnsweredClarifications(
-        clarificationObject.clarification,
-        value
-      );
+      updateAnsweredClarifications(clarificationObject.clarification, value);
     }, 1000);
   };
 
@@ -789,21 +855,23 @@ function ClarificationItem({
       clearTimeout(textUpdateTimer.current);
     }
     // Update immediately on blur if there's a value
-    updateAnsweredClarifications(
-      clarificationObject.clarification,
-      textValue
-    );
+    updateAnsweredClarifications(clarificationObject.clarification, textValue);
   };
 
   return (
-    <div className={`${
-      isAnswered 
-        ? "bg-amber-50 dark:bg-amber-900/20" 
-        : "bg-amber-100 dark:bg-amber-900/30"
-    } p-4 rounded-lg my-2 relative flex flex-row items-center gap-4`}>
+    <div
+      className={`${
+        isAnswered
+          ? "bg-amber-50 dark:bg-amber-900/20"
+          : "bg-amber-100 dark:bg-amber-900/30"
+      } p-4 rounded-lg my-2 relative flex flex-row items-center gap-4 ${
+        isLoading ? "opacity-50" : ""
+      }`}
+    >
       {/* Question - 60% width */}
-      <div className="text-amber-500 dark:text-amber-400 w-3/5">
+      <div className="text-amber-500 dark:text-amber-400 w-3/5 flex items-center gap-2">
         {clarificationObject.clarification}
+        {isLoading && <Spin size="small" />}
       </div>
 
       {/* Status Label - fixed width */}
@@ -839,6 +907,7 @@ function ClarificationItem({
                 value: option,
                 label: option,
               }))}
+              disabled={isLoading}
             />
             {otherSelected && (
               <TextArea
@@ -848,6 +917,7 @@ function ClarificationItem({
                 value={textValue}
                 onChange={handleTextChange}
                 onBlur={handleTextBlur}
+                disabled={isLoading}
               />
             )}
           </div>
@@ -865,6 +935,7 @@ function ClarificationItem({
                 value
               )
             }
+            disabled={isLoading}
           />
         ) : (
           <TextArea
@@ -873,6 +944,7 @@ function ClarificationItem({
             value={textValue}
             onChange={handleTextChange}
             onBlur={handleTextBlur}
+            disabled={isLoading}
           />
         )}
       </div>
@@ -880,6 +952,7 @@ function ClarificationItem({
       <button
         className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
         onClick={deleteClarification}
+        disabled={isLoading}
       >
         <CloseOutlined className="text-sm" />
       </button>
