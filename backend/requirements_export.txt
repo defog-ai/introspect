@@ -10,7 +10,6 @@ matplotlib==3.9.2
 numpy
 openai
 pandas==2.2.3
-pika
 pyyaml
 redis
 requests
