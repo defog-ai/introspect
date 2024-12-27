@@ -12,7 +12,7 @@ python3 create_sql_tables.py
 python3 create_admin_user.py
 python3 add_tools_to_db.py
 # test if REDIS_INTERNAL_PORT is up, and sleep until it is
-while ! nc -z agents-redis $REDIS_INTERNAL_PORT; do
+while ! nc -z $REDIS_INTERNAL_HOST $REDIS_INTERNAL_PORT; do
   echo "Waiting for ${REDIS_INTERNAL_PORT} to be available..."
   sleep 1
 done
