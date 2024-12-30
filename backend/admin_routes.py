@@ -179,3 +179,31 @@ async def get_non_admin_config(request: Request):
             or hide_raw_analysis_for_non_admin == "true",
         },
     )
+
+@router.post("/admin/add_user_with_token")
+async def add_user_with_token(request: Request):
+    params = await request.json()
+    auth_token = params.get("auth_token")
+    user_token = params.get("user_token")
+    username = params.get("username")
+    user_type = params.get("user_type")
+    if not validate_user(auth_token, user_type="admin"):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    with engine.begin() as conn:
+        conn.execute(
+            insert(Users).values(
+                username=username,
+                hashed_password=user_token, # this is horribly confusing nomenclature, but me from 7 months ago did this monstrosity. So I guess we just roll with it 🤦🏽‍♂️
+                token=INTERNAL_API_KEY,
+                user_type=user_type,
+            )
+        )
+
+    return {"status": "success"}
