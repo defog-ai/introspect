@@ -71,6 +71,7 @@ async def generate_step(request: Request):
         key_name = params.get("key_name")
         question = params.get("user_question")
         analysis_id = params.get("analysis_id")
+        hard_filters = params.get("hard_filters", [])
         dev = params.get("dev", False)
         temp = params.get("temp", False)
         clarification_questions = params.get("clarification_questions", [])
@@ -162,6 +163,7 @@ async def generate_step(request: Request):
                 question = question + " (" + assignment_understanding + ")"
             inputs = {
                 "question": question,
+                "hard_filters": hard_filters,
                 "global_dict": {
                     "dfg_api_key": api_key,
                     "dev": dev,
@@ -185,13 +187,20 @@ async def generate_step(request: Request):
                         "type": "str",
                         "default": None,
                         "description": "natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string",
-                    }
+                    },
+                    "hard_filters": {
+                        "name": "hard_filters",
+                        "type": "list",
+                        "default": None,
+                        "description": "hard filters to apply to the data",
+                    },
                 },
             }
 
             analysis_execution_cache = {
                 "dfg_api_key": api_key,
                 "user_question": question,
+                "hard_filters": hard_filters,
                 "dev": dev,
                 "temp": temp,
             }
