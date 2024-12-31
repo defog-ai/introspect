@@ -150,3 +150,12 @@ a {
 .ant-drawer .ant-drawer-body {
   padding: 0;
 }
+
+.oracle-report-comment {
+  background-color: theme("colors.amber.100");
+  text-decoration: underline;
+  text-decoration-color: theme("colors.amber.400");
+  text-decoration-thickness: 4px;
+  text-underline-offset: 4px;
+  cursor:pointer;
+}

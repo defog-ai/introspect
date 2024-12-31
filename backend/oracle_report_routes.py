@@ -397,6 +397,30 @@ async def get_report_summary(req: ReportRequest):
         )
 
 
+# @router.post("/oracle/get_report_comments")
+# async def get_report_comments(req: ReportRequest):
+#     """
+#     Given a report_id, this endpoint will return the comments for the report.
+#     """
+#     if not validate_user(req.token, user_type=None, get_username=False):
+#         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+#     api_key = get_api_key_from_key_name(req.key_name)
+
+#     with Session(engine) as session:
+#         stmt = select(OracleReports).where(
+#             OracleReports.api_key == api_key,
+#             OracleReports.report_id == req.report_id,
+#         )
+#         result = session.execute(stmt)
+#         report = result.scalar_one_or_none()
+#         if report:
+#             return JSONResponse(status_code=200, content={"comments": report.comments})
+#         else:
+#             return JSONResponse(
+#                 status_code=404,
+#                 content={"error": "Report not found"},
+#             )
+
 ### HELPER FUNCTIONS ###
 
 

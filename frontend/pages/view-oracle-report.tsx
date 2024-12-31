@@ -24,15 +24,14 @@ import {
   Summary,
 } from "$components/oracle/OracleReportContext";
 import { ArrowLeft } from "lucide-react";
+import { OracleBubbleMenu } from "$components/oracle/reports/OracleBubbleMenu";
 
 export default function ViewOracleReport() {
-  const [urlParams, setUrlParams] = useState<URLSearchParams | null>(null);
   const [keyName, setKeyName] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setUrlParams(params);
     setKeyName(params.get("keyName"));
     setReportId(params.get("reportId"));
   }, []);
@@ -68,9 +67,7 @@ export default function ViewOracleReport() {
     const setup = async (reportId: string, keyName: string) => {
       try {
         setLoading(true);
-        const token =
-          localStorage.getItem("defogToken") ||
-          "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0";
+        const token = localStorage.getItem("defogToken");
         const mdx = await getReportMDX(reportId, keyName, token);
 
         if (!mdx) {
@@ -211,7 +208,7 @@ export default function ViewOracleReport() {
         <div className="flex flex-row fixed min-h-12 bottom-0 w-full bg-gray-50 dark:bg-gray-800 md:bg-transparent dark:md:bg-transparent md:w-auto md:sticky md:top-0 p-2 z-10 md:h-0">
           {/* @ts-ignore */}
           <Button
-            onClick={() => window.location.replace("/oracle/create-report")}
+            onClick={() => window.location.replace("/query/create-report")}
             className="bg-transparent border-none hover:bg-transparent text-gray-700 dark:text-gray-300"
           >
             <ArrowLeft className="w-2" /> All reports
@@ -251,16 +248,37 @@ export default function ViewOracleReport() {
         </div>
         <EditorProvider
           extensions={extensions}
-          content={mdx}
+          content={mdx + "<oracle-comment-ramp></oracle-comment-ramp>"}
           immediatelyRender={false}
+          slotAfter
           editable={false}
           editorProps={{
             attributes: {
               class:
-                "oracle-report-tiptap prose prose-base dark:prose-invert mx-auto p-2 mb-12 md:mb-0 focus:outline-none",
+                "oracle-report-tiptap relative prose prose-base dark:prose-invert mx-auto p-2 mb-12 md:mb-0 focus:outline-none *:cursor-default",
+            },
+            // prosemirror has an issue where onselectionchange is not fired on uneditable editors
+            // https://discuss.prosemirror.net/t/unexpected-selection-behavior-on-mouse-click-within-and-outside-an-existing-selection/5750/11
+            // https://github.com/ueberdosis/tiptap/issues/4478
+            // i don't know how windsurf figured this out, but it did.
+            handleClick: (view, pos) => {
+              const { state } = view;
+              const { from, to } = state.selection;
+
+              // If there's a selection and we clicked within it
+              if (from !== to && pos >= from && pos <= to) {
+                // Create empty selection at click position
+                const tr = state.tr.setSelection(
+                  state.selection.constructor.create(state.doc, pos, pos)
+                );
+                view.dispatch(tr);
+              }
+              return true;
             },
           }}
-        />
+        >
+          <OracleBubbleMenu keyName={keyName} reportId={reportId} />
+        </EditorProvider>
         {/* <Drawer
           open={analysisDrawerOpen}
           onClose={() => setAnalysisDrawerOpen(false)}

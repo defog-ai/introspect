@@ -8,7 +8,6 @@ import ReportStatus from "$components/oracle/ReportStatus";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { useRouter } from "next/router";
 import {
-  CheckCircleOutlined,
   CloseOutlined,
   DeleteOutlined,
   CloseCircleOutlined,
@@ -181,7 +180,10 @@ function OracleDashboard() {
       answer: answers.current[c.clarification],
     }));
 
-    console.log("Sending answered clarifications:", currentAnsweredClarifications);
+    console.log(
+      "Sending answered clarifications:",
+      currentAnsweredClarifications
+    );
 
     const res = await fetch(setupBaseUrl("http", `oracle/clarify_question`), {
       method: "POST",
@@ -493,7 +495,9 @@ function OracleDashboard() {
     const hours = Math.abs(Math.floor(offset / 60));
     const minutes = Math.abs(offset % 60);
     const sign = offset < 0 ? "+" : "-";
-    const formattedOffset = `${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+    const formattedOffset = `${sign}${String(hours).padStart(2, "0")}:${String(
+      minutes
+    ).padStart(2, "0")}`;
     return `${city} (UTC${formattedOffset})`;
   };
 
@@ -614,9 +618,7 @@ function OracleDashboard() {
               ) : (
                 userQuestion &&
                 userQuestion.length >= 5 &&
-                !ready && (
-                  <CloseCircleOutlined className="text-red-500" />
-                )
+                !ready && <CloseCircleOutlined className="text-red-500" />
               )}
               <button
                 onClick={handleSendClick}
@@ -652,7 +654,7 @@ function OracleDashboard() {
                 </h2>
               </div>
               <TaskType taskType={taskType} onChange={handleTaskTypeChange} />
-              
+
               {/* Render answered clarifications */}
               {answeredClarifications.map((clarificationObject, index) => (
                 <ClarificationItem
@@ -675,8 +677,8 @@ function OracleDashboard() {
                     <div className="flex items-center text-amber-600 dark:text-amber-400 group">
                       <InfoCircleOutlined className="text-lg mr-2 animate-pulse group-hover:animate-none" />
                       <span className="font-medium">
-                        Get updated clarification questions based on your answers to
-                        the clarifications above.
+                        Get updated clarification questions based on your
+                        answers to the clarifications above.
                       </span>
                     </div>
                     <Button
@@ -711,7 +713,10 @@ function OracleDashboard() {
                   clarificationObject={clarificationObject}
                   updateAnsweredClarifications={updateAnsweredClarifications}
                   deleteClarification={() =>
-                    deleteClarification(index + answeredClarifications.length, clarificationObject)
+                    deleteClarification(
+                      index + answeredClarifications.length,
+                      clarificationObject
+                    )
                   }
                   isAnswered={false}
                   isLoading={waitClarifications}
@@ -742,14 +747,21 @@ function OracleDashboard() {
 
           <Button
             className={`py-4 px-6 mt-2 mb-2 rounded-lg ${
-              answeredClarifications.length > 0 || unansweredClarifications.length > 0
+              answeredClarifications.length > 0 ||
+              unansweredClarifications.length > 0
                 ? "bg-purple-500 text-white hover:bg-purple-600"
                 : "bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600 cursor-not-allowed"
             }`}
             onClick={generateReport}
-            disabled={userQuestion.length < 5 || taskType === "" || (answeredClarifications.length === 0 && unansweredClarifications.length === 0)}
+            disabled={
+              userQuestion.length < 5 ||
+              taskType === "" ||
+              (answeredClarifications.length === 0 &&
+                unansweredClarifications.length === 0)
+            }
             title={
-              answeredClarifications.length > 0 || unansweredClarifications.length > 0
+              answeredClarifications.length > 0 ||
+              unansweredClarifications.length > 0
                 ? "Generate report"
                 : "First send your question to get clarifications"
             }
@@ -868,7 +880,11 @@ function ClarificationItem({
     } else {
       setTextValue(currentAnswer || "");
     }
-  }, [clarificationObject.clarification, answers, clarificationObject.input_type]);
+  }, [
+    clarificationObject.clarification,
+    answers,
+    clarificationObject.input_type,
+  ]);
 
   const otherSelected = useMemo(
     () => (selectedChoice || "").toLowerCase() === "other",
@@ -920,7 +936,11 @@ function ClarificationItem({
       }`}
     >
       {/* Question - adjustable width based on answered status */}
-      <div className={`text-amber-500 dark:text-amber-400 ${isAnswered ? 'w-3/5' : 'w-4/5'} flex items-center gap-2`}>
+      <div
+        className={`text-amber-500 dark:text-amber-400 ${
+          isAnswered ? "w-3/5" : "w-4/5"
+        } flex items-center gap-2`}
+      >
         {clarificationObject.clarification}
       </div>
 
@@ -934,7 +954,7 @@ function ClarificationItem({
       )}
 
       {/* Answer Input - remaining width */}
-      <div className={`${isAnswered ? 'flex-1' : 'w-1/5'} pr-8`}>
+      <div className={`${isAnswered ? "flex-1" : "w-1/5"} pr-8`}>
         {clarificationObject.input_type === "single_choice" ? (
           <div>
             <Select
