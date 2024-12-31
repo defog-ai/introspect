@@ -95,9 +95,10 @@ async def generate_report(
     for summary_rec in summary_dict["recommendations"]:
         uuid_refs = []
         for qn_id in summary_rec["analysis_reference"]:
-            qn_id_idx = qn_ids.index(qn_id)
-            analysis_id = analysis_ids[qn_id_idx]
-            uuid_refs.append(analysis_id)
+            if qn_id in qn_ids:
+                qn_id_idx = qn_ids.index(qn_id)
+                analysis_id = analysis_ids[qn_id_idx]
+                uuid_refs.append(analysis_id)
 
         summary_rec["analysis_reference"] = uuid_refs
 
