@@ -219,6 +219,7 @@ class BeginGenerationRequest(BaseModel):
     task_type: TaskType
     sources: List[str]
     clarifications: List[Dict[str, Any]]
+    hard_filters: Optional[List[Dict[str, str]]]
 
     model_config = {
         "json_schema_extra": {
@@ -461,6 +462,7 @@ async def begin_generation(req: BeginGenerationRequest):
         "user_question": req.user_question,
         "sources": req.sources,
         "clarifications": req.clarifications,
+        "hard_filters": req.hard_filters,
     }
     with Session(engine) as session:
         stmt = (
