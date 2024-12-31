@@ -2,7 +2,7 @@ import asyncio
 import os
 import time
 import traceback
-from typing import Any, Dict
+from typing import Any, List, Dict
 from uuid import uuid4
 
 import pandas as pd
