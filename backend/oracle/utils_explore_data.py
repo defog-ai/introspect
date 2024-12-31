@@ -30,7 +30,13 @@ SUPPORTED_CHART_TYPES = [
 ]
 
 
-async def gen_sql(api_key: str, db_type: str, question: str, glossary: str) -> str:
+async def gen_sql(
+    api_key: str,
+    db_type: str,
+    question: str,
+    glossary: str,
+    hard_filters: Optional[List[Dict[str, str]]] = None,
+) -> str:
     """
     Generate SQL for the given question and glossary, using the Defog API.
     """
@@ -42,6 +48,7 @@ async def gen_sql(api_key: str, db_type: str, question: str, glossary: str) -> s
             "db_type": db_type,
             "question": question,
             "glossary": glossary,
+            "hard_filters": hard_filters,
         },
     )
     # anything that returns a status code other than 200 will return None
