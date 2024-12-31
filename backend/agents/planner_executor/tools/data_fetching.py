@@ -3,6 +3,7 @@ import pandas as pd
 
 async def data_fetcher_and_aggregator(
     question: str,
+    hard_filters: list = [],
     global_dict: dict = {},
     previous_context: list = [],
     **kwargs,
@@ -42,11 +43,11 @@ async def data_fetcher_and_aggregator(
         data={
             "api_key": api_key,
             "question": question,
+            "hard_filters": hard_filters,
             "previous_context": previous_context,
             "db_type": db_type,
         },
     )
-
     print(generate_query_url, flush=True)
 
     reference_queries = res.get("reference_queries", [])

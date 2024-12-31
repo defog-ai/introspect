@@ -19,6 +19,12 @@ tools = {
                 "description": "natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string",
                 "type": "str",
             },
+            "hard_filters": {
+                "name": "hard_filters",
+                "default": [],
+                "description": "List of hard filters to apply to the data",
+                "type": "list",
+            }
         },
         "output_metadata": [
             {
