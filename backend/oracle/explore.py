@@ -64,6 +64,7 @@ async def explore_data(
     gather_context = outputs["gather_context"]
     context = gather_context.get("context", "")
     problem_statement = gather_context.get("problem_statement", "")
+    hard_filters = inputs.get("hard_filters", [])
     db_type, db_creds = get_db_type_creds(api_key)
     max_rounds = inputs.get("max_rounds", MAX_ROUNDS)
 
@@ -138,6 +139,7 @@ async def explore_data(
                     db_type=db_type,
                     db_creds=db_creds,
                     retry_data_fetch=inputs.get("retry_data_fetch", RETRY_DATA_FETCH),
+                    hard_filters=hard_filters,
                 )
             )
 
@@ -246,6 +248,7 @@ async def explore_generated_question(
     db_type: str,
     db_creds: Dict[str, str],
     retry_data_fetch: int,
+    hard_filters: List[Dict[str, str]],
 ) -> Dict[str, Any]:
     """
     Given a generated question, this function will attempt to get and run the
@@ -305,7 +308,13 @@ async def explore_generated_question(
         # TODO: Replace gen_sql and execute_sql with XDB calls if requested in inputs
         try:
             if retry_count == 0:
-                sql = await gen_sql(api_key, db_type, generated_qn, glossary)
+                sql = await gen_sql(
+                    api_key=api_key,
+                    db_type=db_type,
+                    generated_qn=generated_qn,
+                    glossary=glossary,
+                    hard_filters=hard_filters,
+                )
                 LOGGER.info(f"Sql generated was: {sql}")
             else:
                 LOGGER.info(f"Retrying SQL generation for {qn_id}: {generated_qn}")
