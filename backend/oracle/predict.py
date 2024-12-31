@@ -127,7 +127,13 @@ async def predict(
         try:
             if retry_count == 0:
                 if not suggested_sql:
-                    sql = await gen_sql(api_key, db_type, prediction_sql_question, "")
+                    sql = await gen_sql(
+                        api_key=api_key,
+                        db_type=db_type,
+                        question=prediction_sql_question,
+                        glossary="",
+                        hard_filters=[],
+                    )
                 else:
                     sql = suggested_sql
             else:

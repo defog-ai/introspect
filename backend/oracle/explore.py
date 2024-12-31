@@ -311,7 +311,7 @@ async def explore_generated_question(
                 sql = await gen_sql(
                     api_key=api_key,
                     db_type=db_type,
-                    generated_qn=generated_qn,
+                    question=generated_qn,
                     glossary=glossary,
                     hard_filters=hard_filters,
                 )
