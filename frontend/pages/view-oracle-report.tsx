@@ -208,7 +208,7 @@ export default function ViewOracleReport() {
         <div className="flex flex-row fixed min-h-12 bottom-0 w-full bg-gray-50 dark:bg-gray-800 md:bg-transparent dark:md:bg-transparent md:w-auto md:sticky md:top-0 p-2 z-10 md:h-0">
           {/* @ts-ignore */}
           <Button
-            onClick={() => window.location.replace("/query/create-report")}
+            onClick={() => window.location.replace("/oracle-frontend")}
             className="bg-transparent border-none hover:bg-transparent text-gray-700 dark:text-gray-300"
           >
             <ArrowLeft className="w-2" /> All reports
@@ -248,7 +248,11 @@ export default function ViewOracleReport() {
         </div>
         <EditorProvider
           extensions={extensions}
-          content={mdx + "<oracle-comment-ramp></oracle-comment-ramp>"}
+          content={
+            mdx.indexOf("<oracle-comment-handler />") > -1
+              ? mdx
+              : mdx + "<oracle-comment-handler />"
+          }
           immediatelyRender={false}
           slotAfter
           editable={false}

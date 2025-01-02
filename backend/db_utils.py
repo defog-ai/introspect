@@ -255,6 +255,7 @@ if ORACLE_ENABLED:
         inputs = Column(JSON)
         outputs = Column(JSON)
         feedback = Column(Text)
+        comments = Column(JSON, default=None)
 
     class OracleAnalyses(Base):
         __tablename__ = "oracle_analyses"
@@ -1497,6 +1498,7 @@ async def delete_analysis(api_key: str, analysis_id: str, report_id: int):
         err = str(e)[:300]
     finally:
         return err
+
 
 async def add_or_update_analysis(
     api_key: str,

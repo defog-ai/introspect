@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql import select
 from oracle.utils_report import summary_dict_to_markdown
 from db_utils import (
@@ -205,19 +206,64 @@ async def get_report_mdx(req: ReportRequest):
         report = result.scalar_one_or_none()
 
         if report:
-            mdx = report.outputs.get(TaskStage.EXPLORE.value, {}).get("mdx", None)
-            md = report.outputs.get(TaskStage.EXPLORE.value, {}).get("md", None)
-            summary_dict = report.outputs.get(TaskStage.EXPORT.value, {}).get(
-                "executive_summary", None
-            )
+            mdx = report.outputs.get(TaskStage.EXPORT.value, {}).get("mdx", "")
+            md = report.outputs.get(TaskStage.EXPORT.value, {}).get("md", "")
 
-            _, summary_mdx = summary_dict_to_markdown(summary_dict)
-            mdx = f"{summary_mdx}\n\n{mdx}".strip()
+            if not mdx:
+                summary_dict = report.outputs.get(TaskStage.EXPORT.value, {}).get(
+                    "executive_summary", None
+                )
+                _, summary_mdx = summary_dict_to_markdown(summary_dict)
+                mdx = f"{summary_mdx}\n\n{mdx}".strip()
 
             return JSONResponse(
                 status_code=200,
                 content={"mdx": mdx, "md": md},
             )
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Report not found"},
+            )
+
+
+class UpdateReportMDXRequest(ReportRequest):
+    """
+    Request model for updating the MDX string for a report.
+    """
+
+    mdx: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"key_name": "my_api_key", "report_id": 1, "mdx": "MDX string"}
+            ]
+        }
+    }
+
+
+@router.post("/oracle/update_report_mdx")
+async def update_report_mdx(req: UpdateReportMDXRequest):
+    """
+    Given a report_id, this endpoint will update the MDX string for the report.
+    """
+    if not validate_user(req.token, user_type=None, get_username=False):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    api_key = get_api_key_from_key_name(req.key_name)
+
+    with Session(engine) as session:
+        stmt = select(OracleReports).where(
+            OracleReports.api_key == api_key,
+            OracleReports.report_id == req.report_id,
+        )
+        result = session.execute(stmt)
+        report = result.scalar_one_or_none()
+        if report:
+            report.outputs[TaskStage.EXPORT.value]["mdx"] = req.mdx
+            flag_modified(report, "outputs")
+            session.commit()
+            return JSONResponse(status_code=200, content={"message": "MDX updated"})
         else:
             return JSONResponse(
                 status_code=404,
@@ -397,29 +443,75 @@ async def get_report_summary(req: ReportRequest):
         )
 
 
-# @router.post("/oracle/get_report_comments")
-# async def get_report_comments(req: ReportRequest):
-#     """
-#     Given a report_id, this endpoint will return the comments for the report.
-#     """
-#     if not validate_user(req.token, user_type=None, get_username=False):
-#         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-#     api_key = get_api_key_from_key_name(req.key_name)
+@router.post("/oracle/get_report_comments")
+async def get_report_comments(req: ReportRequest):
+    """
+    Given a report_id, this endpoint will return the comments for the report.
+    """
+    if not validate_user(req.token, user_type=None, get_username=False):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    api_key = get_api_key_from_key_name(req.key_name)
 
-#     with Session(engine) as session:
-#         stmt = select(OracleReports).where(
-#             OracleReports.api_key == api_key,
-#             OracleReports.report_id == req.report_id,
-#         )
-#         result = session.execute(stmt)
-#         report = result.scalar_one_or_none()
-#         if report:
-#             return JSONResponse(status_code=200, content={"comments": report.comments})
-#         else:
-#             return JSONResponse(
-#                 status_code=404,
-#                 content={"error": "Report not found"},
-#             )
+    with Session(engine) as session:
+        stmt = select(OracleReports).where(
+            OracleReports.api_key == api_key,
+            OracleReports.report_id == req.report_id,
+        )
+        result = session.execute(stmt)
+        report = result.scalar_one_or_none()
+        if report:
+            return JSONResponse(status_code=200, content={"comments": report.comments})
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Report not found"},
+            )
+
+
+class UpdateReportCommentsRequest(ReportRequest):
+    """
+    Request model for updating the comments for a report.
+    """
+
+    comments: list
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"key_name": "my_api_key", "report_id": 1, "comments": "Comments"}
+            ]
+        }
+    }
+
+
+@router.post("/oracle/update_report_comments")
+async def update_report_comments(req: UpdateReportCommentsRequest):
+    """
+    Given a report_id, this endpoint will update the comments for the report.
+    """
+    if not validate_user(req.token, user_type=None, get_username=False):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    api_key = get_api_key_from_key_name(req.key_name)
+
+    with Session(engine) as session:
+        stmt = select(OracleReports).where(
+            OracleReports.api_key == api_key,
+            OracleReports.report_id == req.report_id,
+        )
+        result = session.execute(stmt)
+        report = result.scalar_one_or_none()
+        if report:
+            report.comments = req.comments
+            session.commit()
+            return JSONResponse(
+                status_code=200, content={"message": "Comments updated"}
+            )
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Report not found"},
+            )
+
 
 ### HELPER FUNCTIONS ###
 

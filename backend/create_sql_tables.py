@@ -153,19 +153,7 @@ oracle_reports = Table(
     Column("inputs", JSON),
     Column("outputs", JSON),
     Column("feedback", Text),
-)
-
-oracle_comments = Table(
-    "oracle_comments",
-    metadata,
-    Column("id", Text, primary_key=True),
-    Column("report_id", Integer, primary_key=True),
-    Column("content", Text),
-    Column("created_ts", DateTime),
-    Column("username", Text),
-    # this is for external data which might change in the future
-    # for now this will contain references to the mdx text in tiptap's from-to format (location of text within a document)
-    Column("metadata", JSON),
+    Column("comments", JSON, default=None),
 )
 
 oracle_analyses = Table(
