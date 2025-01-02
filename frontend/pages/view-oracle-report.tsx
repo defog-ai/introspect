@@ -248,11 +248,7 @@ export default function ViewOracleReport() {
         </div>
         <EditorProvider
           extensions={extensions}
-          content={
-            mdx.indexOf("<oracle-comment-handler />") > -1
-              ? mdx
-              : mdx + "<oracle-comment-handler />"
-          }
+          content={mdx}
           immediatelyRender={false}
           slotAfter
           editable={false}

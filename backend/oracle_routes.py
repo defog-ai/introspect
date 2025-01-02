@@ -219,7 +219,7 @@ class BeginGenerationRequest(BaseModel):
     task_type: TaskType
     sources: List[str]
     clarifications: List[Dict[str, Any]]
-    hard_filters: Optional[List[Dict[str, str]]]
+    hard_filters: Optional[List[Dict[str, str]]] = []
 
     model_config = {
         "json_schema_extra": {
