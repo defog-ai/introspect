@@ -13,11 +13,11 @@ from db_utils import (
     get_analysis_status,
     get_report_data,
     redis_client,
-    update_analysis_status,
     update_summary_dict,
     validate_user,
     get_multiple_analyses,
 )
+import re
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from generic_utils import get_api_key_from_key_name, make_request
@@ -483,6 +483,118 @@ async def begin_generation(req: BeginGenerationRequest):
         args=[api_key, report_id, req.task_type, user_inputs]
     )
     return JSONResponse(content={"report_id": report_id, "status": "started"})
+
+
+class CommentsWithRelevantText(BaseModel):
+    comment_text: str
+    relevant_text: str
+
+
+class ReviseReportRequest(BaseModel):
+    """
+    Request model for updating the report based on the comments.
+    """
+
+    report_id: int
+    token: str
+    key_name: str
+    comments_with_relevant_text: list[CommentsWithRelevantText]
+    general_comments: str
+
+
+@router.post("/oracle/revise_report")
+async def revision(req: ReviseReportRequest):
+    """
+    Given a report_id, this endpoint will update the report based on the comments.
+    """
+    username = validate_user(req.token, user_type=None, get_username=True)
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    api_key = get_api_key_from_key_name(req.key_name)
+
+    """
+    We will reuse the begin generation task to handle the new report's generation. (The handling of the fact that this is a revision is handled inside the explore stage)
+
+    In addition to the report's existing inputs, we will pass (within the inputs dictionary) the following keys:
+    - comments: list of comments from the user
+    - general_comments: general comments from the user
+    - is_revision: flag to indicate that the report is being revised
+    """
+
+    # get the report's data
+    report_data = get_report_data(req.report_id, api_key)
+    if (
+        "error" in report_data
+        or "data" not in report_data
+        or "inputs" not in report_data["data"]
+    ):
+        return JSONResponse(status_code=404, content=report_data)
+
+    report_data = report_data["data"]
+
+    # insert required data for revision into the inputs
+    inputs_with_comments = report_data["inputs"]
+    inputs_with_comments["comments"] = [
+        comment.model_dump() for comment in req.comments_with_relevant_text
+    ]
+    inputs_with_comments["general_comments"] = req.general_comments
+    inputs_with_comments["is_revision"] = True
+    inputs_with_comments["original_analyses"] = (
+        report_data.get("outputs", {})
+        .get(TaskStage.EXPLORE.value, {})
+        .get("analyses", [])
+    )
+    inputs_with_comments["original_report_mdx"] = (
+        report_data.get("outputs", {}).get(TaskStage.EXPORT.value, {}).get("mdx", "")
+    ).strip()
+
+    inputs_with_comments["original_report_id"] = req.report_id
+
+    LOGGER.info(f"Submitting report {req.report_id} for revision")
+    LOGGER.info(f"{req.general_comments}")
+    LOGGER.info(inputs_with_comments["comments"])
+
+    if not inputs_with_comments["original_report_mdx"]:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Bad Request",
+                "message": "Original report mdx is empty",
+            },
+        )
+
+    # now, create a new report
+    # this is so that if the revision fails, the original report is not lost
+    with Session(engine) as session:
+        stmt = (
+            insert(OracleReports)
+            .values(
+                api_key=api_key,
+                username=username,
+                inputs=inputs_with_comments,
+                status="started",
+                created_ts=datetime.now(),
+            )
+            .returning(OracleReports.report_id)
+        )
+        result = session.execute(stmt)
+        report_id = result.scalar_one()
+        session.commit()
+
+    begin_generation_task.apply_async(
+        args=[api_key, report_id, TaskType.EXPLORATION.value, inputs_with_comments]
+    )
+
+    return JSONResponse(
+        status_code=200, content={"message": "Report submitted for revision"}
+    )
 
 
 @router.post("/oracle/test_stage")

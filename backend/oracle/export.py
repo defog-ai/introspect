@@ -44,7 +44,6 @@ async def generate_report(
     )
     responses = await asyncio.gather(mdx_task, summary_task)
     md = responses[0].get("md")
-    mdx = responses[0].get("mdx")
     analyses_mdx = responses[0].get("analyses_mdx", "")
 
     LOGGER.info(f"Generated MDX for report {report_id}")
@@ -61,7 +60,7 @@ async def generate_report(
 
     summary_dict = summary_response.get("summary_dict", {})
     LOGGER.info(f"Generated Summary for report {report_id}")
-    summary_md, _ = summary_dict_to_markdown(summary_dict)
+    summary_md, summary_mdx = summary_dict_to_markdown(summary_dict, wrap_in_tags=False)
 
     # log the md and summary
     if summary_md is None:
@@ -102,7 +101,7 @@ async def generate_report(
 
         summary_rec["analysis_reference"] = uuid_refs
 
-    await update_summary_dict(api_key, report_id, summary_dict)
+    _, tiptap_mdx = summary_dict_to_markdown(summary_dict, wrap_in_tags=True)
 
     # the same for analyses_mdx
     for idx in range(len(analyses)):
@@ -123,21 +122,23 @@ async def generate_report(
             f"Adding analysis with id {analysis['analysis_id']} to report {report_id}"
         )
         analysis_id = analysis["analysis_id"]
+        # if this is a revision request, we will add the analyses to the original report's id
+        # and not the report_id
+        analysis_report_id = inputs.get("original_report_id", report_id)
         await add_or_update_analysis(
             api_key=api_key,
             analysis_id=analysis_id,
-            report_id=report_id,
+            report_id=analysis_report_id,
             analysis_json=analysis,
             status="DONE",
             mdx=analyses_mdx.get(analysis_id, ""),
         )
 
     return {
-        # we only keep summary dict converted to mdx in the mdx field
-        # instead of storing it here for the future
-        # we will just generate it again when requested for the report
-        # this is to allow for easier future updates to the mdx
-        "mdx": "",
+        "mdx": summary_mdx,
+        # tiptap's mdx is separated from the mdx and md
+        # because we will need to reuse the vanilla mdx for future revision of reports
+        "tiptap_mdx": tiptap_mdx,
         # but we keep the md because it's not important for the front end and can be used to generate a pdf file later.
         "md": summary_md + "\n\n" + "" if not md else md,
         "executive_summary": summary_dict,

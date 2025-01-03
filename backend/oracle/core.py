@@ -127,6 +127,41 @@ async def begin_generation_async_task(
 
         if stage == TaskStage.DONE:
             continue_generation = False
+            # if this was an is_revision request, use the report_id passed in inputs (this is the freshly created revised report)
+            # and update all the data of the original report from the newly created report (stored in inputs["original_report_id"])
+            if "original_report_id" in inputs and inputs.get("is_revision"):
+                original_report_id = inputs["original_report_id"]
+                with Session(engine) as session:
+                    # get the original report
+                    stmt = select(OracleReports).where(
+                        OracleReports.report_id == original_report_id
+                    )
+                    result = session.execute(stmt)
+                    original_report = result.scalar_one()
+
+                    # get the newly created report
+                    stmt = select(OracleReports).where(
+                        OracleReports.report_id == report_id
+                    )
+                    result = session.execute(stmt)
+                    revised_report = result.scalar_one()
+
+                    # Update all specified columns from revised report to original report
+                    # Note: We don't copy 'inputs' since it contains revision metadata (is_revision, original_report_id, etc)
+                    columns_to_update = [
+                        "report_name",
+                        "outputs",
+                        "comments",
+                        "feedback",
+                    ]
+                    for column in columns_to_update:
+                        setattr(
+                            original_report, column, getattr(revised_report, column)
+                        )
+
+                    # Delete the revised report since we've copied its data
+                    session.delete(revised_report)
+                    session.commit()
         # perform logging for current stage
         if continue_generation:
             ts = save_timing(ts, f"Stage {stage} completed", timings)

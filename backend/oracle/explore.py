@@ -6,6 +6,7 @@ from typing import Any, List, Dict
 from uuid import uuid4
 
 import pandas as pd
+from pydantic import BaseModel
 from db_utils import get_db_type_creds, update_analysis_status
 from generic_utils import make_request
 from oracle.celery_app import LOGGER
@@ -26,6 +27,11 @@ MAX_ANALYSES = 5
 MAX_ROUNDS = 1
 RETRY_DATA_FETCH = 1
 RETRY_CHART_GEN = 1
+
+
+class CommentsWithRelevantText(BaseModel):
+    relevant_text: str
+    comment_text: str
 
 
 async def explore_data(
@@ -67,6 +73,25 @@ async def explore_data(
     hard_filters = inputs.get("hard_filters", [])
     db_type, db_creds = get_db_type_creds(api_key)
     max_rounds = inputs.get("max_rounds", MAX_ROUNDS)
+    comments: List[CommentsWithRelevantText] = inputs.get("comments", [])
+    general_comments: str = inputs.get("general_comments", "")
+    original_report_mdx = inputs.get("original_report_mdx", "")
+    original_analyses = inputs.get("original_analyses", [])
+    is_revision = inputs.get("is_revision", False)
+
+    # if we have comments, generate a markdown from them
+    comments_md = ""
+    if len(comments):
+        comments_md = [
+            f"<HIGHLIGHTED_TEXT_FROM_REPORT>\n{comment['relevant_text']}\n</HIGHLIGHTED_TEXT_FROM_REPORT>\n"
+            + f"<USER_COMMENT>\n{comment['comment_text']}\n</USER_COMMENT>"
+            for comment in comments
+        ]
+        comments_md = "\n---\n".join(comments_md)
+
+    general_comments_md = ""
+    if general_comments:
+        general_comments_md = general_comments
 
     # generate initial explorer questions
     json_data = {
@@ -78,7 +103,13 @@ async def explore_data(
         "previous_analyses": inputs.get(
             "previous_analyses", []
         ),  # Add parent analyses to the request
+        "is_revision": is_revision,
+        "comments_md": comments_md,
+        "general_comments_md": general_comments_md,
+        "original_report_mdx": original_report_mdx,
+        "original_analyses": original_analyses,
     }
+
     LOGGER.info(f"Generating explorer questions")
     generated_qns_response = await make_request(
         DEFOG_BASE_URL + "/oracle/gen_explorer_qns", json_data, timeout=300
@@ -201,6 +232,9 @@ async def explore_data(
                 "context": context,
                 "dependent_variable": dependent_variable,
                 "past_analyses": analyses,
+                "comments": comments,
+                "general_comments": general_comments,
+                "is_revision": is_revision,
             }
             response = await make_request(
                 DEFOG_BASE_URL + "/oracle/gen_explorer_qns_deeper",

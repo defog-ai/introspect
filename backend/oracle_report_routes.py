@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, JSONResponse
@@ -70,22 +70,6 @@ class GetReportImageRequest(ReportRequest):
     }
 
 
-class ReportFeedbackRequest(ReportRequest):
-    """
-    Request model for providing feedback on a report.
-    """
-
-    feedback: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {"key_name": "my_api_key", "report_id": 1, "feedback": "Great report!"}
-            ]
-        }
-    }
-
-
 class ReportAnalysisRequest(ReportRequest):
     """
     Request model for requesting a specific analysis of a report.
@@ -109,7 +93,6 @@ async def reports_list(req: BasicRequest):
     - report_name
     - status
     - date_created
-    - feedback
     """
     if not validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
@@ -208,17 +191,36 @@ async def get_report_mdx(req: ReportRequest):
         if report:
             mdx = report.outputs.get(TaskStage.EXPORT.value, {}).get("mdx", "")
             md = report.outputs.get(TaskStage.EXPORT.value, {}).get("md", "")
+            tiptap_mdx = report.outputs.get(TaskStage.EXPORT.value, {}).get(
+                "tiptap_mdx", ""
+            )
+
+            summary_dict = report.outputs.get(TaskStage.EXPORT.value, {}).get(
+                "executive_summary", None
+            )
+
+            if not summary_dict:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": "Bad Request",
+                        "message": "No summary dict found for report",
+                    },
+                )
 
             if not mdx:
-                summary_dict = report.outputs.get(TaskStage.EXPORT.value, {}).get(
-                    "executive_summary", None
-                )
                 _, summary_mdx = summary_dict_to_markdown(summary_dict)
-                mdx = f"{summary_mdx}\n\n{mdx}".strip()
+                mdx = summary_mdx.strip()
+
+            if not tiptap_mdx:
+                _, summary_mdx = summary_dict_to_markdown(
+                    summary_dict, wrap_in_tags=True
+                )
+                tiptap_mdx = summary_mdx.strip()
 
             return JSONResponse(
                 status_code=200,
-                content={"mdx": mdx, "md": md},
+                content={"mdx": mdx, "md": md, "tiptap_mdx": tiptap_mdx},
             )
         else:
             return JSONResponse(
@@ -229,10 +231,13 @@ async def get_report_mdx(req: ReportRequest):
 
 class UpdateReportMDXRequest(ReportRequest):
     """
-    Request model for updating the MDX string for a report.
+    Request model for updating the MDX string for a report. This will allow us to update both the initially generated mdx and the tiptap's edited mdx.
+
+    We separate the two because we want to keep the original mdx for exporting/revision purposes later on.
     """
 
-    mdx: str
+    mdx: Optional[str] = None
+    tiptap_mdx: Optional[str] = None
 
     model_config = {
         "json_schema_extra": {
@@ -252,6 +257,15 @@ async def update_report_mdx(req: UpdateReportMDXRequest):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
+    if req.mdx is None and req.tiptap_mdx is None:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Bad Request",
+                "message": "Missing 'mdx' or 'tiptap_mdx' field",
+            },
+        )
+
     with Session(engine) as session:
         stmt = select(OracleReports).where(
             OracleReports.api_key == api_key,
@@ -260,36 +274,13 @@ async def update_report_mdx(req: UpdateReportMDXRequest):
         result = session.execute(stmt)
         report = result.scalar_one_or_none()
         if report:
-            report.outputs[TaskStage.EXPORT.value]["mdx"] = req.mdx
+            if req.tiptap_mdx is not None:
+                report.outputs[TaskStage.EXPORT.value]["tiptap_mdx"] = req.tiptap_mdx
+            if req.mdx is not None:
+                report.outputs[TaskStage.EXPORT.value]["mdx"] = req.mdx
             flag_modified(report, "outputs")
             session.commit()
             return JSONResponse(status_code=200, content={"message": "MDX updated"})
-        else:
-            return JSONResponse(
-                status_code=404,
-                content={"error": "Report not found"},
-            )
-
-
-@router.post("/oracle/get_report_feedback")
-async def get_report_feedback(req: ReportRequest):
-    """
-    Given a report_id, this endpoint will return the feedback for the report.
-    """
-    if not validate_user(req.token, user_type=None, get_username=False):
-        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
-
-    with Session(engine) as session:
-        stmt = select(OracleReports).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
-        )
-        result = session.execute(stmt)
-        report = result.scalar_one_or_none()
-
-        if report:
-            return JSONResponse(status_code=200, content={"feedback": report.feedback})
         else:
             return JSONResponse(
                 status_code=404,
@@ -331,33 +322,6 @@ async def get_report_image(req: GetReportImageRequest):
         status_code=200,
         content={"encoded": encode_image(image_path)},
     )
-
-
-@router.post("/oracle/feedback_report")
-async def feedback_report(req: ReportFeedbackRequest):
-    """
-    Given a report id and the associated feedback, save the feedback with the report.
-    """
-    if not validate_user(req.token, user_type=None, get_username=False):
-        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
-
-    with Session(engine) as session:
-        stmt = select(OracleReports).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
-        )
-        result = session.execute(stmt)
-        report = result.scalar_one_or_none()
-        if report:
-            report.feedback = req.feedback
-            session.commit()
-            return JSONResponse(status_code=200, content={"message": "Feedback saved"})
-        else:
-            return JSONResponse(
-                status_code=404,
-                content={"error": "Report not found"},
-            )
 
 
 @router.post("/oracle/get_report_analysis_ids")

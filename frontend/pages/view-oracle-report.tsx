@@ -1,16 +1,8 @@
 "use client";
-import setupBaseUrl from "$components/oracle/setupBaseUrl";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import {
-  Button,
-  Modal,
-  SpinningLoader,
-  MessageManagerContext,
-  TextArea,
-} from "@defogdotai/agents-ui-components/core-ui";
+import { useEffect, useRef, useState } from "react";
+import { SpinningLoader } from "@defogdotai/agents-ui-components/core-ui";
 import {
   getReportMDX,
-  getReportFeedback,
   getReportAnalysisIds,
   getReportExecutiveSummary,
   extensions,
@@ -23,8 +15,8 @@ import {
   OracleReportContext,
   Summary,
 } from "$components/oracle/OracleReportContext";
-import { ArrowLeft } from "lucide-react";
-import { OracleBubbleMenu } from "$components/oracle/reports/OracleBubbleMenu";
+// import { OracleBubbleMenu } from "$components/oracle/reports/OracleBubbleMenu";
+import { OracleNav } from "$components/oracle/reports/OracleNav";
 
 export default function ViewOracleReport() {
   const [keyName, setKeyName] = useState<string | null>(null);
@@ -41,19 +33,12 @@ export default function ViewOracleReport() {
   const [images, setImages] = useState<any>({});
   const [analysisIds, setAnalysisIds] = useState<string[]>([]);
 
-  const message = useContext(MessageManagerContext);
-  const feedbackTextArea = useRef<HTMLTextAreaElement>(null);
-
   const [mdx, setMDX] = useState<string | null>(null);
   const [executiveSummary, setExecutiveSummary] = useState<Summary | null>(
     null
   );
 
-  const [currentFeedback, setCurrentFeedback] = useState<string | null>(null);
-
   const [error, setError] = useState<string | null>(null);
-
-  const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
 
   const [analysisDrawerOpen, setAnalysisDrawerOpen] = useState<boolean>(false);
 
@@ -79,8 +64,7 @@ export default function ViewOracleReport() {
         setTables(parsed.tables);
         setImages(parsed.images);
         setMultiTables(parsed.multiTables);
-        const feedback = await getReportFeedback(reportId, keyName, token);
-        setCurrentFeedback(feedback || undefined);
+
         const sum: Summary = await getReportExecutiveSummary(
           reportId,
           keyName,
@@ -116,37 +100,6 @@ export default function ViewOracleReport() {
       setup(reportId, keyName);
     }
   }, [reportId, keyName]);
-
-  const submitFeedback = useCallback(async () => {
-    if (!feedbackTextArea.current || !feedbackTextArea.current.value) {
-      message.info("Feedback cannot be empty");
-      return;
-    }
-
-    await fetch(setupBaseUrl("http", `oracle/feedback_report`), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        report_id: reportId,
-        key_name: keyName,
-        feedback: feedbackTextArea.current.value,
-      }),
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          throw Error(await res.text());
-        }
-        message.success("Feedback submitted");
-
-        setFeedbackModalOpen(false);
-      })
-      .catch((e) => {
-        console.error(e);
-        message.error("Could not submit feedback");
-      });
-  }, [message, reportId, keyName]);
 
   if (loading) {
     return (
@@ -202,56 +155,18 @@ export default function ViewOracleReport() {
         executiveSummary: executiveSummary,
         reportId: reportId,
         keyName: keyName,
+        token:
+          localStorage.getItem("defogToken") ||
+          "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0",
       }}
     >
       <div className="relative">
-        <div className="flex flex-row fixed min-h-12 bottom-0 w-full bg-gray-50 dark:bg-gray-800 md:bg-transparent dark:md:bg-transparent md:w-auto md:sticky md:top-0 p-2 z-10 md:h-0">
-          {/* @ts-ignore */}
-          <Button
-            onClick={() => window.location.replace("/oracle-frontend")}
-            className="bg-transparent border-none hover:bg-transparent text-gray-700 dark:text-gray-300"
-          >
-            <ArrowLeft className="w-2" /> All reports
-          </Button>
-          <div className="flex flex-row gap-2 ml-auto">
-            {/* @ts-ignore */}
-            {/* <Button
-              onClick={() => setAnalysisDrawerOpen(true)}
-              className="ml-auto text-gray-700 dark:text-gray-300"
-            >
-              View analyses
-            </Button> */}
-            {/* @ts-ignore */}
-            <Button
-              onClick={() => setFeedbackModalOpen(true)}
-              className="ml-auto text-gray-700 dark:text-gray-300"
-            >
-              Give feedback
-            </Button>
-          </div>
-
-          <Modal
-            rootClassNames="w-96 z-10"
-            open={feedbackModalOpen}
-            onOk={submitFeedback}
-            onCancel={() => setFeedbackModalOpen(false)}
-            title="Write your feedback and press submit"
-            okText="Submit"
-            className="dark:bg-gray-800 dark:text-gray-200"
-          >
-            <TextArea
-              autoResize={true}
-              ref={feedbackTextArea}
-              defaultValue={currentFeedback}
-            ></TextArea>
-          </Modal>
-        </div>
         <EditorProvider
           extensions={extensions}
           content={mdx}
           immediatelyRender={false}
-          slotAfter
           editable={false}
+          slotBefore={<OracleNav />}
           editorProps={{
             attributes: {
               class:
@@ -261,23 +176,23 @@ export default function ViewOracleReport() {
             // https://discuss.prosemirror.net/t/unexpected-selection-behavior-on-mouse-click-within-and-outside-an-existing-selection/5750/11
             // https://github.com/ueberdosis/tiptap/issues/4478
             // i don't know how windsurf figured this out, but it did.
-            handleClick: (view, pos) => {
-              const { state } = view;
-              const { from, to } = state.selection;
+            // handleClick: (view, pos) => {
+            //   const { state } = view;
+            //   const { from, to } = state.selection;
 
-              // If there's a selection and we clicked within it
-              if (from !== to && pos >= from && pos <= to) {
-                // Create empty selection at click position
-                const tr = state.tr.setSelection(
-                  state.selection.constructor.create(state.doc, pos, pos)
-                );
-                view.dispatch(tr);
-              }
-              return true;
-            },
+            //   // If there's a selection and we clicked within it
+            //   if (from !== to && pos >= from && pos <= to) {
+            //     // Create empty selection at click position
+            //     const tr = state.tr.setSelection(
+            //       state.selection.constructor.create(state.doc, pos, pos)
+            //     );
+            //     view.dispatch(tr);
+            //   }
+            //   return true;
+            // },
           }}
         >
-          <OracleBubbleMenu keyName={keyName} reportId={reportId} />
+          {/* <OracleBubbleMenu keyName={keyName} reportId={reportId} /> */}
         </EditorProvider>
         {/* <Drawer
           open={analysisDrawerOpen}

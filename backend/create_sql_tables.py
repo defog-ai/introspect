@@ -153,6 +153,7 @@ oracle_reports = Table(
     Column("inputs", JSON),
     Column("outputs", JSON),
     Column("feedback", Text),
+    Column("general_comments", Text),
     Column("comments", JSON, default=None),
 )
 

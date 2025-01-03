@@ -29,10 +29,20 @@ class Recommendation(BaseModel):
     analysis_reference: List[str]
 
 
-def summary_dict_to_markdown(summary) -> str:
+def summary_dict_to_markdown(summary, wrap_in_tags: bool = False) -> str:
     """
-    Converts the summary dictionary to markdown for compatibility with the
-    existing report markdown display.
+    Converts the summary dictionary to both markdown and mdx formats for
+    compatibility with existing report systems. Wraps recommendation titles
+    in MDX tags if specified.
+
+    Args:
+        summary (dict): A dictionary containing the summary information, with
+                        keys 'title', 'introduction', and 'recommendations'.
+        wrap_in_tags (bool, optional): If True, wraps the MDX content in specified
+                                       tags. Defaults to False.
+
+    Returns:
+        Tuple[str, str]: A tuple containing the markdown and mdx strings.
     """
 
     md = f"# {summary['title']}\n\n{summary['introduction']}\n\n"
@@ -44,13 +54,16 @@ def summary_dict_to_markdown(summary) -> str:
             if recommendation["analysis_reference"]
             else ""
         )
-        rec_mdx_title = wrap_in_mdx_tags(
-            recommendation["title"],
-            ORACLE_MDX_TAGS.RECOMMENDATION_TITLE,
-            {"analysis_reference": analysis_references, "idx": idx},
-        )
+        if wrap_in_tags:
+            rec_mdx_title = wrap_in_mdx_tags(
+                recommendation["title"],
+                ORACLE_MDX_TAGS.RECOMMENDATION_TITLE,
+                {"analysis_reference": analysis_references, "idx": idx},
+            )
+        else:
+            rec_mdx_title = f"## {recommendation['title']}"
 
-        rec_md = f"""{recommendation['title']} \n\n
+        rec_md = f"""## {recommendation['title']} \n\n
 
 {recommendation['insight']}
 
@@ -66,7 +79,7 @@ def summary_dict_to_markdown(summary) -> str:
 {recommendation['action']}
 
 """
-        # mdx += wrap_in_mdx_tags(rec_md, ORACLE_MDX_TAGS.RECOMMENDATION)
+
         md += rec_md
         mdx += rec_mdx
 
