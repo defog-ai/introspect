@@ -505,19 +505,29 @@ class ReviseReportRequest(BaseModel):
 @router.post("/oracle/revise_report")
 async def revision(req: ReviseReportRequest):
     """
-    Given a report_id, this endpoint will update the report based on the comments.
+    Given a report_id, this endpoint will submit the report for revision based on the comments passed.
     """
     username = validate_user(req.token, user_type=None, get_username=True)
     if not username:
         return JSONResponse(
             status_code=401,
             content={
-                "error": "unauthorized",
+                "error": "Unauthorized",
                 "message": "Invalid username or password",
             },
         )
 
     api_key = get_api_key_from_key_name(req.key_name)
+
+    # if comment length is 0 and general comments is empty, return an error
+    if not len(req.comments_with_relevant_text) and not req.general_comments:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Bad Request",
+                "message": "No comments or general comments provided",
+            },
+        )
 
     """
     We will reuse the begin generation task to handle the new report's generation. (The handling of the fact that this is a revision is handled inside the explore stage)
@@ -538,6 +548,32 @@ async def revision(req: ReviseReportRequest):
         return JSONResponse(status_code=404, content=report_data)
 
     report_data = report_data["data"]
+    status = report_data["status"]
+
+    is_being_revised = status.startswith("Revision in progress: ")
+    is_revision = status.startswith("Revision: ")
+
+    # if, by some chance, this report is a temporary revision report, return an error
+    # this is a massive edge case. should never happen because we don't expose temporary revision reports on the front end
+
+    if is_revision:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Bad Request",
+                "message": "We cannot revise this report.",
+            },
+        )
+
+    # if report's status is either not done, or starts with "Revision in progress", return an error
+    if status != "done" and not status.startswith("Revision in progress"):
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Bad Request",
+                "message": "Report is not done or is being revised",
+            },
+        )
 
     # insert required data for revision into the inputs
     inputs_with_comments = report_data["inputs"]

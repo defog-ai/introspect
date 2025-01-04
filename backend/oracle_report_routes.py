@@ -227,7 +227,11 @@ async def get_report_mdx(req: ReportRequest):
 
             return JSONResponse(
                 status_code=200,
-                content={"mdx": mdx, "md": md, "tiptap_mdx": tiptap_mdx},
+                content={
+                    "mdx": mdx,
+                    "md": md,
+                    "tiptap_mdx": tiptap_mdx,
+                },
             )
         else:
             return JSONResponse(
@@ -379,6 +383,31 @@ async def get_report_analysis(req: ReportAnalysisRequest):
                 content=analysis,
             )
         return JSONResponse(status_code=404, content={"error": "Analysis not found"})
+
+
+@router.post("/oracle/get_report_status")
+async def get_report_status(req: ReportRequest):
+    """
+    Given a report_id, this endpoint will return the status of the report.
+    """
+    if not validate_user(req.token, user_type=None, get_username=False):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    api_key = get_api_key_from_key_name(req.key_name)
+
+    # get the report
+    with Session(engine) as session:
+        stmt = select(OracleReports).where(
+            OracleReports.api_key == api_key,
+            OracleReports.report_id == req.report_id,
+        )
+        result = session.execute(stmt)
+        row = result.scalar_one_or_none()
+        if row:
+            return JSONResponse(
+                status_code=200,
+                content={"status": row.status},
+            )
+        return JSONResponse(status_code=404, content={"error": "Report not found"})
 
 
 @router.post("/oracle/get_report_summary")

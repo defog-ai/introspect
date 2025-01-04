@@ -28,6 +28,7 @@ export default function ViewOracleReport() {
     setReportId(params.get("reportId"));
   }, []);
 
+  const reportStatus = useRef<string | null>(null);
   const [tables, setTables] = useState<any>({});
   const [multiTables, setMultiTables] = useState<any>({});
   const [images, setImages] = useState<any>({});
@@ -53,7 +54,9 @@ export default function ViewOracleReport() {
       try {
         setLoading(true);
         const token = localStorage.getItem("defogToken");
-        const mdx = await getReportMDX(reportId, keyName, token);
+        const [mdx, status] = await getReportMDX(reportId, keyName, token);
+
+        reportStatus.current = status;
 
         if (!mdx) {
           throw Error();
@@ -172,24 +175,6 @@ export default function ViewOracleReport() {
               class:
                 "oracle-report-tiptap relative prose prose-base dark:prose-invert mx-auto p-2 mb-12 md:mb-0 focus:outline-none *:cursor-default",
             },
-            // prosemirror has an issue where onselectionchange is not fired on uneditable editors
-            // https://discuss.prosemirror.net/t/unexpected-selection-behavior-on-mouse-click-within-and-outside-an-existing-selection/5750/11
-            // https://github.com/ueberdosis/tiptap/issues/4478
-            // i don't know how windsurf figured this out, but it did.
-            // handleClick: (view, pos) => {
-            //   const { state } = view;
-            //   const { from, to } = state.selection;
-
-            //   // If there's a selection and we clicked within it
-            //   if (from !== to && pos >= from && pos <= to) {
-            //     // Create empty selection at click position
-            //     const tr = state.tr.setSelection(
-            //       state.selection.constructor.create(state.doc, pos, pos)
-            //     );
-            //     view.dispatch(tr);
-            //   }
-            //   return true;
-            // },
           }}
         >
           {/* <OracleBubbleMenu keyName={keyName} reportId={reportId} /> */}

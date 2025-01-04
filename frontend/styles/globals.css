@@ -160,7 +160,7 @@ a {
 }
 
 .revise-modal-highlight {
-  @apply p-2 py-4 border-b dark:border-gray-600 text-gray-400;
+  @apply p-2 py-4 border-b dark:border-gray-600;
 }
 
 .revise-modal-comment-text {
