@@ -113,16 +113,23 @@ async def reports_list(req: BasicRequest):
         result = session.execute(stmt)
         reports = result.fetchall()
 
-    reports_list = [
-        {
-            "report_id": report.report_id,
-            "report_name": report.report_name,
-            "status": report.status,
-            "date_created": report.created_ts.isoformat(),  # Convert to ISO 8601 string
-            "inputs": report.inputs,
-        }
-        for report in reports
-    ]
+    reports_list = []
+    for report in reports:
+        status = report.status or ""
+        is_revision = status.startswith("Revision: ")
+        is_being_revised = status.startswith("Revision in progress: ")
+        reports_list.append(
+            {
+                "report_id": report.report_id,
+                "report_name": report.report_name,
+                "status": report.status,
+                "is_revision": is_revision,
+                "is_being_revised": is_being_revised,
+                "date_created": report.created_ts.isoformat(),  # Convert to ISO 8601 string
+                "inputs": report.inputs,
+            }
+        )
+
     return JSONResponse(status_code=200, content={"reports": reports_list})
 
 

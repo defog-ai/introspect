@@ -19,6 +19,18 @@ import { Tooltip } from "antd";
 
 const { TextArea } = Input;
 
+interface Report {
+  report_id: number;
+  status: string;
+  report_name: string;
+  is_revision: Boolean;
+  is_being_revised: Boolean;
+  date_created: string;
+  inputs: {
+    user_question: string;
+  };
+}
+
 function OracleDashboard() {
   const [apiKeyName, setApiKeyName] = useState(null);
   const [apiKeyNames, setApiKeyNames] = useState([]);
@@ -74,7 +86,7 @@ function OracleDashboard() {
   const [waitClarifications, setWaitClarifications] = useState(false);
   const [taskType, setTaskType] = useState(null);
   const [sources, setSources] = useState([]);
-  const [reports, setReports] = useState([]);
+  const [reports, setReports] = useState<Report[]>([]);
 
   const handleTaskTypeChange = (value) => {
     setTaskType(value);
@@ -774,76 +786,82 @@ function OracleDashboard() {
           <h2 className="text-2xl font-semibold mb-4 dark:text-gray-200">
             Past Reports
           </h2>
-          {reports.map((report, index) => (
-            <div
-              key={index}
-              className="bg-purple-100 dark:bg-purple-900/30 shadow-lg rounded-lg mb-4 overflow-hidden border border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700 transition-all"
-            >
-              <div className="p-4">
-                {report.report_name ? (
-                  <>
-                    <h3 className="text-lg font-semibold text-purple-700 dark:text-purple-400 mb-1">
-                      {report.report_name}
-                    </h3>
-                    <div className="text-base mb-3 flex items-center justify-between">
-                      <div className="text-gray-500 dark:text-gray-400 flex items-center">
-                        <FileTextOutlined className="mr-1" />
-                        <span>{String(report.report_id).padStart(3, "0")}</span>
+          {reports
+            .filter((report) => {
+              // don't show temporary reports that are generate when a report is being revised
+              return !report.is_revision;
+            })
+            .map((report, index) => (
+              <div
+                key={index}
+                className="bg-purple-100 dark:bg-purple-900/30 shadow-lg rounded-lg mb-4 overflow-hidden border border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700 transition-all"
+              >
+                <div className="p-4">
+                  {report.report_name ? (
+                    <>
+                      <h3 className="text-lg font-semibold text-purple-700 dark:text-purple-400 mb-1">
+                        {report.report_name}
+                      </h3>
+                      <div className="text-base mb-3 flex items-center justify-between">
+                        <div className="text-gray-500 dark:text-gray-400 flex items-center">
+                          <FileTextOutlined className="mr-1" />
+                          <span>
+                            {String(report.report_id).padStart(3, "0")}
+                          </span>
+                        </div>
+                        <ReportDateTime date={report.date_created} />
                       </div>
-                      <ReportDateTime date={report.date_created} />
-                    </div>
-                  </>
-                ) : (
-                  <div className="mb-3">
-                    <div className="text-base flex items-center justify-between">
-                      <div className="text-gray-700 dark:text-gray-300 font-semibold flex items-center">
-                        <FileTextOutlined className="mr-2" />
-                        <span>{report?.inputs?.user_question}</span>
+                    </>
+                  ) : (
+                    <div className="mb-3">
+                      <div className="text-base flex items-center justify-between">
+                        <div className="text-gray-700 dark:text-gray-300 font-semibold flex items-center">
+                          <FileTextOutlined className="mr-2" />
+                          <span>{report?.inputs?.user_question}</span>
+                        </div>
+                        <ReportDateTime date={report.date_created} />
                       </div>
-                      <ReportDateTime date={report.date_created} />
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <ReportStatus status={report.status} />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {report.status === "done" && (
-                      <>
-                        <Button
-                          className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
-                          onClick={() =>
-                            window.open(
-                              `/view-oracle-report?reportId=${report.report_id}&keyName=${apiKeyName}`,
-                              "_blank"
-                            )
-                          }
-                        >
-                          View Report
-                        </Button>
-                        {/* <Button
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <ReportStatus status={report.status} />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {report.status === "done" && (
+                        <>
+                          <Button
+                            className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                            onClick={() =>
+                              window.open(
+                                `/view-oracle-report?reportId=${report.report_id}&keyName=${apiKeyName}`,
+                                "_blank"
+                              )
+                            }
+                          >
+                            View Report
+                          </Button>
+                          {/* <Button
                           className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
                           onClick={() => downloadReport(report.report_id)}
                         >
                           Download
                         </Button> */}
-                      </>
-                    )}
-                    {(report.status === "done" ||
-                      report.status === "error") && (
-                      <Button
-                        className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                        icon={<DeleteOutlined />}
-                        onClick={() => deleteReport(report.report_id)}
-                      />
-                    )}
+                        </>
+                      )}
+                      {
+                        <Button
+                          className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                          icon={<DeleteOutlined />}
+                          onClick={() => deleteReport(report.report_id)}
+                        />
+                      }
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       </Scaffolding>
     </>

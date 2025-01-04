@@ -81,6 +81,8 @@ async def begin_generation_async_task(
     outputs = {}
     continue_generation = True
     ts, timings = time.time(), []
+    is_revision = "original_report_id" in inputs and inputs.get("is_revision")
+    original_report_id = inputs.get("original_report_id", None)
 
     while continue_generation:
         # call the control function with the current stage
@@ -91,7 +93,25 @@ async def begin_generation_async_task(
                 stmt = select(OracleReports).where(OracleReports.report_id == report_id)
                 result = session.execute(stmt)
                 report = result.scalar_one()
-                report.status = STAGE_TO_STATUS[stage]
+                # we want to add some sort of indicator to a revision report
+                # just so we're able to filter it out on the front end (or elsewhere)
+                report.status = (
+                    "Revision: " + STAGE_TO_STATUS[stage]
+                    if is_revision
+                    else STAGE_TO_STATUS[stage]
+                )
+
+                # if this is is_revision, then also update the original_report_id with the same status but starting with "Revision in progress: "
+                if is_revision:
+                    stmt = select(OracleReports).where(
+                        OracleReports.report_id == original_report_id
+                    )
+                    result = session.execute(stmt)
+                    original_report = result.scalar_one()
+                    original_report.status = (
+                        "Revision in progress: " + STAGE_TO_STATUS[stage]
+                    )
+
                 session.commit()
             stage_result = await execute_stage(
                 api_key=api_key,
@@ -107,8 +127,23 @@ async def begin_generation_async_task(
                 stmt = select(OracleReports).where(OracleReports.report_id == report_id)
                 result = session.execute(stmt)
                 report = result.scalar_one()
-                report.status = STAGE_TO_STATUS[stage]
+                report.status = (
+                    "Revision: " + STAGE_TO_STATUS[stage]
+                    if is_revision
+                    else STAGE_TO_STATUS[stage]
+                )
                 report.outputs = outputs
+                # same as above for the original report
+                if is_revision:
+                    stmt = select(OracleReports).where(
+                        OracleReports.report_id == original_report_id
+                    )
+                    result = session.execute(stmt)
+                    original_report = result.scalar_one()
+                    original_report.status = (
+                        "Revision in progress: " + STAGE_TO_STATUS[stage]
+                    )
+
                 session.commit()
         except Exception as e:
             LOGGER.error(f"Error occurred in stage {stage}:\n{e}")
@@ -122,6 +157,17 @@ async def begin_generation_async_task(
                 outputs[stage.value] = {"error": str(e) + "\n" + traceback.format_exc()}
                 report.outputs = outputs
                 report.status = "error"
+                # if this is is_revision, then just delete this report
+                if is_revision:
+                    session.delete(report)
+                    # also update the original report back to "done"
+                    stmt = select(OracleReports).where(
+                        OracleReports.report_id == original_report_id
+                    )
+                    result = session.execute(stmt)
+                    original_report = result.scalar_one()
+                    original_report.status = "done"
+
                 session.commit()
             continue_generation = False
 
@@ -158,6 +204,9 @@ async def begin_generation_async_task(
                         setattr(
                             original_report, column, getattr(revised_report, column)
                         )
+
+                    # set report back to done
+                    setattr(original_report, "status", "done")
 
                     # Delete the revised report since we've copied its data
                     session.delete(revised_report)
