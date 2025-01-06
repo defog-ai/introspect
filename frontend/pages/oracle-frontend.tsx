@@ -563,7 +563,7 @@ function OracleDashboard() {
 
   const handleSendClick = () => {
     if (userQuestion.length >= 5) {
-      getClarifications(userQuestion);
+      getClarifications();
       setHasInitialClarifications(true);
     }
   };
@@ -588,7 +588,7 @@ function OracleDashboard() {
       <Meta />
       <Scaffolding id="align-model" userType="admin">
         {apiKeyNames.length > 1 ? (
-          <Row type={"flex"} height={"100vh"}>
+          <Row>
             <Col span={24} style={{ paddingBottom: "1em" }}>
               <Select
                 style={{ width: "100%" }}

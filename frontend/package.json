@@ -52,7 +52,8 @@
     "eslint-config-prettier": "^9.1.0",
     "postcss": "^8.4.49",
     "prettier": "^3.0.3",
-    "tailwindcss": "^3.4.3"
+    "tailwindcss": "^3.4.3",
+    "typescript": "^5.7.2"
   },
   "pnpm": {
     "overrides": {
