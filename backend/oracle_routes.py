@@ -615,7 +615,7 @@ async def revision(req: ReviseReportRequest):
                 api_key=api_key,
                 username=username,
                 inputs=inputs_with_comments,
-                status="started",
+                status="Revision: started",
                 created_ts=datetime.now(),
             )
             .returning(OracleReports.report_id)
