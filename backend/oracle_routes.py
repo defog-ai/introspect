@@ -4,6 +4,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
+from sqlalchemy import update
+
 from utils import longest_substring_overlap
 from db_utils import (
     OracleReports,
@@ -622,6 +624,16 @@ async def revision(req: ReviseReportRequest):
         )
         result = session.execute(stmt)
         report_id = result.scalar_one()
+        session.commit()
+
+    # set the status of the original report to "Revision in progress"
+    with Session(engine) as session:
+        stmt = (
+            update(OracleReports)
+            .where(OracleReports.report_id == req.report_id)
+            .values(status=f"Revision in progress")
+        )
+        session.execute(stmt)
         session.commit()
 
     begin_generation_task.apply_async(
