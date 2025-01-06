@@ -829,7 +829,8 @@ function OracleDashboard() {
                       <ReportStatus status={report.status} />
                     </div>
                     <div className="flex items-center space-x-2">
-                      {report.status === "done" && (
+                      {(report.status === "done" ||
+                        report.is_being_revised) && (
                         <>
                           <Button
                             className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
