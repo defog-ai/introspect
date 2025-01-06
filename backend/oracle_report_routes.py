@@ -118,6 +118,8 @@ async def reports_list(req: BasicRequest):
         status = report.status or ""
         is_revision = status.startswith("Revision: ")
         is_being_revised = status.startswith("Revision in progress: ")
+        if is_revision:
+            continue
         reports_list.append(
             {
                 "report_id": report.report_id,
