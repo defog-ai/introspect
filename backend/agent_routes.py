@@ -3,6 +3,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from agents.clarifier.clarifier_agent import get_clarification
+from pydantic import BaseModel
 
 import pandas as pd
 
@@ -31,6 +32,7 @@ from db_utils import (
     get_assignment_understanding,
     update_analysis_data,
     redis_client,
+    validate_user,
 )
 from generic_utils import get_api_key_from_key_name, make_request
 from uuid import uuid4
@@ -41,6 +43,7 @@ import os
 import re
 
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
+DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 redis_available = False
 question_cache = {}
@@ -858,3 +861,32 @@ async def analyse_data_endpoint(request: Request):
         question=question, data_csv=data_csv, sql=sql, api_key=api_key
     )
     return {"success": True, "model_analysis": model_analysis}
+
+class QuestionTypeRequest(BaseModel):
+    key_name: str
+    question: str
+    token: str
+
+@router.post("/get_question_type")
+async def get_question_type(request: QuestionTypeRequest):
+    key_name = request.key_name
+    question = request.question
+    token = request.token
+    username = validate_user(token, user_type=None, get_username=True)
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    api_key = get_api_key_from_key_name(key_name)
+
+    res = await make_request(
+        DEFOG_BASE_URL + "/agents/question_type",
+        data={"question": question, "api_key": api_key},
+    )
+
+    return {"success": True, "question_type": res["question_type"]}
