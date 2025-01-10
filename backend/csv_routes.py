@@ -95,20 +95,17 @@ async def generate_query_csv(request: Request):
     key_name = params.get("key_name", None)
     question = params.get("question", None)
     metadata = params.get("metadata", None)
-    previous_questions = params.get("previous_questions", [])
+    previous_context = params.get("previous_context", [])
 
-    if len(previous_questions) > 0:
-        previous_questions = previous_questions[:-1]
+    if len(previous_context) > 0:
+        previous_context = previous_context[:-1]
 
     prev_questions = []
-    for item in previous_questions:
+    for item in previous_context:
         prev_question = item.get("user_question")
         if question:
             prev_steps = (
-                item.get("analysisManager", {})
-                .get("analysisData", {})
-                .get("gen_steps", {})
-                .get("steps", [])
+                item.get("steps", [])
             )
             if len(prev_steps) > 0:
                 for step in prev_steps:

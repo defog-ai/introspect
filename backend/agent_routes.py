@@ -67,6 +67,13 @@ async def generate_step(request: Request):
     Rendered by lib/components/agent/analysis/step-results/StepResults.jsx
 
     The mandatory inputs are analysis_id, a valid key_name and question.
+
+    Note on previous_context:
+    It is an array of objects. Each object references a "parent" analysis. 
+    Each parent analysis has a user_question and analysis_id, steps:
+     - `user_question` - contains the question asked by the user.
+     - `analysis_id` - is the id of the parent analysis.
+     - `steps` - are the steps generated in the parent analysis.
     """
     try:
         LOGGER.info("Generating step")
@@ -79,15 +86,12 @@ async def generate_step(request: Request):
         temp = params.get("temp", False)
         clarification_questions = params.get("clarification_questions", [])
         sql_only = params.get("sql_only", False)
-        previous_questions = params.get("previous_questions", [])
+        previous_context = params.get("previous_context", [])
+        root_analysis_id = params.get("root_analysis_id", analysis_id)
         extra_tools = params.get("extra_tools", [])
         planner_question_suffix = params.get("planner_question_suffix", None)
 
-        if len(previous_questions) > 0:
-            original_analysis_id = previous_questions[0].get("analysisId", "")
-            previous_questions = previous_questions[:-1]
-        else:
-            original_analysis_id = analysis_id
+        print("previous_context", previous_context)
 
         # if key name or question is none or blank, return error
         if not key_name or key_name == "":
@@ -101,31 +105,28 @@ async def generate_step(request: Request):
         if not api_key:
             raise Exception("Invalid API key name.")
 
-        # check if the assignment_understanding exists in the db for this analysis_id
+        # check if the assignment_understanding exists in the db for the root analysis (aka the original question in this thread)
         err, assignment_understanding = get_assignment_understanding(
-            analysis_id=original_analysis_id
+            analysis_id=root_analysis_id
         )
 
         # if assignment understanding does not exist, so try to generate it
         if assignment_understanding is None:
             _, assignment_understanding = await generate_assignment_understanding(
-                analysis_id=original_analysis_id,
+                analysis_id=root_analysis_id,
                 clarification_questions=clarification_questions,
                 dfg_api_key=api_key,
             )
 
         prev_questions = []
-        for idx, item in enumerate(previous_questions):
+        for idx, item in enumerate(previous_context):
             prev_question = item.get("user_question", "")
             if idx == 0:
                 # if assignment understanding exists, add it to the first question and the first question only
                 if assignment_understanding:
                     prev_question += " (" + assignment_understanding + ")"
             prev_steps = (
-                item.get("analysisManager", {})
-                .get("analysisData", {})
-                .get("gen_steps", {})
-                .get("steps", [])
+                item.get("steps", [])
             )
             if len(prev_steps) > 0:
                 for step in prev_steps:
@@ -134,7 +135,8 @@ async def generate_step(request: Request):
                         prev_questions.append(prev_question)
                         prev_questions.append(prev_sql)
                         break
-
+        
+        print("prev_questions", prev_questions)
         # unify questions if there are previous questions
         if len(prev_questions) > 0:
             # make a request to combine the previous questions and the current question
@@ -349,8 +351,8 @@ async def clarify(request: Request):
         params = await request.json()
         key_name = params.get("key_name")
         question = params.get("user_question")
-        previous_questions = params.get("previous_questions", [])
-        if len(previous_questions) > 1:
+        previous_context = params.get("previous_context", [])
+        if len(previous_context) > 1:
             return {
                 "success": True,
                 "done": True,
