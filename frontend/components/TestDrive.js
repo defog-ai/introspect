@@ -1,6 +1,7 @@
 "use client";
 import { DefogAnalysisAgentEmbed } from "@defogdotai/agents-ui-components/agent";
 import { SpinningLoader } from "@defogdotai/agents-ui-components/core-ui";
+import React from "react";
 import { useCallback, useEffect, useState } from "react";
 
 export function TestDrive({
