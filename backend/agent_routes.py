@@ -91,8 +91,6 @@ async def generate_step(request: Request):
         extra_tools = params.get("extra_tools", [])
         planner_question_suffix = params.get("planner_question_suffix", None)
 
-        print("previous_context", previous_context)
-
         # if key name or question is none or blank, return error
         if not key_name or key_name == "":
             raise Exception("Invalid request. Must have API key name.")
@@ -136,7 +134,6 @@ async def generate_step(request: Request):
                         prev_questions.append(prev_sql)
                         break
         
-        print("prev_questions", prev_questions)
         # unify questions if there are previous questions
         if len(prev_questions) > 0:
             # make a request to combine the previous questions and the current question
