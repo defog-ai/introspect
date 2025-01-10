@@ -18,8 +18,8 @@ importers:
         specifier: ^6.7.0
         version: 6.8.0
       '@defogdotai/agents-ui-components':
-        specifier: 1.1.5
-        version: 1.1.5(@babel/runtime@7.26.0)(@codemirror/autocomplete@6.18.4)(@codemirror/language@6.10.8)(@codemirror/lint@6.8.4)(@codemirror/search@6.5.8)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.36.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        specifier: 1.1.6
+        version: 1.1.6(@babel/runtime@7.26.0)(@codemirror/autocomplete@6.18.4)(@codemirror/language@6.10.8)(@codemirror/lint@6.8.4)(@codemirror/search@6.5.8)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.36.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@notionhq/client':
         specifier: ^2.2.14
         version: 2.2.15
@@ -277,8 +277,8 @@ packages:
   '@codemirror/view@6.36.2':
     resolution: {integrity: sha512-DZ6ONbs8qdJK0fdN7AB82CgI6tYXf4HWk1wSVa0+9bhVznCuuvhQtX8bFBoy3dv8rZSQqUd8GvhVAcielcidrA==}
 
-  '@defogdotai/agents-ui-components@1.1.5':
-    resolution: {integrity: sha512-2+u3KuvYfL6eVpVlsWoY7VVq5H4gv67rtU4OV1kFtXaHViyTw+krQEp2o7Lq9T1Y9onXa4Pg97GlTed857G6aQ==}
+  '@defogdotai/agents-ui-components@1.1.6':
+    resolution: {integrity: sha512-CD9IvQFvMLv7vSpoXkB6knH49pZaAsv7DivpD1MzoXQB5SQtgUtdeg/tm+BVWNPpQaJMMLkE8aBX6wuL23i89w==}
     peerDependencies:
       react: 19.0.0
       react-dom: 19.0.0
@@ -3978,7 +3978,7 @@ snapshots:
       style-mod: 4.1.2
       w3c-keyname: 2.2.8
 
-  '@defogdotai/agents-ui-components@1.1.5(@babel/runtime@7.26.0)(@codemirror/autocomplete@6.18.4)(@codemirror/language@6.10.8)(@codemirror/lint@6.8.4)(@codemirror/search@6.5.8)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.36.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@defogdotai/agents-ui-components@1.1.6(@babel/runtime@7.26.0)(@codemirror/autocomplete@6.18.4)(@codemirror/language@6.10.8)(@codemirror/lint@6.8.4)(@codemirror/search@6.5.8)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.36.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@codemirror/lang-python': 6.1.6
       '@codemirror/lang-sql': 6.8.0
