@@ -1,11 +1,9 @@
 import traceback
 from uuid import uuid4
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from agents.clarifier.clarifier_agent import get_clarification
 from pydantic import BaseModel
-
-import pandas as pd
 
 from agents.planner_executor.planner_executor_agent import (
     generate_assignment_understanding,
@@ -15,7 +13,7 @@ from agents.planner_executor.planner_executor_agent import (
 )
 import logging
 
-from agents.planner_executor.tool_helpers.core_functions import analyse_data
+from agents.planner_executor.tool_helpers.core_functions import analyse_data, analyse_data_streaming
 
 LOGGER = logging.getLogger("server")
 
@@ -860,6 +858,32 @@ async def analyse_data_endpoint(request: Request):
         question=question, data_csv=data_csv, sql=sql, api_key=api_key
     )
     return {"success": True, "model_analysis": model_analysis}
+
+# setup an analysis data endpoint with streaming and websockets
+@router.websocket("/analyse_data_streaming")
+async def analyse_data_streaming_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        data_in = await websocket.receive_json()
+        key_name = data_in.get("key_name")
+        api_key = get_api_key_from_key_name(key_name)
+        question = data_in.get("question")
+        data_csv = data_in.get("data_csv")
+        sql = data_in.get("sql")
+        async for token in analyse_data_streaming(
+            question=question, data_csv=data_csv, sql=sql, api_key=api_key
+        ):
+            await websocket.send_text(token)
+        
+        # Send a final message to indicate the end of the stream
+        await websocket.send_text("Defog data analysis has ended")
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        LOGGER.error("Error with websocket connection:" + str(e))
+        traceback.print_exc()
+    finally:
+        await websocket.close()
 
 class QuestionTypeRequest(BaseModel):
     key_name: str
