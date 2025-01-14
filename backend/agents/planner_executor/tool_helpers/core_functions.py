@@ -204,4 +204,6 @@ async def analyse_data_streaming(question: str, data_csv: str, sql: str, api_key
     async for chunk in response:
         if chunk.choices[0].delta.content is not None:
             token = chunk.choices[0].delta.content
-            yield token
+            
+            if token and token not in ["markdown", "```"]:
+                yield token
