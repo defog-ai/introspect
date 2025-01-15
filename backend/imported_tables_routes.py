@@ -26,7 +26,6 @@ from utils_imported_data import (
 )
 from pydantic import BaseModel
 from sqlalchemy import delete, insert, select, text, update
-from sqlalchemy.orm import Session
 from utils_imported_data import IMPORTED_SCHEMA
 from utils_logging import LOGGER, save_and_log, save_timing
 

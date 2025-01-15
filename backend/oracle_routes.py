@@ -34,7 +34,6 @@ from oracle.core import (
 from oracle.explore import explore_data
 from oracle.optimize import optimize
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert
 
 from db_utils import OracleReports, engine, validate_user

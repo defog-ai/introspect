@@ -5,7 +5,6 @@ from fastapi import APIRouter
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql import select
 from oracle.utils_report import summary_dict_to_markdown
