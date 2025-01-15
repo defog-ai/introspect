@@ -24,6 +24,8 @@ import yaml
 import re
 import pandas as pd
 import os
+import warnings
+warnings.simplefilter(action='ignore', category=SyntaxWarning)
 
 import logging
 
@@ -677,7 +679,7 @@ async def generate_single_step(
     info("Generated step yaml:")
     info(step_yaml)
 
-    step_yaml = re.search("(?:```yaml)([\s\S]*?)(?=```)", step_yaml)
+    step_yaml = re.search(r"(?:```yaml)([\s\S]*?)(?=```)", step_yaml)
 
     if step_yaml is None:
         error(

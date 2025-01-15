@@ -4,6 +4,8 @@ import traceback
 from typing import Any, Dict, List
 
 from celery.utils.log import get_task_logger
+import logging
+logging.getLogger("prophet.plot").disabled = True
 from prophet import Prophet
 from prophet.serialize import model_to_json
 import pandas as pd

@@ -1,5 +1,3 @@
-airbyte==0.17.9
 celery[redis]==5.4.0
 prophet==1.1.6
-scikit-learn==1.5.2
 pandasql
