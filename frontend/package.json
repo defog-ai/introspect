@@ -13,7 +13,7 @@
   "dependencies": {
     "@ant-design/icons": "^5.5.2",
     "@codemirror/lang-sql": "^6.7.0",
-    "@defogdotai/agents-ui-components": "1.1.6",
+    "@defogdotai/agents-ui-components": "1.1.9",
     "@notionhq/client": "^2.2.14",
     "@react-oauth/google": "^0.12.1",
     "@sereneinserenade/tiptap-comment-extension": "^0.1.2",
