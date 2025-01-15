@@ -912,4 +912,7 @@ async def get_question_type(request: QuestionTypeRequest):
         data={"question": question, "api_key": api_key},
     )
 
-    return {"success": True, "question_type": res["question_type"]}
+    return JSONResponse(
+        status_code=200,
+        content=res,
+    )
