@@ -4,12 +4,13 @@ import time
 import traceback
 from typing import Any, Dict, List
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from db_utils import INTERNAL_DB, OracleSources, engine
 from generic_utils import make_request
 from oracle.celery_app import LOGGER
 from oracle.constants import DEFOG_BASE_URL, TaskType
 from sqlalchemy import insert, select, update
-from sqlalchemy.orm import Session
 from utils_imported_data import (
     IMPORTED_SCHEMA,
     get_source_type,
@@ -92,15 +93,15 @@ async def gather_context(
                 "text_summary": source.get("summary"),
             }
             sources_to_insert.append(source_to_insert)
-        with Session(engine) as session:
+        async with AsyncSession(engine) as session:
             # insert the sources into the database if not present. otherwise update
             for source in sources_to_insert:
                 stmt = select(OracleSources).where(OracleSources.link == source["link"])
-                result = session.execute(stmt)
+                result = await session.execute(stmt)
                 if result.scalar() is None:
                     source["api_key"] = api_key
                     stmt = insert(OracleSources).values(source)
-                    session.execute(stmt)
+                    await session.execute(stmt)
                     LOGGER.debug(f"Inserted source {source['link']} into the database.")
                 else:
                     stmt = (
@@ -108,9 +109,9 @@ async def gather_context(
                         .where(OracleSources.link == source["link"])
                         .values(source)
                     )
-                    session.execute(stmt)
+                    await session.execute(stmt)
                     LOGGER.debug(f"Updated source {source['link']} in the database.")
-            session.commit()
+            await session.commit()
         LOGGER.debug(f"Inserted {len(sources_to_insert)} sources into the database.")
         ts = save_timing(ts, "Sources parsed", timings)
 

@@ -7,7 +7,6 @@ from typing import Any, Dict
 import pandas as pd
 
 from oracle.constants import TaskType
-from utils import execute_code
 from utils_logging import LOGGER
 from generic_utils import make_request
 

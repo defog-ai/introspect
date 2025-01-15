@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 from db_utils import (
     INTERNAL_DB,
     ImportedTables,
@@ -197,16 +198,16 @@ async def sources_import_route(req: ImportSourcesRequest):
             "text_summary": source.get("summary"),
         }
         sources_to_insert.append(source_to_insert)
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         # insert the sources into the database if not present. otherwise update
         for source in sources_to_insert:
             stmt = select(OracleSources).where(
                 OracleSources.api_key == api_key, OracleSources.link == source["link"]
             )
-            result = session.execute(stmt)
+            result = await session.execute(stmt)
             if result.scalar() is None:
                 stmt = insert(OracleSources).values(source)
-                session.execute(stmt)
+                await session.execute(stmt)
                 LOGGER.debug(f"Inserted source {source['link']} into the database.")
             else:
                 stmt = (
@@ -217,9 +218,9 @@ async def sources_import_route(req: ImportSourcesRequest):
                     )
                     .values(source)
                 )
-                session.execute(stmt)
+                await session.execute(stmt)
                 LOGGER.debug(f"Updated source {source['link']} in the database.")
-        session.commit()
+        await session.commit()
     LOGGER.debug(f"Inserted {len(sources_to_insert)} sources into the database.")
     ts = save_timing(ts, "Sources parsed", timings)
 
@@ -370,11 +371,11 @@ async def delete_source(req: DeleteSourceRequest):
         )
     api_key = get_api_key_from_key_name(req.key_name)
     # delete source from oracle_sources
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = select(OracleSources).where(
             OracleSources.api_key == api_key, OracleSources.link == req.link
         )
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         source = result.fetchone()
         if source is None:
             return JSONResponse(
@@ -387,8 +388,8 @@ async def delete_source(req: DeleteSourceRequest):
         stmt = delete(OracleSources).where(
             OracleSources.api_key == api_key, OracleSources.link == req.link
         )
-        session.execute(stmt)
-        session.commit()
+        await session.execute(stmt)
+        await session.commit()
     # delete source's tables from imported_tables
     with imported_tables_engine.begin() as imported_tables_connection:
         # get table_name for all entries with the link

@@ -1,7 +1,7 @@
 import asyncio
 from typing import Any, Dict, List
 
-from db_utils import add_or_update_analysis, update_summary_dict, update_report_name
+from db_utils import add_or_update_analysis, update_report_name
 from oracle.utils_report import summary_dict_to_markdown
 from generic_utils import make_request
 from pydantic import BaseModel
@@ -139,7 +139,7 @@ async def generate_report(
         # tiptap's mdx is separated from the mdx and md
         # because we will need to reuse the vanilla mdx for future revision of reports
         "tiptap_mdx": tiptap_mdx,
-        # but we keep the md because it's not important for the front end and can be used to generate a pdf file later.
+        # but we keep the md even though it's not important for the front end, so it can be used to generate a pdf file later.
         "md": summary_md + "\n\n" + "" if not md else md,
         "executive_summary": summary_dict,
         "analyses_mdx": analyses_mdx,

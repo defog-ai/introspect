@@ -1162,7 +1162,7 @@ async def add_or_update_analysis(
     mdx: str = None,
 ) -> str:
     """
-    Given a report_id, this endpoint will update the report data in the database in the oracle_analyses table.
+    Given a report_id, this endpoint will add or (if it already exists) update the data for a particular analysis in the database in the oracle_analyses table.
     """
 
     err = None
@@ -1181,7 +1181,6 @@ async def add_or_update_analysis(
                 analysis.status = status
                 analysis.analysis_json = analysis_json
                 analysis.mdx = mdx
-                await session.commit()
             else:
                 stmt = insert(OracleAnalyses).values(
                     report_id=report_id,
@@ -1192,7 +1191,7 @@ async def add_or_update_analysis(
                     mdx=mdx,
                 )
                 await session.execute(stmt)
-                await session.commit()
+            await session.commit()
     except Exception as e:
         LOGGER.error(f"Error adding analysis {analysis_id}: {str(e)}")
         err = str(e)[:300]

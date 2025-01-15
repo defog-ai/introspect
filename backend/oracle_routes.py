@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from utils import longest_substring_overlap
 from db_utils import (
@@ -467,7 +468,7 @@ async def begin_generation(req: BeginGenerationRequest):
         "clarifications": req.clarifications,
         "hard_filters": req.hard_filters,
     }
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = (
             insert(OracleReports)
             .values(
@@ -479,9 +480,9 @@ async def begin_generation(req: BeginGenerationRequest):
             )
             .returning(OracleReports.report_id)
         )
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         report_id = result.scalar_one()
-        session.commit()
+        await session.commit()
     begin_generation_task.apply_async(
         args=[api_key, report_id, req.task_type, user_inputs]
     )
@@ -611,7 +612,7 @@ async def revision(req: ReviseReportRequest):
 
     # now, create a new report
     # this is so that if the revision fails, the original report is not lost
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = (
             insert(OracleReports)
             .values(
@@ -623,19 +624,19 @@ async def revision(req: ReviseReportRequest):
             )
             .returning(OracleReports.report_id)
         )
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         report_id = result.scalar_one()
-        session.commit()
+        await session.commit()
 
     # set the status of the original report to "Revision in progress"
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = (
             update(OracleReports)
             .where(OracleReports.report_id == req.report_id)
             .values(status=f"Revision in progress")
         )
-        session.execute(stmt)
-        session.commit()
+        await session.execute(stmt)
+        await session.commit()
 
     begin_generation_task.apply_async(
         args=[api_key, report_id, TaskType.EXPLORATION.value, inputs_with_comments]
