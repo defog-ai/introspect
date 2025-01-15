@@ -24,6 +24,8 @@ import yaml
 import re
 import pandas as pd
 import os
+import warnings
+warnings.simplefilter(action='ignore', category=SyntaxWarning)
 
 import logging
 
