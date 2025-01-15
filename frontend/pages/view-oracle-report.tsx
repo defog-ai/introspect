@@ -17,6 +17,7 @@ import {
 } from "$components/oracle/OracleReportContext";
 // import { OracleBubbleMenu } from "$components/oracle/reports/OracleBubbleMenu";
 import { OracleNav } from "$components/oracle/reports/OracleNav";
+import { AgentConfigContext } from "@defogdotai/agents-ui-components/agent";
 
 export default function ViewOracleReport() {
   const [keyName, setKeyName] = useState<string | null>(null);
@@ -149,37 +150,44 @@ export default function ViewOracleReport() {
   }
 
   return (
-    <OracleReportContext.Provider
-      value={{
-        tables: tables,
-        multiTables: multiTables,
-        images: images,
-        analysisIds: analysisIds,
-        executiveSummary: executiveSummary,
-        reportId: reportId,
-        keyName: keyName,
-        token:
-          localStorage.getItem("defogToken") ||
-          "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0",
-      }}
+    // sad reality for getting the chart container to work
+    // it makes a request to this api endpoint to get the chart data
+    // which defaults to demo.defog.ai if not provided
+    // (╯°□°)╯︵ ┻━┻
+    <AgentConfigContext.Provider
+      value={{ val: { apiEndpoint: process.env.NEXT_PUBLIC_AGENTS_ENDPOINT } }}
     >
-      <div className="relative">
-        <EditorProvider
-          extensions={extensions}
-          content={mdx}
-          immediatelyRender={false}
-          editable={false}
-          slotBefore={<OracleNav />}
-          editorProps={{
-            attributes: {
-              class:
-                "oracle-report-tiptap relative prose prose-base dark:prose-invert mx-auto p-2 mb-12 md:mb-0 focus:outline-none *:cursor-default",
-            },
-          }}
-        >
-          {/* <OracleBubbleMenu keyName={keyName} reportId={reportId} /> */}
-        </EditorProvider>
-        {/* <Drawer
+      <OracleReportContext.Provider
+        value={{
+          tables: tables,
+          multiTables: multiTables,
+          images: images,
+          analysisIds: analysisIds,
+          executiveSummary: executiveSummary,
+          reportId: reportId,
+          keyName: keyName,
+          token:
+            localStorage.getItem("defogToken") ||
+            "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0",
+        }}
+      >
+        <div className="relative">
+          <EditorProvider
+            extensions={extensions}
+            content={mdx}
+            immediatelyRender={false}
+            editable={false}
+            slotBefore={<OracleNav />}
+            editorProps={{
+              attributes: {
+                class:
+                  "oracle-report-tiptap relative prose prose-base dark:prose-invert mx-auto p-2 mb-12 md:mb-0 focus:outline-none *:cursor-default",
+              },
+            }}
+          >
+            {/* <OracleBubbleMenu keyName={keyName} reportId={reportId} /> */}
+          </EditorProvider>
+          {/* <Drawer
           open={analysisDrawerOpen}
           onClose={() => setAnalysisDrawerOpen(false)}
           placement="bottom"
@@ -334,7 +342,8 @@ export default function ViewOracleReport() {
             </div>
           </div>
         </Drawer> */}
-      </div>
-    </OracleReportContext.Provider>
+        </div>
+      </OracleReportContext.Provider>
+    </AgentConfigContext.Provider>
   );
 }
