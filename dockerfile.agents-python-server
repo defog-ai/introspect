@@ -4,7 +4,7 @@ FROM python:3.11-slim
 WORKDIR /backend
 
 # need cmake for scikit
-RUN apt-get update && apt-get install -y python3-pip cmake netcat-openbsd wkhtmltopdf
+RUN apt-get update && apt-get install -y python3-pip netcat-openbsd
 
 COPY ./backend/requirements_export.txt /root/requirements_export.txt
 COPY ./backend/requirements_oracle.txt /root/requirements_oracle.txt

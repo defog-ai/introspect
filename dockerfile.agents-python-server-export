@@ -3,8 +3,7 @@ FROM python:3.11-slim
 
 WORKDIR /backend
 
-# need cmake for scikit
-RUN apt-get update && apt-get install -y python3-pip cmake netcat-openbsd
+RUN apt-get update && apt-get install -y python3-pip netcat-openbsd
 
 COPY ./backend /backend
 
@@ -41,8 +40,7 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
   && curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
 
 # Install SQL Server ODBC Driver
-RUN apt-get update && apt-get install -y --no-install-recommends \
-  msodbcsql18
+RUN apt-get update && apt-get install -y --no-install-recommends msodbcsql18
 
 # Cleanup
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
