@@ -42,11 +42,7 @@ class SourcesListRequest(BaseModel):
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {
-                    "token": "user_token",
-                    "key_name": "source_key",
-                    "preview_rows": 10
-                }
+                {"token": "user_token", "key_name": "source_key", "preview_rows": 10}
             ]
         }
     }
@@ -60,7 +56,7 @@ async def sources_list_route(req: SourcesListRequest):
     Returns a dictionary of sources with the link as the key and the source title,
     type, summary, and tables as the value.
     """
-    if not await validate_user(req.token):
+    if not (await validate_user(req.token)):
         return JSONResponse(
             status_code=401,
             content={
@@ -71,9 +67,10 @@ async def sources_list_route(req: SourcesListRequest):
     api_key = get_api_key_from_key_name(req.key_name)
     sources = {}
     # get all sources for api_key from engine
-    with engine.connect() as connection:
+    async with engine.connect() as connection:
         stmt_sources = select(OracleSources).where(OracleSources.api_key == api_key)
-        result_sources = connection.execute(stmt_sources).fetchall()
+        result_sources = await connection.execute(stmt_sources)
+        result_sources = result_sources.fetchall()
         for source in result_sources:
             sources[source.link] = {
                 "source_title": source.title,
@@ -142,7 +139,10 @@ class ImportSourcesRequest(BaseModel):
                 {
                     "token": "user_token",
                     "key_name": "source_key",
-                    "links": ["https://example.com/source1", "https://example.com/source2"]
+                    "links": [
+                        "https://example.com/source1",
+                        "https://example.com/source2",
+                    ],
                 }
             ]
         }
@@ -155,7 +155,7 @@ async def sources_import_route(req: ImportSourcesRequest):
     Import sources into the OracleSources table in the internal database.
     """
     ts, timings = time.time(), []
-    if not await validate_user(req.token):
+    if not (await validate_user(req.token)):
         return JSONResponse(
             status_code=401,
             content={
@@ -348,7 +348,7 @@ class DeleteSourceRequest(BaseModel):
                 {
                     "token": "user_token",
                     "key_name": "source_key",
-                    "link": "https://example.com/source1"
+                    "link": "https://example.com/source1",
                 }
             ]
         }
@@ -360,7 +360,7 @@ async def delete_source(req: DeleteSourceRequest):
     """
     Delete a source from the OracleSources table in the internal database.
     """
-    if not await validate_user(req.token):
+    if not (await validate_user(req.token)):
         return JSONResponse(
             status_code=401,
             content={
@@ -430,14 +430,11 @@ class CreateImportedTablesRequest(BaseModel):
                 {
                     "token": "user_token",
                     "key_name": "source_key",
-                    "data": [
-                        ["column1", "column2"],
-                        ["value1", "value2"]
-                    ],
+                    "data": [["column1", "column2"], ["value1", "value2"]],
                     "link": "https://example.com/source1",
                     "table_index": 0,
                     "table_name": "example_table",
-                    "table_description": "Example table description"
+                    "table_description": "Example table description",
                 }
             ]
         }
@@ -479,7 +476,7 @@ async def imported_tables_create_route(req: CreateImportedTablesRequest):
         "table_description": "This table contains fruit products purchased by certain card numbers"
     }
     """
-    if not await validate_user(req.token):
+    if not (await validate_user(req.token)):
         return JSONResponse(
             status_code=401,
             content={

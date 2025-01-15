@@ -66,7 +66,7 @@ async def process_event(event):
             user_dets = await slack_client.users_info(user=user_id)
             user_email = user_dets["user"]["profile"]["email"]
 
-            if not validate_user_email(user_email):
+            if not (await validate_user_email(user_email)):
                 # if the user is not authorized, send a message to the user and end the function
                 await slack_client.chat_postMessage(
                     channel=channel_id,

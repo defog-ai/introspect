@@ -10,28 +10,30 @@ from fastapi.responses import JSONResponse
 SALT = "TOMMARVOLORIDDLE"
 
 
-def login_user(username, password):
+async def login_user(username, password):
     hashed_password = hashlib.sha256((username + SALT + password).encode()).hexdigest()
     hashed_username = hashlib.sha256((username + SALT).encode()).hexdigest()
-    with engine.begin() as conn:
+    async with engine.begin() as conn:
         if password:
-            user = conn.execute(
+            user = await conn.execute(
                 select(Users).where(
                     and_(
                         Users.hashed_password == hashed_password,
                         Users.username == username,
                     )
                 )
-            ).fetchone()
+            )
+            user = user.fetchone()
         else:
-            user = conn.execute(
+            user = await conn.execute(
                 select(Users).where(
                     and_(
                         Users.hashed_password == hashed_username,
                         Users.username == username,
                     )
                 )
-            ).fetchone()
+            )
+            user = user.fetchone()
 
     if user:
         return {
@@ -49,12 +51,12 @@ def login_user(username, password):
         )
 
 
-def reset_password(username, new_password):
+async def reset_password(username, new_password):
     hashed_password = hashlib.sha256(
         (username + SALT + new_password).encode()
     ).hexdigest()
-    with engine.begin() as conn:
-        conn.execute(
+    async with engine.begin() as conn:
+        await conn.execute(
             update(Users)
             .where(Users.username == username)
             .values(hashed_password=hashed_password)
@@ -69,9 +71,10 @@ def get_hashed_username(username):
     return hashlib.sha256((username + SALT).encode()).hexdigest()
 
 
-def validate_user_email(email):
-    with engine.begin() as conn:
-        user = conn.execute(select(Users).where(Users.username == email)).fetchone()
+async def validate_user_email(email):
+    async with engine.begin() as conn:
+        user = await conn.execute(select(Users).where(Users.username == email))
+        user = user.fetchone()
     if user:
         return True
     else:

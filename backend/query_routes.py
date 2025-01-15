@@ -28,7 +28,7 @@ async def query(request: Request):
         return {"error": "no db creds found"}
     ignore_cache = body.get("ignore_cache", False)
     token = body.get("token")
-    if not await validate_user(token):
+    if not (await validate_user(token)):
         return JSONResponse(
             status_code=401,
             content={

@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql import select
@@ -94,11 +95,11 @@ async def reports_list(req: BasicRequest):
     - status
     - date_created
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = (
             select(
                 OracleReports.report_id,
@@ -110,7 +111,7 @@ async def reports_list(req: BasicRequest):
             .where(OracleReports.api_key == api_key)
             .order_by(OracleReports.created_ts.desc())
         )
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         reports = result.fetchall()
 
     reports_list = []
@@ -140,7 +141,7 @@ async def download_report(req: ReportRequest):
     """
     Given a report_id, this endpoint will return the report pdf file to the user.
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
     if "report_id" not in req:
@@ -159,20 +160,20 @@ async def delete_report(req: ReportRequest):
     Given a report_id, this endpoint will delete the report from the system.
     Reports in progress will have their associated background tasks cancelled.
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = select(OracleReports).where(
             OracleReports.api_key == api_key,
             OracleReports.report_id == req.report_id,
         )
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         report = result.scalar_one_or_none()
         if report:
-            session.delete(report)
-            session.commit()
+            await session.delete(report)
+            await session.commit()
             return JSONResponse(status_code=200, content={"message": "Report deleted"})
         else:
             return JSONResponse(status_code=404, content={"error": "Report not found"})
@@ -185,16 +186,16 @@ async def get_report_mdx(req: ReportRequest):
 
     Will return status 400 if no string is found.
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = select(OracleReports).where(
             OracleReports.api_key == api_key,
             OracleReports.report_id == req.report_id,
         )
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         report = result.scalar_one_or_none()
 
         if report:
@@ -266,7 +267,7 @@ async def update_report_mdx(req: UpdateReportMDXRequest):
     """
     Given a report_id, this endpoint will update the MDX string for the report.
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -279,12 +280,12 @@ async def update_report_mdx(req: UpdateReportMDXRequest):
             },
         )
 
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = select(OracleReports).where(
             OracleReports.api_key == api_key,
             OracleReports.report_id == req.report_id,
         )
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         report = result.scalar_one_or_none()
         if report:
             if req.tiptap_mdx is not None:
@@ -292,7 +293,7 @@ async def update_report_mdx(req: UpdateReportMDXRequest):
             if req.mdx is not None:
                 report.outputs[TaskStage.EXPORT.value]["mdx"] = req.mdx
             flag_modified(report, "outputs")
-            session.commit()
+            await session.commit()
             return JSONResponse(status_code=200, content={"message": "MDX updated"})
         else:
             return JSONResponse(
@@ -306,7 +307,7 @@ async def get_report_data_endpoint(req: ReportRequest):
     """
     Given a report_id, this endpoint will returns all the data for this report. Returns the full row stored in the db.
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -323,7 +324,7 @@ async def get_report_image(req: GetReportImageRequest):
     """
     Given a report_id, this endpoint will return the image file as base 64 string.
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -342,16 +343,16 @@ async def get_report_analysis_ids(req: ReportRequest):
     """
     Given a report_id, this endpoint will return the list of analyses ids for the report.
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = select(OracleAnalyses).where(
             OracleAnalyses.api_key == api_key,
             OracleAnalyses.report_id == req.report_id,
         )
-        result = session.execute(stmt).scalars().all()
+        result = await session.execute(stmt)
         analyses = [row.analysis_id for row in result]
 
         return JSONResponse(status_code=200, content={"analyses": analyses})
@@ -362,18 +363,18 @@ async def get_report_analysis(req: ReportAnalysisRequest):
     """
     Given a report_id and an analysis_id, this endpoint will return the analysis for the report.
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
     # get the report
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = select(OracleAnalyses).where(
             OracleAnalyses.api_key == api_key,
             OracleAnalyses.report_id == req.report_id,
             OracleAnalyses.analysis_id == req.analysis_id,
         )
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         row = result.scalar_one_or_none()
         if row:
             analysis = {
@@ -392,17 +393,17 @@ async def get_report_status(req: ReportRequest):
     """
     Given a report_id, this endpoint will return the status of the report.
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
     # get the report
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = select(OracleReports).where(
             OracleReports.api_key == api_key,
             OracleReports.report_id == req.report_id,
         )
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         row = result.scalar_one_or_none()
         if row:
             return JSONResponse(
@@ -419,17 +420,17 @@ async def get_report_summary(req: ReportRequest):
     The executive summary will have links to the relevant analyses should the user want to
     dive deeper into a particular answer/insight.
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
     # get from export key's executive_summary
     executive_summary = None
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = select(OracleReports.outputs).where(
             OracleReports.api_key == api_key,
             OracleReports.report_id == req.report_id,
         )
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         outputs = result.scalar_one_or_none()
         executive_summary = outputs.get(TaskStage.EXPORT.value, {}).get(
             "executive_summary", None
@@ -450,16 +451,16 @@ async def get_report_comments(req: ReportRequest):
     """
     Given a report_id, this endpoint will return the comments for the report.
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = select(OracleReports).where(
             OracleReports.api_key == api_key,
             OracleReports.report_id == req.report_id,
         )
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         report = result.scalar_one_or_none()
         if report:
             return JSONResponse(status_code=200, content={"comments": report.comments})
@@ -491,20 +492,20 @@ async def update_report_comments(req: UpdateReportCommentsRequest):
     """
     Given a report_id, this endpoint will update the comments for the report.
     """
-    if not await validate_user(req.token, user_type=None, get_username=False):
+    if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = select(OracleReports).where(
             OracleReports.api_key == api_key,
             OracleReports.report_id == req.report_id,
         )
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         report = result.scalar_one_or_none()
         if report:
             report.comments = req.comments
-            session.commit()
+            await session.commit()
             return JSONResponse(
                 status_code=200, content={"message": "Comments updated"}
             )

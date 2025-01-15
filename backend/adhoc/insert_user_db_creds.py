@@ -1,9 +1,10 @@
 import copy
 import datetime
 import hashlib
+import os
 
-from db_utils import engine, DbCreds, Users
-from sqlalchemy import insert, select, update
+from db_utils import DbCreds, Users
+from sqlalchemy import create_engine, insert, select, update
 
 SALT = "TOMMARVOLORIDDLE"
 
@@ -36,7 +37,7 @@ users = [
     {
         "username": "cricket",
         "password": "test",
-    }
+    },
 ]
 databases = [
     {
@@ -66,7 +67,7 @@ databases = [
     {
         "api_key": "test_cricket",
         "database": "cricket",
-    }
+    },
 ]
 DB_CREDS = {
     "host": "host.docker.internal",
@@ -80,6 +81,18 @@ DB_CREDS = {
 def get_hashed_password(username, password):
     return hashlib.sha256((username + SALT + password).encode()).hexdigest()
 
+
+db_creds = {
+    "user": os.environ.get("DBUSER", "postgres"),
+    "password": os.environ.get("DBPASSWORD", "postgres"),
+    "host": os.environ.get("DBHOST", "agents-postgres"),
+    "port": os.environ.get("DBPORT", "5432"),
+    "database": os.environ.get("DATABASE", "postgres"),
+}
+
+# connect to the main database
+connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
+engine = create_engine(connection_uri, echo=True)
 
 with engine.begin() as conn:
     # insert users and their db_creds

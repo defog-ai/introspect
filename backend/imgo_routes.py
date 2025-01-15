@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Request
 from generic_utils import (
     make_request,
@@ -19,7 +18,7 @@ async def send_imgo_request(
     """Helper function to handle IMGO request processing."""
     params = await request.json()
     token = params.get("token")
-    if not await validate_user(token):
+    if not (await validate_user(token)):
         return JSONResponse(
             status_code=401,
             content={
@@ -98,14 +97,13 @@ async def get_recommendation_for_glossary_and_metadata(request: Request):
     return res
 
 
-
 @router.post("/check_task_status")
 async def check_task_status(request: Request):
     """Checks the status of a task and returns the status which can be either 'processing' or 'completed'."""
     print("Checking task status")
     params = await request.json()
     token = params.get("token")
-    if not await validate_user(token):
+    if not (await validate_user(token)):
         return JSONResponse(
             status_code=401,
             content={

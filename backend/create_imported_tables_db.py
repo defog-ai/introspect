@@ -60,9 +60,7 @@ if os.environ.get("ORACLE_ENABLED", "no") == "yes":
             text(f"SELECT 1 FROM pg_database WHERE datname = '{temp_tables_db}'")
         )
         if not result.fetchone():
-            raw_conn = (
-                engine.raw_connection()
-            )
+            raw_conn = engine.raw_connection()
             try:
                 raw_conn.set_isolation_level(0)
                 with raw_conn.cursor() as cursor:

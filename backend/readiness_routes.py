@@ -16,7 +16,7 @@ async def check_basic_readiness(request: Request):
     params = await request.json()
     token = params.get("token")
     dev = params.get("dev", False)
-    if not await validate_user(token, user_type="admin"):
+    if not (await validate_user(token, user_type="admin")):
         return JSONResponse(
             status_code=401,
             content={
@@ -61,7 +61,7 @@ async def check_golden_queries_validity(request: Request):
     params = await request.json()
     token = params.get("token")
     dev = params.get("dev", False)
-    if not await validate_user(token, user_type="admin"):
+    if not (await validate_user(token, user_type="admin")):
         return JSONResponse(
             status_code=401,
             content={
@@ -90,7 +90,7 @@ async def check_glossary_consistency(request: Request):
     params = await request.json()
     token = params.get("token")
     dev = params.get("dev")
-    if not await validate_user(token, user_type="admin"):
+    if not (await validate_user(token, user_type="admin")):
         return JSONResponse(
             status_code=401,
             content={
@@ -114,7 +114,7 @@ async def check_golden_query_coverage(request: Request):
     params = await request.json()
     token = params.get("token")
     dev = params.get("dev")
-    if not await validate_user(token, user_type="admin"):
+    if not (await validate_user(token, user_type="admin")):
         return JSONResponse(
             status_code=401,
             content={
@@ -154,7 +154,7 @@ async def regression_results(request: Request):
     """
     params = await request.json()
     token = params.get("token")
-    if not await validate_user(token, user_type="admin"):
+    if not (await validate_user(token, user_type="admin")):
         return JSONResponse(
             status_code=401,
             content={

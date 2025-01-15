@@ -27,7 +27,7 @@ async def login(request: Request):
     if not password:
         return {"error": "no password provided"}
 
-    dets = login_user(username, password)
+    dets = await login_user(username, password)
     return dets
 
 
@@ -55,7 +55,7 @@ async def validate_google_token(token: str):
 
         # Check if user exists
         if await validate_user(hashed_password):
-            dets = login_user(user_email, "")
+            dets = await login_user(user_email, "")
             dets["user_email"] = user_email
             return dets
         else:
@@ -83,12 +83,12 @@ async def login_google(request: Request):
 
 
 @router.post("/reset_password")
-async def reset_password(request: Request):
+async def reset_password_endpoint(request: Request):
     params = await request.json()
     username = params.get("username", None)
     new_password = params.get("password", None)
     token = params.get("token", None)
-    if not await validate_user(token, user_type="admin"):
+    if not (await validate_user(token, user_type="admin")):
         return JSONResponse(
             status_code=401,
             content={
@@ -100,5 +100,5 @@ async def reset_password(request: Request):
         return {"error": "no user id provided"}
     if not new_password:
         return {"error": "no password provided"}
-    dets = reset_password(username, new_password)
+    dets = await reset_password(username, new_password)
     return dets

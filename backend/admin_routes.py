@@ -26,7 +26,7 @@ async def add_user(request: Request):
     token = params.get("token")
     gsheets_url = params.get("gsheets_url")
     user_dets_csv = params.get("users_csv")
-    if not await validate_user(token, user_type="admin"):
+    if not (await validate_user(token, user_type="admin")):
         return JSONResponse(
             status_code=401,
             content={
@@ -71,7 +71,7 @@ async def add_user(request: Request):
         userdets.append(dets)
 
     # save the users to postgres
-    with engine.begin() as conn:
+    async with engine.begin() as conn:
         for dets in userdets:
             if dets["password"]:
                 hashed_password = hashlib.sha256(
@@ -83,12 +83,14 @@ async def add_user(request: Request):
                 ).hexdigest()
 
             # check if user already exists
-            user_exists = conn.execute(
+            user_exists = await conn.execute(
                 select(Users).where(Users.username == dets["username"])
-            ).fetchone()
+            )
+
+            user_exists = user_exists.fetchone()
 
             if user_exists:
-                conn.execute(
+                await conn.execute(
                     update(Users)
                     .where(Users.username == dets["username"])
                     .values(
@@ -98,7 +100,7 @@ async def add_user(request: Request):
                     )
                 )
             else:
-                conn.execute(
+                await conn.execute(
                     insert(Users).values(
                         username=dets["username"],
                         hashed_password=hashed_password,
@@ -115,7 +117,7 @@ async def add_user(request: Request):
 async def get_users(request: Request):
     params = await request.json()
     token = params.get("token", None)
-    if not await validate_user(token, user_type="admin"):
+    if not (await validate_user(token, user_type="admin")):
         return JSONResponse(
             status_code=401,
             content={
@@ -124,8 +126,9 @@ async def get_users(request: Request):
             },
         )
 
-    with engine.begin() as conn:
-        users = conn.execute(select(Users)).fetchall()
+    async with engine.begin() as conn:
+        users = await conn.execute(select(Users))
+        users = users.fetchall()
 
     users = pd.DataFrame(users)[["username", "user_type"]]
     users["allowed_dbs"] = ""
@@ -137,7 +140,7 @@ async def get_users(request: Request):
 async def delete_user(request: Request):
     params = await request.json()
     token = params.get("token", None)
-    if not await validate_user(token, user_type="admin"):
+    if not (await validate_user(token, user_type="admin")):
         return JSONResponse(
             status_code=401,
             content={
@@ -147,8 +150,8 @@ async def delete_user(request: Request):
         )
 
     username = params.get("username", None)
-    with engine.begin() as conn:
-        conn.execute(delete(Users).where(Users.username == username))
+    async with engine.begin() as conn:
+        await conn.execute(delete(Users).where(Users.username == username))
     return {"status": "success"}
 
 
@@ -180,6 +183,7 @@ async def get_non_admin_config(request: Request):
         },
     )
 
+
 @router.post("/admin/add_user_with_token")
 async def add_user_with_token(request: Request):
     params = await request.json()
@@ -187,7 +191,7 @@ async def add_user_with_token(request: Request):
     user_token = params.get("user_token")
     username = params.get("username")
     user_type = params.get("user_type")
-    if not await validate_user(auth_token, user_type="admin"):
+    if not (await validate_user(auth_token, user_type="admin")):
         return JSONResponse(
             status_code=401,
             content={
@@ -196,24 +200,25 @@ async def add_user_with_token(request: Request):
             },
         )
 
-    with engine.begin() as conn:
+    async with engine.begin() as conn:
         # if user already exists, update the token
-        user = conn.execute(select(Users).where(Users.username == username)).fetchone()
+        user = await conn.execute(select(Users).where(Users.username == username))
+        user = user.fetchone()
         if user:
-            conn.execute(
+            await conn.execute(
                 update(Users)
                 .where(Users.username == username)
                 .values(
-                    hashed_password=user_token, # this is horribly confusing nomenclature, but me from 7 months ago did this monstrosity. So I guess we just roll with it 🤦🏽‍♂️
+                    hashed_password=user_token,  # this is horribly confusing nomenclature, but me from 7 months ago did this monstrosity. So I guess we just roll with it 🤦🏽‍♂️
                     token=INTERNAL_API_KEY,
                     user_type=user_type,
                 )
             )
         else:
-            conn.execute(
+            await conn.execute(
                 insert(Users).values(
                     username=username,
-                    hashed_password=user_token, # this is horribly confusing nomenclature, but me from 7 months ago did this monstrosity. So I guess we just roll with it 🤦🏽‍♂️
+                    hashed_password=user_token,  # this is horribly confusing nomenclature, but me from 7 months ago did this monstrosity. So I guess we just roll with it 🤦🏽‍♂️
                     token=INTERNAL_API_KEY,
                     user_type=user_type,
                 )

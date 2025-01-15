@@ -1,7 +1,8 @@
 import hashlib
+import os
 
-from db_utils import engine, Users
-from sqlalchemy import select, insert
+from db_utils import Users
+from sqlalchemy import create_engine, select, insert
 
 SALT = "TOMMARVOLORIDDLE"
 INTERNAL_API_KEY = "dummy_api_key"
@@ -12,6 +13,18 @@ hashed_password = hashlib.sha256((username + SALT + password).encode()).hexdiges
 
 # check if admin user exists first
 admin_exists = False
+
+db_creds = {
+    "user": os.environ.get("DBUSER", "postgres"),
+    "password": os.environ.get("DBPASSWORD", "postgres"),
+    "host": os.environ.get("DBHOST", "agents-postgres"),
+    "port": os.environ.get("DBPORT", "5432"),
+    "database": os.environ.get("DATABASE", "postgres"),
+}
+
+# connect to the main database
+connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
+engine = create_engine(connection_uri, echo=True)
 
 with engine.begin() as conn:
     user = conn.execute(select(Users).where(Users.username == username)).fetchone()
