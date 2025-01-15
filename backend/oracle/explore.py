@@ -334,7 +334,7 @@ async def explore_generated_question(
         data={"question": generated_qn, "api_key": api_key},
     )
     glossary = f"{glossary_dict.get('pruned_glossary', '')}\n{context}"
-    ts = save_timing(ts, f"{qn_id}\) Glossary", timings)
+    ts = save_timing(ts, f"{qn_id}) Glossary", timings)
 
     err_msg, sql, data = None, None, None
     retry_count = 0
@@ -362,7 +362,7 @@ async def explore_generated_question(
         if sql:
             # fetch data
             ts = save_timing(
-                ts, f"{qn_id}\) SQL generation (try {retry_count})", timings
+                ts, f"{qn_id}) SQL generation (try {retry_count})", timings
             )
             data, err_msg = await execute_sql(db_type, db_creds, sql)
             if err_msg == "Obtained Sorry SQL query":
@@ -410,7 +410,7 @@ async def explore_generated_question(
     if data is None:
         LOGGER.error(f"Data fetching failed for {qn_id}: {generated_qn}")
         return None
-    ts = save_timing(ts, f"{qn_id}\) Data fetching", timings)
+    ts = save_timing(ts, f"{qn_id}) Data fetching", timings)
 
     # Consolidate outputs thus far for the given generated question.
     # This is the minimal output required to return, should any of the subsequent
@@ -480,7 +480,7 @@ async def explore_generated_question(
     # except Exception as e:
     #     LOGGER.error(f"Error occurred in getting chart data: {str(e)}")
     #     LOGGER.error(traceback.format_exc())
-    # ts = save_timing(ts, f"{qn_id}\) Get and Plot chart", timings)
+    # ts = save_timing(ts, f"{qn_id}) Get and Plot chart", timings)
 
     # TODO: DEF-552 add retries for chart plotting based on error type and if chart
     # visuals are not meaningful (e.g. axis labels overlap, no data points, etc)
@@ -540,7 +540,7 @@ async def explore_generated_question(
         LOGGER.error(f"Error occurred in generating data analysis: {str(e)}")
         LOGGER.error(traceback.format_exc())
         return outputs  # return minimal outputs if data analysis fails
-    ts = save_timing(ts, f"{qn_id}\) Data analysis", timings)
+    ts = save_timing(ts, f"{qn_id}) Data analysis", timings)
 
     # add title and summary to outputs
     outputs["title"] = data_analysis["title"]
@@ -564,7 +564,7 @@ async def explore_generated_question(
     #         LOGGER.warning(
     #             f"Image description not generated for {qn_id}: {generated_qn}"
     #         )
-    ts = save_timing(ts, f"{qn_id}\) Consolidate outputs", timings)
+    ts = save_timing(ts, f"{qn_id}) Consolidate outputs", timings)
 
     LOGGER.info(
         f"[Explore] {qn_id}: {generated_qn} completed in {time.time() - ts:.2f}s"
