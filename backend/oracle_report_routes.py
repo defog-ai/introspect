@@ -352,6 +352,7 @@ async def get_report_analysis_ids(req: ReportRequest):
             OracleAnalyses.report_id == req.report_id,
         )
         result = await session.execute(stmt)
+        result = result.scalars().all()
         analyses = [row.analysis_id for row in result]
 
         return JSONResponse(status_code=200, content={"analyses": analyses})

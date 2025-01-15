@@ -317,6 +317,7 @@ def generate_analysis_task(
         try:
             # get report's data
             report_data = await get_report_data(report_id, api_key)
+            LOGGER.debug("Got report data inside generate_analysis_task")
             if "error" in report_data:
                 delete_analysis_task_id(analysis_id)
                 return {"error": report_data["error"]}

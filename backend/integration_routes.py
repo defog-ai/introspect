@@ -46,12 +46,7 @@ class CheckRequest(BaseModel):
 
     model_config = {
         "json_schema_extra": {
-            "examples": [
-                {
-                    "token": "user_token",
-                    "key_name": "integration_key"
-                }
-            ]
+            "examples": [{"token": "user_token", "key_name": "integration_key"}]
         }
     }
 
@@ -70,7 +65,7 @@ async def check_route(req: CheckRequest):
         )
     api_key = get_api_key_from_key_name(req.key_name)
     LOGGER.debug(f"Checking api_key: {api_key}")
-    db_type, db_creds = get_db_type_creds(api_key)
+    db_type, db_creds = await get_db_type_creds(api_key)
     if not db_type or not db_creds:
         return JSONResponse(
             status_code=500,
@@ -184,7 +179,7 @@ async def get_metadata(request: Request):
     params = await request.json()
     token = params.get("token")
     is_temp = params.get("temp", False)
-    format = params.get("format", "json") # used for the download CSV option in the UI
+    format = params.get("format", "json")  # used for the download CSV option in the UI
     if not (await validate_user(token)):
         return JSONResponse(
             status_code=401,
@@ -299,7 +294,9 @@ async def update_db_creds(request: Request):
                 f.write(credentials_file)
         db_creds["json_key_path"] = os.path.join(defog_path, fname)
 
-    success = await update_db_type_creds(api_key=api_key, db_type=db_type, db_creds=db_creds)
+    success = await update_db_type_creds(
+        api_key=api_key, db_type=db_type, db_creds=db_creds
+    )
     print(success)
 
     return {"success": True}

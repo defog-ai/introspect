@@ -364,7 +364,7 @@ async def generate_analysis(req: GenerateAnalysis):
     # start an empty analysis
     err = await add_or_update_analysis(
         api_key=api_key,
-        report_id=str(req.report_id),
+        report_id=int(req.report_id),
         analysis_id=analysis_id,
         analysis_json={
             # initialise the title to just the question for now
@@ -423,12 +423,14 @@ async def generate_analysis(req: GenerateAnalysis):
             api_key=api_key, report_id=req.report_id, summary_dict=summary_dict
         )
 
+    LOGGER.debug(f"Summary dict updated for report {req.report_id}")
+
     # Start the Celery task
     from oracle.core import generate_analysis_task
 
     task = generate_analysis_task.delay(
         api_key=api_key,
-        report_id=str(req.report_id),
+        report_id=int(req.report_id),
         analysis_id=analysis_id,
         new_analysis_question=req.new_analysis_question,
         recommendation_idx=req.recommendation_idx,
