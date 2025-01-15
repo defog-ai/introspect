@@ -401,7 +401,7 @@ async def initialise_analysis(
         return "Invalid token.", None
 
     err = None
-    timestamp = str(datetime.now())
+    timestamp = datetime.now()
     new_analysis_data = None
 
     try:
