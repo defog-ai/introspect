@@ -61,7 +61,7 @@ async def check_route(req: CheckRequest):
     """
     Makes a few checks and returns a dictionary with the error message if any.
     """
-    if not validate_user(req.token, user_type="admin"):
+    if not await validate_user(req.token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -118,7 +118,7 @@ async def check_route(req: CheckRequest):
 async def get_tables_db_creds(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -129,7 +129,7 @@ async def get_tables_db_creds(request: Request):
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
 
     if res:
         db_type, db_creds = res
@@ -185,7 +185,7 @@ async def get_metadata(request: Request):
     token = params.get("token")
     is_temp = params.get("temp", False)
     format = params.get("format", "json") # used for the download CSV option in the UI
-    if not validate_user(token):
+    if not await validate_user(token):
         return JSONResponse(
             status_code=401,
             content={
@@ -227,7 +227,7 @@ async def get_metadata(request: Request):
 async def validate_db_connection(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -272,7 +272,7 @@ async def validate_db_connection(request: Request):
 async def update_db_creds(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -299,7 +299,7 @@ async def update_db_creds(request: Request):
                 f.write(credentials_file)
         db_creds["json_key_path"] = os.path.join(defog_path, fname)
 
-    success = update_db_type_creds(api_key=api_key, db_type=db_type, db_creds=db_creds)
+    success = await update_db_type_creds(api_key=api_key, db_type=db_type, db_creds=db_creds)
     print(success)
 
     return {"success": True}
@@ -310,7 +310,7 @@ async def generate_metadata(request: Request):
     params = await request.json()
 
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -321,7 +321,7 @@ async def generate_metadata(request: Request):
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
     if res:
         db_type, db_creds = res
     else:
@@ -377,7 +377,7 @@ async def generate_metadata(request: Request):
 async def update_metadata(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -388,7 +388,7 @@ async def update_metadata(request: Request):
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
     if res:
         db_type, db_creds = res
     else:
@@ -440,7 +440,7 @@ async def update_metadata(request: Request):
 async def copy_prod_to_dev(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -462,7 +462,7 @@ async def copy_prod_to_dev(request: Request):
 async def copy_prod_to_dev(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -485,7 +485,7 @@ async def get_glossary_golden_queries(request: Request):
     params = await request.json()
     token = params.get("token")
     dev = params.get("dev", False)
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -496,7 +496,7 @@ async def get_glossary_golden_queries(request: Request):
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
     if res:
         db_type, db_creds = res
     else:
@@ -539,7 +539,7 @@ async def get_glossary_golden_queries(request: Request):
 async def update_glossary(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -550,7 +550,7 @@ async def update_glossary(request: Request):
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
     if res:
         db_type, db_creds = res
     else:
@@ -611,7 +611,7 @@ async def update_glossary(request: Request):
 async def update_golden_queries(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -622,7 +622,7 @@ async def update_golden_queries(request: Request):
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
     if res:
         db_type, db_creds = res
     else:
@@ -653,7 +653,7 @@ async def update_golden_queries(request: Request):
 async def update_single_golden_query(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -711,7 +711,7 @@ async def preview_table(request: Request):
     """
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token):
+    if not await validate_user(token):
         return JSONResponse(
             status_code=401,
             content={
@@ -734,7 +734,7 @@ async def preview_table(request: Request):
             "password": "postgres",
         }
     else:
-        res = get_db_type_creds(api_key)
+        res = await get_db_type_creds(api_key)
         if res:
             db_type, db_creds = res
         else:
@@ -786,7 +786,7 @@ async def preview_table(request: Request):
 async def get_dynamic_glossary(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token):
+    if not await validate_user(token):
         return JSONResponse(
             status_code=401,
             content={
@@ -812,7 +812,7 @@ async def get_dynamic_glossary(request: Request):
 async def upload_metadata(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -824,7 +824,7 @@ async def upload_metadata(request: Request):
     key_name = params.get("key_name")
     dev = params.get("dev", False)
     api_key = get_api_key_from_key_name(key_name)
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
     if res:
         db_type, _ = res
     else:
@@ -878,7 +878,7 @@ async def upload_metadata(request: Request):
 async def get_bedrock_analysis_params(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -919,7 +919,7 @@ Here is a summary of the high-level trends in the data:
 async def set_bedrock_analysis_params(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -947,7 +947,7 @@ async def set_bedrock_analysis_params(request: Request):
 async def get_openai_analysis_params(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -985,7 +985,7 @@ Please analyze the data in the CSV file and provide a summary of the key insight
 async def set_openai_analysis_params(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={

@@ -14,7 +14,7 @@ from db_utils import (
     update_analysis_data,
     update_assignment_understanding,
 )
-from utils import deduplicate_columns, warn_str, YieldList, add_indent
+from utils import deduplicate_columns, add_indent
 from .tool_helpers.get_tool_library_prompt import get_tool_library_prompt
 from .tool_helpers.tool_param_types import ListWithDefault
 import asyncio
@@ -490,7 +490,7 @@ async def generate_assignment_understanding(
             assignment_understanding = await turn_into_statements(
                 clarification_questions, dfg_api_key
             )
-            err = update_assignment_understanding(
+            err = await update_assignment_understanding(
                 analysis_id=analysis_id, understanding=assignment_understanding
             )
         except Exception as e:
@@ -516,7 +516,7 @@ async def prepare_cache(
     analysis_execution_cache["dev"] = dev
     analysis_execution_cache["temp"] = temp
 
-    err, assignment_understanding = get_assignment_understanding(
+    err, assignment_understanding = await get_assignment_understanding(
         analysis_id=analysis_id
     )
 
@@ -585,7 +585,7 @@ async def generate_single_step(
         llm_server_url = None
     info(f"LLM_SERVER_ENDPOINT set to: `{llm_server_url}`")
 
-    err, analysis_data = get_analysis_data(analysis_id)
+    err, analysis_data = await get_analysis_data(analysis_id)
     if err:
         # can't do much about not being able to fetch data. fail.
         raise Exception(err)
@@ -780,7 +780,7 @@ async def rerun_step(
         )
 
     # now after we've rerun everything, get the latest analysis data from the db and return those steps
-    err, analysis_data = get_analysis_data(analysis_id)
+    err, analysis_data = await get_analysis_data(analysis_id)
     if err:
         # can't do much about not being able to fetch data. fail.
         raise Exception(err)

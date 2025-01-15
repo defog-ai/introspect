@@ -485,7 +485,7 @@ async def independent_status_updater(report_id: int, generated_qns_summaries: li
     LOGGER.info(f"Updating status for {len(generated_qns_summaries)} questions")
     for summary in generated_qns_summaries:
         # Update the status in the database
-        update_status(report_id, summary)
+        await update_status(report_id, summary)
         # Delay between updates (in seconds)
         await asyncio.sleep(2)
     LOGGER.info(f"All {len(generated_qns_summaries)} statuses updated successfully.")

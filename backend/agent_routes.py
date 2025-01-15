@@ -102,7 +102,7 @@ async def generate_step(request: Request):
             raise Exception("Invalid API key name.")
 
         # check if the assignment_understanding exists in the db for the root analysis (aka the original question in this thread)
-        err, assignment_understanding = get_assignment_understanding(
+        err, assignment_understanding = await get_assignment_understanding(
             analysis_id=root_analysis_id
         )
 
@@ -428,7 +428,7 @@ async def rerun_step_endpoint(request: Request):
         if not edited_step or type(edited_step) != dict:
             raise Exception("Invalid edited step given.")
 
-        err, analysis_data = get_analysis_data(analysis_id=analysis_id)
+        err, analysis_data = await get_analysis_data(analysis_id=analysis_id)
         if err:
             raise Exception("Error fetching analysis data from database")
 
@@ -514,7 +514,7 @@ async def delete_steps(request: Request):
             raise Exception("Invalid analysis id.")
 
         # try to get this analysis' data
-        err, analysis_data = get_analysis_data(analysis_id)
+        err, analysis_data = await get_analysis_data(analysis_id)
         if err:
             raise Exception("Error fetching analysis data from database")
 
@@ -640,7 +640,7 @@ async def manually_create_new_step(request: Request):
             raise Exception(update_err)
 
         # now try to get this analysis' data (this will include the new step added)
-        err, analysis_data = get_analysis_data(analysis_id)
+        err, analysis_data = await get_analysis_data(analysis_id)
         if err:
             raise Exception(err)
 
@@ -895,7 +895,7 @@ async def get_question_type(request: QuestionTypeRequest):
     key_name = request.key_name
     question = request.question
     token = request.token
-    username = validate_user(token, user_type=None, get_username=True)
+    username = await validate_user(token, user_type=None, get_username=True)
     if not username:
         return JSONResponse(
             status_code=401,

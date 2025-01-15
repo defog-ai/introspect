@@ -51,7 +51,7 @@ async def xdb_query(
     # 2. run queries on main and imported databases and fetch data
     if "main" in source_queries:
         main_sql = source_queries["main"]
-        db_type, db_creds = get_db_type_creds(api_key)
+        db_type, db_creds = await get_db_type_creds(api_key)
         data_main, err_msg = await execute_sql(db_type, db_creds, main_sql)
         if err_msg:
             LOGGER.error(

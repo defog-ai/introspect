@@ -117,7 +117,7 @@ async def predict(
     predict_kwargs = formulate_response.get("predict_kwargs", {})
     ts = save_timing(ts, "formulate prediction request", timings)
 
-    db_type, db_creds = get_db_type_creds(api_key)
+    db_type, db_creds = await get_db_type_creds(api_key)
     retry_data_fetch = inputs.get("retry_data_fetch", RETRY_DATA_FETCH)
     err_msg, sql, data = None, None, None
     retry_count = 0

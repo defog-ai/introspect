@@ -19,7 +19,7 @@ async def send_imgo_request(
     """Helper function to handle IMGO request processing."""
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token):
+    if not await validate_user(token):
         return JSONResponse(
             status_code=401,
             content={
@@ -32,7 +32,7 @@ async def send_imgo_request(
     optimized_metadata = params.get("optimized_metadata", None)
 
     api_key = get_api_key_from_key_name(key_name)
-    db_type, _ = get_db_type_creds(api_key)
+    db_type, _ = await get_db_type_creds(api_key)
 
     payload = {
         "api_key": api_key,
@@ -105,7 +105,7 @@ async def check_task_status(request: Request):
     print("Checking task status")
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token):
+    if not await validate_user(token):
         return JSONResponse(
             status_code=401,
             content={

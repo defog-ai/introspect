@@ -94,7 +94,7 @@ async def reports_list(req: BasicRequest):
     - status
     - date_created
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -140,7 +140,7 @@ async def download_report(req: ReportRequest):
     """
     Given a report_id, this endpoint will return the report pdf file to the user.
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
     if "report_id" not in req:
@@ -159,7 +159,7 @@ async def delete_report(req: ReportRequest):
     Given a report_id, this endpoint will delete the report from the system.
     Reports in progress will have their associated background tasks cancelled.
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -185,7 +185,7 @@ async def get_report_mdx(req: ReportRequest):
 
     Will return status 400 if no string is found.
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -266,7 +266,7 @@ async def update_report_mdx(req: UpdateReportMDXRequest):
     """
     Given a report_id, this endpoint will update the MDX string for the report.
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -306,11 +306,11 @@ async def get_report_data_endpoint(req: ReportRequest):
     """
     Given a report_id, this endpoint will returns all the data for this report. Returns the full row stored in the db.
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
-    report_data = get_report_data(req.report_id, api_key)
+    report_data = await get_report_data(req.report_id, api_key)
 
     if "error" in report_data:
         return JSONResponse(status_code=404, content=report_data)
@@ -323,7 +323,7 @@ async def get_report_image(req: GetReportImageRequest):
     """
     Given a report_id, this endpoint will return the image file as base 64 string.
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -342,7 +342,7 @@ async def get_report_analysis_ids(req: ReportRequest):
     """
     Given a report_id, this endpoint will return the list of analyses ids for the report.
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -362,7 +362,7 @@ async def get_report_analysis(req: ReportAnalysisRequest):
     """
     Given a report_id and an analysis_id, this endpoint will return the analysis for the report.
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -392,7 +392,7 @@ async def get_report_status(req: ReportRequest):
     """
     Given a report_id, this endpoint will return the status of the report.
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -419,7 +419,7 @@ async def get_report_summary(req: ReportRequest):
     The executive summary will have links to the relevant analyses should the user want to
     dive deeper into a particular answer/insight.
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
     # get from export key's executive_summary
@@ -450,7 +450,7 @@ async def get_report_comments(req: ReportRequest):
     """
     Given a report_id, this endpoint will return the comments for the report.
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -491,7 +491,7 @@ async def update_report_comments(req: UpdateReportCommentsRequest):
     """
     Given a report_id, this endpoint will update the comments for the report.
     """
-    if not validate_user(req.token, user_type=None, get_username=False):
+    if not await validate_user(req.token, user_type=None, get_username=False):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
 

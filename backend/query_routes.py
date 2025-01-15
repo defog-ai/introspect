@@ -20,7 +20,7 @@ async def query(request: Request):
     key_name = body.get("key_name")
     glossary = body.get("glossary", "")
     api_key = get_api_key_from_key_name(key_name)
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
 
     if res:
         db_type, db_creds = res
@@ -28,7 +28,7 @@ async def query(request: Request):
         return {"error": "no db creds found"}
     ignore_cache = body.get("ignore_cache", False)
     token = body.get("token")
-    if not validate_user(token):
+    if not await validate_user(token):
         return JSONResponse(
             status_code=401,
             content={

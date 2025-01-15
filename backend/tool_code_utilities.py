@@ -52,7 +52,7 @@ async def fetch_query_into_df(
     # important note: this is currently a blocking call
     # TODO: add an option to the defog library to make this async
     if not temp:
-        res = get_db_type_creds(api_key)
+        res = await get_db_type_creds(api_key)
         db_type, db_creds = res
     else:
         db_type = "postgres"

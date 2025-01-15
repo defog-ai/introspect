@@ -60,7 +60,7 @@ async def sources_list_route(req: SourcesListRequest):
     Returns a dictionary of sources with the link as the key and the source title,
     type, summary, and tables as the value.
     """
-    if not validate_user(req.token):
+    if not await validate_user(req.token):
         return JSONResponse(
             status_code=401,
             content={
@@ -155,7 +155,7 @@ async def sources_import_route(req: ImportSourcesRequest):
     Import sources into the OracleSources table in the internal database.
     """
     ts, timings = time.time(), []
-    if not validate_user(req.token):
+    if not await validate_user(req.token):
         return JSONResponse(
             status_code=401,
             content={
@@ -360,7 +360,7 @@ async def delete_source(req: DeleteSourceRequest):
     """
     Delete a source from the OracleSources table in the internal database.
     """
-    if not validate_user(req.token):
+    if not await validate_user(req.token):
         return JSONResponse(
             status_code=401,
             content={
@@ -479,7 +479,7 @@ async def imported_tables_create_route(req: CreateImportedTablesRequest):
         "table_description": "This table contains fruit products purchased by certain card numbers"
     }
     """
-    if not validate_user(req.token):
+    if not await validate_user(req.token):
         return JSONResponse(
             status_code=401,
             content={

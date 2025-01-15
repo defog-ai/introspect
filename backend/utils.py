@@ -11,14 +11,6 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-
-# custom list class with a overwrite_key attribute
-class YieldList(list):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.overwrite_key = None
-
-
 def replace_whitespace(s):
     pattern = re.compile(r'",\s*"')
     return re.sub(pattern, '", "', s)

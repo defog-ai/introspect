@@ -54,7 +54,7 @@ async def validate_google_token(token: str):
         hashed_password = get_hashed_username(user_email)
 
         # Check if user exists
-        if validate_user(hashed_password):
+        if await validate_user(hashed_password):
             dets = login_user(user_email, "")
             dets["user_email"] = user_email
             return dets
@@ -88,7 +88,7 @@ async def reset_password(request: Request):
     username = params.get("username", None)
     new_password = params.get("password", None)
     token = params.get("token", None)
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={

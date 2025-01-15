@@ -16,7 +16,7 @@ router = APIRouter()
 async def get_user_history(request: Request):
     params = await request.json()
     token = params.get("token")
-    username = validate_user(token, get_username=True)
+    username = await validate_user(token, get_username=True)
     if not username:
         return {"error": "Invalid token"}
 
@@ -52,7 +52,7 @@ class UpdateHistoryRequest(BaseModel):
 @router.post("/update_user_history")
 async def update_user_history(request: UpdateHistoryRequest):
     token = request.token
-    username = validate_user(token, get_username=True)
+    username = await validate_user(token, get_username=True)
     key_name = request.key_name
     history = request.history
 

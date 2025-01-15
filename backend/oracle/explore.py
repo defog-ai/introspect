@@ -71,7 +71,7 @@ async def explore_data(
     context = gather_context.get("context", "")
     problem_statement = gather_context.get("problem_statement", "")
     hard_filters = inputs.get("hard_filters", [])
-    db_type, db_creds = get_db_type_creds(api_key)
+    db_type, db_creds = await get_db_type_creds(api_key)
     max_rounds = inputs.get("max_rounds", MAX_ROUNDS)
     comments: List[CommentsWithRelevantText] = inputs.get("comments", [])
     general_comments: str = inputs.get("general_comments", "")

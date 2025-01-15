@@ -91,7 +91,7 @@ async def clarify_question(req: ClarifyQuestionRequest):
         task_type: str
     """
     ts, timings = time.time(), []
-    username = validate_user(req.token, user_type=None, get_username=True)
+    username = await validate_user(req.token, user_type=None, get_username=True)
     if not username:
         return JSONResponse(
             status_code=401,
@@ -192,7 +192,7 @@ async def suggest_web_sources(req: Request):
     body = await req.json()
     key_name = body.pop("key_name")
     token = body.pop("token")
-    username = validate_user(token, user_type=None, get_username=True)
+    username = await validate_user(token, user_type=None, get_username=True)
     if not username:
         return JSONResponse(
             status_code=401,
@@ -255,7 +255,7 @@ class GenerateAnalysis(AnalysisRequest):
 
 @router.post("/oracle/get_analysis_status")
 async def get_analysis_status_endpoint(req: AnalysisRequest):
-    username = validate_user(req.token, user_type=None, get_username=True)
+    username = await validate_user(req.token, user_type=None, get_username=True)
 
     if not username:
         return JSONResponse(
@@ -287,7 +287,7 @@ async def delete_analysis_endpoint(req: AnalysisRequest):
     If recommendation_idx is provided, deletes the analysis for that recommendation.
     Also cancels any running Celery task for this analysis.
     """
-    username = validate_user(req.token, user_type=None, get_username=True)
+    username = await validate_user(req.token, user_type=None, get_username=True)
 
     if not username:
         return JSONResponse(
@@ -322,7 +322,8 @@ async def delete_analysis_endpoint(req: AnalysisRequest):
     # update summary dict if applicable
     if req.recommendation_idx is not None:
         summary_dict = (
-            get_report_data(req.report_id, api_key)["data"]
+            (await get_report_data(req.report_id, api_key))
+            .get("data", {})
             .get("outputs", {})
             .get(TaskStage.EXPORT.value, {})
             .get("executive_summary", None)
@@ -346,7 +347,7 @@ async def delete_analysis_endpoint(req: AnalysisRequest):
 
 @router.post("/oracle/generate_analysis")
 async def generate_analysis(req: GenerateAnalysis):
-    username = validate_user(req.token, user_type=None, get_username=True)
+    username = await validate_user(req.token, user_type=None, get_username=True)
 
     if not username:
         return JSONResponse(
@@ -378,7 +379,7 @@ async def generate_analysis(req: GenerateAnalysis):
         return JSONResponse(status_code=500, content={"error": err})
 
     # get report's data
-    report_data = get_report_data(req.report_id, api_key)
+    report_data = await get_report_data(req.report_id, api_key)
 
     if "error" in report_data:
         return JSONResponse(status_code=404, content=report_data)
@@ -386,7 +387,7 @@ async def generate_analysis(req: GenerateAnalysis):
     report_data = report_data["data"]
 
     # Get previous analyses data
-    err, previous_analyses = get_multiple_analyses(
+    err, previous_analyses = await get_multiple_analyses(
         analysis_ids=req.previous_analysis_ids,
         columns=["analysis_id", "analysis_json", "status"],
     )
@@ -449,7 +450,7 @@ async def begin_generation(req: BeginGenerationRequest):
     full list of configuration options, this endpoint will begin the process of
     generating a report asynchronously as a celery task.
     """
-    username = validate_user(req.token, user_type=None, get_username=True)
+    username = await validate_user(req.token, user_type=None, get_username=True)
     if not username:
         return JSONResponse(
             status_code=401,
@@ -509,7 +510,7 @@ async def revision(req: ReviseReportRequest):
     """
     Given a report_id, this endpoint will submit the report for revision based on the comments passed.
     """
-    username = validate_user(req.token, user_type=None, get_username=True)
+    username = await validate_user(req.token, user_type=None, get_username=True)
     if not username:
         return JSONResponse(
             status_code=401,
@@ -541,7 +542,7 @@ async def revision(req: ReviseReportRequest):
     """
 
     # get the report's data
-    report_data = get_report_data(req.report_id, api_key)
+    report_data = await get_report_data(req.report_id, api_key)
     if (
         "error" in report_data
         or "data" not in report_data

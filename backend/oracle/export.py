@@ -56,7 +56,7 @@ async def generate_report(
     title = summary_dict.get("title", "")
     # Update report name in database if title is present
     if title:
-        update_report_name(report_id=report_id, report_name=title)
+        await update_report_name(report_id=report_id, report_name=title)
 
     summary_dict = summary_response.get("summary_dict", {})
     LOGGER.info(f"Generated Summary for report {report_id}")

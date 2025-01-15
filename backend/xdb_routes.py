@@ -19,7 +19,7 @@ async def xdb_query_route(request: Request):
     if not api_key:
         token = body.get("token")
         key_name = body.get("key_name")
-        username = validate_user(token, user_type=None, get_username=True)
+        username = await validate_user(token, user_type=None, get_username=True)
         api_key = get_api_key_from_key_name(key_name)
         if not username:
             return JSONResponse(

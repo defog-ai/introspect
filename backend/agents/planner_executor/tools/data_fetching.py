@@ -24,7 +24,7 @@ async def data_fetcher_and_aggregator(
         raise ValueError("Question cannot be empty")
 
     api_key = global_dict.get("dfg_api_key", "")
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
     db_type, _ = res
 
     temp = global_dict.get("temp", False)

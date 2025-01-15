@@ -16,7 +16,7 @@ async def check_basic_readiness(request: Request):
     params = await request.json()
     token = params.get("token")
     dev = params.get("dev", False)
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -61,7 +61,7 @@ async def check_golden_queries_validity(request: Request):
     params = await request.json()
     token = params.get("token")
     dev = params.get("dev", False)
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -72,7 +72,7 @@ async def check_golden_queries_validity(request: Request):
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
     if res:
         db_type, db_creds = res
     else:
@@ -90,7 +90,7 @@ async def check_glossary_consistency(request: Request):
     params = await request.json()
     token = params.get("token")
     dev = params.get("dev")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -114,7 +114,7 @@ async def check_golden_query_coverage(request: Request):
     params = await request.json()
     token = params.get("token")
     dev = params.get("dev")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -125,7 +125,7 @@ async def check_golden_query_coverage(request: Request):
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
     if res:
         db_type, db_creds = res
     else:
@@ -154,7 +154,7 @@ async def regression_results(request: Request):
     """
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -166,7 +166,7 @@ async def regression_results(request: Request):
     queries = params.get("queries", [])
 
     api_key = get_api_key_from_key_name(key_name)
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
     if res:
         db_type, db_creds = res
     else:

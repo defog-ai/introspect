@@ -7,6 +7,7 @@ import uuid
 from typing import Dict, Tuple
 
 import redis
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm.attributes import flag_modified
 from oracle.constants import TaskStage
 from generic_utils import make_request
@@ -26,8 +27,7 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.ext.declarative import declarative_base
-from utils import YieldList
+from sqlalchemy.orm import declarative_base
 from utils_logging import LOGGER
 
 REDIS_HOST = os.getenv("REDIS_INTERNAL_HOST", "agents-redis")
@@ -73,8 +73,8 @@ elif INTERNAL_DB == "postgres":
 
     # if using postgres
     print("using postgres as our internal db")
-    connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
-    engine = create_engine(connection_uri)
+    connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
+    engine = create_async_engine(connection_uri, pool_size=30)
 
     if ORACLE_ENABLED:
         if IMPORTED_TABLES_DBNAME == db_creds["database"]:
@@ -102,7 +102,7 @@ elif INTERNAL_DB == "sqlserver":
 
     # if using sqlserver
     connection_uri = f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server"
-    engine = create_engine(connection_uri)
+    engine = create_async_engine(connection_uri)
 
     if ORACLE_ENABLED:
         if IMPORTED_TABLES_DBNAME == db_creds["database"]:
@@ -123,28 +123,6 @@ elif INTERNAL_DB == "sqlserver":
 metadata = MetaData()
 
 Base = declarative_base(metadata=metadata)
-
-
-class Docs(Base):
-    __tablename__ = "defog_docs"
-    doc_id = Column(Text, primary_key=True)
-    doc_md = Column(Text)
-    doc_blocks = Column(JSON)
-    editor_defog_blocks = Column(JSON)
-    api_key = Column(Text, nullable=False)
-    timestamp = Column(DateTime)
-    username = Column(Text)
-    doc_xml = Column(Text)
-    doc_uint8 = Column(JSON)
-    doc_title = Column(Text)
-    archived = Column(Boolean, default=False)
-
-
-class RecentlyViewedDocs(Base):
-    __tablename__ = "defog_recently_viewed_docs"
-    username = Column(Text, primary_key=True)
-    api_key = Column(Text, nullable=False)
-    recent_docs = Column(JSON)
 
 
 class Analyses(Base):
@@ -289,7 +267,11 @@ if ORACLE_ENABLED:
 
 
 # tables should already be created in create_sql_tables.py
-Base.metadata.create_all(engine)
+async def init_models():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
 
 if ORACLE_ENABLED:
     try:
@@ -335,29 +317,30 @@ def convert_cols_to_jsonb(
         return False
 
 
-def get_db_type_creds(api_key: str) -> Tuple[str, Dict[str, str]]:
-    with engine.begin() as conn:
-        row = conn.execute(
+async def get_db_type_creds(api_key: str) -> Tuple[str, Dict[str, str]]:
+    async with engine.begin() as conn:
+        row = await conn.execute(
             select(DbCreds.db_type, DbCreds.db_creds).where(DbCreds.api_key == api_key)
-        ).fetchone()
+        )
+        row = row.fetchone()
     return row
 
 
-def update_db_type_creds(api_key, db_type, db_creds):
-    with engine.begin() as conn:
+async def update_db_type_creds(api_key, db_type, db_creds):
+    async with engine.begin() as conn:
         # first, check if the record exists
-        record = conn.execute(
-            select(DbCreds).where(DbCreds.api_key == api_key)
-        ).fetchone()
+        record = await conn.execute(select(DbCreds).where(DbCreds.api_key == api_key))
+
+        record = record.fetchone()
 
         if record:
-            conn.execute(
+            await conn.execute(
                 update(DbCreds)
                 .where(DbCreds.api_key == api_key)
                 .values(db_type=db_type, db_creds=db_creds)
             )
         else:
-            conn.execute(
+            await conn.execute(
                 insert(DbCreds).values(
                     api_key=api_key, db_type=db_type, db_creds=db_creds
                 )
@@ -366,11 +349,10 @@ def update_db_type_creds(api_key, db_type, db_creds):
     return True
 
 
-def validate_user(token, user_type=None, get_username=False):
-    with engine.begin() as conn:
-        user = conn.execute(
-            select(Users).where(Users.hashed_password == token)
-        ).fetchone()
+async def validate_user(token, user_type=None, get_username=False):
+    async with engine.begin() as conn:
+        user = await conn.execute(select(Users).where(Users.hashed_password == token))
+        user = user.fetchone()
     if user:
         if user_type == "admin":
             if user.user_type == "admin":
@@ -389,7 +371,7 @@ def validate_user(token, user_type=None, get_username=False):
         return False
 
 
-def get_user_key_names(token):
+async def get_user_key_names(token):
     """
     Returns the key names that a user can access based on their token.
     If the user is an admin, they can access all the keys.
@@ -397,10 +379,9 @@ def get_user_key_names(token):
     Returning `None` or an empty string means the user can access all keys.
     Returning "Invalid token" means the token is invalid.
     """
-    with engine.begin() as conn:
-        user = conn.execute(
-            select(Users).where(Users.hashed_password == token)
-        ).fetchone()
+    async with engine.begin() as conn:
+        user = await conn.execute(select(Users).where(Users.hashed_password == token))
+        user = user.fetchone()
 
     if not user:
         return "Invalid token"
@@ -415,7 +396,7 @@ def get_user_key_names(token):
 async def initialise_analysis(
     user_question, token, api_key, custom_id=None, other_initialisation_details={}
 ):
-    username = validate_user(token, get_username=True)
+    username = await validate_user(token, get_username=True)
     if not username:
         return "Invalid token.", None
 
@@ -425,7 +406,7 @@ async def initialise_analysis(
 
     try:
         """Create a new analyis in the defog_analyses table"""
-        with engine.begin() as conn:
+        async with engine.begin() as conn:
             if not custom_id or custom_id == "":
                 analysis_id = str(uuid.uuid4())
             else:
@@ -444,7 +425,7 @@ async def initialise_analysis(
             ):
                 new_analysis_data.update(other_initialisation_details)
 
-            conn.execute(insert(Analyses).values(new_analysis_data))
+            await conn.execute(insert(Analyses).values(new_analysis_data))
             # if other data has parent_analyses, insert analysis_id into the follow_up_analyses column, which is an array, of all the parent analyses
             if (
                 other_initialisation_details is not None
@@ -455,11 +436,13 @@ async def initialise_analysis(
                     "parent_analyses"
                 ):
                     # get the parent analysis
-                    parent_analysis = conn.execute(
+                    parent_analysis = await conn.execute(
                         select(Analyses).where(
                             Analyses.analysis_id == parent_analysis_id
                         )
-                    ).fetchone()
+                    )
+
+                    parent_analysis = parent_analysis.fetchone()
                     if parent_analysis is not None:
                         parent_analysis = parent_analysis._mapping
                         # get the follow_up_analyses array
@@ -469,7 +452,7 @@ async def initialise_analysis(
                         # add the analysis_id to the array
                         follow_up_analyses.append(analysis_id)
                         # update the row
-                        conn.execute(
+                        await conn.execute(
                             update(Analyses)
                             .where(Analyses.analysis_id == parent_analysis_id)
                             .values(follow_up_analyses=follow_up_analyses)
@@ -489,7 +472,7 @@ async def initialise_analysis(
         return err, new_analysis_data
 
 
-def get_analysis_data(analysis_id):
+async def get_analysis_data(analysis_id):
     try:
         err = None
         analysis_data = {}
@@ -503,10 +486,11 @@ def get_analysis_data(analysis_id):
         elif analysis_id != "" and analysis_id is not None and analysis_id != "new":
             print("Looking for uuid: ", analysis_id)
             # try to fetch analysis_data data
-            with engine.begin() as conn:
-                row = conn.execute(
+            async with engine.begin() as conn:
+                row = await conn.execute(
                     select(Analyses).where(Analyses.analysis_id == analysis_id)
-                ).fetchone()
+                )
+                row = row.fetchone()
 
                 if row:
                     print("Found uuid: ", analysis_id)
@@ -524,7 +508,7 @@ def get_analysis_data(analysis_id):
         return err, analysis_data
 
 
-def get_assignment_understanding(analysis_id):
+async def get_assignment_understanding(analysis_id):
     """
     Returns the assignment_understanding column from the analysis with the given analysis_id
     """
@@ -538,12 +522,14 @@ def get_assignment_understanding(analysis_id):
 
         elif analysis_id != "" and analysis_id is not None and analysis_id != "new":
             # try to fetch analysis_data data
-            with engine.begin() as conn:
-                row = conn.execute(
+            async with engine.begin() as conn:
+                row = await conn.execute(
                     select(
                         Analyses.__table__.columns["assignment_understanding"]
                     ).where(Analyses.analysis_id == analysis_id)
-                ).fetchone()
+                )
+
+                row = row.fetchone()
 
                 if row:
                     understanding = row.assignment_understanding
@@ -559,7 +545,7 @@ def get_assignment_understanding(analysis_id):
         return err, understanding
 
 
-def update_assignment_understanding(analysis_id, understanding):
+async def update_assignment_understanding(analysis_id, understanding):
     """
     Updates the assignment_understanding column in the analysis with the given analysis_id
     """
@@ -572,8 +558,8 @@ def update_assignment_understanding(analysis_id, understanding):
 
         elif analysis_id != "" and analysis_id is not None and analysis_id != "new":
             # try to fetch analysis_data data
-            with engine.begin() as conn:
-                conn.execute(
+            async with engine.begin() as conn:
+                await conn.execute(
                     update(Analyses)
                     .where(Analyses.analysis_id == analysis_id)
                     .values(assignment_understanding=understanding)
@@ -608,13 +594,15 @@ async def update_analysis_data(
             err = "Incorrect request_type: " + request_type
 
         else:
-            with engine.begin() as conn:
+            async with engine.begin() as conn:
                 # first get the data
-                row = conn.execute(
+                row = await conn.execute(
                     select(Analyses.__table__.columns[request_type]).where(
                         Analyses.analysis_id == analysis_id
                     )
-                ).fetchone()
+                )
+
+                row = row.fetchone()
 
                 if row:
                     curr_data = getattr(row, request_type) or []
@@ -622,9 +610,7 @@ async def update_analysis_data(
 
                     # if new data is a list and we're not asked to replace, concat
                     # if new data is anything else, replace
-                    if (
-                        type(new_data) == list or type(new_data) == YieldList
-                    ) and not replace:
+                    if (type(new_data) == list) and not replace:
                         if not overwrite_key or type(overwrite_key) != str:
                             curr_data = curr_data + new_data
                         # if there's an overwrite_key provided,
@@ -665,13 +651,13 @@ async def update_analysis_data(
                     # insert back into analyses table
                     # if the request type is user_question, we will also update the embedding
                     if request_type == "user_question":
-                        conn.execute(
+                        await conn.execute(
                             update(Analyses)
                             .where(Analyses.analysis_id == analysis_id)
                             .values({request_type: new_data})
                         )
                     else:
-                        conn.execute(
+                        await conn.execute(
                             update(Analyses)
                             .where(Analyses.analysis_id == analysis_id)
                             .values({request_type: curr_data})
@@ -728,16 +714,17 @@ def analysis_data_from_row(row):
         return rpt
 
 
-def get_all_analyses(api_key: str):
+async def get_all_analyses(api_key: str):
     # get analyses from the analyses table
     err = None
     analyses = []
     try:
-        with engine.begin() as conn:
+        async with engine.begin() as conn:
             # first get the data
-            rows = conn.execute(
+            rows = await conn.execute(
                 select(Analyses).where(Analyses.api_key == api_key)
-            ).fetchall()
+            )
+            rows = rows.fetchall()
             if len(rows) > 0:
                 # reshape with "success = true"
                 for row in rows:
@@ -753,327 +740,15 @@ def get_all_analyses(api_key: str):
         return err, analyses
 
 
-async def add_to_recently_viewed_docs(token, doc_id, timestamp, api_key):
-    username = validate_user(token, get_username=True)
-    if not username:
-        return "Invalid token."
-    try:
-        print("Adding to recently viewed docs for user: ", username)
-        with engine.begin() as conn:
-            # add to recently accessed documents for this username
-            # check if it exists
-            row = conn.execute(
-                select(RecentlyViewedDocs)
-                .where(RecentlyViewedDocs.username == username)
-                .where(RecentlyViewedDocs.api_key == api_key)
-            ).fetchone()
-
-            if row:
-                print("Adding to recently viewed docs for user: ", username)
-                # get the recent_docs array
-                recent_docs = row.recent_docs or []
-                # recent_docs is an array of arrays
-                # each item is a [doc_id, timestamp]
-                # check if doc_id is already in the array
-                # if it is, update the timestamp
-                # if not, add it to the array
-                found = False
-                for i, doc in enumerate(recent_docs):
-                    if doc[0] == doc_id:
-                        recent_docs[i][1] = timestamp
-                        found = True
-                        break
-
-                if not found:
-                    recent_docs.append([doc_id, timestamp])
-
-                # update the row
-                conn.execute(
-                    update(RecentlyViewedDocs)
-                    .where(RecentlyViewedDocs.username == username)
-                    .where(RecentlyViewedDocs.api_key == api_key)
-                    .values(recent_docs=recent_docs)
-                )
-            else:
-                # create a new row
-                conn.execute(
-                    insert(RecentlyViewedDocs).values(
-                        {
-                            "api_key": api_key,
-                            "username": username,
-                            "recent_docs": [[doc_id, timestamp]],
-                        }
-                    )
-                )
-    except Exception as e:
-        print(e)
-        # traceback.print_exc()
-        print("Could not add to recently viewed docs\n")
-
-
-async def get_doc_data(api_key, doc_id, token, col_name="doc_blocks"):
-    username = validate_user(token, get_username=True)
-    if not username:
-        return "Invalid token.", None
-    err = None
-    timestamp = str(datetime.now())
-    doc_data = None
-
-    try:
-        """Find the document with the id in the Docs table.
-        If it doesn't exist, create one and return empty data."""
-        with engine.begin() as conn:
-            # check if document exists
-            row = conn.execute(select(Docs).where(Docs.doc_id == doc_id)).fetchone()
-
-            if row:
-                # document exists
-                print("Found document with id: ", doc_id)
-                doc_data = {
-                    "doc_id": row.doc_id,
-                    col_name: getattr(row, col_name),
-                }
-
-            else:
-                # create a new document
-                print("Creating new document with id: ", doc_id)
-                doc_data = {
-                    "doc_id": doc_id,
-                    "doc_blocks": None,
-                    "doc_xml": None,
-                    "doc_uint8": None,
-                    "username": username,
-                }
-
-                conn.execute(
-                    insert(Docs).values(
-                        {
-                            "doc_id": doc_id,
-                            "api_key": api_key,
-                            "doc_blocks": None,
-                            "doc_xml": None,
-                            "doc_uint8": None,
-                            "timestamp": timestamp,
-                            "username": username,
-                        }
-                    )
-                )
-
-    except Exception as e:
-        traceback.print_exc()
-        print(e)
-        err = "Could not create a new analysis."
-        doc_data = None
-    finally:
-        return err, doc_data
-
-
-async def delete_doc(doc_id):
-    err = None
-    try:
-        with engine.begin() as conn:
-            result = conn.execute(delete(Docs).where(Docs.doc_id == doc_id))
-
-            if result.rowcount > 0:
-                print("Deleted doc with id: ", doc_id)
-            else:
-                err = "Doc not found."
-                raise ValueError(err)
-    except Exception as e:
-        err = str(e)
-        print(e)
-        traceback.print_exc()
-    finally:
-        return err
-
-
-async def update_doc_data(doc_id, col_names=[], new_data={}):
-    err = None
-    if len(col_names) == 0 and len(new_data) == 0:
-        return None
-
-    try:
-        with engine.begin() as conn:
-            # first get the data
-            row = conn.execute(
-                select(*[Docs.__table__.columns[c] for c in col_names]).where(
-                    Docs.doc_id == doc_id
-                )
-            ).fetchone()
-
-            if row:
-                print("Updating document with id: ", doc_id, "column: ", col_names)
-                conn.execute(update(Docs).where(Docs.doc_id == doc_id).values(new_data))
-            else:
-                err = "Doc not found."
-                raise ValueError(err)
-    except Exception as e:
-        err = str(e)
-        print(e)
-        traceback.print_exc()
-    finally:
-        return err
-
-
-def create_table_chart(table_data):
-    err = None
-    if table_data is None or table_data.get("table_id") is None:
-        return "Invalid table data"
-
-    try:
-        with engine.begin() as conn:
-            print("Creating new table chart with id: ", table_data.get("table_id"))
-            conn.execute(insert(TableCharts).values(table_data))
-
-    except Exception as e:
-        err = str(e)
-        print(e)
-        traceback.print_exc()
-    finally:
-        return err
-
-
-async def get_table_data(table_id):
-    err = None
-    table_data = None
-    if table_id == "" or table_id is None or not table_id:
-        return "Invalid table data", None
-
-    try:
-        with engine.begin() as conn:
-            # check if document exists
-            row = conn.execute(
-                select(TableCharts).where(TableCharts.table_id == table_id)
-            ).fetchone()
-
-            if row:
-                # document exists
-                print("Found table with id: ", table_id)
-                table_data = row._mapping
-
-            else:
-                err = "Table not found."
-
-    except Exception as e:
-        traceback.print_exc()
-        print(e)
-        err = "Could not find table."
-        table_data = None
-    finally:
-        return err, table_data
-
-
-async def get_all_docs(token):
-    username = validate_user(token, get_username=True)
-    if not username:
-        return "Invalid token.", None, None
-    # get analyses from the analyses table
-    err = None
-    own_docs = []
-    recently_viewed_docs = []
-    try:
-        """Get docs for a user from the defog_docs table"""
-        with engine.begin() as conn:
-            # first get the data
-            rows = conn.execute(
-                select(
-                    Docs.__table__.columns["doc_id"],
-                    Docs.__table__.columns["doc_title"],
-                    Docs.__table__.columns["doc_uint8"],
-                    Docs.__table__.columns["timestamp"],
-                    Docs.__table__.columns["archived"],
-                ).where(Docs.username == username)
-            ).fetchall()
-            if len(rows) > 0:
-                for row in rows:
-                    doc = row._mapping
-                    own_docs.append(doc)
-
-        # get recently viewed docs
-        with engine.begin() as conn:
-            # first get the data
-            # merge recentlyvieweddocs with docs to get the user_question too
-            # create an array of objects with doc_id, doc_title, timestamp, user_question
-            rows = conn.execute(
-                select(
-                    RecentlyViewedDocs.__table__.columns["recent_docs"],
-                ).where(RecentlyViewedDocs.username == username)
-            ).fetchall()
-
-            if len(rows) > 0:
-                for row in rows:
-                    doc = row._mapping
-                    for recent_doc in doc["recent_docs"]:
-                        # get the doc data from the docs table
-                        # this will skip docs that have been deleted because of the where clause
-                        match = conn.execute(
-                            select(
-                                Docs.__table__.columns["doc_id"],
-                                Docs.__table__.columns["doc_title"],
-                                Docs.__table__.columns["timestamp"],
-                                Docs.__table__.columns["username"],
-                            ).where(Docs.doc_id == recent_doc[0])
-                        ).fetchone()
-
-                        if match:
-                            recently_viewed_docs.append(
-                                {
-                                    "doc_id": match.doc_id,
-                                    "doc_title": match.doc_title,
-                                    # also return user who created this document
-                                    "username": match.username,
-                                    "timestamp": recent_doc[1],
-                                }
-                            )
-
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        err = "Something went wrong while fetching your documents. Please contact us."
-        own_docs = None
-        recently_viewed_docs = None
-    finally:
-        return err, own_docs, recently_viewed_docs
-
-
-async def get_all_analyses(api_key: str):
-    # get analyses from the analyses table
+async def get_multiple_analyses(
+    analysis_ids=[], columns=["analysis_id", "user_question"]
+):
     err = None
     analyses = []
     try:
-        """Create a new analyis in the defog_analyses table"""
-        with engine.begin() as conn:
+        async with engine.begin() as conn:
             # first get the data
-            rows = conn.execute(
-                select(
-                    *[
-                        Analyses.__table__.columns["analysis_id"],
-                        Analyses.__table__.columns["user_question"],
-                    ]
-                )
-                .where(Analyses.api_key == api_key)
-                .where(Analyses.analysis_id.contains("analysis"))
-            ).fetchall()
-
-            if len(rows) > 0:
-                for row in rows:
-                    analyses.append(row._mapping)
-    except Exception as e:
-        traceback.print_exc()
-        print(e)
-        err = "Could not find analyses for the user."
-        analyses = []
-    finally:
-        return err, analyses
-
-
-def get_multiple_analyses(analysis_ids=[], columns=["analysis_id", "user_question"]):
-    err = None
-    analyses = []
-    try:
-        with engine.begin() as conn:
-            # first get the data
-            rows = conn.execute(
+            rows = await conn.execute(
                 select(
                     *[
                         Analyses.__table__.columns[c]
@@ -1081,7 +756,9 @@ def get_multiple_analyses(analysis_ids=[], columns=["analysis_id", "user_questio
                         if c in Analyses.__table__.columns
                     ]
                 ).where(Analyses.analysis_id.in_(analysis_ids))
-            ).fetchall()
+            )
+
+            rows = rows.fetchall()
 
             if len(rows) > 0:
                 for row in rows:
@@ -1123,12 +800,14 @@ async def store_feedback(
     return error, did_overwrite
 
 
-def get_all_tools():
+async def get_all_tools():
     err = None
     tools = {}
     try:
-        with engine.begin() as conn:
-            all_tools = conn.execute(select(Tools)).fetchall()
+        async with engine.begin() as conn:
+            all_tools = await conn.execute(select(Tools))
+
+            all_tools = all_tools.fetchall()
             # convert this to a dictionary without embedding
             all_tools = {
                 tool.function_name: {
@@ -1162,10 +841,9 @@ async def check_tool_exists(tool_name):
     exists = False
     row = None
     try:
-        with engine.begin() as conn:
-            row = conn.execute(
-                select(Tools).where(Tools.tool_name == tool_name)
-            ).fetchone()
+        async with engine.begin() as conn:
+            row = conn.execute(select(Tools).where(Tools.tool_name == tool_name))
+            row = row.fetchone()
             if row:
                 exists = True
     except Exception as e:
@@ -1192,7 +870,7 @@ async def add_tool(
     try:
         embedding = None
         # insert into the tools table
-        with engine.begin() as conn:
+        async with engine.begin() as conn:
             # first check if it exists
             err, exists, existing_tool = await check_tool_exists(tool_name)
             if err:
@@ -1212,13 +890,13 @@ async def add_tool(
             print(f"Tool {tool_name} already exists and no code changes detected.")
         else:
             print(f"Adding tool {function_name} to local postgres database.")
-            with engine.begin() as conn:
+            async with engine.begin() as conn:
                 # delete if exists
                 if existing_tool:
                     conn.execute(delete(Tools).where(Tools.tool_name == tool_name))
 
                 # update with latest
-                conn.execute(
+                await conn.execute(
                     insert(Tools).values(
                         {
                             "tool_name": tool_name,
@@ -1272,11 +950,12 @@ async def add_tool(
 async def update_tool(function_name, update_dict):
     err = None
     try:
-        with engine.begin() as conn:
+        async with engine.begin() as conn:
             # check if tool exists
-            row = conn.execute(
+            row = await conn.execute(
                 select(Tools).where(Tools.function_name == function_name)
-            ).fetchone()
+            )
+            row = row.fetchone()
 
             if row is None:
                 raise ValueError(f"Tool {function_name} does not exist.")
@@ -1298,11 +977,12 @@ async def update_tool(function_name, update_dict):
 async def toggle_disable_tool(function_name):
     err = None
     try:
-        with engine.begin() as conn:
+        async with engine.begin() as conn:
             # check cannot_disable
-            rows = conn.execute(
+            rows = await conn.execute(
                 select(Tools).where(Tools.function_name == function_name)
-            ).fetchone()
+            )
+            rows = rows.fetchone()
             if rows is None:
                 raise ValueError(f"Tool {function_name} does not exist.")
             elif rows.cannot_disable:
@@ -1310,7 +990,7 @@ async def toggle_disable_tool(function_name):
                     f"Tool {function_name} cannot be disabled. Please contact admin."
                 )
             else:
-                conn.execute(
+                await conn.execute(
                     update(Tools)
                     .where(Tools.function_name == function_name)
                     .values(disabled=not rows.disabled)
@@ -1329,11 +1009,12 @@ async def toggle_disable_tool(function_name):
 async def delete_tool(function_name):
     err = None
     try:
-        with engine.begin() as conn:
+        async with engine.begin() as conn:
             # also cannot_delete check
-            rows = conn.execute(
+            rows = await conn.execute(
                 select(Tools).where(Tools.function_name == function_name)
-            ).fetchone()
+            )
+            rows = rows.fetchone()
             if rows is None:
                 raise ValueError(f"Tool {function_name} does not exist.")
             # elif rows.cannot_delete:
@@ -1341,7 +1022,9 @@ async def delete_tool(function_name):
             #         f"Tool {function_name} cannot be deleted. Please contact admin."
             #     )
             else:
-                conn.execute(delete(Tools).where(Tools.function_name == function_name))
+                await conn.execute(
+                    delete(Tools).where(Tools.function_name == function_name)
+                )
     except Exception as e:
         print(e)
         traceback.print_exc()
@@ -1353,41 +1036,14 @@ async def delete_tool(function_name):
 async def delete_all_tools():
     err = None
     try:
-        with engine.begin() as conn:
-            conn.execute(delete(Tools))
+        async with engine.begin() as conn:
+            await conn.execute(delete(Tools))
     except Exception as e:
         print(e)
         traceback.print_exc()
         err = str(e)
     finally:
         return err
-
-
-async def get_analysis_versions(root_analysis_id):
-    # get all versions of an analysis
-    # get ids that end with -v1, -v2, -v3..
-    err = None
-    versions = []
-    try:
-        with engine.begin() as conn:
-            cursor = conn.connection.cursor()
-            cursor.execute(
-                """
-                SELECT analysis_id, user_question, gen_steps
-                FROM defog_analyses
-                WHERE root_analysis_id = ?
-                ORDER BY timestamp ASC
-                """,
-                (root_analysis_id,),
-            )
-            rows = cursor.fetchall()
-            versions = [{"analysis_id": x[0], "user_question": x[1]} for x in rows]
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        err = str(e)
-    finally:
-        return err, versions
 
 
 # returns all combined user_questions of root_analysis + max_n direct parents
@@ -1406,7 +1062,7 @@ async def get_analysis_question_context(analysis_id, max_n=5):
         count = 0
         while True:
             # get this analysis
-            err, analysis_data = get_analysis_data(curr_analysis_id)
+            err, analysis_data = await get_analysis_data(curr_analysis_id)
             if err:
                 raise Exception(err)
 
@@ -1436,30 +1092,28 @@ async def get_analysis_question_context(analysis_id, max_n=5):
         return err, question_context
 
 
-def update_status(report_id: int, new_status: str):
-    from sqlalchemy.orm import Session
+async def update_status(report_id: int, new_status: str):
 
     try:
-        with Session(engine) as session:
+        async with AsyncSession(engine) as session:
             stmt = select(OracleReports).where(OracleReports.report_id == report_id)
-            result = session.execute(stmt)
+            result = await session.execute(stmt)
             report = result.scalar_one()
             report.status = new_status
-            session.commit()
+            await session.commit()
     except Exception as e:
         LOGGER.error(f"Error updating status for report {report_id}: {str(e)}")
 
 
-def get_report_data(report_id: int, api_key: str):
-    from sqlalchemy.orm import Session
+async def get_report_data(report_id: int, api_key: str):
 
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = select(OracleReports).where(
             OracleReports.api_key == api_key,
             OracleReports.report_id == report_id,
         )
 
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         row = result.scalar_one_or_none()
 
         if row:
@@ -1480,19 +1134,18 @@ async def delete_analysis(api_key: str, analysis_id: str, report_id: int):
     """
     Given an api_key, analysis_id and report_id, this endpoint will delete the analysis from the database in the oracle_analyses table.
     """
-    from sqlalchemy.orm import Session
 
     err = None
 
     try:
-        with Session(engine) as session:
+        async with AsyncSession(engine) as session:
             stmt = delete(OracleAnalyses).where(
                 OracleAnalyses.analysis_id == analysis_id,
                 OracleAnalyses.report_id == report_id,
                 OracleAnalyses.api_key == api_key,
             )
-            session.execute(stmt)
-            session.commit()
+            await session.execute(stmt)
+            await session.commit()
     except Exception as e:
         LOGGER.error(f"Error deleting analysis {analysis_id}: {str(e)}")
         err = str(e)[:300]
@@ -1511,25 +1164,24 @@ async def add_or_update_analysis(
     """
     Given a report_id, this endpoint will update the report data in the database in the oracle_analyses table.
     """
-    from sqlalchemy.orm import Session
 
     err = None
 
     try:
-        with Session(engine) as session:
+        async with AsyncSession(engine) as session:
             # if the analysis id exists, update it
             stmt = select(OracleAnalyses).where(
                 OracleAnalyses.analysis_id == analysis_id,
                 OracleAnalyses.report_id == report_id,
                 OracleAnalyses.api_key == api_key,
             )
-            result = session.execute(stmt)
+            result = await session.execute(stmt)
             analysis = result.scalar_one_or_none()
             if analysis:
                 analysis.status = status
                 analysis.analysis_json = analysis_json
                 analysis.mdx = mdx
-                session.commit()
+                await session.commit()
             else:
                 stmt = insert(OracleAnalyses).values(
                     report_id=report_id,
@@ -1539,8 +1191,8 @@ async def add_or_update_analysis(
                     analysis_json=analysis_json,
                     mdx=mdx,
                 )
-                session.execute(stmt)
-                session.commit()
+                await session.execute(stmt)
+                await session.commit()
     except Exception as e:
         LOGGER.error(f"Error adding analysis {analysis_id}: {str(e)}")
         err = str(e)[:300]
@@ -1552,20 +1204,19 @@ async def get_analysis_status(api_key: str, analysis_id: str, report_id: int) ->
     """
     Given an api_key, analysis_id and report_id, this endpoint will return the status of the analysis.
     """
-    from sqlalchemy.orm import Session
 
     err = None
     status = None
 
     try:
-        with Session(engine) as session:
+        async with AsyncSession(engine) as session:
             stmt = select(OracleAnalyses).where(
                 OracleAnalyses.analysis_id == analysis_id,
                 OracleAnalyses.report_id == report_id,
                 OracleAnalyses.api_key == api_key,
             )
 
-            result = session.execute(stmt)
+            result = await session.execute(stmt)
             row = result.scalar_one_or_none()
 
             if row:
@@ -1587,24 +1238,23 @@ async def update_analysis_status(
     Given an api_key, analysis_id and report_id, this endpoint will update the status of the analysis.
     If the analysis is not found, it will error.
     """
-    from sqlalchemy.orm import Session
 
     err = None
 
     try:
-        with Session(engine) as session:
+        async with AsyncSession(engine) as session:
             stmt = select(OracleAnalyses).where(
                 OracleAnalyses.analysis_id == analysis_id,
                 OracleAnalyses.report_id == report_id,
                 OracleAnalyses.api_key == api_key,
             )
 
-        result = session.execute(stmt)
-        row = result.scalar_one_or_none()
+            result = await session.execute(stmt)
+            row = result.scalar_one_or_none()
 
         if row:
             row.status = new_status
-            session.commit()
+            await session.commit()
         else:
             raise Exception("Analysis not found")
     except Exception as e:
@@ -1619,16 +1269,15 @@ async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
     Given a report_id, this endpoint will update the summary_dict in the database in the oracle_reports table.
     Also updates the report_name if a title is present in the summary_dict.
     """
-    from sqlalchemy.orm import Session
 
     err = None
 
     try:
-        with Session(engine) as session:
+        async with AsyncSession(engine) as session:
             stmt = select(OracleReports).where(
                 OracleReports.api_key == api_key, OracleReports.report_id == report_id
             )
-            result = session.execute(stmt)
+            result = await session.execute(stmt)
             report = result.scalar_one_or_none()
             if report:
                 LOGGER.info(f"Updating summary dict for report {report_id}")
@@ -1643,7 +1292,7 @@ async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
                     report.report_name = title
 
                 flag_modified(report, "outputs")
-                session.commit()
+                await session.commit()
             else:
                 raise Exception("Report not found")
     except Exception as e:
@@ -1653,7 +1302,7 @@ async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
         return err
 
 
-def update_report_name(report_id: int, report_name: str) -> None:
+async def update_report_name(report_id: int, report_name: str) -> None:
     """
     Updates the report_name for a given report_id in the oracle_reports table.
 
@@ -1661,11 +1310,10 @@ def update_report_name(report_id: int, report_name: str) -> None:
         report_id: The ID of the report to update
         report_name: The new report name to set
     """
-    from sqlalchemy.orm import Session
 
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
         stmt = select(OracleReports).where(OracleReports.report_id == report_id)
-        result = session.execute(stmt)
+        result = await session.execute(stmt)
         report = result.scalar_one()
         report.report_name = report_name
-        session.commit()
+        await session.commit()

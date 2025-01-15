@@ -102,7 +102,7 @@ async def process_event(event):
             defog_api_key = get_api_key_from_key_name(key_name)
 
             # then, get the db type and db creds associated with the API key
-            res = get_db_type_creds(defog_api_key)
+            res = await get_db_type_creds(defog_api_key)
 
             # lastly, instantiate defog
             defog = Defog(api_key=defog_api_key, db_type=res[0], db_creds=res[1])

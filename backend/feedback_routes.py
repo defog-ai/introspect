@@ -23,7 +23,7 @@ async def feedback(request: Request):
     params = await request.json()
     key_name = params.get("key_name")
     token = params.get("token")
-    if not validate_user(token):
+    if not await validate_user(token):
         return JSONResponse(
             status_code=401,
             content={
@@ -63,7 +63,7 @@ async def get_feedback(request: Request):
     """Responds by fetching the feedback users have given in the past."""
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token):
+    if not await validate_user(token):
         return JSONResponse(
             status_code=401,
             content={
@@ -115,7 +115,7 @@ async def get_instructions_recommendation(request: Request):
     """Uses negative feedback for a query to provide recommendations for instructions that might improve it."""
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token):
+    if not await validate_user(token):
         return JSONResponse(
             status_code=401,
             content={
@@ -129,7 +129,7 @@ async def get_instructions_recommendation(request: Request):
     sql_generated = params.get("sql_generated")
     user_feedback = params.get("user_feedback")
     url = DEFOG_BASE_URL + "/reflect_on_error"
-    res = get_db_type_creds(api_key)
+    res = await get_db_type_creds(api_key)
 
     if res:
         db_type, db_creds = res

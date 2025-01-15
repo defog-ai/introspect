@@ -26,7 +26,7 @@ async def add_user(request: Request):
     token = params.get("token")
     gsheets_url = params.get("gsheets_url")
     user_dets_csv = params.get("users_csv")
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -115,7 +115,7 @@ async def add_user(request: Request):
 async def get_users(request: Request):
     params = await request.json()
     token = params.get("token", None)
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -137,7 +137,7 @@ async def get_users(request: Request):
 async def delete_user(request: Request):
     params = await request.json()
     token = params.get("token", None)
-    if not validate_user(token, user_type="admin"):
+    if not await validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={
@@ -187,7 +187,7 @@ async def add_user_with_token(request: Request):
     user_token = params.get("user_token")
     username = params.get("username")
     user_type = params.get("user_type")
-    if not validate_user(auth_token, user_type="admin"):
+    if not await validate_user(auth_token, user_type="admin"):
         return JSONResponse(
             status_code=401,
             content={

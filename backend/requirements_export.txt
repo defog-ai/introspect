@@ -18,6 +18,7 @@ scipy
 seaborn==0.13.2
 slack_sdk
 sqlalchemy
+sqlalchemy[asyncio]
 sqlalchemy-utils
 sqlglot
 sqlparse
@@ -39,3 +40,7 @@ asyncpg
 aiomysql
 aiosqlite
 aioodbc
+
+# tests
+pytest
+pytest-asyncio

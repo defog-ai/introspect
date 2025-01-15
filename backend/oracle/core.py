@@ -315,7 +315,7 @@ def generate_analysis_task(
     async def _run_analysis():
         try:
             # get report's data
-            report_data = get_report_data(report_id, api_key)
+            report_data = await get_report_data(report_id, api_key)
             if "error" in report_data:
                 delete_analysis_task_id(analysis_id)
                 return {"error": report_data["error"]}
