@@ -842,7 +842,7 @@ async def check_tool_exists(tool_name):
     row = None
     try:
         async with engine.begin() as conn:
-            row = conn.execute(select(Tools).where(Tools.tool_name == tool_name))
+            row = await conn.execute(select(Tools).where(Tools.tool_name == tool_name))
             row = row.fetchone()
             if row:
                 exists = True

@@ -124,7 +124,7 @@ async def get_user_tools(request: Request):
     """
     Get all tools available to the user.
     """
-    err, tools = get_all_tools()
+    err, tools = await get_all_tools()
     if err:
         return {"success": False, "error_message": err}
     return {"success": True, "tools": tools}

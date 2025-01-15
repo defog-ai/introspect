@@ -2,6 +2,7 @@ import re
 import pandas as pd
 import traceback
 import inspect
+from agents.planner_executor.tools.all_tools import tools
 from utils import (
     SqlExecutionError,
     error_str,
@@ -9,7 +10,8 @@ from utils import (
     filter_function_inputs,
     wrap_in_async,
 )
-from db_utils import get_all_tools
+
+# from db_utils import get_all_tools
 import asyncio
 from tool_code_utilities import default_top_level_imports
 
@@ -92,9 +94,9 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
     # print(f"Global dict: {global_dict}")
     result = {}
 
-    err, tools = get_all_tools()
-    if err:
-        return {"error_message": f"Error getting tools: {err}"}, {}
+    # err, tools = await get_all_tools()
+    # if err:
+    #     return {"error_message": f"Error getting tools: {err}"}, {}
 
     for key in tools:
         tool = tools[key]
@@ -106,8 +108,9 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
             # add a few default top level imports so input types can be defined in the function definition
             code = default_top_level_imports + "\n" + code
 
-            exec(code, globals())
-            fn = globals()[function_name]
+            # exec(code, globals())
+            # fn = globals()[function_name]
+            fn = tool["fn"]
 
             if tool_function_inputs.get("global_dict"):
                 tool_function_inputs["global_dict"].update(global_dict)
