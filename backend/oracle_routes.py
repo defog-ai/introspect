@@ -614,30 +614,30 @@ async def revision(req: ReviseReportRequest):
     # now, create a new report
     # this is so that if the revision fails, the original report is not lost
     async with AsyncSession(engine) as session:
-        stmt = (
-            insert(OracleReports)
-            .values(
-                api_key=api_key,
-                username=username,
-                inputs=inputs_with_comments,
-                status="Revision: started",
-                created_ts=datetime.now(),
+        async with session.begin():
+            stmt = (
+                insert(OracleReports)
+                .values(
+                    api_key=api_key,
+                    username=username,
+                    inputs=inputs_with_comments,
+                    status="Revision: started",
+                    created_ts=datetime.now(),
+                )
+                .returning(OracleReports.report_id)
             )
-            .returning(OracleReports.report_id)
-        )
-        result = await session.execute(stmt)
-        report_id = result.scalar_one()
-        await session.commit()
+            result = await session.execute(stmt)
+            report_id = result.scalar_one()
 
     # set the status of the original report to "Revision in progress"
     async with AsyncSession(engine) as session:
-        stmt = (
-            update(OracleReports)
-            .where(OracleReports.report_id == req.report_id)
-            .values(status=f"Revision in progress")
-        )
-        await session.execute(stmt)
-        await session.commit()
+        async with session.begin():
+            stmt = (
+                update(OracleReports)
+                .where(OracleReports.report_id == req.report_id)
+                .values(status=f"Revision in progress")
+            )
+            await session.execute(stmt)
 
     begin_generation_task.apply_async(
         args=[api_key, report_id, TaskType.EXPLORATION.value, inputs_with_comments]
