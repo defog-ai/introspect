@@ -151,10 +151,11 @@ export default function ViewOracleReport() {
 
   return (
     // sad reality for getting the chart container to work
-    // it makes a request to this api endpoint to get the chart data
+    // it makes a request to this api endpoint to edit the chart's config
     // which defaults to demo.defog.ai if not provided
     // (╯°□°)╯︵ ┻━┻
     <AgentConfigContext.Provider
+      // @ts-ignore
       value={{ val: { apiEndpoint: process.env.NEXT_PUBLIC_AGENTS_ENDPOINT } }}
     >
       <OracleReportContext.Provider
