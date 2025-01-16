@@ -7,11 +7,16 @@ import {
   getReportExecutiveSummary,
   extensions,
   parseMDX,
+  getReportComments,
+  sendCommentUpdates,
+  commentManager,
 } from "$components/oracle/oracleUtils";
 
 import { EditorProvider } from "@tiptap/react";
+import type { Editor } from "@tiptap/core";
 import React from "react";
 import {
+  OracleReportComment,
   OracleReportContext,
   Summary,
 } from "$components/oracle/OracleReportContext";
@@ -34,6 +39,9 @@ export default function ViewOracleReport() {
   const [multiTables, setMultiTables] = useState<any>({});
   const [images, setImages] = useState<any>({});
   const [analysisIds, setAnalysisIds] = useState<string[]>([]);
+  const [comments, setComments] = useState<OracleReportComment[]>([]);
+
+  const token = useRef<string>(null);
 
   const [mdx, setMDX] = useState<string | null>(null);
   const [executiveSummary, setExecutiveSummary] = useState<Summary | null>(
@@ -53,9 +61,15 @@ export default function ViewOracleReport() {
   useEffect(() => {
     const setup = async (reportId: string, keyName: string) => {
       try {
+        token.current =
+          localStorage.getItem("defogToken") ||
+          "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0";
         setLoading(true);
-        const token = localStorage.getItem("defogToken");
-        const [mdx, status] = await getReportMDX(reportId, keyName, token);
+        const [mdx, status] = await getReportMDX(
+          reportId,
+          keyName,
+          token.current
+        );
 
         reportStatus.current = status;
 
@@ -72,7 +86,7 @@ export default function ViewOracleReport() {
         const sum: Summary = await getReportExecutiveSummary(
           reportId,
           keyName,
-          token
+          token.current
         );
 
         // add ids to each recommendation
@@ -81,16 +95,22 @@ export default function ViewOracleReport() {
           ...rec,
         }));
 
-        setExecutiveSummary(sum);
-
         const analysisIds = await getReportAnalysisIds(
           reportId,
           keyName,
-          token
+          token.current
         );
 
+        const fetchedComments = await getReportComments(
+          reportId,
+          keyName,
+          token.current
+        );
+
+        setExecutiveSummary(sum);
         setAnalysisIds(analysisIds);
 
+        setComments(fetchedComments);
         setMDX(parsed.mdx);
       } catch (e) {
         console.error(e);
@@ -167,9 +187,13 @@ export default function ViewOracleReport() {
           executiveSummary: executiveSummary,
           reportId: reportId,
           keyName: keyName,
-          token:
-            localStorage.getItem("defogToken") ||
-            "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0",
+          token: token.current,
+          commentManager: commentManager({
+            reportId: reportId,
+            keyName: keyName,
+            token: token.current,
+            initialComments: comments,
+          }),
         }}
       >
         <div className="relative">
