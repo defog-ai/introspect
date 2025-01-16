@@ -470,20 +470,20 @@ async def begin_generation(req: BeginGenerationRequest):
         "hard_filters": req.hard_filters,
     }
     async with AsyncSession(engine) as session:
-        stmt = (
-            insert(OracleReports)
-            .values(
-                api_key=api_key,
-                username=username,
-                inputs=user_inputs,
-                status="started",
-                created_ts=datetime.now(),
+        with session.begin():
+            stmt = (
+                insert(OracleReports)
+                .values(
+                    api_key=api_key,
+                    username=username,
+                    inputs=user_inputs,
+                    status="started",
+                    created_ts=datetime.now(),
+                )
+                .returning(OracleReports.report_id)
             )
-            .returning(OracleReports.report_id)
-        )
-        result = await session.execute(stmt)
-        report_id = result.scalar_one()
-        await session.commit()
+            result = await session.execute(stmt)
+            report_id = result.scalar_one()
     begin_generation_task.apply_async(
         args=[api_key, report_id, req.task_type, user_inputs]
     )

@@ -198,28 +198,29 @@ async def sources_import_route(req: ImportSourcesRequest):
         }
         sources_to_insert.append(source_to_insert)
     async with AsyncSession(engine) as session:
+        async with session.begin():
         # insert the sources into the database if not present. otherwise update
-        for source in sources_to_insert:
-            stmt = select(OracleSources).where(
-                OracleSources.api_key == api_key, OracleSources.link == source["link"]
-            )
-            result = await session.execute(stmt)
-            if result.scalar() is None:
-                stmt = insert(OracleSources).values(source)
-                await session.execute(stmt)
-                LOGGER.debug(f"Inserted source {source['link']} into the database.")
-            else:
-                stmt = (
-                    update(OracleSources)
-                    .where(
-                        OracleSources.api_key == api_key,
-                        OracleSources.link == source["link"],
-                    )
-                    .values(source)
+            for source in sources_to_insert:
+                stmt = select(OracleSources).where(
+                    OracleSources.api_key == api_key, OracleSources.link == source["link"]
                 )
-                await session.execute(stmt)
-                LOGGER.debug(f"Updated source {source['link']} in the database.")
-        await session.commit()
+                result = await session.execute(stmt)
+                if result.scalar() is None:
+                    stmt = insert(OracleSources).values(source)
+                    await session.execute(stmt)
+                    LOGGER.debug(f"Inserted source {source['link']} into the database.")
+                else:
+                    stmt = (
+                        update(OracleSources)
+                        .where(
+                            OracleSources.api_key == api_key,
+                            OracleSources.link == source["link"],
+                        )
+                        .values(source)
+                    )
+                    await session.execute(stmt)
+                    LOGGER.debug(f"Updated source {source['link']} in the database.")
+            
     LOGGER.debug(f"Inserted {len(sources_to_insert)} sources into the database.")
     ts = save_timing(ts, "Sources parsed", timings)
 
@@ -371,24 +372,24 @@ async def delete_source(req: DeleteSourceRequest):
     api_key = get_api_key_from_key_name(req.key_name)
     # delete source from oracle_sources
     async with AsyncSession(engine) as session:
-        stmt = select(OracleSources).where(
-            OracleSources.api_key == api_key, OracleSources.link == req.link
-        )
-        result = await session.execute(stmt)
-        source = result.fetchone()
-        if source is None:
-            return JSONResponse(
+        async with session.begin():
+            stmt = select(OracleSources).where(
+                OracleSources.api_key == api_key, OracleSources.link == req.link
+            )
+            result = await session.execute(stmt)
+            source = result.fetchone()
+            if source is None:
+                return JSONResponse(
                 status_code=404,
                 content={
                     "error": "Not Found",
                     "message": "Source not found",
                 },
             )
-        stmt = delete(OracleSources).where(
-            OracleSources.api_key == api_key, OracleSources.link == req.link
-        )
-        await session.execute(stmt)
-        await session.commit()
+            stmt = delete(OracleSources).where(
+                OracleSources.api_key == api_key, OracleSources.link == req.link
+            )
+            await session.execute(stmt)
     # delete source's tables from imported_tables
     with imported_tables_engine.begin() as imported_tables_connection:
         # get table_name for all entries with the link

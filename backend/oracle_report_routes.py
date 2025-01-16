@@ -162,20 +162,23 @@ async def delete_report(req: ReportRequest):
     if not (await validate_user(req.token, user_type=None, get_username=False)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     api_key = get_api_key_from_key_name(req.key_name)
+    report = None
 
     async with AsyncSession(engine) as session:
-        stmt = select(OracleReports).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
-        )
-        result = await session.execute(stmt)
-        report = result.scalar_one_or_none()
-        if report:
-            await session.delete(report)
-            await session.commit()
-            return JSONResponse(status_code=200, content={"message": "Report deleted"})
-        else:
-            return JSONResponse(status_code=404, content={"error": "Report not found"})
+        async with session.begin():
+            stmt = select(OracleReports).where(
+                OracleReports.api_key == api_key,
+                OracleReports.report_id == req.report_id,
+            )
+            result = await session.execute(stmt)
+            report = result.scalar_one_or_none()
+            if report:
+                await session.delete(report)
+    
+    if report:
+        return JSONResponse(status_code=200, content={"message": "Report deleted"})
+    else:
+        return JSONResponse(status_code=404, content={"error": "Report not found"})
 
 
 @router.post("/oracle/get_report_mdx")
@@ -280,25 +283,25 @@ async def update_report_mdx(req: UpdateReportMDXRequest):
         )
 
     async with AsyncSession(engine) as session:
-        stmt = select(OracleReports).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
-        )
-        result = await session.execute(stmt)
-        report = result.scalar_one_or_none()
-        if report:
-            if req.tiptap_mdx is not None:
-                report.outputs[TaskStage.EXPORT.value]["tiptap_mdx"] = req.tiptap_mdx
-            if req.mdx is not None:
-                report.outputs[TaskStage.EXPORT.value]["mdx"] = req.mdx
-            flag_modified(report, "outputs")
-            await session.commit()
-            return JSONResponse(status_code=200, content={"message": "MDX updated"})
-        else:
-            return JSONResponse(
-                status_code=404,
-                content={"error": "Report not found"},
+        async with session.begin():
+            stmt = select(OracleReports).where(
+                OracleReports.api_key == api_key,
+                OracleReports.report_id == req.report_id,
             )
+            result = await session.execute(stmt)
+            report = result.scalar_one_or_none()
+            if report:
+                if req.tiptap_mdx is not None:
+                    report.outputs[TaskStage.EXPORT.value]["tiptap_mdx"] = req.tiptap_mdx
+                if req.mdx is not None:
+                    report.outputs[TaskStage.EXPORT.value]["mdx"] = req.mdx
+                flag_modified(report, "outputs")
+                return JSONResponse(status_code=200, content={"message": "MDX updated"})
+            else:
+                return JSONResponse(
+                    status_code=404,
+                    content={"error": "Report not found"},
+                )
 
 
 @router.post("/oracle/get_report_data")
@@ -497,23 +500,24 @@ async def update_report_comments(req: UpdateReportCommentsRequest):
     api_key = get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
-        stmt = select(OracleReports).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
-        )
-        result = await session.execute(stmt)
-        report = result.scalar_one_or_none()
-        if report:
-            report.comments = req.comments
-            await session.commit()
-            return JSONResponse(
-                status_code=200, content={"message": "Comments updated"}
+        async with session.begin():
+            stmt = select(OracleReports).where(
+                OracleReports.api_key == api_key,
+                OracleReports.report_id == req.report_id,
             )
-        else:
-            return JSONResponse(
-                status_code=404,
-                content={"error": "Report not found"},
-            )
+            result = await session.execute(stmt)
+            report = result.scalar_one_or_none()
+
+            if report:
+                report.comments = req.comments
+                return JSONResponse(
+                        status_code=200, content={"message": "Comments updated"}
+                    )
+            else:
+                return JSONResponse(
+                    status_code=404,
+                    content={"error": "Report not found"},
+                )
 
 
 ### HELPER FUNCTIONS ###

@@ -1093,20 +1093,18 @@ async def get_analysis_question_context(analysis_id, max_n=5):
 
 
 async def update_status(report_id: int, new_status: str):
-
     try:
         async with AsyncSession(engine) as session:
-            stmt = select(OracleReports).where(OracleReports.report_id == report_id)
-            result = await session.execute(stmt)
-            report = result.scalar_one()
-            report.status = new_status
-            await session.commit()
+            async with session.begin():
+                stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+                result = await session.execute(stmt)
+                report = result.scalar_one()
+                report.status = new_status
     except Exception as e:
         LOGGER.error(f"Error updating status for report {report_id}: {str(e)}")
 
 
 async def get_report_data(report_id: int, api_key: str):
-
     async with AsyncSession(engine) as session:
         stmt = select(OracleReports).where(
             OracleReports.api_key == api_key,
@@ -1139,13 +1137,13 @@ async def delete_analysis(api_key: str, analysis_id: str, report_id: int):
 
     try:
         async with AsyncSession(engine) as session:
-            stmt = delete(OracleAnalyses).where(
-                OracleAnalyses.analysis_id == analysis_id,
-                OracleAnalyses.report_id == report_id,
-                OracleAnalyses.api_key == api_key,
-            )
-            await session.execute(stmt)
-            await session.commit()
+            async with session.begin():
+                stmt = delete(OracleAnalyses).where(
+                    OracleAnalyses.analysis_id == analysis_id,
+                    OracleAnalyses.report_id == report_id,
+                    OracleAnalyses.api_key == api_key,
+                )
+                await session.execute(stmt)
     except Exception as e:
         LOGGER.error(f"Error deleting analysis {analysis_id}: {str(e)}")
         err = str(e)[:300]
@@ -1239,20 +1237,20 @@ async def update_analysis_status(
 
     try:
         async with AsyncSession(engine) as session:
-            stmt = select(OracleAnalyses).where(
-                OracleAnalyses.analysis_id == analysis_id,
-                OracleAnalyses.report_id == report_id,
-                OracleAnalyses.api_key == api_key,
-            )
+            async with session.begin():
+                stmt = select(OracleAnalyses).where(
+                    OracleAnalyses.analysis_id == analysis_id,
+                    OracleAnalyses.report_id == report_id,
+                    OracleAnalyses.api_key == api_key,
+                )
 
-            result = await session.execute(stmt)
-            row = result.scalar_one_or_none()
+                result = await session.execute(stmt)
+                row = result.scalar_one_or_none()
 
-        if row:
-            row.status = new_status
-            await session.commit()
-        else:
-            raise Exception("Analysis not found")
+                if row:
+                    row.status = new_status
+                else:
+                    raise Exception("Analysis not found")
     except Exception as e:
         LOGGER.error(f"Error updating analysis status {analysis_id}: {str(e)}")
         err = str(e)[:300]
@@ -1270,27 +1268,27 @@ async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
 
     try:
         async with AsyncSession(engine) as session:
-            stmt = select(OracleReports).where(
-                OracleReports.api_key == api_key, OracleReports.report_id == report_id
-            )
-            result = await session.execute(stmt)
-            report = result.scalar_one_or_none()
-            if report:
-                LOGGER.info(f"Updating summary dict for report {report_id}")
+            async with session.begin():
+                stmt = select(OracleReports).where(
+                    OracleReports.api_key == api_key, OracleReports.report_id == report_id
+                )
+                result = await session.execute(stmt)
+                report = result.scalar_one_or_none()
+                if report:
+                    LOGGER.info(f"Updating summary dict for report {report_id}")
 
-                new_outputs = report.outputs
-                new_outputs[TaskStage.EXPORT.value]["executive_summary"] = summary_dict
-                report.outputs = new_outputs
+                    new_outputs = report.outputs
+                    new_outputs[TaskStage.EXPORT.value]["executive_summary"] = summary_dict
+                    report.outputs = new_outputs
 
-                # Update report title if present in summary_dict
-                title = summary_dict.get("title")
-                if title:
-                    report.report_name = title
+                    # Update report title if present in summary_dict
+                    title = summary_dict.get("title")
+                    if title:
+                        report.report_name = title
 
-                flag_modified(report, "outputs")
-                await session.commit()
-            else:
-                raise Exception("Report not found")
+                    flag_modified(report, "outputs")
+                else:
+                    raise Exception("Report not found")
     except Exception as e:
         LOGGER.error(f"Error updating summary dict for report {report_id}: {str(e)}")
         err = str(e)[:300]
@@ -1308,8 +1306,8 @@ async def update_report_name(report_id: int, report_name: str) -> None:
     """
 
     async with AsyncSession(engine) as session:
-        stmt = select(OracleReports).where(OracleReports.report_id == report_id)
-        result = await session.execute(stmt)
-        report = result.scalar_one()
-        report.report_name = report_name
-        await session.commit()
+        async with session.begin():
+            stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+            result = await session.execute(stmt)
+            report = result.scalar_one()
+            report.report_name = report_name

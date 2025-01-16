@@ -94,24 +94,24 @@ async def gather_context(
             }
             sources_to_insert.append(source_to_insert)
         async with AsyncSession(engine) as session:
-            # insert the sources into the database if not present. otherwise update
-            for source in sources_to_insert:
-                stmt = select(OracleSources).where(OracleSources.link == source["link"])
-                result = await session.execute(stmt)
-                if result.scalar() is None:
-                    source["api_key"] = api_key
-                    stmt = insert(OracleSources).values(source)
-                    await session.execute(stmt)
-                    LOGGER.debug(f"Inserted source {source['link']} into the database.")
-                else:
-                    stmt = (
-                        update(OracleSources)
-                        .where(OracleSources.link == source["link"])
-                        .values(source)
-                    )
-                    await session.execute(stmt)
-                    LOGGER.debug(f"Updated source {source['link']} in the database.")
-            await session.commit()
+            async with session.begin():
+                # insert the sources into the database if not present. otherwise update
+                for source in sources_to_insert:
+                    stmt = select(OracleSources).where(OracleSources.link == source["link"])
+                    result = await session.execute(stmt)
+                    if result.scalar() is None:
+                        source["api_key"] = api_key
+                        stmt = insert(OracleSources).values(source)
+                        await session.execute(stmt)
+                        LOGGER.debug(f"Inserted source {source['link']} into the database.")
+                    else:
+                        stmt = (
+                            update(OracleSources)
+                            .where(OracleSources.link == source["link"])
+                            .values(source)
+                        )
+                        await session.execute(stmt)
+                        LOGGER.debug(f"Updated source {source['link']} in the database.")
         LOGGER.debug(f"Inserted {len(sources_to_insert)} sources into the database.")
         ts = save_timing(ts, "Sources parsed", timings)
 
