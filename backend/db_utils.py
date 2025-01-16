@@ -1164,39 +1164,36 @@ async def add_or_update_analysis(
     """
     Given a report_id, this endpoint will add or (if it already exists) update the data for a particular analysis in the database in the oracle_analyses table.
     """
-
     err = None
-
     try:
         async with AsyncSession(engine) as session:
-            # if the analysis id exists, update it
-            stmt = select(OracleAnalyses).where(
-                OracleAnalyses.analysis_id == analysis_id,
-                OracleAnalyses.report_id == report_id,
-                OracleAnalyses.api_key == api_key,
-            )
-            result = await session.execute(stmt)
-            analysis = result.scalar_one_or_none()
-            if analysis:
-                analysis.status = status
-                analysis.analysis_json = analysis_json
-                analysis.mdx = mdx
-            else:
-                stmt = insert(OracleAnalyses).values(
-                    report_id=report_id,
-                    api_key=api_key,
-                    analysis_id=analysis_id,
-                    status=status,
-                    analysis_json=analysis_json,
-                    mdx=mdx,
+            async with session.begin():
+                # if the analysis id exists, update it
+                stmt = select(OracleAnalyses).where(
+                    OracleAnalyses.analysis_id == analysis_id,
+                    OracleAnalyses.report_id == report_id,
+                    OracleAnalyses.api_key == api_key,
                 )
-                await session.execute(stmt)
-            await session.commit()
+                result = await session.execute(stmt)
+                analysis = result.scalar_one_or_none()
+                if analysis:
+                    analysis.status = status
+                    analysis.analysis_json = analysis_json
+                    analysis.mdx = mdx
+                else:
+                    stmt = insert(OracleAnalyses).values(
+                        report_id=report_id,
+                        api_key=api_key,
+                        analysis_id=analysis_id,
+                        status=status,
+                        analysis_json=analysis_json,
+                        mdx=mdx,
+                    )
+                    await session.execute(stmt)
     except Exception as e:
         LOGGER.error(f"Error adding analysis {analysis_id}: {str(e)}")
         err = str(e)[:300]
-    finally:
-        return err
+    return err
 
 
 async def get_analysis_status(api_key: str, analysis_id: str, report_id: int) -> str:
