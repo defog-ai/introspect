@@ -470,7 +470,7 @@ async def begin_generation(req: BeginGenerationRequest):
         "hard_filters": req.hard_filters,
     }
     async with AsyncSession(engine) as session:
-        with session.begin():
+        async with session.begin():
             stmt = (
                 insert(OracleReports)
                 .values(
