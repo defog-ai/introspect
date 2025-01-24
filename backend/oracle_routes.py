@@ -45,6 +45,7 @@ from oracle.redis_utils import (
     store_analysis_task_id,
 )
 from oracle.celery_app import celery_app
+from oracle.core import generate_analysis_task
 
 
 router = APIRouter()
@@ -426,8 +427,6 @@ async def generate_analysis(req: GenerateAnalysis):
     LOGGER.debug(f"Summary dict updated for report {req.report_id}")
 
     # Start the Celery task
-    from oracle.core import generate_analysis_task
-
     task = generate_analysis_task.delay(
         api_key=api_key,
         report_id=int(req.report_id),
