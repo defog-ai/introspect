@@ -55,62 +55,47 @@ async def download_csv(request: Request):
         if analysis_id is None or type(analysis_id) != str:
             return {"success": False, "error_message": "Invalid analysis id."}
 
-        # first try to find this file in the file system
-        f_name = step_id + "_output-" + output_storage_key + ".feather"
-        f_path = os.path.join(analysis_assets_dir, "datasets", f_name)
+        # re run this step
+        # get steps from db
+        err, analysis_data = await get_analysis_data(analysis_id)
+        if err:
+            raise Exception(err)
 
-        logging.info("lansdfgljansdl")
-
-        if not os.path.isfile(f_path):
-            logging.info(
-                f"Input {output_storage_key} not found in the file system. Rerunning step: {step_id}"
-            )
-            # re run this step
-            # get steps from db
-            err, analysis_data = await get_analysis_data(analysis_id)
-            if err:
-                raise Exception(err)
-
-            # get the steps
-            all_steps = analysis_data.get("gen_steps")
-            if all_steps and all_steps["success"]:
-                all_steps = all_steps["steps"]
-            else:
-                raise Exception("No steps found in analysis data")
-
-            # get the target step
-            target_step = None
-            for step in all_steps:
-                if step["id"] == step_id:
-                    target_step = step
-                    break
-
-            if target_step is None:
-                raise Exception("Request step not found in analysis data")
-
-            _ = await rerun_step(
-                step=target_step,
-                all_steps=all_steps,
-                dfg_api_key=api_key,
-                analysis_id=analysis_id,
-                user_question=None,
-                dev=False,
-                temp=False,
-            )
+        # get the steps
+        all_steps = analysis_data.get("gen_steps")
+        if all_steps and all_steps["success"]:
+            all_steps = all_steps["steps"]
         else:
-            logging.info(
-                f"Input {output_storage_key} found in the file system. No need to rerun step."
-            )
+            raise Exception("No steps found in analysis data")
 
-        # now the file *should* be available
-        df = pd.read_feather(f_path)
+        # get the target step
+        target_step = None
+        for step in all_steps:
+            if step["id"] == step_id:
+                target_step = step
+                break
+
+        if target_step is None:
+            raise Exception("Request step not found in analysis data")
+
+        analysis_data = await rerun_step(
+            step=target_step,
+            all_steps=all_steps,
+            dfg_api_key=api_key,
+            analysis_id=analysis_id,
+            user_question=None,
+            dev=False,
+            temp=False,
+        )
+
+        csv = analysis_data[0]['outputs']['answer']['data']
 
         return {
             "success": True,
             "step_id": step_id,
             "output_storage_key": output_storage_key,
             # get it as a csv string
-            "csv": df.to_csv(index=False),
+            "csv": csv,
         }
 
     except Exception as e:

@@ -130,10 +130,6 @@ def get_input_value(inp, analysis_execution_cache):
             # raise error
             raise MissingDependencyException(variable_name)
         else:
-            # TODO: first look in the analysis_assets directory
-            # asset_file_name = step_id + "_output" + "-" + input_name + ".feather"
-            # find_asset(asset_file_name)
-            # Then store in analysis_execution_cache
             val = analysis_execution_cache[variable_name]
 
     else:
@@ -380,11 +376,8 @@ async def run_step(
             # if the output has data and it is a pandas dataframe,
             # 1. deduplicate the columns
             # 2. store the dataframe in the analysis_execution_cache
-            # 3. store the dataframe in the analysis_assets directory
-            # 4. Finally store in the step object
+            # 3. Finally store in the step object
             if data is not None and type(data) == type(pd.DataFrame()):
-                db_path = step["id"] + "_output-" + output_name + ".feather"
-
                 # deduplicate columns of this df
                 deduplicated = deduplicate_columns(data)
 
@@ -393,11 +386,6 @@ async def run_step(
                 if not skip_cache_storing:
                     analysis_execution_cache[output_name] = deduplicated
                     analysis_execution_cache[output_name].df_name = output_name
-
-                # store the dataframe in the analysis_assets directory
-                deduplicated.reset_index(drop=True).to_feather(
-                    analysis_assets_dir + "/datasets/" + db_path
-                )
 
                 step["outputs"][output_name]["data"] = deduplicated.to_csv(
                     float_format="%.3f", index=False
