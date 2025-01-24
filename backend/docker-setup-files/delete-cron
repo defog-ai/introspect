@@ -1,2 +1,0 @@
-# m h  dom mon dow   command
-0 0 * * * root /usr/local/bin/python3 /agents-python-server/delete_cron.py >> /agent-logs-cron 2>&1
