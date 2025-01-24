@@ -360,7 +360,7 @@ async def generate_metadata(request: Request):
                             flush=True,
                         )
                         table_metadata[table_name][idx]["column_description"] = (
-                            existing_item["column_description"]
+                            existing_item.get("column_description", "")
                         )
 
     metadata = convert_nested_dict_to_list(table_metadata)
