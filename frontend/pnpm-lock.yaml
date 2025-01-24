@@ -18,8 +18,8 @@ importers:
         specifier: ^6.7.0
         version: 6.8.0
       '@defogdotai/agents-ui-components':
-        specifier: 1.1.20
-        version: 1.1.20(@babel/runtime@7.26.0)(@codemirror/autocomplete@6.18.4)(@codemirror/language@6.10.8)(@codemirror/lint@6.8.4)(@codemirror/search@6.5.8)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.36.2)(@types/node@20.17.12)(@types/react@19.0.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        specifier: 1.1.21
+        version: 1.1.21(@babel/runtime@7.26.0)(@codemirror/autocomplete@6.18.4)(@codemirror/language@6.10.8)(@codemirror/lint@6.8.4)(@codemirror/search@6.5.8)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.36.2)(@types/node@20.17.12)(@types/react@19.0.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@notionhq/client':
         specifier: ^2.2.14
         version: 2.2.15
@@ -277,8 +277,8 @@ packages:
   '@codemirror/view@6.36.2':
     resolution: {integrity: sha512-DZ6ONbs8qdJK0fdN7AB82CgI6tYXf4HWk1wSVa0+9bhVznCuuvhQtX8bFBoy3dv8rZSQqUd8GvhVAcielcidrA==}
 
-  '@defogdotai/agents-ui-components@1.1.20':
-    resolution: {integrity: sha512-aPhkZVhCcaR8q4ykkuNKszKmFzP1BbM/Q6om9+Refu+KNmlIO9UpcXTqwqgEu+0WtTz8ezvKxtHXDlq+IJQ7cg==}
+  '@defogdotai/agents-ui-components@1.1.21':
+    resolution: {integrity: sha512-IeDSRCuIXibLTRkrRkgZfa8aYFEK1U3770FdUvRC12Ds3MRJ7ew7Oy+uChEOlXJJW9gy6yY/xPxst6kx7JkTSg==}
     peerDependencies:
       react: 19.0.0
       react-dom: 19.0.0
@@ -4014,7 +4014,7 @@ snapshots:
       style-mod: 4.1.2
       w3c-keyname: 2.2.8
 
-  '@defogdotai/agents-ui-components@1.1.20(@babel/runtime@7.26.0)(@codemirror/autocomplete@6.18.4)(@codemirror/language@6.10.8)(@codemirror/lint@6.8.4)(@codemirror/search@6.5.8)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.36.2)(@types/node@20.17.12)(@types/react@19.0.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@defogdotai/agents-ui-components@1.1.21(@babel/runtime@7.26.0)(@codemirror/autocomplete@6.18.4)(@codemirror/language@6.10.8)(@codemirror/lint@6.8.4)(@codemirror/search@6.5.8)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.36.2)(@types/node@20.17.12)(@types/react@19.0.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@codemirror/lang-python': 6.1.7
       '@codemirror/lang-sql': 6.8.0
@@ -5872,7 +5872,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.19.1(eslint@9.17.0(jiti@1.21.7))(typescript@5.7.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.7.0)(eslint@9.17.0(jiti@1.21.7)):
+  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.19.1(eslint@9.17.0(jiti@1.21.7))(typescript@5.7.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.7.0(eslint-plugin-import@2.31.0)(eslint@9.17.0(jiti@1.21.7)))(eslint@9.17.0(jiti@1.21.7)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -5894,7 +5894,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.17.0(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.19.1(eslint@9.17.0(jiti@1.21.7))(typescript@5.7.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.7.0)(eslint@9.17.0(jiti@1.21.7))
+      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.19.1(eslint@9.17.0(jiti@1.21.7))(typescript@5.7.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.7.0(eslint-plugin-import@2.31.0)(eslint@9.17.0(jiti@1.21.7)))(eslint@9.17.0(jiti@1.21.7))
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
