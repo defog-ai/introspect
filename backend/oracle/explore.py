@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import pandas as pd
 from pydantic import BaseModel
-from db_utils import get_db_type_creds, update_analysis_status
+from db_utils import OracleGuidelines, engine, get_db_type_creds, update_analysis_status
 from generic_utils import make_request
 from oracle.celery_app import LOGGER
 from oracle.constants import TaskType
@@ -21,6 +21,7 @@ from oracle.utils_explore_data import (
 )
 from utils_logging import save_timing
 from utils_sql import execute_sql
+from sqlalchemy import select
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 MAX_ANALYSES = 5
@@ -92,6 +93,17 @@ async def explore_data(
     general_comments_md = ""
     if general_comments:
         general_comments_md = general_comments
+    
+    # get generate_questions_guidelines from DB
+    async with engine.begin() as conn:
+        row = await conn.execute(
+            select(OracleGuidelines.generate_questions_guidelines, OracleGuidelines.generate_questions_deeper_guidelines).where(
+                OracleGuidelines.api_key == api_key
+            )
+        )
+        row = row.scalar_one_or_none()
+        generate_questions_guidelines = row[0] if row else None
+        generate_questions_deeper_guidelines = row[1] if row else None
 
     # generate initial explorer questions
     json_data = {
@@ -108,6 +120,7 @@ async def explore_data(
         "general_comments_md": general_comments_md,
         "original_report_mdx": original_report_mdx,
         "original_analyses": original_analyses,
+        "generate_questions_guidelines": generate_questions_guidelines,
     }
 
     LOGGER.info(f"Generating explorer questions")
@@ -235,6 +248,7 @@ async def explore_data(
                 "comments": comments,
                 "general_comments": general_comments,
                 "is_revision": is_revision,
+                "generate_questions_deeper_guidelines": generate_questions_deeper_guidelines,
             }
             response = await make_request(
                 DEFOG_BASE_URL + "/oracle/gen_explorer_qns_deeper",
