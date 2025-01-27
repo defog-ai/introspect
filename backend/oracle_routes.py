@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from sqlalchemy import update
+from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from utils import longest_substring_overlap
@@ -183,12 +183,38 @@ async def clarify_question(req: ClarifyQuestionRequest):
         # save to oracle_guidelines table, overwriting if already exists
         async with AsyncSession(engine) as session:
             async with session.begin():
-                await session.execute(
-                    update(OracleGuidelines).values(
-                        api_key=api_key,
-                        clarification_guidelines=req.clarification_guidelines,
-                    )
+                # check if the api_key already exists
+                result = await session.execute(
+                    select(OracleGuidelines).where(OracleGuidelines.api_key == api_key)
                 )
+                if result.scalar_one_or_none():
+                    await session.execute(
+                        update(OracleGuidelines).values(
+                            api_key=api_key,
+                            clarification_guidelines=req.clarification_guidelines,
+                        )
+                    )
+                else:
+                    await session.execute(
+                        insert(OracleGuidelines).values(
+                            api_key=api_key,
+                            clarification_guidelines=req.clarification_guidelines,
+                        )
+                    )
+                LOGGER.debug(f"Saved clarification guidelines to DB for API key {api_key}")
+    else:
+        LOGGER.debug("No clarification guidelines provided, retrieving from DB")
+        async with AsyncSession(engine) as session:
+            async with session.begin():
+                result = await session.execute(
+                    select(OracleGuidelines.clarification_guidelines).where(OracleGuidelines.api_key == api_key)
+                )
+                guidelines = result.scalar_one_or_none()
+                if not guidelines:
+                    LOGGER.warning("No clarification guidelines found in DB")
+                else:
+                    LOGGER.debug(f"Retrieved clarification guidelines from DB: {guidelines}")
+                    clarify_request["clarification_guidelines"] = guidelines
     try:
         clarify_response = await make_request(
             DEFOG_BASE_URL + "/oracle/clarify", clarify_request
