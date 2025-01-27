@@ -5,8 +5,8 @@ import setupBaseUrl from "$utils/setupBaseUrl";
 import Instructions from "../components/align-model/Instructions";
 import GoldenQueries from "../components/align-model/GoldenQueries";
 import { SettingOutlined } from "@ant-design/icons";
-import { Row, Col, Select } from "antd";
-import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
+import { Row, Col } from "antd";
+import { MessageManagerContext, SingleSelect as Select } from "@defogdotai/agents-ui-components/core-ui";
 
 const AlignModel = () => {
   const [devMode, setDevMode] = useState(false);
