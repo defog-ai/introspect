@@ -55,29 +55,81 @@ DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 
 class ClarificationGuidelinesRequest(BaseModel):
-    api_key: str
     clarification_guidelines: str
+    api_key: Optional[str] = None
+    token: Optional[str] = None
+    key_name: Optional[str] = None
 
 
 @router.post("/oracle/set_clarification_guidelines")
 async def set_clarification_guidelines(req: ClarificationGuidelinesRequest):
-    with Session(engine) as session:
-        with session.begin():
-            session.execute(
-                update(OracleGuidelines).values(
-                    clarification_guidelines=req.clarification_guidelines
-                )
+    if req.api_key is None and req.key_name is None:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Bad Request", "message": "Either api_key or key_name is required"},
+        )
+    
+    if not req.api_key:
+        # validate user
+        username = await validate_user(req.token, user_type=None, get_username=True)
+        if not username:
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "error": "unauthorized",
+                    "message": "Invalid username or password",
+                },
             )
+        api_key = get_api_key_from_key_name(req.key_name)
+    else:
+        api_key = req.api_key
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            stmt = await session.execute(
+                select(OracleGuidelines).where(OracleGuidelines.api_key == api_key)
+            )
+            result = stmt.scalar_one_or_none()
+            if not result:
+                # add new row
+                await session.execute(
+                    insert(OracleGuidelines).values(api_key=api_key, clarification_guidelines=req.clarification_guidelines)
+                )
+            else:
+                # update existing row
+                result.clarification_guidelines = req.clarification_guidelines
+    
+    return JSONResponse(status_code=200, content={"message": "Success"})
 
 class GetClarificationGuidelinesRequest(BaseModel):
-    key_name: str
+    key_name: Optional[str] = None
+    token: Optional[str] = None
+    api_key: Optional[str] = None
 
 @router.post("/oracle/get_clarification_guidelines")
 async def get_clarification_guidelines(req: GetClarificationGuidelinesRequest):
-    api_key = get_api_key_from_key_name(req.key_name)
+    if not req.api_key and not req.key_name:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Bad Request", "message": "Either api_key or key_name is required"},
+        )
+    
+    if not req.api_key:
+        # validate user
+        username = await validate_user(req.token, user_type=None, get_username=True)
+        if not username:
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "error": "unauthorized",
+                    "message": "Invalid username or password",
+                },
+            )
+        api_key = get_api_key_from_key_name(req.key_name)
+    else:
+        api_key = req.api_key
     stmt = select(OracleGuidelines).where(OracleGuidelines.api_key == api_key)
-    with Session(engine) as session:
-        result = session.execute(stmt)
+    async with AsyncSession(engine) as session:
+        result = await session.execute(stmt)
         result = result.scalar_one_or_none()
         if not result:
             return JSONResponse(status_code=404, content={"error": "Guidelines not found"})
