@@ -113,6 +113,9 @@ async def set_guidelines(req: SetGuidelinesRequest):
                 await session.execute(
                     insert(OracleGuidelines).values(
                         api_key=api_key,
+                        # this looks hacky, but is a great way to
+                        # get the column name neatly into the query
+                        # w/o re-writing a lot of boilerplate
                         **{column_name: req.guidelines}
                     )
                 )
