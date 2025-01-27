@@ -18,8 +18,8 @@ importers:
         specifier: ^6.7.0
         version: 6.8.0
       '@defogdotai/agents-ui-components':
-        specifier: 1.1.21
-        version: 1.1.21(@babel/runtime@7.26.0)(@codemirror/autocomplete@6.18.4)(@codemirror/language@6.10.8)(@codemirror/lint@6.8.4)(@codemirror/search@6.5.8)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.36.2)(@types/node@20.17.16)(@types/react@19.0.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        specifier: 1.1.22
+        version: 1.1.22(@babel/runtime@7.26.0)(@codemirror/autocomplete@6.18.4)(@codemirror/language@6.10.8)(@codemirror/lint@6.8.4)(@codemirror/search@6.5.8)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.36.2)(@types/node@20.17.16)(@types/react@19.0.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@notionhq/client':
         specifier: ^2.2.14
         version: 2.2.15
@@ -277,8 +277,8 @@ packages:
   '@codemirror/view@6.36.2':
     resolution: {integrity: sha512-DZ6ONbs8qdJK0fdN7AB82CgI6tYXf4HWk1wSVa0+9bhVznCuuvhQtX8bFBoy3dv8rZSQqUd8GvhVAcielcidrA==}
 
-  '@defogdotai/agents-ui-components@1.1.21':
-    resolution: {integrity: sha512-IeDSRCuIXibLTRkrRkgZfa8aYFEK1U3770FdUvRC12Ds3MRJ7ew7Oy+uChEOlXJJW9gy6yY/xPxst6kx7JkTSg==}
+  '@defogdotai/agents-ui-components@1.1.22':
+    resolution: {integrity: sha512-dN4t3ZVBQpoByISDr/6c6HbEeC0KUoASqv//904ltj2HbVKvFj6V2g4prtm/u6OSiUOstaPfmPsDdquxtKVHAw==}
     peerDependencies:
       react: 19.0.0
       react-dom: 19.0.0
@@ -4021,7 +4021,7 @@ snapshots:
       style-mod: 4.1.2
       w3c-keyname: 2.2.8
 
-  '@defogdotai/agents-ui-components@1.1.21(@babel/runtime@7.26.0)(@codemirror/autocomplete@6.18.4)(@codemirror/language@6.10.8)(@codemirror/lint@6.8.4)(@codemirror/search@6.5.8)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.36.2)(@types/node@20.17.16)(@types/react@19.0.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@defogdotai/agents-ui-components@1.1.22(@babel/runtime@7.26.0)(@codemirror/autocomplete@6.18.4)(@codemirror/language@6.10.8)(@codemirror/lint@6.8.4)(@codemirror/search@6.5.8)(@codemirror/theme-one-dark@6.1.2)(@codemirror/view@6.36.2)(@types/node@20.17.16)(@types/react@19.0.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@codemirror/lang-python': 6.1.7
       '@codemirror/lang-sql': 6.8.0
@@ -4049,7 +4049,6 @@ snapshots:
       lodash.debounce: 4.0.8
       lucide-react: 0.468.0(react@19.0.0)
       marked: 14.1.4
-      minMax: link:dayjs/plugin/minMax
       papaparse: 5.5.1
       prismjs: 1.29.0
       react: 19.0.0
