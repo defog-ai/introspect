@@ -196,8 +196,8 @@ const AlignModel = () => {
 
   const tabs = [
     {
-      key: "instructions",
-      name: "Instructions",
+      key: "text-to-sql-instructions",
+      name: "Text-to-SQL Instructions",
       content: <Instructions
         title="Instructions"
         description="This the information about your data that the model considers when generating your SQL queries. Feel free to edit these instructions to get the best results."

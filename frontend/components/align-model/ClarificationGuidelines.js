@@ -13,7 +13,7 @@ const ClarificationGuidelines = ({
   const getClarificationGuidelines = async () => {
     setIsLoading(true)
     const res = await fetch(
-      setupBaseUrl("http", `oracle/get_clarification_guidelines`),
+      setupBaseUrl("http", `oracle/get_guidelines`),
       {
         method: "POST",
         headers: {
@@ -22,19 +22,20 @@ const ClarificationGuidelines = ({
         body: JSON.stringify({
           token,
           key_name: apiKeyName,
+          guideline_type: "clarification",
         }),
       }
     )
     setIsLoading(false)
 
     const data = await res.json()
-    setClarificationGuidelines(data.clarification_guidelines)
+    setClarificationGuidelines(data.guidelines)
   }
 
   const updateClarificationGuidelines = async () => {
     setIsLoading(true)
     const res = await fetch(
-      setupBaseUrl("http", `oracle/set_clarification_guidelines`),
+      setupBaseUrl("http", `oracle/set_guidelines`),
       {
         method: "POST",
         headers: {
@@ -43,7 +44,8 @@ const ClarificationGuidelines = ({
         body: JSON.stringify({
           token,
           key_name: apiKeyName,
-          clarification_guidelines: clarificationGuidelines,
+          guideline_type: "clarification",
+          guidelines: clarificationGuidelines,
         }),
       }
     )
