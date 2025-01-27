@@ -140,6 +140,15 @@ defog_db_creds = Table(
     Column("db_creds", JSON),
 )
 
+oracle_context = Table(
+    "oracle_context",
+    metadata,
+    Column("api_key", Text, primary_key=True),
+    Column("clarification_context", Text),
+    Column("generate_questions_context", Text),
+    Column("generate_questions_deeper_context", Text),
+    Column("generate_report_context", Text),
+)
 
 oracle_reports = Table(
     "oracle_reports",
@@ -166,17 +175,6 @@ oracle_analyses = Table(
     Column("status", Text, default="pending", nullable=True),
     Column("analysis_json", JSON, nullable=True),
     Column("mdx", Text, default=None, nullable=True),
-)
-
-oracle_clarifications = Table(
-    "oracle_clarifications",
-    metadata,
-    Column("clarification_id", Text, primary_key=True),
-    Column("report_id", Text, primary_key=True),
-    Column("llm_question", Text),
-    Column("user_response", Text),
-    Column("created_ts", DateTime),
-    Column("resolved_ts", DateTime),
 )
 
 oracle_sources = Table(

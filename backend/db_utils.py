@@ -222,6 +222,14 @@ class UserHistory(Base):
 
 if ORACLE_ENABLED:
 
+    class OracleContext(Base):
+        __tablename__ = "oracle_context"
+        api_key = Column(Text, primary_key=True)
+        clarification_context = Column(Text)
+        generate_questions_context = Column(Text)
+        generate_questions_deeper_context = Column(Text)
+        generate_report_context = Column(Text)
+
     class OracleReports(Base):
         __tablename__ = "oracle_reports"
         report_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -243,15 +251,6 @@ if ORACLE_ENABLED:
         status = Column(Text, default="pending")
         analysis_json = Column(JSON)
         mdx = Column(Text, default=None)
-
-    class OracleClarifications(Base):
-        __tablename__ = "oracle_clarifications"
-        clarification_id = Column(Text, primary_key=True)
-        report_id = Column(Text, primary_key=True)
-        llm_question = Column(Text)
-        user_response = Column(Text)
-        created_ts = Column(DateTime)
-        resolved_ts = Column(DateTime)
 
     class OracleSources(Base):
         __tablename__ = "oracle_sources"
