@@ -60,7 +60,7 @@ class GuidelineType(Enum):
     generate_questions_deeper = "generate_questions_deeper"
     generate_report = "generate_report"
 
-class GuidelinesRequest(BaseModel):
+class SetGuidelinesRequest(BaseModel):
     guideline_type: GuidelineType
     guidelines: str
     api_key: Optional[str] = None
@@ -77,7 +77,7 @@ GUIDELINE_TYPE_MAPPING = {
 }
 
 @router.post("/oracle/set_guidelines")
-async def set_guidelines(req: GuidelinesRequest):
+async def set_guidelines(req: SetGuidelinesRequest):
     if req.api_key is None and req.key_name is None:
         return JSONResponse(
             status_code=400,
