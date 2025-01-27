@@ -222,13 +222,13 @@ class UserHistory(Base):
 
 if ORACLE_ENABLED:
 
-    class OracleContext(Base):
-        __tablename__ = "oracle_context"
+    class OracleGuidelines(Base):
+        __tablename__ = "oracle_guidelines"
         api_key = Column(Text, primary_key=True)
-        clarification_context = Column(Text)
-        generate_questions_context = Column(Text)
-        generate_questions_deeper_context = Column(Text)
-        generate_report_context = Column(Text)
+        clarification_guidelines = Column(Text)
+        generate_questions_guidelines = Column(Text)
+        generate_questions_deeper_guidelines = Column(Text)
+        generate_report_guidelines = Column(Text)
 
     class OracleReports(Base):
         __tablename__ = "oracle_reports"

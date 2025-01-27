@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from utils import longest_substring_overlap
 from db_utils import (
-    OracleContext,
+    OracleGuidelines,
     OracleReports,
     add_or_update_analysis,
     delete_analysis,
@@ -21,7 +21,6 @@ from db_utils import (
     validate_user,
     get_multiple_analyses,
 )
-import re
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from generic_utils import get_api_key_from_key_name, make_request
@@ -54,16 +53,20 @@ router = APIRouter()
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
-class ClarificationContextRequest(BaseModel):
-    api_key: str
-    clarification_context: str
 
-@router.post("/oracle/set_clarification_context")
-async def set_clarification_context(req: ClarificationContextRequest):
+class ClarificationGuidelinesRequest(BaseModel):
+    api_key: str
+    clarification_guidelines: str
+
+
+@router.post("/oracle/set_clarification_guidelines")
+async def set_clarification_guidelines(req: ClarificationGuidelinesRequest):
     with Session(engine) as session:
         with session.begin():
             session.execute(
-                update(OracleContext).values(clarification_context=req.clarification_context)
+                update(OracleGuidelines).values(
+                    clarification_guidelines=req.clarification_guidelines
+                )
             )
 
 
@@ -73,7 +76,7 @@ class ClarifyQuestionRequest(BaseModel):
     user_question: str
     task_type: Optional[TaskType] = None
     answered_clarifications: List[Dict[str, Any]] = []
-    clarification_context: Optional[str] = None
+    clarification_guidelines: Optional[str] = None
 
     model_config = {
         "json_schema_extra": {
@@ -84,7 +87,7 @@ class ClarifyQuestionRequest(BaseModel):
                     "user_question": "What are the sales trends?",
                     "task_type": None,
                     "answered_clarifications": [],
-                    "clarification_context": "If unspecified, trends should be cover the last 3 years on a monthly basis.",
+                    "clarification_guidelines": "If unspecified, trends should be cover the last 3 years on a monthly basis.",
                 }
             ]
         }
@@ -175,15 +178,15 @@ async def clarify_question(req: ClarifyQuestionRequest):
         "task_type": task_type_str,
         "answered_clarifications": req.answered_clarifications,
     }
-    if req.clarification_context:
-        clarify_request["context"] = req.clarification_context
-        # save to oracle_context table, overwriting if already exists
-        with Session(engine) as session:
-            with session.begin():
-                session.execute(
-                    update(OracleContext).values(
+    if req.clarification_guidelines:
+        clarify_request["clarification_guidelines"] = req.clarification_guidelines
+        # save to oracle_guidelines table, overwriting if already exists
+        async with AsyncSession(engine) as session:
+            async with session.begin():
+                await session.execute(
+                    update(OracleGuidelines).values(
                         api_key=api_key,
-                        clarification_context=req.clarification_context
+                        clarification_guidelines=req.clarification_guidelines,
                     )
                 )
     try:

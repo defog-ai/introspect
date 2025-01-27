@@ -140,14 +140,14 @@ defog_db_creds = Table(
     Column("db_creds", JSON),
 )
 
-oracle_context = Table(
-    "oracle_context",
+oracle_guidelines = Table(
+    "oracle_guidelines",
     metadata,
     Column("api_key", Text, primary_key=True),
-    Column("clarification_context", Text),
-    Column("generate_questions_context", Text),
-    Column("generate_questions_deeper_context", Text),
-    Column("generate_report_context", Text),
+    Column("clarification_guidelines", Text),
+    Column("generate_questions_guidelines", Text),
+    Column("generate_questions_deeper_guidelines", Text),
+    Column("generate_report_guidelines", Text),
 )
 
 oracle_reports = Table(
