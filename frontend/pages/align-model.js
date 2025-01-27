@@ -5,7 +5,6 @@ import setupBaseUrl from "$utils/setupBaseUrl";
 import Instructions from "../components/align-model/Instructions";
 import GoldenQueries from "../components/align-model/GoldenQueries";
 import { SettingOutlined } from "@ant-design/icons";
-import { Row, Col } from "antd";
 import { MessageManagerContext, SingleSelect as Select } from "@defogdotai/agents-ui-components/core-ui";
 
 const AlignModel = () => {
@@ -199,10 +198,9 @@ const AlignModel = () => {
       <Meta />
       <Scaffolding id="align-model" userType="admin">
         {apiKeyNames.length > 1 ? (
-          <Row type={"flex"} height={"100vh"}>
-            <Col span={24} style={{ paddingBottom: "1em" }}>
+          <div className="p-1 mt-1 w-full">
               <Select
-                style={{ width: "100%" }}
+                className="w-full"
                 onChange={(e) => {
                   setApiKeyName(e);
                 }}
@@ -211,8 +209,7 @@ const AlignModel = () => {
                 })}
                 value={apiKeyName}
               />
-            </Col>
-          </Row>
+          </div>
         ) : null}
         <div className="flex justify-center items-center flex-col p-1 mt-1">
           <h1>
