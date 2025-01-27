@@ -69,6 +69,19 @@ async def set_clarification_guidelines(req: ClarificationGuidelinesRequest):
                 )
             )
 
+class GetClarificationGuidelinesRequest(BaseModel):
+    key_name: str
+
+@router.post("/oracle/get_clarification_guidelines")
+async def get_clarification_guidelines(req: GetClarificationGuidelinesRequest):
+    api_key = get_api_key_from_key_name(req.key_name)
+    stmt = select(OracleGuidelines).where(OracleGuidelines.api_key == api_key)
+    with Session(engine) as session:
+        result = session.execute(stmt)
+        result = result.scalar_one_or_none()
+        if not result:
+            return JSONResponse(status_code=404, content={"error": "Guidelines not found"})
+        return JSONResponse(content={"clarification_guidelines": result.clarification_guidelines})
 
 class ClarifyQuestionRequest(BaseModel):
     key_name: str
