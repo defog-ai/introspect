@@ -2,6 +2,7 @@ import os
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from enum import Enum
 from uuid import uuid4
 
 from sqlalchemy import insert, select, update
@@ -53,16 +54,30 @@ router = APIRouter()
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
+class GuidelineType(Enum):
+    clarification = "clarification"
+    generate_questions = "generate_questions"
+    generate_questions_deeper = "generate_questions_deeper"
+    generate_report = "generate_report"
 
-class ClarificationGuidelinesRequest(BaseModel):
-    clarification_guidelines: str
+class GuidelinesRequest(BaseModel):
+    guideline_type: GuidelineType
+    guidelines: str
     api_key: Optional[str] = None
     token: Optional[str] = None
     key_name: Optional[str] = None
 
 
-@router.post("/oracle/set_clarification_guidelines")
-async def set_clarification_guidelines(req: ClarificationGuidelinesRequest):
+# Mapping from guideline types to their database column names
+GUIDELINE_TYPE_MAPPING = {
+    GuidelineType.clarification: "clarification_guidelines",
+    GuidelineType.generate_questions: "generate_questions_guidelines",
+    GuidelineType.generate_questions_deeper: "generate_questions_deeper_guidelines",
+    GuidelineType.generate_report: "generate_report_guidelines",
+}
+
+@router.post("/oracle/set_guidelines")
+async def set_guidelines(req: GuidelinesRequest):
     if req.api_key is None and req.key_name is None:
         return JSONResponse(
             status_code=400,
@@ -83,30 +98,38 @@ async def set_clarification_guidelines(req: ClarificationGuidelinesRequest):
         api_key = get_api_key_from_key_name(req.key_name)
     else:
         api_key = req.api_key
+    
+    column_name = GUIDELINE_TYPE_MAPPING[req.guideline_type]
+    
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = await session.execute(
                 select(OracleGuidelines).where(OracleGuidelines.api_key == api_key)
             )
             result = stmt.scalar_one_or_none()
+            
             if not result:
-                # add new row
+                # Add new row with the specified guideline
                 await session.execute(
-                    insert(OracleGuidelines).values(api_key=api_key, clarification_guidelines=req.clarification_guidelines)
+                    insert(OracleGuidelines).values(
+                        api_key=api_key,
+                        **{column_name: req.guidelines}
+                    )
                 )
             else:
-                # update existing row
-                result.clarification_guidelines = req.clarification_guidelines
+                # Update existing row
+                setattr(result, column_name, req.guidelines)
     
     return JSONResponse(status_code=200, content={"message": "Success"})
 
-class GetClarificationGuidelinesRequest(BaseModel):
+class GetGuidelinesRequest(BaseModel):
+    guideline_type: GuidelineType
     key_name: Optional[str] = None
     token: Optional[str] = None
     api_key: Optional[str] = None
 
-@router.post("/oracle/get_clarification_guidelines")
-async def get_clarification_guidelines(req: GetClarificationGuidelinesRequest):
+@router.post("/oracle/get_guidelines")
+async def get_guidelines(req: GetGuidelinesRequest):
     if not req.api_key and not req.key_name:
         return JSONResponse(
             status_code=400,
@@ -127,13 +150,16 @@ async def get_clarification_guidelines(req: GetClarificationGuidelinesRequest):
         api_key = get_api_key_from_key_name(req.key_name)
     else:
         api_key = req.api_key
+        
     stmt = select(OracleGuidelines).where(OracleGuidelines.api_key == api_key)
     async with AsyncSession(engine) as session:
         result = await session.execute(stmt)
         result = result.scalar_one_or_none()
         if not result:
             return JSONResponse(status_code=404, content={"error": "Guidelines not found"})
-        return JSONResponse(content={"clarification_guidelines": result.clarification_guidelines})
+        
+        column_name = GUIDELINE_TYPE_MAPPING[req.guideline_type]
+        return JSONResponse(content={"guidelines": getattr(result, column_name)})
 
 class ClarifyQuestionRequest(BaseModel):
     key_name: str
