@@ -146,3 +146,7 @@ Note that whatever you build and push with will overwrite past builds with the s
 Please refer to the instructions in [defog-docker](https://github.com/defog-ai/defog-docker) to run the exported docker images.
 
 When changing substantial parts of the docker-compose.yaml in this repo, please also make sure to update the docker-compose.yaml in defog-docker accordingly.
+
+## Dev Settings
+
+You can make a copy of the `.vscode/settings_template.json` file and name it `.vscode/settings.json`. Feel free to override the default settings for this project as per your development needs and preferences.

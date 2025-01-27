@@ -81,3 +81,6 @@ backend/oracle/reports
 frontend/package-lock.json
 oracle_tests/temp.json
 frontend/pnpm-lock.yaml
+
+# vscode
+.vscode/settings.json
