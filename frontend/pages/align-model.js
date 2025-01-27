@@ -4,7 +4,7 @@ import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Instructions from "../components/align-model/Instructions";
 import GoldenQueries from "../components/align-model/GoldenQueries";
-import ClarificationGuidelines from "../components/align-model/ClarificationGuidelines";
+import Guidelines from "../components/align-model/Guidelines";
 import { SettingOutlined } from "@ant-design/icons";
 import { MessageManagerContext, SingleSelect as Select, Tabs } from "@defogdotai/agents-ui-components/core-ui";
 
@@ -197,7 +197,7 @@ const AlignModel = () => {
   const tabs = [
     {
       key: "text-to-sql-instructions",
-      name: "Text-to-SQL Instructions",
+      name: "Text-to-SQL",
       content: <Instructions
         title="Instructions"
         description="This the information about your data that the model considers when generating your SQL queries. Feel free to edit these instructions to get the best results."
@@ -228,10 +228,38 @@ const AlignModel = () => {
     },
     {
       key: "clarification-guidelines",
-      name: "Clarification Guidelines",
-      content: <ClarificationGuidelines
+      name: "Clarifications",
+      content: <Guidelines
         token={token}
         apiKeyName={apiKeyName}
+        guidelineType={"clarification"}
+      />,
+    },
+    {
+      key: "generate-question-guidelines",
+      name: "Question Generation",
+      content: <Guidelines
+        token={token}
+        apiKeyName={apiKeyName}
+        guidelineType={"generate_questions"}
+      />,
+    },
+    {
+      key: "generate-deeper-question-guidelines",
+      name: "Question Generation (2)",
+      content: <Guidelines
+        token={token}
+        apiKeyName={apiKeyName}
+        guidelineType={"generate_questions_deeper"}
+      />,
+    },
+    {
+      key: "generate-report-guidelines",
+      name: "Reports",
+      content: <Guidelines
+        token={token}
+        apiKeyName={apiKeyName}
+        guidelineType={"generate_report"}
       />,
     },
   ];

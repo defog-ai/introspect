@@ -2,15 +2,16 @@ import React, { useState, useEffect, useContext } from "react"
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { MessageManagerContext, SpinningLoader, TextArea } from "@defogdotai/agents-ui-components/core-ui";
 
-const ClarificationGuidelines = ({
+const Guidelines = ({
   token,
   apiKeyName,
+  guidelineType,
 }) => {
-  const [clarificationGuidelines, setClarificationGuidelines] = useState("");
+  const [guidelines, setGuidelines] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const message = useContext(MessageManagerContext);
 
-  const getClarificationGuidelines = async () => {
+  const getGuidelines = async () => {
     setIsLoading(true)
     const res = await fetch(
       setupBaseUrl("http", `oracle/get_guidelines`),
@@ -22,17 +23,17 @@ const ClarificationGuidelines = ({
         body: JSON.stringify({
           token,
           key_name: apiKeyName,
-          guideline_type: "clarification",
+          guideline_type: guidelineType,
         }),
       }
     )
     setIsLoading(false)
 
     const data = await res.json()
-    setClarificationGuidelines(data.guidelines)
+    setGuidelines(data.guidelines)
   }
 
-  const updateClarificationGuidelines = async () => {
+  const updateGuidelines = async () => {
     setIsLoading(true)
     const res = await fetch(
       setupBaseUrl("http", `oracle/set_guidelines`),
@@ -44,8 +45,8 @@ const ClarificationGuidelines = ({
         body: JSON.stringify({
           token,
           key_name: apiKeyName,
-          guideline_type: "clarification",
-          guidelines: clarificationGuidelines,
+          guideline_type: guidelineType,
+          guidelines,
         }),
       }
     )
@@ -56,20 +57,20 @@ const ClarificationGuidelines = ({
 
   useEffect(() => {
     if (!token || !apiKeyName) return
-    getClarificationGuidelines()
+    getGuidelines()
   }, [token, apiKeyName])
 
   return (
     <div className="w-full max-w-4xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800 mb-4">Clarification Guidelines</h1>
+      <h1 className="text-2xl font-semibold text-gray-800 mb-4 capitalize">{guidelineType.replaceAll("_", " ")} Guidelines</h1>
       <div className="space-y-4">
         <TextArea
-          value={clarificationGuidelines}
-          onChange={(e) => setClarificationGuidelines(e.target.value)}
+          value={guidelines}
+          onChange={(e) => setGuidelines(e.target.value)}
           className="w-full min-h-[200px] p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
         <div 
-          onClick={updateClarificationGuidelines}
+          onClick={updateGuidelines}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center min-w-[100px] text-sm hover:cursor-pointer"
           disabled={isLoading}
         >
@@ -80,4 +81,4 @@ const ClarificationGuidelines = ({
   )
 }
 
-export default ClarificationGuidelines;
+export default Guidelines;
