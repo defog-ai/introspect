@@ -4,8 +4,9 @@ import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Instructions from "../components/align-model/Instructions";
 import GoldenQueries from "../components/align-model/GoldenQueries";
+import ClarificationGuidelines from "../components/align-model/ClarificationGuidelines";
 import { SettingOutlined } from "@ant-design/icons";
-import { MessageManagerContext, SingleSelect as Select } from "@defogdotai/agents-ui-components/core-ui";
+import { MessageManagerContext, SingleSelect as Select, Tabs } from "@defogdotai/agents-ui-components/core-ui";
 
 const AlignModel = () => {
   const [devMode, setDevMode] = useState(false);
@@ -193,6 +194,48 @@ const AlignModel = () => {
     }
   };
 
+  const tabs = [
+    {
+      key: "instructions",
+      name: "Instructions",
+      content: <Instructions
+        title="Instructions"
+        description="This the information about your data that the model considers when generating your SQL queries. Feel free to edit these instructions to get the best results."
+        compulsoryGlossary={compulsoryGlossary}
+        setCompulsoryGlossary={setCompulsoryGlossary}
+        prunableGlossary={prunableGlossary}
+        setPrunableGlossary={setPrunableGlossary}
+        updateGlossary={updateGlossary}
+        updateGlossaryLoadingFunction={setIsUpdatingInstructions}
+        isLoading={isLoading}
+        isUpdatingInstructions={isUpdatingInstructions}
+      />,
+    },
+    {
+      key: "golden-queries",
+      name: "Golden Queries",
+      content: <GoldenQueries
+        token={token}
+        apiKeyName={apiKeyName}
+        goldenQueries={goldenQueries}
+        setGoldenQueries={setGoldenQueries}
+        updateMetadata={updateMetadata}
+        updateMetadataLoadingFunction={setIsUpdatingGoldenQueries}
+        isLoading={isLoading}
+        isUpdatingGoldenQueries={isUpdatingGoldenQueries}
+        setUpdatedGoldenQueriesToggle={setUpdatedGoldenQueriesToggle}
+      />,
+    },
+    {
+      key: "clarification-guidelines",
+      name: "Clarification Guidelines",
+      content: <ClarificationGuidelines
+        token={token}
+        apiKeyName={apiKeyName}
+      />,
+    },
+  ];
+
   return (
     <>
       <Meta />
@@ -223,34 +266,10 @@ const AlignModel = () => {
           </p>
         </div>
         <div className="flex flex-col p-1 border border-gray-3200 rounded-lg">
-          {/* {!!compulsoryGlossary && goldenQueries.length > 0 ? (
-            <IMGO
-              token={token}
-              apiKeyName={apiKeyName}
-              updateGlossary={updateGlossary}
-              updateMetadata={updateMetadata}
-            />
-          ) : null} */}
-          <Instructions
-            title="Instructions"
-            description="This the information about your data that the model considers when generating your SQL queries. Feel free to edit these instructions to get the best results."
-            compulsoryGlossary={compulsoryGlossary}
-            setCompulsoryGlossary={setCompulsoryGlossary}
-            prunableGlossary={prunableGlossary}
-            setPrunableGlossary={setPrunableGlossary}
-            updateGlossary={updateGlossary}
-            updateGlossaryLoadingFunction={setIsUpdatingInstructions}
-            isLoading={isLoading}
-            isUpdatingInstructions={isUpdatingInstructions}
-          />
-          <GoldenQueries
-            token={token}
-            apiKeyName={apiKeyName}
-            goldenQueries={goldenQueries}
-            setGoldenQueries={setGoldenQueries}
-            isLoading={isLoading}
-            isUpdatingGoldenQueries={isUpdatingGoldenQueries}
-            setUpdatedGoldenQueriesToggle={setUpdatedGoldenQueriesToggle}
+          <Tabs
+            size="large"
+            tabs={tabs}
+            defaultSelected="instructions"
           />
         </div>
       </Scaffolding>
