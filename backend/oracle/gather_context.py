@@ -232,10 +232,14 @@ async def gather_context(
             and "answer" in clarification
             and clarification["answer"]
         ):
+            if type(clarification["answer"]) == list:
+                answer = ", ".join(clarification["answer"])
+            else:
+                answer = str(clarification["answer"])
             answered_clarifications.append(
                 {
                     "clarification": clarification["clarification"],
-                    "answer": clarification["answer"],
+                    "answer": answer
                 }
             )
     LOGGER.debug(f"Answered clarifications: {answered_clarifications}")

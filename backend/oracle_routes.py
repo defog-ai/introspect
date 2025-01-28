@@ -611,11 +611,29 @@ async def begin_generation(req: BeginGenerationRequest):
             },
         )
     api_key = get_api_key_from_key_name(req.key_name)
+    
+    # clean up clarifications
+    answered_clarifications = []
+    if req.clarifications:
+        for clarification in req.clarifications:
+            if clarification["answer"] and type(clarification["answer"]) == list:
+                # convert any lists to strings
+                # this is because the report generation only accepts strings as inputs
+                answer = ", ".join(clarification["answer"])
+            else:
+                answer = str(clarification["answer"])
+            answered_clarifications.append(
+                {
+                    "clarification": clarification["clarification"],
+                    "answer": answer
+                }
+            )
+    
     # insert a new row into the OracleReports table and get a new report_id
     user_inputs = {
         "user_question": req.user_question,
         "sources": req.sources,
-        "clarifications": req.clarifications,
+        "clarifications": answered_clarifications,
         "hard_filters": req.hard_filters,
     }
     async with AsyncSession(engine) as session:
