@@ -6,7 +6,7 @@ module.exports = {
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./utils/**/*.{js,ts,jsx,tsx,mdx}",
-    "./node_modules/@defogdotai/agents-ui-components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./node_modules/@defogdotai/agents-ui-components/dist/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   // important: true,
   darkMode: "class",
