@@ -22,4 +22,4 @@ done
 celery -A oracle.celery_app.celery_app worker --loglevel=info &
 
 # Start the FastAPI server
-python3 -m hypercorn main:app -b 0.0.0.0:1235 --reload
+python3 -m hypercorn main:app -b 0.0.0.0:1235
