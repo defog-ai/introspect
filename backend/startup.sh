@@ -11,7 +11,6 @@ fi
 python3 create_sql_tables.py
 python3 create_imported_tables_db.py
 python3 create_admin_user.py
-python3 add_tools_to_db.py
 # test if REDIS_INTERNAL_PORT is up, and sleep until it is
 while ! nc -z $REDIS_INTERNAL_HOST $REDIS_INTERNAL_PORT; do
   echo "Waiting for ${REDIS_INTERNAL_PORT} to be available..."
@@ -21,5 +20,14 @@ done
 # Start celery worker
 celery -A oracle.celery_app.celery_app worker --loglevel=info &
 
+echo "Starting FastAPI server"
+echo "PROD: $PROD"
+
 # Start the FastAPI server
-python3 -m hypercorn main:app -b 0.0.0.0:1235
+if [ "$PROD" = "no" ]; then
+  echo "Running in development mode"
+  python3 -m hypercorn main:app -b 0.0.0.0:1235 --reload
+else
+  echo "Running in production mode"
+  python3 -m hypercorn main:app -b 0.0.0.0:1235
+fi
