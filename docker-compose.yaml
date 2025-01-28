@@ -45,6 +45,7 @@ services:
       - ORACLE_ENABLED=yes
       - ANALYZE_DATA=${ANALYZE_DATA:-no}
       - ANALYZE_DATA_MODEL=${ANALYZE_DATA_MODEL:-defog}
+      - PROD=${PROD:-yes}
 
       # Email configuration
       - EMAIL_OPTION=${EMAIL_OPTION:-DEFOG}
