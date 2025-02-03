@@ -54,11 +54,5 @@
     "prettier": "^3.0.3",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.7.2"
-  },
-  "pnpm": {
-    "overrides": {
-      "@types/react": "19.0.2",
-      "@defogdotai/agents-ui-components": "link:../../agents-ui-components"
-    }
   }
 }

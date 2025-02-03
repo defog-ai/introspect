@@ -1,11 +1,18 @@
 import asyncio
 from typing import Any, Dict, List
 
-from db_utils import add_or_update_analysis, update_report_name
-from oracle.utils_report import summary_dict_to_markdown
+from db_utils import (
+    OracleGuidelines,
+    add_or_update_analysis,
+    engine,
+    update_report_name,
+)
 from generic_utils import make_request
-from pydantic import BaseModel
 from oracle.constants import DEFOG_BASE_URL, TaskStage, TaskType
+from oracle.utils_report import summary_dict_to_markdown
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from utils_logging import LOGGER, truncate_obj
 
 
@@ -29,6 +36,18 @@ async def generate_report(
         "inputs": inputs,
         "outputs": outputs,
     }
+
+    # get the generate_report_guidelines from the database and add it to the json_data
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            row = await session.execute(
+                select(OracleGuidelines.generate_report_guidelines).where(
+                    OracleGuidelines.api_key == api_key
+                )
+            )
+            row = row.scalar_one_or_none()
+            if row:
+                json_data["generate_report_guidelines"] = row[0]
 
     # generate the full report markdown and mdx
     mdx_task = make_request(

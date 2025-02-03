@@ -1308,5 +1308,8 @@ async def update_report_name(report_id: int, report_name: str) -> None:
         async with session.begin():
             stmt = select(OracleReports).where(OracleReports.report_id == report_id)
             result = await session.execute(stmt)
-            report = result.scalar_one()
-            report.report_name = report_name
+            report = result.scalar_one_or_none()
+            if report:
+                report.report_name = report_name
+            else:
+                LOGGER.warning(f"Report {report_id} not found")
