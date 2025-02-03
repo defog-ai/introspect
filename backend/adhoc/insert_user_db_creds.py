@@ -3,6 +3,7 @@ import datetime
 import hashlib
 import os
 
+from auth_utils import get_hashed_username
 from db_utils import DbCreds, Users
 from sqlalchemy import create_engine, insert, select, update
 
@@ -37,6 +38,9 @@ users = [
     {
         "username": "cricket",
         "password": "test",
+    },
+    {
+        "username": "jp@defog.ai",
     },
 ]
 databases = [
@@ -98,8 +102,11 @@ with engine.begin() as conn:
     # insert users and their db_creds
     for user in users:
         username = user["username"]
-        password = user["password"]
-        hashed_password = get_hashed_password(username, password)
+        password = user.get("password")
+        if password:
+            hashed_password = get_hashed_password(username, password)
+        else:
+            hashed_password = get_hashed_username(username)
 
         # check if user exists and update
         user_result = conn.execute(
