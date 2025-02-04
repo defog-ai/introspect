@@ -18,12 +18,6 @@ FETCHED_TABLE_CSV = "fetched_table_csv"  # raw table fetched using sql
 TABLE_CSV = "table_csv"  # table represented in the chart
 ANOMALIES_CSV = "anomalies_csv"  # anomalies in the data
 CORRELATION = "correlation"  # correlation between x and y columns
-IMAGE = "image"  # image of the chart
-SUPPORTED_CHART_TYPES = [
-    "relplot",
-    "catplot",
-    "displot",
-]
 
 
 async def gen_sql(
