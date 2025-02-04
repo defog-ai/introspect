@@ -181,54 +181,6 @@ def add_indent(level=1):
     return "...." * level
 
 
-async def execute_code(
-    code_snippets: str | list[str],  # string or list of code strings to execute
-    fn_name: Optional[str],  # function name to call
-    sandbox: Optional[dict] = None,  # custom sandbox to use
-    use_globals: bool = False,  # whether to import globals into the sandbox or not
-    default_imports: list[str] = [],  # default imports for the sandbox. List of strings
-    args: Optional[list] = [],  # args to pass to the function
-    kwargs: Optional[dict] = {},  # kwargs to pass to the function
-):
-    """
-    Runs code string and returns output.
-    """
-    err = None
-    out = None
-
-    if type(code_snippets) != str and type(code_snippets) != list:
-        raise ValueError("code_snippets should be a string or list of strings")
-
-    if type(code_snippets) == str:
-        code_snippets = [code_snippets]
-
-    if not fn_name:
-        raise ValueError("fn_name must be provided.")
-
-    try:
-        _sandbox = sandbox or {}
-        if use_globals:
-            _sandbox = globals().update(_sandbox)
-
-        if len(default_imports) > 0:
-            exec("\n".join(default_imports), _sandbox)
-
-        for code in code_snippets:
-            exec(code, _sandbox)
-
-        # check if test_tool is an async function
-        if inspect.iscoroutinefunction(_sandbox[fn_name]):
-            out = await _sandbox[fn_name](*args, **kwargs)
-        else:
-            out = _sandbox[fn_name](*args, **kwargs)
-    except Exception as e:
-        out = None
-        err = str(e)
-        traceback.print_exc()
-    finally:
-        return err, out
-
-
 def encode_image(image_path):
     """
     Encodes an image to base64.
