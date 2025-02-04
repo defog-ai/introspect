@@ -6,7 +6,8 @@ from typing import Any, Dict, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_utils import INTERNAL_DB, OracleSources, engine
+from db_config import INTERNAL_DB, engine
+from db_models import OracleSources
 from generic_utils import make_request
 from oracle.celery_app import LOGGER
 from oracle.constants import DEFOG_BASE_URL, TaskType

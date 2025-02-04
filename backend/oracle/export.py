@@ -1,10 +1,10 @@
 import asyncio
 from typing import Any, Dict, List
+from db_models import OracleGuidelines
+from db_config import engine
 
-from db_utils import (
-    OracleGuidelines,
+from oracle_utils import (
     add_or_update_analysis,
-    engine,
     update_report_name,
 )
 from generic_utils import make_request

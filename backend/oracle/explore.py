@@ -7,7 +7,10 @@ from uuid import uuid4
 
 import pandas as pd
 from pydantic import BaseModel
-from db_utils import OracleGuidelines, engine, get_db_type_creds, update_analysis_status
+from db_config import engine
+from db_models import OracleGuidelines
+from db_utils import get_db_type_creds
+from oracle_utils import update_analysis_status
 from generic_utils import make_request
 from oracle.celery_app import LOGGER
 from oracle.constants import TaskType

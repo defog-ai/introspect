@@ -6,7 +6,7 @@ import pandas as pd
 from generic_utils import format_sql, make_request, normalize_sql
 from oracle.celery_app import LOGGER
 from oracle.constants import TaskType
-from db_utils import update_status
+from oracle_utils import update_status
 import asyncio
 
 Z_THRESHOLD = 3  # z-score threshold for anomalies
