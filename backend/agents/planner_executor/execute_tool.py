@@ -13,7 +13,6 @@ from utils import (
 
 # from db_utils import get_all_tools
 import asyncio
-from tool_code_utilities import default_top_level_imports
 
 
 def parse_function_signature(param_signatures, fn_name):
@@ -103,13 +102,6 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
         if tool["function_name"] == function_name:
             # add param types to import
 
-            code = tool["code"]
-
-            # add a few default top level imports so input types can be defined in the function definition
-            code = default_top_level_imports + "\n" + code
-
-            # exec(code, globals())
-            # fn = globals()[function_name]
             fn = tool["fn"]
 
             if tool_function_inputs.get("global_dict"):
@@ -164,8 +156,6 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
                 traceback.print_exc()
                 result = {"error_message": str(e)[:300]}
             finally:
-                result["code_str"] = tool["code"]
-
                 return result, tool["input_metadata"]
     # if no tool matches
     return {"error_message": "No tool matches this name"}, {}

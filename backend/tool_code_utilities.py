@@ -5,7 +5,6 @@
 from defog.query import async_execute_query
 import re
 import pandas as pd
-import os
 from db_utils import get_db_type_creds
 
 
