@@ -15,7 +15,6 @@ from db_utils import (
 from utils import deduplicate_columns, add_indent
 
 import pandas as pd
-import os
 import warnings
 warnings.simplefilter(action='ignore', category=SyntaxWarning)
 
@@ -58,28 +57,6 @@ def warn(msg):
     global indent_level
     LOGGER.warn(add_indent(indent_level) + " " + str(msg))
 
-
-# store the outputs of multiple analysis in a global variable
-# we keep this around for a while, in case we need to re-run a step v soon after it was run
-# but we will clear this cache after a while
-# things stored here, also specific to each step.
-# {
-#   "analysis_id_1": {
-#     "user_question": user_question,
-#     "dfg_api_key": dfg_api_key,
-#     "assignment_understanding": assignment_understanding,
-#     "dfg": None,
-#     "llm_calls_url": llm_calls_url,
-#     "dev": dev,
-#     "temp": temp,
-#     "output_1": ...
-#     "output_2": ...
-#   },
-#   "analysis_id_2": {...}
-#   "analysis_id_3": {...}
-#   ...
-# }
-llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 
 async def run_step(
     analysis_id,
