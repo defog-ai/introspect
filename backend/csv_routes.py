@@ -1,6 +1,7 @@
 import os
 from fastapi import APIRouter, Request
 from generic_utils import get_api_key_from_key_name, make_request
+from auth_utils import validate_user
 import pandas as pd
 from io import StringIO
 from fastapi.responses import JSONResponse
@@ -22,6 +23,15 @@ async def generate_column_descriptions_for_csv(request: Request):
     key_name = params.get("key_name", None)
     metadata = params.get("metadata", None)
     table_name = params.get("table_name", None)
+    token = params.get("token", None)
+    if not (await validate_user(token)):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     if not key_name:
         return {"error": "no key name provided"}
@@ -96,6 +106,16 @@ async def generate_query_csv(request: Request):
     question = params.get("question", None)
     metadata = params.get("metadata", None)
     previous_context = params.get("previous_context", [])
+
+    token = params.get("token", None)
+    if not (await validate_user(token)):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     if len(previous_context) > 0:
         previous_context = previous_context[:-1]
@@ -193,6 +213,15 @@ async def generate_query_csv(request: Request):
     )  # metadata should be a list of dictionaries with keys 'table_name', 'column_name', 'data_type', and 'column_description'
     previous_query = params.get("previous_query", None)
     error = params.get("error", None)
+    token = params.get("token", None)
+    if not (await validate_user(token)):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
     if not key_name:
         return JSONResponse(content={"error": "no key name provided"}, status_code=400)
