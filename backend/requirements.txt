@@ -5,7 +5,6 @@ fastapi
 google-auth
 httpx
 hypercorn
-matplotlib==3.9.2
 numpy
 openai
 pandas==2.2.3
@@ -14,16 +13,12 @@ pyyaml
 redis
 requests
 resend
-scipy
-seaborn==0.13.2
 slack_sdk
 sqlalchemy
 sqlalchemy[asyncio]
 sqlalchemy-utils
 sqlglot
 sqlparse
-statsmodels
-tabulate
 
 # sync db connectors
 databricks-sql-connector
