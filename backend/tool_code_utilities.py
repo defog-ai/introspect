@@ -6,25 +6,25 @@ from defog.query import async_execute_query
 import re
 import pandas as pd
 from db_utils import get_db_type_creds
+import re
 
+UNSAFE_KEYWORD_PATTERNS = [
+    r"(^|\b)CREATE\b",
+    r"(^|\b)UPDATE\b",
+    r"(^|\b)DELETE\b",
+    r"(^|\b)DROP\b",
+    r"(^|\b)ALTER\b",
+    r"(^|\b)INSERT\b",
+]
 
 # make sure the query does not contain any malicious commands like drop, delete, etc.
 def safe_sql(query):
     if query is None:
         return False
 
-    query = query.strip()
-    query = query.replace("\n", " ").replace("\t", " ")
-    query = " " + query.lower() + " "
-    if (
-        " drop " in query
-        or " delete " in query
-        or " truncate " in query
-        or " append " in query
-        or " insert " in query
-        or " update " in query
-    ):
-        return False
+    for unsafe_pattern in UNSAFE_KEYWORD_PATTERNS:
+        if re.search(unsafe_pattern, query.lower()):
+            return False
 
     return True
 
