@@ -1,8 +1,5 @@
 from .data_fetching import data_fetcher_and_aggregator, send_email
 
-# from ..tools.stats import *
-# from ..tools.plotting import *
-
 import inspect
 
 tools = {
