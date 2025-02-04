@@ -162,28 +162,6 @@ def deduplicate_columns(df: pd.DataFrame):
     return deduplicated_df
 
 
-def filter_function_inputs(fn, inputs):
-    """
-    Used to filter down a dict's keys to only the parameters that are required by a function
-    Creates a filtering function that can be run on a dict
-    Which will filter the dict's keys based on the return value (True or False)
-    of the filter function
-    If the function takes kwargs, we always return true from the function
-    Otherwise, we check if the key is in the function's parameters
-    """
-    # if a function takes kwargs, then we will
-    sig = inspect.signature(fn)
-    params = sig.parameters.values()
-    has_kwargs = any([True for p in params if p.kind == p.VAR_KEYWORD])
-    f = lambda _: True
-
-    if not has_kwargs:
-        param_names = [p.name for p in params]
-        f = lambda key: key in param_names
-
-    return {k: v for k, v in inputs.items() if f(k)}, f
-
-
 def wrap_in_async(fn):
     """
     If a function isn't async, wrap it in an async function for create_Task to work
