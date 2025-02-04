@@ -7,12 +7,8 @@ import uuid
 import pandas as pd
 from sqlalchemy import text
 
-from db_utils import (
-    INTERNAL_DB,
-    get_db_type_creds,
-    imported_tables_engine,
-    temp_tables_engine,
-)
+from db_utils import get_db_type_creds
+from db_config import INTERNAL_DB, imported_tables_engine, temp_tables_engine
 from generic_utils import make_request
 from utils_imported_data import IMPORTED_SCHEMA
 from utils_logging import log_timings, save_and_log, save_timing

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from db_utils import validate_user
+from auth_utils import validate_user
 from generic_utils import get_api_key_from_key_name
 from utils_xdb import xdb_query
 

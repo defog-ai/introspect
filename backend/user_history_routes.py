@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from utils_logging import LOGGER
-from db_utils import UserHistory, validate_user, engine
+from auth_utils import validate_user
+from db_config import engine
+from db_models import UserHistory
 from sqlalchemy import (
     select,
     update,

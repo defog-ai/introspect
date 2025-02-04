@@ -9,17 +9,21 @@ from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from utils import longest_substring_overlap
-from db_utils import (
+from db_models import (
     OracleGuidelines,
-    OracleReports,
+    OracleReports
+)
+from db_config import (
+    engine,
+    redis_client
+)
+from auth_utils import validate_user
+from oracle_routes import (
     add_or_update_analysis,
     delete_analysis,
-    engine,
     get_analysis_status,
     get_report_data,
-    redis_client,
     update_summary_dict,
-    validate_user,
     get_multiple_analyses,
 )
 from fastapi import APIRouter, Request
@@ -36,7 +40,6 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import insert, update
 
-from db_utils import OracleReports, engine, validate_user
 from generic_utils import get_api_key_from_key_name, make_request
 from utils_logging import LOGGER, save_and_log, save_timing
 from oracle.redis_utils import (

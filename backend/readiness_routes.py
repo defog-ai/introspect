@@ -2,7 +2,8 @@ from fastapi import APIRouter, Request
 import os
 from utils_logging import LOGGER
 from utils_validation import validate_queries
-from db_utils import validate_user, get_db_type_creds
+from db_utils import get_db_type_creds
+from auth_utils import validate_user
 from generic_utils import make_request, get_api_key_from_key_name
 from fastapi.responses import JSONResponse
 

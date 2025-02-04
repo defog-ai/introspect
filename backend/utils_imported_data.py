@@ -12,12 +12,12 @@ from sqlalchemy import (
 )
 from sqlalchemy.schema import DropTable
 
-from db_utils import (
+from db_config import (
     IMPORTED_TABLES_DBNAME,
     INTERNAL_DB,
-    ImportedTables,
     imported_tables_engine,
 )
+from db_models import ImportedTables
 from utils_df import mk_df
 from utils_logging import LOG_LEVEL
 import requests

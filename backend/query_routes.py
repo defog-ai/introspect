@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from defog import Defog
-from db_utils import validate_user, get_db_type_creds
+from db_utils import get_db_type_creds
+from auth_utils import validate_user
 import pandas as pd
 import asyncio
 import os

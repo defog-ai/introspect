@@ -4,7 +4,7 @@ import hashlib
 import os
 
 from auth_utils import get_hashed_username
-from db_utils import DbCreds, Users
+from db_models import DbCreds, Users
 from sqlalchemy import create_engine, insert, select, update
 
 SALT = "TOMMARVOLORIDDLE"

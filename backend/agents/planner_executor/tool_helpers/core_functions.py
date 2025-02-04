@@ -1,12 +1,10 @@
 import os
-from generic_utils import LOGGER
-from db_utils import redis_client
+from db_config import redis_client
 from .analysis_prompts import (
     DEFAULT_OPENAI_MODEL,
     DEFAULT_OPENAI_SYSTEM_PROMPT,
     DEFAULT_OPENAI_USER_PROMPT,
 )
-import asyncio
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
