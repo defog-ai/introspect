@@ -19,8 +19,6 @@ from oracle.constants import TaskStage, TaskType, STAGE_TO_STATUS
 from oracle.explore import explore_data
 from oracle.export import generate_report
 from oracle.gather_context import gather_context
-from oracle.predict import predict
-from oracle.optimize import optimize
 from oracle.redis_utils import delete_analysis_task_id
 from sqlalchemy import select
 from utils_logging import LOGGER, save_and_log, save_timing
@@ -224,14 +222,6 @@ def next_stage(stage: TaskStage, task_type: TaskType) -> TaskStage:
     elif stage == TaskStage.EXPLORE:
         if task_type == TaskType.EXPLORATION:
             return TaskStage.EXPORT
-        elif task_type == TaskType.PREDICTION:
-            return TaskStage.PREDICT
-        elif task_type == TaskType.OPTIMIZATION:
-            return TaskStage.OPTIMIZE
-    elif stage == TaskStage.PREDICT:
-        return TaskStage.EXPORT
-    elif stage == TaskStage.OPTIMIZE:
-        return TaskStage.EXPORT
     elif stage == TaskStage.EXPORT:
         return TaskStage.DONE
     else:
@@ -264,22 +254,6 @@ async def execute_stage(
         )
     elif stage == TaskStage.EXPLORE:
         stage_result = await explore_data(
-            api_key=api_key,
-            report_id=report_id,
-            task_type=task_type,
-            inputs=inputs,
-            outputs=outputs,
-        )
-    elif stage == TaskStage.PREDICT:
-        stage_result = await predict(
-            api_key=api_key,
-            report_id=report_id,
-            task_type=task_type,
-            inputs=inputs,
-            outputs=outputs,
-        )
-    elif stage == TaskStage.OPTIMIZE:
-        stage_result = await optimize(
             api_key=api_key,
             report_id=report_id,
             task_type=task_type,

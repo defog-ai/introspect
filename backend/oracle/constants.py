@@ -7,8 +7,6 @@ INTERNAL_DB = os.environ.get("INTERNAL_DB", "postgres")
 
 class TaskType(Enum):
     EXPLORATION = "exploration"
-    PREDICTION = "prediction"
-    OPTIMIZATION = "optimization"
 
     def __json__(self):
         return self.value
@@ -16,16 +14,12 @@ class TaskType(Enum):
 
 TASK_TYPES = [
     TaskType.EXPLORATION,
-    TaskType.PREDICTION,
-    TaskType.OPTIMIZATION,
 ]
 
 
 class TaskStage(Enum):
     GATHER_CONTEXT = "gather_context"
     EXPLORE = "explore"
-    PREDICT = "predict"
-    OPTIMIZE = "optimize"
     EXPORT = "export"
     DONE = "done"
 
@@ -33,8 +27,6 @@ class TaskStage(Enum):
 STAGE_TO_STATUS = {
     TaskStage.GATHER_CONTEXT: "gathering context",
     TaskStage.EXPLORE: "exploring data and digging deeper",
-    TaskStage.PREDICT: "predicting",
-    TaskStage.OPTIMIZE: "optimizing",
     TaskStage.EXPORT: "finalizing and exporting",
     TaskStage.DONE: "done",
 }
