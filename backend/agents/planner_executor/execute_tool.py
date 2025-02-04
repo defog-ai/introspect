@@ -22,12 +22,7 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
         else:
             inputs_to_log.append(inp)
     print(f"Tool inputs: {inputs_to_log}")
-    # print(f"Global dict: {global_dict}")
     result = {}
-
-    # err, tools = await get_all_tools()
-    # if err:
-    #     return {"error_message": f"Error getting tools: {err}"}, {}
 
     for key in tools:
         tool = tools[key]
