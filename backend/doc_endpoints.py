@@ -1,4 +1,3 @@
-import os
 import traceback
 
 from fastapi import APIRouter, Request
@@ -17,9 +16,6 @@ from db_utils import (
 router = APIRouter()
 
 manager = ConnectionManager()
-
-llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
-
 
 # download csv using step_id and output_storage_key
 @router.post("/download_csv")
