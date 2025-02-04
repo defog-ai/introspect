@@ -26,7 +26,7 @@ async def initialise_analysis(
                 analysis_id = str(uuid.uuid4())
             else:
                 analysis_id = custom_id
-            LOGGER.info(f"Creating new analyis with uuid: {analysis_id}")
+            LOGGER.info("Creating new analyis with uuid: {analysis_id}")
             new_analysis_data = {
                 "user_question": user_question,
                 "timestamp": timestamp,

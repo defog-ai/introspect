@@ -13,7 +13,7 @@ from db_models import (
     OracleReports,
 )
 from db_config import engine
-from oracle_utils import get_report_data
+from db_oracle_utils import get_report_data
 from auth_utils import validate_user
 from generic_utils import get_api_key_from_key_name
 from oracle.constants import TaskStage

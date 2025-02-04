@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from db_config import engine
 from db_models import OracleGuidelines
 from db_utils import get_db_type_creds
-from oracle_utils import update_analysis_status
+from db_oracle_utils import update_analysis_status
 from generic_utils import make_request
 from oracle.celery_app import LOGGER
 from oracle.constants import TaskType

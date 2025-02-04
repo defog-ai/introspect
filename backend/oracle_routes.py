@@ -18,7 +18,7 @@ from db_config import (
     redis_client
 )
 from auth_utils import validate_user
-from oracle_utils import (
+from db_oracle_utils import (
     add_or_update_analysis,
     delete_analysis,
     get_analysis_status,

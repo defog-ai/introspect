@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from generic_utils import make_request
 from db_config import engine
 from db_models import OracleReports
-from oracle_utils import add_or_update_analysis, get_report_data
+from db_oracle_utils import add_or_update_analysis, get_report_data
 from oracle.celery_app import celery_app
 from oracle.constants import TaskStage, TaskType, STAGE_TO_STATUS
 from oracle.explore import explore_data

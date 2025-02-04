@@ -6,7 +6,7 @@ import traceback
 from agents.planner_executor.execute_tool import execute_tool
 from agents.clarifier.clarifier_agent import turn_into_statements
 from tool_code_utilities import fetch_query_into_df
-from analysis_utils import (
+from db_analysis_utils import (
     get_analysis_data,
     get_assignment_understanding,
     update_analysis_data,

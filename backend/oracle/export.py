@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 from db_models import OracleGuidelines
 from db_config import engine
 
-from oracle_utils import (
+from db_oracle_utils import (
     add_or_update_analysis,
     update_report_name,
 )
