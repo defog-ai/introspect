@@ -1,8 +1,5 @@
-from typing import Dict, List
-import base64
 import os
 from generic_utils import make_request, LOGGER
-import os
 import json
 from db_utils import redis_client
 from .analysis_prompts import (
@@ -13,10 +10,6 @@ from .analysis_prompts import (
     DEFAULT_OPENAI_USER_PROMPT,
 )
 import asyncio
-
-analysis_assets_dir = os.environ.get(
-    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
-)
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
