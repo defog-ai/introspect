@@ -4,7 +4,9 @@ import traceback
 import logging
 from uuid import uuid4
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 from agents.clarifier.clarifier_agent import get_clarification
+from pydantic import BaseModel
 
 from agents.planner_executor.planner_executor_agent import (
     generate_assignment_understanding,
@@ -19,6 +21,7 @@ from db_utils import (
     get_assignment_understanding,
 )
 from generic_utils import get_api_key_from_key_name, make_request
+from db_utils import validate_user
 from uuid import uuid4
 
 router = APIRouter()
@@ -465,3 +468,35 @@ async def analyse_data_streaming_endpoint(websocket: WebSocket):
         traceback.print_exc()
     finally:
         await websocket.close()
+
+class QuestionTypeRequest(BaseModel):
+    key_name: str
+    question: str
+    token: str
+
+@router.post("/get_question_type")
+async def get_question_type(request: QuestionTypeRequest):
+    key_name = request.key_name
+    question = request.question
+    token = request.token
+    username = await validate_user(token, user_type=None, get_username=True)
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    api_key = get_api_key_from_key_name(key_name)
+
+    res = await make_request(
+        DEFOG_BASE_URL + "/agents/question_type",
+        data={"question": question, "api_key": api_key},
+    )
+
+    return JSONResponse(
+        status_code=200,
+        content=res,
+    )
