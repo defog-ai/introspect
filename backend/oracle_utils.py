@@ -133,10 +133,11 @@ async def get_analysis_status(api_key: str, analysis_id: str, report_id: int) ->
                 )
             )
             row = result.first()
-            return row[0] if row else None
+            status = row[0] if row else None
+            return None, status
         except Exception as e:
             LOGGER.error(f"Error getting analysis status: {e}")
-            raise
+            return str(e), None
 
 async def update_analysis_status(
     api_key: str,
@@ -214,3 +215,21 @@ async def update_report_name(report_id: int, report_name: str):
             LOGGER.error(f"Error updating report name: {e}")
             await session.rollback()
             raise
+
+async def get_multiple_analyses(
+    analysis_ids: List[str] = [],
+    columns: List[str] = ["analysis_id", "user_question"]
+) -> List[Dict]:
+    """Get multiple analyses from the database."""
+    async with AsyncSession(engine) as session:
+        try:
+            query = select(*[getattr(Analyses, col) for col in columns])
+            if analysis_ids:
+                query = query.where(Analyses.analysis_id.in_(analysis_ids))
+            
+            result = await session.execute(query)
+            rows = result.all()
+            return None, [dict(zip(columns, row)) for row in rows]
+        except Exception as e:
+            LOGGER.error(f"Error getting multiple analyses: {e}")
+            return str(e), None
