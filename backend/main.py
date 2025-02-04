@@ -1,4 +1,3 @@
-from contextlib import asynccontextmanager
 import logging
 import os
 import traceback
@@ -11,7 +10,6 @@ from db_utils import (
     ORACLE_ENABLED,
     get_all_analyses,
     get_analysis_data,
-    init_models,
     initialise_analysis,
 )
 from generic_utils import get_api_key_from_key_name
@@ -58,10 +56,6 @@ request_types = ["clarify", "understand", "gen_steps", "gen_analysis"]
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await init_models()
-    yield
 
 
 @app.get("/ping")
