@@ -1,0 +1,91 @@
+import os
+import redis
+from sqlalchemy import create_engine, MetaData
+from sqlalchemy.ext.asyncio import create_async_engine
+from utils_logging import LOGGER
+
+REDIS_HOST = os.getenv("REDIS_INTERNAL_HOST", "agents-redis")
+REDIS_PORT = os.getenv("REDIS_INTERNAL_PORT", 6379)
+redis_client = redis.Redis(
+    host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True
+)
+
+INTERNAL_DB = os.environ.get("INTERNAL_DB", None)
+IMPORTED_TABLES_DBNAME = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tables")
+TEMP_TABLES_DBNAME = os.environ.get("TEMP_TABLES_DBNAME", "temp_tables")
+
+ORACLE_ENABLED: bool = os.environ.get("ORACLE_ENABLED", "no") == "yes"
+LOGGER.info(f"ORACLE_ENABLED: {ORACLE_ENABLED}")
+
+def get_db_engine():
+    if INTERNAL_DB == "sqlite":
+        print("using sqlite as our internal db")
+        connection_uri = "sqlite:///defog_local.db"
+        engine = create_engine(connection_uri, connect_args={"timeout": 3})
+        if ORACLE_ENABLED:
+            imported_tables_engine = create_engine(
+                f"sqlite:///{IMPORTED_TABLES_DBNAME}.db", connect_args={"timeout": 3}
+            )
+            LOGGER.info(f"Created imported tables engine for sqlite: {imported_tables_engine}")
+            temp_tables_engine = create_engine(
+                f"sqlite:///{TEMP_TABLES_DBNAME}.db", connect_args={"timeout": 3}
+            )
+            LOGGER.info(f"Created temp tables engine for sqlite: {temp_tables_engine}")
+            return engine, imported_tables_engine, temp_tables_engine
+        return engine, None, None
+
+    elif INTERNAL_DB == "postgres":
+        db_creds = {
+            "user": os.environ.get("DBUSER", "postgres"),
+            "password": os.environ.get("DBPASSWORD", "postgres"),
+            "host": os.environ.get("DBHOST", "agents-postgres"),
+            "port": os.environ.get("DBPORT", "5432"),
+            "database": os.environ.get("DATABASE", "postgres"),
+        }
+
+        print("using postgres as our internal db")
+        connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
+        engine = create_async_engine(connection_uri, pool_size=30)
+
+        if ORACLE_ENABLED:
+            if IMPORTED_TABLES_DBNAME == db_creds["database"]:
+                print(f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider use a different database name.")
+            imported_tables_engine = create_engine(
+                f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}"
+            )
+            LOGGER.info(f"Created imported tables engine for postgres: {imported_tables_engine}")
+            temp_tables_engine = create_engine(
+                f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{TEMP_TABLES_DBNAME}"
+            )
+            LOGGER.info(f"Created temp tables engine for postgres: {temp_tables_engine}")
+            return engine, imported_tables_engine, temp_tables_engine
+        return engine, None, None
+
+    elif INTERNAL_DB == "sqlserver":
+        db_creds = {
+            "user": os.environ.get("DBUSER", "sa"),
+            "password": os.environ.get("DBPASSWORD", "Password1"),
+            "host": os.environ.get("DBHOST", "localhost"),
+            "database": os.environ.get("DATABASE", "defog"),
+            "port": os.environ.get("DBPORT", "1433"),
+        }
+
+        connection_uri = f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server"
+        engine = create_async_engine(connection_uri)
+
+        if ORACLE_ENABLED:
+            if IMPORTED_TABLES_DBNAME == db_creds["database"]:
+                print(f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider using a different database name.")
+            imported_tables_engine = create_engine(
+                f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}?driver=ODBC+Driver+18+for+SQL+Server"
+            )
+            LOGGER.info(f"Created imported tables engine for sqlserver: {imported_tables_engine}")
+            temp_tables_engine = create_engine(
+                f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{TEMP_TABLES_DBNAME}?driver=ODBC+Driver+18+for+SQL+Server"
+            )
+            LOGGER.info(f"Created temp tables engine for sqlserver: {temp_tables_engine}")
+            return engine, imported_tables_engine, temp_tables_engine
+        return engine, None, None
+
+engine, imported_tables_engine, temp_tables_engine = get_db_engine()
+metadata = MetaData()
