@@ -1,82 +1,14 @@
-import re
 import pandas as pd
 import traceback
-import inspect
 from agents.planner_executor.tools.all_tools import tools
 from utils import (
     SqlExecutionError,
     error_str,
-    warn_str,
     filter_function_inputs,
     wrap_in_async,
 )
 
-# from db_utils import get_all_tools
 import asyncio
-
-
-def parse_function_signature(param_signatures, fn_name):
-    """
-    Given a dictionary of function signature, return a list of all the parameters
-    with name, default values and types.
-    """
-    params = {}
-    for p in param_signatures:
-        # ignore kwargs
-        if p == "kwargs" or p == "global_dict":
-            continue
-        p_name = param_signatures[p].name
-        p_default_val = param_signatures[p].default
-
-        if p_default_val is param_signatures[p].empty:
-            p_default_val = None
-
-        p_type = param_signatures[p].annotation
-        if p_type is param_signatures[p].empty:
-            warn_str(
-                "No type annotation for parameter "
-                + p_name
-                + " in "
-                + fn_name
-                + ". Assuming type is str."
-            )
-            p_type = "str"
-        else:
-            # if p_type starts with <class, then take the class name
-            if str(p_type).startswith("<class"):
-                p_type = str(p_type)[8:-2]
-            # if it contains "DBColumn", then just say "DBColumn"
-            if (
-                str(p_type)
-                == "agents.planner_executor.tool_helpers.tool_param_types.DBColumn"
-            ):
-                p_type = "DBColumn"
-            # if it's a list of DBColumn, then include the number of elements
-            if str(p_type).startswith(
-                "agents.planner_executor.tool_helpers.tool_param_types.DBColumnList_"
-            ):
-                # get index of DBColumnList_ and use string from there till end
-                match = re.search("DBColumnList_", str(p_type)).start()
-                p_type = str(p_type)[match:]
-
-            # if DropdownSingleSelect, then just say "DropDownSingleSelect"
-            if (
-                str(p_type)
-                == "agents.planner_executor.tool_helpers.tool_param_types.DropdownSingleSelect"
-            ):
-                p_type = "DropdownSingleSelect"
-
-        # if default value type is a class, convert to string
-        if type(p_default_val) == type:
-            p_default_val = str(p_default_val)[8:-2]
-
-        params[p_name] = {
-            "name": p_name,
-            "default": p_default_val,
-            "type": p_type,
-        }
-
-    return params
 
 
 async def execute_tool(function_name, tool_function_inputs, global_dict={}):
