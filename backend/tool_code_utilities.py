@@ -13,14 +13,6 @@ analysis_assets_dir = os.environ.get(
 )
 
 
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-available_colors = plt.colormaps()
-
-sns.set_palette(["#009D94", "#FF5C1C", "#0057CF", "#691A6B", "#FFBD00"])
-
-
 # make sure the query does not contain any malicious commands like drop, delete, etc.
 def safe_sql(query):
     if query is None:
@@ -167,13 +159,3 @@ def add_default_imports(code):
     return default_top_level_imports + "\n\n" + code
 
 
-def fix_savefig_calls(code):
-    """
-    Fixes the savefig calls in the code by changing the path and always appending analysis_assets_dir variable to the path.
-    """
-    # check both for double and single quote
-    code = code.replace('savefig("', f'savefig({analysis_assets_dir} + "')
-    code = code.replace("savefig('", f"savefig({analysis_assets_dir} + '")
-    # remove jic we got two slashes
-    code = code.replace("//", "/")
-    return code
