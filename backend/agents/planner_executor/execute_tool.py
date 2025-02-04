@@ -4,14 +4,13 @@ from agents.planner_executor.tools.all_tools import tools
 from utils import (
     SqlExecutionError,
     error_str,
-    filter_function_inputs,
     wrap_in_async,
 )
 
 import asyncio
 
 
-async def execute_tool(function_name, tool_function_inputs, global_dict={}):
+async def execute_tool(function_name, tool_function_inputs):
     print(f"Executing tool: {function_name} with inputs: {tool_function_inputs}")
     inputs_to_log = []
     for _, inp in tool_function_inputs.items():
@@ -30,17 +29,8 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
             # add param types to import
 
             fn = tool["fn"]
-
-            if tool_function_inputs.get("global_dict"):
-                tool_function_inputs["global_dict"].update(global_dict)
-            else:
-                tool_function_inputs["global_dict"] = global_dict
-
-            filtered_inputs, _ = filter_function_inputs(fn, tool_function_inputs)
-
             wrapped_fn = wrap_in_async(fn)
-
-            task = asyncio.create_task(wrapped_fn(**filtered_inputs))
+            task = asyncio.create_task(wrapped_fn(**tool_function_inputs))
             try:
                 # expand tool inputs
                 # if it takes more than 120 seconds, then timeout

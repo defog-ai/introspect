@@ -134,14 +134,11 @@ async def generate_step(request: Request):
                 )
 
             question = question + " (" + assignment_understanding + ")"
+        
         inputs = {
             "question": question,
             "hard_filters": hard_filters,
-            "global_dict": {
-                "dfg_api_key": api_key,
-                "dev": dev,
-                "temp": temp,
-            },
+            "key_name": key_name,
             "previous_context": prev_questions,
         }
 

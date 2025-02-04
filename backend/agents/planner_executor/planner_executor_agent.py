@@ -150,7 +150,6 @@ async def run_step(
         results, tool_input_metadata = await execute_tool(
             function_name=step["tool_name"],
             tool_function_inputs=inputs,
-            global_dict=analysis_execution_cache,
         )
 
     step["error_message"] = results.get("error_message")

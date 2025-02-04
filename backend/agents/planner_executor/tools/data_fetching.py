@@ -3,8 +3,8 @@ import pandas as pd
 
 async def data_fetcher_and_aggregator(
     question: str,
+    key_name: str,
     hard_filters: list = [],
-    global_dict: dict = {},
     previous_context: list = [],
     **kwargs,
 ):
@@ -15,7 +15,7 @@ async def data_fetcher_and_aggregator(
     """
     import os
     import pandas as pd
-    from generic_utils import make_request
+    from generic_utils import make_request, get_api_key_from_key_name
     from tool_code_utilities import safe_sql, fetch_query_into_df
     from utils import SqlExecutionError
     from db_utils import get_db_type_creds
@@ -23,12 +23,10 @@ async def data_fetcher_and_aggregator(
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")
 
-    api_key = global_dict.get("dfg_api_key", "")
+    api_key = get_api_key_from_key_name(key_name)
     res = await get_db_type_creds(api_key)
     db_type, _ = res
 
-    temp = global_dict.get("temp", False)
-    print(f"Global dict currently has keys: {list(global_dict.keys())}")
     print(f"Previous context: {previous_context}", flush=True)
 
     # send the data to the Defog, and get a response from it
@@ -77,7 +75,7 @@ async def data_fetcher_and_aggregator(
 
     try:
         df, sql_query = await fetch_query_into_df(
-            api_key=api_key, sql_query=query, temp=temp
+            api_key=api_key, sql_query=query
         )
     except Exception as e:
         print("Raising execution error", flush=True)
@@ -96,7 +94,7 @@ async def send_email(
     full_data: pd.DataFrame = None,
     email_subject: str = None,
     recipient_email_address: str = None,
-    global_dict: dict = {},
+    api_key: str = None,
     **kwargs,
 ):
     """
@@ -161,7 +159,7 @@ async def send_email(
                 url=os.getenv("DEFOG_BASE_URL", "https://api.defog.ai")
                 + "/email_data_report",
                 json={
-                    "api_key": global_dict.get("dfg_api_key"),
+                    "api_key": api_key,
                     "to_email": recipient_email_address,
                     "subject": email_subject,
                     "data_csv": full_data.to_csv(index=False),
