@@ -14,7 +14,6 @@ from db_utils import (
 )
 from utils import deduplicate_columns, add_indent
 
-import yaml
 import pandas as pd
 import os
 import warnings
@@ -81,65 +80,6 @@ def warn(msg):
 #   ...
 # }
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
-
-class MissingDependencyException(Exception):
-    def __init__(self, variable_name):
-        # Call the base class constructor with the parameters it needs
-        super().__init__(f"{variable_name}")
-
-        # Now for your custom code...
-        self.variable_name = variable_name
-
-
-def get_input_value(inp, analysis_execution_cache):
-    """
-    Tries to figure out a value of an input.
-
-    If the input starts with `global_dict.XXX`, and is not found in analysis_execution_cache, raises a MissingDependencyException.
-
-    That exception is usually a signal to the calling function that it needs to run some parent step.
-    """
-    val = None
-
-    if isinstance(inp, list):
-        # this is an array
-        val = []
-        for inp in inp:
-            val.append(get_input_value(inp, analysis_execution_cache))
-
-    elif isinstance(inp, str) and inp.startswith("global_dict."):
-        variable_name = inp.split(".")[1]
-        # if analysis_execution_cache doesn't have this key, raise an error
-        if variable_name not in analysis_execution_cache:
-            # raise error
-            raise MissingDependencyException(variable_name)
-        else:
-            val = analysis_execution_cache[variable_name]
-
-    else:
-        # simpler types
-        if isinstance(inp, str):
-            # if only numbers, return float
-            if inp.isnumeric():
-                val = float(inp)
-
-            # if None as a string after stripping, return None
-            if inp.strip() == "None":
-                val = None
-            val = inp
-
-    return val
-
-
-def find_step_by_output_name(output_name, previous_steps):
-    """
-    Given an output name, find the step that generated this output.
-    """
-    for step in previous_steps:
-        if output_name in step.get("outputs_storage_keys", []):
-            return step
-    return None
-
 
 async def run_step(
     analysis_id,
@@ -296,55 +236,6 @@ async def run_step(
             # but if we're running an existing step, this will overwrite it with the new one
             overwrite_key="id",
         )
-
-
-def create_yaml_for_prompt_from_steps(steps=[]) -> list[str]:
-    """
-    Formats the steps array (as stored in the db)
-    into yaml strings that can be used as a prompt for the LLM.
-
-    We take selected properties from each step's dict
-    convert it to a yaml string
-
-    Then wrap each one in ```yaml...```
-
-    Returns an array of strings
-    """
-    yaml_formatted_steps = []
-    for step in steps:
-        yaml_formatted_steps.append(
-            yaml.dump(
-                [
-                    {
-                        "description": step["description"],
-                        "inputs": step["inputs"],
-                        "outputs_storage_keys": step["outputs_storage_keys"],
-                        "tool_name": step["tool_name"],
-                        "done": step["done"],
-                    }
-                ],
-                default_flow_style=False,
-                sort_keys=False,
-            )
-        )
-
-    return yaml_formatted_steps
-
-
-def find_previous_steps_from_step_id(step_id, all_steps):
-    """
-    Finds *only* the previous steps of the provided step_id from an array of all steps
-    If step is not found, it returns all the steps
-    """
-    # find the index of this step_id
-    idx = len(all_steps)
-
-    for i, step in enumerate(all_steps):
-        if step["id"] == step_id:
-            idx = i
-            break
-
-    return all_steps[:idx]
 
 
 async def generate_assignment_understanding(
