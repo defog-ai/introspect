@@ -3,16 +3,12 @@ from typing import Any, List, Dict, Optional
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from generic_utils import format_sql, make_request, normalize_sql
-from matplotlib import pyplot as plt
 from oracle.celery_app import LOGGER
 from oracle.constants import TaskType
-from utils_df import get_columns_summary
 from db_utils import update_status
 import asyncio
 
-FIGSIZE = (5, 3)
 Z_THRESHOLD = 3  # z-score threshold for anomalies
 NUMERIC_DTYPES = [np.float64, np.int64]
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
@@ -84,118 +80,6 @@ async def retry_sql_gen(
         return new_query
     else:
         raise Exception(f"Error in making request to /retry_query_after_error")
-
-
-async def get_chart_fn(
-    api_key: str,
-    question: str,
-    data: pd.DataFrame,
-    dependent_variable: str,
-    independent_variable: str,
-) -> Optional[Dict]:
-    """
-    Get the most suitable chart function and arguments for the given data.
-    """
-    # if we're showing the unique values for only 1 column, hardcode to use a
-    # histogram with the number of bins set to the number of unique values.
-    if len(data.columns) == 1 and "unique" in question:
-        return {
-            "name": "displot",
-            "parameters": {"kind": "hist", "x": data.columns[0], "bins": len(data)},
-        }
-    numeric_columns_summary, qualitative_columns_summary, date_columns_summary = (
-        get_columns_summary(data)
-    )
-    json_data = {
-        "api_key": api_key,
-        "question": question,
-        "numeric_columns_summary": numeric_columns_summary,
-        "qualitative_columns_summary": qualitative_columns_summary,
-        "date_columns_summary": date_columns_summary,
-        "dependent_variable": dependent_variable,
-        "independent_variable": independent_variable,
-    }
-    resp = await make_request(f"{DEFOG_BASE_URL}/get_sns_chart", data=json_data)
-    if "name" not in resp or "parameters" not in resp:
-        LOGGER.error(f"Error occurred in getting sns chart: {resp}")
-        return None
-    if resp["name"] not in SUPPORTED_CHART_TYPES:
-        LOGGER.error(f"Unsupported chart type: {resp['name']}")
-        return None
-    return resp
-
-
-def run_chart_fn(
-    chart_fn_params: Dict[str, Any],
-    data: pd.DataFrame,
-    chart_path: str,
-    figsize=FIGSIZE,
-):
-    """
-    Run the sns plotting function on the data and save the chart to the given path.
-
-    Parameters:
-    - chart_fn_params (Dict): Parameters for the chart function, including the
-      function name and parameters.
-    - data (pd.DataFrame): The data to plot.
-    - chart_path (str): The file path to save the chart.
-    """
-    if not chart_fn_params:
-        raise Exception("No chart function provided")
-    chart_fn = chart_fn_params["name"]
-    if chart_fn not in SUPPORTED_CHART_TYPES:
-        raise Exception(f"Unsupported chart type: {chart_fn}")
-    kwargs = chart_fn_params.get("parameters", {})
-    x = kwargs.get("x", None)
-    y = kwargs.get("y", None)
-    hue = kwargs.get("hue", None)
-    col = kwargs.get("col", None)
-    row = kwargs.get("row", None)
-    all_colnames = [c for c in [x, y, hue, col, row] if c]
-    # perform some basic data validation
-    LOGGER.debug(f"Columns used in chart: {all_colnames}")
-    for c in all_colnames:
-        if c not in data.columns:
-            raise Exception(f"Column not found in data: {c}")
-
-    plt.figure(figsize=figsize)  # Initialize a new figure
-
-    # Run the sns plotting function on the data
-    if chart_fn == "relplot":
-        if not (x and y):
-            raise Exception(
-                f"X and Y columns not provided for relplot.\n{chart_fn_params}"
-            )
-        sns.relplot(data, **kwargs)
-    elif chart_fn == "displot":
-        if not x:
-            raise Exception(f"X column not provided for displot.\n{chart_fn_params}")
-        sns.displot(data, **kwargs)
-    elif chart_fn == "catplot":
-        if not (x and y):
-            raise Exception(
-                f"X and Y columns not provided for catplot.\n{chart_fn_params}"
-            )
-        sns.catplot(data, **kwargs)
-
-    # rotate x-axis labels if the x column's values has more than 100 characters
-    x_col = kwargs.get("x", None)
-    if x_col:
-        x_col_values = data[x_col]
-        # get unique string values of x column and sum the length of all values
-        x_col_char_count = sum([len(str(val)) for val in x_col_values.unique()])
-        LOGGER.debug(f"X column char count: {x_col_char_count}")
-        locs, labels = plt.xticks()
-        if x_col_char_count > (figsize[0] * 10):
-            LOGGER.debug(f"Rotating x-axis labels")
-            plt.setp(labels, rotation=45)
-
-    # Save the figure to the specified path
-    plt.savefig(chart_path)
-    plt.close()  # Close the figure to free memory
-    LOGGER.debug(
-        f"Saved chart to: {chart_path}\nchart_fn: {chart_fn}\nparams: {kwargs}"
-    )
 
 
 # sub-routines for getting summaries / percentiles:
