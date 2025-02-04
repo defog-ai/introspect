@@ -8,7 +8,6 @@ import doc_endpoints
 
 from db_utils import (
     ORACLE_ENABLED,
-    get_all_analyses,
     get_analysis_data,
     initialise_analysis,
 )
@@ -70,23 +69,6 @@ edit_request_types_and_prop_names = {
     },
     "edit_approaches": {"table_column": "gen_approaches", "prop_name": "approaches"},
 }
-
-
-@app.post("/get_analyses")
-async def all_analyses(request: Request):
-    params = await request.json()
-    key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
-    try:
-        err, analyses = await get_all_analyses(api_key=api_key)
-        if err is not None:
-            return {"success": False, "error_message": err}
-
-        return {"success": True, "analyses": analyses}
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        return {"success": False, "error_message": "Incorrect request"}
 
 
 @app.post("/get_analysis")

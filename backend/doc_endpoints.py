@@ -9,7 +9,6 @@ logging.basicConfig(level=logging.INFO)
 
 from db_utils import (
     get_analysis_data,
-    get_all_tools,
 )
 
 router = APIRouter()
@@ -84,16 +83,3 @@ async def download_csv(request: Request):
         logging.info("Error downloading csv: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
-
-
-@router.post("/get_user_tools")
-async def get_user_tools(request: Request):
-    """
-    Get all tools available to the user.
-    """
-    err, tools = await get_all_tools()
-    if err:
-        return {"success": False, "error_message": err}
-    return {"success": True, "tools": tools}
-
-
