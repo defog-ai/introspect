@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 import json
 import os
 import time
@@ -9,14 +8,13 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from db_utils import (
+from db_config import (
     INTERNAL_DB,
-    ImportedTables,
-    OracleSources,
     engine,
     imported_tables_engine,
-    validate_user,
 )
+from db_models import ImportedTables, OracleSources
+from auth_utils import validate_user
 from generic_utils import get_api_key_from_key_name, make_request
 from utils_imported_data import (
     IMPORTED_SCHEMA,
@@ -26,7 +24,6 @@ from utils_imported_data import (
 )
 from pydantic import BaseModel
 from sqlalchemy import delete, insert, select, text, update
-from utils_imported_data import IMPORTED_SCHEMA
 from utils_logging import LOGGER, save_and_log, save_timing
 
 

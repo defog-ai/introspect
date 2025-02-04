@@ -16,12 +16,12 @@ from agents.planner_executor.planner_executor_agent import (
 
 from agents.planner_executor.tool_helpers.core_functions import analyse_data_streaming
 
-from db_utils import (
+from analysis_utils import (
     get_analysis_data,
     get_assignment_understanding,
 )
 from generic_utils import get_api_key_from_key_name, make_request
-from db_utils import validate_user
+from auth_utils import validate_user
 from uuid import uuid4
 
 router = APIRouter()

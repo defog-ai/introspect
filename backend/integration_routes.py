@@ -9,10 +9,10 @@ import pandas as pd
 import requests
 from db_utils import (
     get_db_type_creds,
-    redis_client,
     update_db_type_creds,
-    validate_user,
 )
+from db_config import redis_client
+from auth_utils import validate_user
 from defog import Defog
 from defog.query import execute_query
 from fastapi import APIRouter, Request

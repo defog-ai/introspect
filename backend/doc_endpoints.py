@@ -7,7 +7,7 @@ from generic_utils import get_api_key_from_key_name
 
 logging.basicConfig(level=logging.INFO)
 
-from db_utils import (
+from analysis_utils import (
     get_analysis_data,
 )
 

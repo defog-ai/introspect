@@ -1,7 +1,7 @@
 import hashlib
 import os
 
-from db_utils import Users
+from db_models import Users
 from sqlalchemy import create_engine, select, insert
 
 SALT = "TOMMARVOLORIDDLE"

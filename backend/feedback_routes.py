@@ -5,11 +5,10 @@ from generic_utils import (
     format_sql,
     format_date_string,
 )
-from db_utils import validate_user
+from auth_utils import validate_user
 import os
 import pandas as pd
 from fastapi.responses import JSONResponse
-from datetime import datetime
 from db_utils import get_db_type_creds
 
 router = APIRouter()

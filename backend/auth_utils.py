@@ -1,5 +1,6 @@
 import hashlib
-from db_utils import engine, Users
+from db_config import engine
+from db_models import Users
 from sqlalchemy import (
     select,
     update,
@@ -77,5 +78,26 @@ async def validate_user_email(email):
         user = user.fetchone()
     if user:
         return True
+    else:
+        return False
+
+async def validate_user(token, user_type=None, get_username=False):
+    async with engine.begin() as conn:
+        user = await conn.execute(select(Users).where(Users.hashed_password == token))
+        user = user.fetchone()
+    if user:
+        if user_type == "admin":
+            if user.user_type == "admin":
+                if get_username:
+                    return user.username
+                else:
+                    return True
+            else:
+                return False
+        else:
+            if get_username:
+                return user.username
+            else:
+                return True
     else:
         return False

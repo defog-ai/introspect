@@ -3,7 +3,8 @@ from generic_utils import (
     make_request,
     get_api_key_from_key_name,
 )
-from db_utils import validate_user, get_db_type_creds
+from auth_utils import validate_user
+from db_utils import get_db_type_creds
 import os
 from fastapi.responses import JSONResponse
 

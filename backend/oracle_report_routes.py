@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List, Optional
+from typing import Optional
 
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, JSONResponse
@@ -8,13 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql import select
 from oracle.utils_report import summary_dict_to_markdown
-from db_utils import (
+from db_models import (
     OracleAnalyses,
     OracleReports,
-    engine,
-    get_report_data,
-    validate_user,
 )
+from db_config import engine
+from oracle_utils import get_report_data
+from auth_utils import validate_user
 from generic_utils import get_api_key_from_key_name
 from oracle.constants import TaskStage
 from utils import encode_image
