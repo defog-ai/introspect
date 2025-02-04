@@ -7,8 +7,7 @@ RUN apt-get update && apt-get install -y python3-pip netcat-openbsd
 
 COPY ./backend /backend
 
-RUN pip install -r /backend/requirements_export.txt
-RUN pip install -r /backend/requirements_oracle.txt
+RUN pip install -r /backend/requirements.txt
 
 # expose python server port
 EXPOSE 1235
