@@ -186,7 +186,13 @@ async def explore_data(
                     hard_filters=hard_filters,
                 )
             )
-
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for res in results:
+                if isinstance(res, Exception):
+                    LOGGER.error(f"Error during explore_generated_question: {res}")
+                elif res:
+                    analyses.append(res)
         if (
             is_follow_on
             and follow_on_id
@@ -210,29 +216,19 @@ async def explore_data(
                     report_id=report_id, generated_qns_summaries=generated_qns_summaries
                 )
             )
-        try:
-            # Await primary tasks
-            answers = await asyncio.gather(*tasks)
-        finally:
-            # Ensure background task of status update is terminated when primary tasks are done
-            if update_status_task.done():
-                update_status_task.cancel()
-                try:
-                    await update_status_task
-                except asyncio.CancelledError:
-                    LOGGER.info(
-                        "Background task of updating status terminated successfully."
-                    )
+        
+        # Ensure background task of status update is terminated when primary tasks are done
+        if update_status_task.done():
+            update_status_task.cancel()
+            try:
+                await update_status_task
+            except asyncio.CancelledError:
+                LOGGER.info(
+                    "Background task of updating status terminated successfully."
+                )
 
-        # remove None answers and add to analyses
-        non_empty_answers = []
-        for ans in answers:
-            if ans:
-                ans["round"] = round
-                non_empty_answers.append(ans)
-        analyses.extend(non_empty_answers)
         LOGGER.debug(
-            f"Round {round} analyses count: {len(non_empty_answers)}\nTotal analyses count: {len(analyses)}"
+            f"Round {round} analyses count: {len(analyses)}\nTotal analyses count: {len(analyses)}"
         )
 
         if round < max_rounds:
