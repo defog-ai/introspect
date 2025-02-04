@@ -1,9 +1,10 @@
 from datetime import datetime
 import uuid
-from typing import Dict, List
+from typing import Dict
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from db_models import Analyses
+from db_config import engine
 from utils_logging import LOGGER
 
 async def initialise_analysis(
@@ -32,11 +33,11 @@ async def initialise_analysis(
         try:
             session.add(Analyses(**analysis))
             await session.commit()
-            return analysis
+            return None, analysis
         except Exception as e:
             LOGGER.error(f"Error initialising analysis: {e}")
             await session.rollback()
-            raise
+            return str(e), None
 
 async def get_analysis_data(analysis_id: str) -> Dict:
     """Get analysis data from the database."""
@@ -47,11 +48,12 @@ async def get_analysis_data(analysis_id: str) -> Dict:
             )
             row = result.first()
             if not row:
-                return None
-            return analysis_data_from_row(row[0])
+                return "Analysis not found", None
+            result = analysis_data_from_row(row[0])
+            return None, result
         except Exception as e:
             LOGGER.error(f"Error getting analysis data: {e}")
-            raise
+            return str(e), None
 
 async def get_assignment_understanding(analysis_id: str) -> Dict:
     """Get the assignment understanding for an analysis."""
@@ -62,10 +64,11 @@ async def get_assignment_understanding(analysis_id: str) -> Dict:
                 .where(Analyses.analysis_id == analysis_id)
             )
             row = result.first()
-            return row[0] if row else None
+            result = row[0] if row else None
+            return None, result
         except Exception as e:
             LOGGER.error(f"Error getting assignment understanding: {e}")
-            raise
+            return str(e), None
 
 async def update_assignment_understanding(analysis_id: str, understanding: Dict):
     """Update the assignment understanding for an analysis."""
@@ -144,21 +147,3 @@ def analysis_data_from_row(row) -> Dict:
         "direct_parent_id": row.direct_parent_id,
         "username": row.username
     }
-
-async def get_multiple_analyses(
-    analysis_ids: List[str] = [],
-    columns: List[str] = ["analysis_id", "user_question"]
-) -> List[Dict]:
-    """Get multiple analyses from the database."""
-    async with AsyncSession(engine) as session:
-        try:
-            query = select(*[getattr(Analyses, col) for col in columns])
-            if analysis_ids:
-                query = query.where(Analyses.analysis_id.in_(analysis_ids))
-            
-            result = await session.execute(query)
-            rows = result.all()
-            return [dict(zip(columns, row)) for row in rows]
-        except Exception as e:
-            LOGGER.error(f"Error getting multiple analyses: {e}")
-            raise
