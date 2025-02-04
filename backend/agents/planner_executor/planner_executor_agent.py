@@ -16,7 +16,6 @@ from db_utils import (
 )
 from utils import deduplicate_columns, add_indent
 from .tool_helpers.get_tool_library_prompt import get_tool_library_prompt
-from .tool_helpers.tool_param_types import ListWithDefault
 import asyncio
 import requests
 
@@ -78,7 +77,6 @@ def warn(msg):
 #     "assignment_understanding": assignment_understanding,
 #     "dfg": None,
 #     "llm_calls_url": llm_calls_url,
-#     "analysis_assets_dir": analysis_assets_dir,
 #     "dev": dev,
 #     "temp": temp,
 #     "output_1": ...
@@ -89,14 +87,6 @@ def warn(msg):
 #   ...
 # }
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
-analysis_assets_dir = os.environ.get(
-    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
-)
-
-# check if analysis_assets_dir/datasets exists
-if not os.path.exists(analysis_assets_dir + "/datasets"):
-    os.makedirs(analysis_assets_dir + "/datasets")
-
 
 class MissingDependencyException(Exception):
     def __init__(self, variable_name):
