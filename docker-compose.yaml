@@ -71,7 +71,6 @@ services:
     ports:
       - "1235:1235"
     volumes:
-      - agents-assets:/agents-assets/
       - ./backend:/backend
     depends_on:
       - agents-postgres
@@ -109,7 +108,6 @@ services:
 
 volumes:
   agents-postgres:
-  agents-assets:
   redis-data:
 
 networks:

@@ -13,12 +13,6 @@ RUN pip install -r /backend/requirements.txt
 EXPOSE 1235
 
 # create empty analysis assets dirs
-RUN mkdir -p /agents-assets/analysis-assets
-RUN mkdir -p /agents-assets/analysis-assets/boxplots 
-RUN mkdir -p /agents-assets/analysis-assets/datasets 
-RUN mkdir -p /agents-assets/analysis-assets/heatmaps 
-RUN mkdir -p /agents-assets/analysis-assets/linechart 
-RUN mkdir -p /agents-assets/analysis-assets/linecharts
 RUN touch /agent-logs-out
 
 ENV PYTHONUNBUFFERED=true
