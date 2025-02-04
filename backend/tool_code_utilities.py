@@ -132,26 +132,3 @@ def natural_sort(df, time_column, units=None, ascending=True):
         df = df.sort_values(by=time_column, ascending=ascending)
     return df
 
-
-default_top_level_imports = "\n\n".join(
-    [
-        "from agents.planner_executor.tool_helpers.tool_param_types import (",
-        "  DBColumn,",
-        "  DropdownSingleSelect,",
-        "  ListWithDefault,",
-        "  db_column_list_type_creator,",
-        ")",
-        "from tool_code_utilities import available_colors",
-        "import pandas",
-        "import pandas as pd",
-    ]
-)
-
-
-def add_default_imports(code):
-    """
-    Adds the default imports to the code.
-    """
-    return default_top_level_imports + "\n\n" + code
-
-
