@@ -1,57 +1,31 @@
+import os
+import re
 import traceback
+import logging
 from uuid import uuid4
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
 from agents.clarifier.clarifier_agent import get_clarification
-from pydantic import BaseModel
 
 from agents.planner_executor.planner_executor_agent import (
     generate_assignment_understanding,
-    generate_single_step,
     rerun_step,
     run_step,
 )
-import logging
 
-from agents.planner_executor.tool_helpers.core_functions import analyse_data, analyse_data_streaming
+from agents.planner_executor.tool_helpers.core_functions import analyse_data_streaming
 
-LOGGER = logging.getLogger("server")
-
-from agents.planner_executor.tool_helpers.get_tool_library_prompt import (
-    get_tool_library_prompt,
-)
-from utils import snake_case
 from db_utils import (
-    add_tool,
-    check_tool_exists,
-    delete_tool,
-    get_all_tools,
     get_analysis_data,
     get_assignment_understanding,
-    update_analysis_data,
-    redis_client,
-    validate_user,
 )
 from generic_utils import get_api_key_from_key_name, make_request
 from uuid import uuid4
 
 router = APIRouter()
+LOGGER = logging.getLogger("server")
 
-import os
-import re
 
-llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-
-redis_available = False
-question_cache = {}
-try:
-    # check if redis is available
-    redis_client.ping()
-    redis_available = True
-except Exception as e:
-    LOGGER.error(f"Error connecting to redis. Using in-memory cache instead.")
-
 
 @router.post("/generate_step")
 async def generate_step(request: Request):
@@ -83,11 +57,8 @@ async def generate_step(request: Request):
         dev = params.get("dev", False)
         temp = params.get("temp", False)
         clarification_questions = params.get("clarification_questions", [])
-        sql_only = params.get("sql_only", False)
         previous_context = params.get("previous_context", [])
         root_analysis_id = params.get("root_analysis_id", analysis_id)
-        extra_tools = params.get("extra_tools", [])
-        planner_question_suffix = params.get("planner_question_suffix", None)
 
         # if key name or question is none or blank, return error
         if not key_name or key_name == "":
@@ -151,128 +122,75 @@ async def generate_step(request: Request):
             question = unified_question.get("rephrased_question", question)
             print(f"*******\nUnified question: {question}\n********", flush=True)
 
-        if sql_only:
-            # if sql_only is true, just call the sql generation function and return, while saving the step
-            if type(assignment_understanding) == str and len(prev_questions) == 0:
-                # remove any numbers, like "1. " from the beginning of assignment understanding
-                if re.match(r"^\d+\.\s", assignment_understanding):
-                    assignment_understanding = re.sub(
-                        r"^\d+\.\s", "", assignment_understanding
-                    )
+        # if sql_only is true, just call the sql generation function and return, while saving the step
+        if type(assignment_understanding) == str and len(prev_questions) == 0:
+            # remove any numbers, like "1. " from the beginning of assignment understanding
+            if re.match(r"^\d+\.\s", assignment_understanding):
+                assignment_understanding = re.sub(
+                    r"^\d+\.\s", "", assignment_understanding
+                )
 
-                question = question + " (" + assignment_understanding + ")"
-            inputs = {
-                "question": question,
-                "hard_filters": hard_filters,
-                "global_dict": {
-                    "dfg_api_key": api_key,
-                    "dev": dev,
-                    "temp": temp,
-                },
-                "previous_context": prev_questions,
-            }
-
-            step_id = str(uuid4())
-            step = {
-                "description": question,
-                "tool_name": "data_fetcher_and_aggregator",
-                "inputs": inputs,
-                "outputs_storage_keys": ["answer"],
-                "done": True,
-                "id": step_id,
-                "error_message": None,
-                "input_metadata": {
-                    "question": {
-                        "name": "question",
-                        "type": "str",
-                        "default": None,
-                        "description": "natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string",
-                    },
-                    "hard_filters": {
-                        "name": "hard_filters",
-                        "type": "list",
-                        "default": None,
-                        "description": "hard filters to apply to the data",
-                    },
-                },
-            }
-
-            analysis_execution_cache = {
+            question = question + " (" + assignment_understanding + ")"
+        inputs = {
+            "question": question,
+            "hard_filters": hard_filters,
+            "global_dict": {
                 "dfg_api_key": api_key,
-                "user_question": question,
-                "hard_filters": hard_filters,
                 "dev": dev,
                 "temp": temp,
-            }
-            await run_step(
-                analysis_id=analysis_id,
-                step=step,
-                all_steps=[step],
-                analysis_execution_cache=analysis_execution_cache,
-                skip_cache_storing=True,
-                resolve_inputs=False,
-            )
-            return {
-                "success": True,
-                "steps": [step],
-                "done": True,
-            }
+            },
+            "previous_context": prev_questions,
+        }
 
-        else:
-            question = question.strip()
-            # make sure the extra tools don't already exist in the db
-            for tool in extra_tools:
-                tool_name = tool.get("tool_name", "")
-                err, exists, existing_tool = await check_tool_exists(tool_name)
-                if err or exists:
-                    raise Exception(f"Tool with name {tool_name} already exists.")
+        step_id = str(uuid4())
+        step = {
+            "description": question,
+            "tool_name": "data_fetcher_and_aggregator",
+            "inputs": inputs,
+            "outputs_storage_keys": ["answer"],
+            "done": True,
+            "id": step_id,
+            "error_message": None,
+            "input_metadata": {
+                "question": {
+                    "name": "question",
+                    "type": "str",
+                    "default": None,
+                    "description": "natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string",
+                },
+                "hard_filters": {
+                    "name": "hard_filters",
+                    "type": "list",
+                    "default": None,
+                    "description": "hard filters to apply to the data",
+                },
+            },
+        }
 
-            # if we're here, add the extra tools to the db
-            for tool in extra_tools:
-                err = await add_tool(
-                    api_key=api_key,
-                    tool_name=tool.get("tool_name", ""),
-                    function_name=tool.get("function_name", ""),
-                    description=tool.get("description", ""),
-                    code=tool.get("code", ""),
-                    input_metadata=tool.get("input_metadata", {}),
-                    output_metadata=tool.get("output_metadata", []),
-                )
-                if err:
-                    raise Exception(err)
-
-            step = await generate_single_step(
-                dfg_api_key=api_key,
-                analysis_id=analysis_id,
-                user_question=question
-                + (
-                    f"Note: {planner_question_suffix}"
-                    if planner_question_suffix
-                    else ""
-                ),
-                dev=dev,
-                temp=temp,
-                assignment_understanding=assignment_understanding,
-            )
-
-            return {
-                "success": True,
-                "steps": [step],
-                "done": step.get("done", True),
-            }
-
+        analysis_execution_cache = {
+            "dfg_api_key": api_key,
+            "user_question": question,
+            "hard_filters": hard_filters,
+            "dev": dev,
+            "temp": temp,
+        }
+        await run_step(
+            analysis_id=analysis_id,
+            step=step,
+            all_steps=[step],
+            analysis_execution_cache=analysis_execution_cache,
+            skip_cache_storing=True,
+            resolve_inputs=False,
+        )
+        return {
+            "success": True,
+            "steps": [step],
+            "done": True,
+        }
     except Exception as e:
         LOGGER.error(e)
         traceback.print_exc()
         return {"success": False, "error_message": str(e) or "Incorrect request"}
-    finally:
-        # remove extra tools from the db
-        for tool in extra_tools:
-            function_name = tool.get("function_name", "")
-            # deletion happens using function name, not tool name
-            err = await delete_tool(function_name)
-            if err:
-                LOGGER.error(f"Error deleting tool {function_name}: {err}")
 
 
 @router.post("/generate_follow_on_questions")
@@ -408,9 +326,7 @@ async def rerun_step_endpoint(request: Request):
         analysis_id = params.get("analysis_id")
         step_id = params.get("step_id")
         edited_step = params.get("edited_step")
-        extra_tools = params.get("extra_tools", [])
-        planner_question_suffix = params.get("planner_question_suffix", None)
-
+        
         if not key_name or key_name == "":
             raise Exception("Invalid request. Must have API key name.")
 
@@ -431,27 +347,6 @@ async def rerun_step_endpoint(request: Request):
         err, analysis_data = await get_analysis_data(analysis_id=analysis_id)
         if err:
             raise Exception("Error fetching analysis data from database")
-
-        # make sure the extra tools don't already exist in the db
-        for tool in extra_tools:
-            tool_name = tool.get("tool_name", "")
-            err, exists, existing_tool = await check_tool_exists(tool_name)
-            if err or exists:
-                raise Exception(f"Tool with name {tool_name} already exists.")
-
-        # if we're here, add the extra tools to the db
-        for tool in extra_tools:
-            err = await add_tool(
-                api_key=api_key,
-                tool_name=tool.get("tool_name", ""),
-                function_name=tool.get("function_name", ""),
-                description=tool.get("description", ""),
-                code=tool.get("code", ""),
-                input_metadata=tool.get("input_metadata", {}),
-                output_metadata=tool.get("output_metadata", []),
-            )
-            if err:
-                raise Exception(err)
 
         # we use the original versions of all steps but the one being rerun
         all_steps = analysis_data.get("gen_steps", {}).get("steps", [])
@@ -483,198 +378,6 @@ async def rerun_step_endpoint(request: Request):
     except Exception as e:
         LOGGER.error(e)
         return {"success": False, "error_message": str(e) or "Incorrect request"}
-    finally:
-        # remove extra tools from the db
-        for tool in extra_tools:
-            function_name = tool.get("function_name", "")
-            # deletion happens using function name, not tool name
-            err = await delete_tool(function_name)
-            if err:
-                LOGGER.error(f"Error deleting tool {function_name}: {err}")
-
-
-@router.post("/delete_steps")
-async def delete_steps(request: Request):
-    """
-    Delete steps from an analysis using the anlaysis_id and step ids passed.
-
-    Returns new steps after deletion.
-
-    This is called by the front end's lib/components/agent/analysis/analysisManager.js from inside the `deleteStepsWrapper` function.
-    """
-    try:
-        data = await request.json()
-        step_ids = data.get("step_ids")
-        analysis_id = data.get("analysis_id")
-
-        if step_ids is None or type(step_ids) != list:
-            raise Exception("Invalid step ids.")
-
-        if analysis_id is None or type(analysis_id) != str:
-            raise Exception("Invalid analysis id.")
-
-        # try to get this analysis' data
-        err, analysis_data = await get_analysis_data(analysis_id)
-        if err:
-            raise Exception("Error fetching analysis data from database")
-
-        # get the steps
-        steps = analysis_data.get("gen_steps", {})
-        if steps and steps["success"]:
-            steps = steps["steps"]
-        else:
-            raise Exception("No steps found for analysis")
-
-        # remove the steps with these tool run ids
-        new_steps = [s for s in steps if s["id"] not in step_ids]
-
-        # update analysis data
-        update_err = await update_analysis_data(
-            analysis_id, "gen_steps", new_steps, replace=True
-        )
-
-        if update_err:
-            return {"success": False, "error_message": update_err}
-
-        return {"success": True, "new_steps": new_steps}
-
-    except Exception as e:
-        LOGGER.error("Error deleting steps: " + str(e))
-        traceback.print_exc()
-        return {"success": False, "error_message": str(e)[:300]}
-
-
-@router.post("/manually_create_new_step")
-async def manually_create_new_step(request: Request):
-    """
-    This is called when a user adds a step on the front end.
-
-    This will receive a tool name, and tool inputs.
-
-    This will create a new step in the analysis.
-
-    Then it will run the new step and all its dependents/parents.
-
-    Returns the new steps after addition.
-
-    This is called by the front end's lib/components/agent/analysis/analysisManager.js from inside the `createNewStep` function.
-
-    The UI components for this are in lib/components/agent/analysis/agent/add-step/*.
-    """
-    try:
-        data = await request.json()
-        # check if this has analysis_id, tool_name and inputs
-        analysis_id = data.get("analysis_id")
-        tool_name = data.get("tool_name")
-        inputs = data.get("inputs")
-        outputs_storage_keys = data.get("outputs_storage_keys")
-        key_name = data.get("key_name")
-        extra_tools = data.get("extra_tools", [])
-        planner_question_suffix = data.get("planner_question_suffix", None)
-
-        if not key_name or key_name == "":
-            raise Exception("Invalid request. Must have API key name.")
-
-        api_key = get_api_key_from_key_name(key_name)
-
-        if not api_key:
-            raise Exception("Invalid API key name.")
-
-        err, tools = get_all_tools()
-
-        if err:
-            raise Exception(err)
-
-        if analysis_id is None or type(analysis_id) != str:
-            raise Exception("Invalid analysis id.")
-
-        if tool_name is None or type(tool_name) != str or tool_name not in tools:
-            raise Exception("Invalid tool name.")
-
-        if inputs is None or type(inputs) != dict:
-            raise Exception("Invalid inputs.")
-
-        if outputs_storage_keys is None or type(outputs_storage_keys) != list:
-            raise Exception("Invalid outputs provided.")
-
-        if len(outputs_storage_keys) == 0:
-            raise Exception("Please type in output names.")
-
-        # if any of the outputs are empty or aren't strings
-        if any([not o or type(o) != str for o in outputs_storage_keys]):
-            raise Exception("Outputs provided are either blank or incorrect.")
-
-        # make sure the extra tools don't already exist in the db
-        for tool in extra_tools:
-            tool_name = tool.get("tool_name", "")
-            err, exists, existing_tool = await check_tool_exists(tool_name)
-            if err or exists:
-                raise Exception(f"Tool with name {tool_name} already exists.")
-
-        # if we're here, add the extra tools to the db
-        for tool in extra_tools:
-            err = await add_tool(
-                api_key=api_key,
-                tool_name=tool.get("tool_name", ""),
-                function_name=tool.get("function_name", ""),
-                description=tool.get("description", ""),
-                code=tool.get("code", ""),
-                input_metadata=tool.get("input_metadata", {}),
-                output_metadata=tool.get("output_metadata", []),
-            )
-            if err:
-                raise Exception(err)
-
-        # a new empty step
-        new_step = {
-            "tool_name": tool_name,
-            "inputs": inputs,
-            "id": str(uuid4()),
-            "outputs_storage_keys": outputs_storage_keys,
-        }
-
-        # update analysis data with the new empty step
-        update_err = await update_analysis_data(analysis_id, "gen_steps", [new_step])
-
-        if update_err:
-            raise Exception(update_err)
-
-        # now try to get this analysis' data (this will include the new step added)
-        err, analysis_data = await get_analysis_data(analysis_id)
-        if err:
-            raise Exception(err)
-
-        # get the steps
-        all_steps = analysis_data.get("gen_steps")
-        if all_steps and all_steps["success"]:
-            all_steps = all_steps["steps"]
-        else:
-            raise Exception("No steps found for analysis")
-
-        new_steps = await rerun_step(
-            step=new_step,
-            all_steps=all_steps,
-            dfg_api_key=api_key,
-            analysis_id=analysis_id,
-            user_question=None,
-            dev=False,
-            temp=False,
-        )
-
-        return {"success": True, "new_steps": new_steps}
-
-    except Exception as e:
-        LOGGER.error("Error creating new step: " + str(e))
-        traceback.print_exc()
-        return {"success": False, "error_message": str(e)[:300]}
-    finally:
-        # remove extra tools from the db
-        for tool in extra_tools:
-            function_name = tool.get("function_name", "")
-            # deletion happens using function name, not tool name
-            err = await delete_tool(function_name)
-            if err:
-                LOGGER.error(f"Error deleting tool {function_name}: {err}")
 
 
 @router.post("/edit_chart")
@@ -737,128 +440,6 @@ async def edit_chart(request: Request):
         return {"success": False, "error_message": str(e)[:300]}
 
 
-@router.post("/generate_or_edit_tool_code")
-async def generate_or_edit_tool_code(request: Request):
-    """
-    This function/endpoint does two things:
-    1. Generates a new tool or tweaks an existing tool based on some user question.
-    2. The endpoint that generates the tool on the api, will also return a sample question based on the user's tool library and ddl. This sample question will then be used to create a new plan using this tool.
-
-    The first step above can have two modes:
-    1. Generate a new tool based on either based on a tool name and description.
-    2. Or given already existing tool code (`current_code` parameter), will tweak the tool code according to the `user_question` parameter, which contains the user's request for what tweak has to be made.
-    """
-    try:
-        data = await request.json()
-        tool_name = data.get("tool_name")
-        tool_description = data.get("tool_description")
-        user_question = data.get("user_question")
-        current_code = data.get("current_code")
-        key_name = data.get("key_name")
-        api_key = get_api_key_from_key_name(key_name)
-
-        LOGGER.info(f"KEY NAME: {key_name}, API KEY: {api_key}")
-
-        if not tool_name:
-            raise Exception("Invalid parameters.")
-
-        if not user_question or user_question == "":
-            user_question = "Please write the tool code."
-
-        # if a tool with this tool name already exists, return an error
-        err, exists, existing_tool = await check_tool_exists(tool_name)
-        if exists:
-            raise Exception(f"Tool with name {tool_name} already exists.")
-
-        payload = {
-            "request_type": "generate_or_edit_tool_code",
-            "tool_name": tool_name,
-            "tool_description": tool_description,
-            "user_question": user_question,
-            "current_code": current_code,
-            "tool_library_prompt": await get_tool_library_prompt(),
-            "api_key": api_key,
-        }
-
-        retries = 0
-        error = None
-        messages = None
-        while retries < 3:
-            try:
-                resp = await make_request(
-                    llm_calls_url,
-                    payload,
-                )
-
-                error = resp.get("error", resp.get("error_message"))
-                if error:
-                    raise Exception(error)
-
-                tool_code = resp["tool_code"]
-                messages = resp["messages"]
-                input_metadata = resp["input_metadata"]
-                output_metadata = resp["output_metadata"]
-
-                # find the function name in tool_code
-                try:
-                    function_name = tool_code.split("def ")[1].split("(")[0]
-                except Exception as e:
-                    LOGGER.error("Error finding function name: " + str(e))
-                    # default to snake case tool name
-                    function_name = snake_case(tool_name)
-                    LOGGER.error("Defaulting to snake case tool name: " + function_name)
-
-                return JSONResponse(
-                    {
-                        "success": True,
-                        "tool_name": tool_name,
-                        "tool_description": tool_description,
-                        "generated_code": tool_code,
-                        "function_name": function_name,
-                        "input_metadata": input_metadata,
-                        "output_metadata": output_metadata,
-                    }
-                )
-            except Exception as e:
-                error = str(e)[:300]
-                LOGGER.info("Error generating tool code: " + str(e))
-                traceback.print_exc()
-            finally:
-                if error:
-                    payload = {
-                        "request_type": "fix_tool_code",
-                        "error": error,
-                        "messages": messages,
-                        "api_key": api_key,
-                    }
-                retries += 1
-
-        LOGGER.info("Max retries reached but couldn't generate code.")
-        raise Exception("Max retries exceeded but couldn't generate code.")
-
-    except Exception as e:
-        LOGGER.info("Error generating tool code: " + str(e))
-        traceback.print_exc()
-        return {
-            "success": False,
-            "error_message": "Unable to generate tool code: " + str(e)[:300],
-        }
-
-
-# setup an analyse_data endpoint
-@router.post("/analyse_data")
-async def analyse_data_endpoint(request: Request):
-    params = await request.json()
-    key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
-    question = params.get("question")
-    data_csv = params.get("data_csv")
-    sql = params.get("sql")
-    model_analysis = await analyse_data(
-        question=question, data_csv=data_csv, sql=sql, api_key=api_key
-    )
-    return {"success": True, "model_analysis": model_analysis}
-
 # setup an analysis data endpoint with streaming and websockets
 @router.websocket("/analyse_data_streaming")
 async def analyse_data_streaming_endpoint(websocket: WebSocket):
@@ -884,35 +465,3 @@ async def analyse_data_streaming_endpoint(websocket: WebSocket):
         traceback.print_exc()
     finally:
         await websocket.close()
-
-class QuestionTypeRequest(BaseModel):
-    key_name: str
-    question: str
-    token: str
-
-@router.post("/get_question_type")
-async def get_question_type(request: QuestionTypeRequest):
-    key_name = request.key_name
-    question = request.question
-    token = request.token
-    username = await validate_user(token, user_type=None, get_username=True)
-    if not username:
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    api_key = get_api_key_from_key_name(key_name)
-
-    res = await make_request(
-        DEFOG_BASE_URL + "/agents/question_type",
-        data={"question": question, "api_key": api_key},
-    )
-
-    return JSONResponse(
-        status_code=200,
-        content=res,
-    )
