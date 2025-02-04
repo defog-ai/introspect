@@ -131,46 +131,6 @@ def get_input_value(inp, analysis_execution_cache):
     return val
 
 
-def resolve_step_inputs(inputs: dict, analysis_execution_cache: dict = {}):
-    """
-    Resolved the inputs to a step.
-    This is mostly crucial for parsing analysis_execution_cache.XXX style of inputs, which occur if this step uses outputs from another step
-    This works closely with the get_input_value function which is responsible for parsing a single input.
-    An example step's yaml is:
-    ```
-    - description: Fetching 5 rows from the database to display.
-        tool_name: data_fetcher_and_aggregator
-        inputs:
-        question: "Show me 5 rows from the database."
-        outputs_storage_keys: ["five_rows"]
-        done: true
-    ```
-    So the "inputs" is a dict with the key "question". Each input i to a tool is a key in that inputs object.
-
-    That input i itself can be any python type.
-
-    Iff that input i is a string and it starts with "analysis_execution_cache.", we will have extra logic:
-    1. We will first try to find the output inside the analysis_assets folder. If we can't find it, we will call the parent step = the step that generated that `analysis_execution_cache.XXX` data. This will be one of the steps passed in `previous_responses` to the generate_single_step function.
-    2. We will keep recursively calling the `run_tool` function till we resolve all the inputs.
-    """
-
-    resolved_inputs = {}
-
-    for input_name, input_val in inputs.items():
-        try:
-            val = get_input_value(input_val, analysis_execution_cache)
-            resolved_inputs[input_name] = val
-        except MissingDependencyException as e:
-            # let calling function handle this
-            raise e
-        except Exception as e:
-            error(f"Error resolving input {input_name}: {input_val}")
-            error(e)
-            raise Exception(f"Error resolving input {input_name}: {input_val}")
-
-    return resolved_inputs
-
-
 def find_step_by_output_name(output_name, previous_steps):
     """
     Given an output name, find the step that generated this output.
@@ -184,79 +144,22 @@ def find_step_by_output_name(output_name, previous_steps):
 async def run_step(
     analysis_id,
     step,
-    all_steps,
     analysis_execution_cache,
     skip_cache_storing=False,
-    resolve_inputs=True,
-    max_resolve_tries=4,
 ):
     """
     Runs a single step, updating the steps object *in place* with the results. Also re-runs all parent steps if required.
 
     General flow:
-    1. If resolve_inputs is True, first try to resolve the inputs of this step. If it is False, we assume that the inputs are already resolved and go straight to step 4.
-    2. If the inputs resolution gives a MissingDependencyException means that one of hte inputs is a global_dict.XXX type of input, which means we need to run a parent step. If any other error, fail.
-    3. Run all the required parent steps recursively till the inputs are resolved.
-    4. Now the inputs are resolved, run this step.
-    5. Stores the run step in the respective analysis in the db
+    1. Now the inputs are resolved, run this step.
+    2. Stores the run step in the respective analysis in the db
     """
 
     outputs_storage_keys = step["outputs_storage_keys"]
-
     info(f"Running step: {step['id']} with tool: {step['tool_name']}")
     add_indent_levels(1)
 
-    # try to resolve the inputs to this step
-    if resolve_inputs:
-
-        # these retries are only triggered if we get a MissingDependencyException
-        # I.e., if the LLM does not give us the right inputs to this step
-        # NOTE and TODO: this does limit a tool to only have, say, 4 dependencies that cause a missing dep error
-        # so if a tool, uses 0-4 global_dict.XXX inputs, this will work
-        # but if it uses 5, it will fail. even though it SHOULD succeed.
-        while max_resolve_tries > 0:
-            # keep doing till we either resolve the inputs or raise an error while resolving
-            try:
-                # resolve the inputs
-                resolved_inputs = resolve_step_inputs(
-                    step["inputs"], analysis_execution_cache=analysis_execution_cache
-                )
-            except MissingDependencyException as e:
-                missing_variable = e.variable_name
-                info(f"Missing variable: {missing_variable}")
-                # find the step that generated this variable
-                # this should be one of the previous steps
-                step_that_generated_this_output = find_step_by_output_name(
-                    missing_variable, all_steps
-                )
-                if step_that_generated_this_output is None:
-                    raise Exception(
-                        f"Could not find the step that generated the output: {missing_variable}"
-                    )
-                else:
-                    info(
-                        f"Found step that generated the output: {missing_variable}. Putting that in run queue."
-                    )
-
-                    await run_step(
-                        analysis_id=analysis_id,
-                        step=step_that_generated_this_output,
-                        all_steps=all_steps,
-                        analysis_execution_cache=analysis_execution_cache,
-                    )
-            except Exception as e:
-                error(f"Error while resolving step inputs: {e}")
-                raise Exception(f"Error while resolving step inputs")
-            finally:
-                if max_resolve_tries == 0:
-                    raise Exception(
-                        f"Exceeded max tries while resolving the inputs to this step: {step['id']}"
-                    )
-                max_resolve_tries -= 1
-
-        info(f"Resolved step inputs: {resolved_inputs}")
-    else:
-        resolved_inputs = step["inputs"]
+    inputs = step["inputs"]
 
     # once we have the resolved inputs, run the step
     # but if this is data fetcher and aggregator, we need to check what changed in the inputs
@@ -306,7 +209,7 @@ async def run_step(
     if not executed:
         results, tool_input_metadata = await execute_tool(
             function_name=step["tool_name"],
-            tool_function_inputs=resolved_inputs,
+            tool_function_inputs=inputs,
             global_dict=analysis_execution_cache,
         )
 

@@ -180,10 +180,8 @@ async def generate_step(request: Request):
         await run_step(
             analysis_id=analysis_id,
             step=step,
-            all_steps=[step],
             analysis_execution_cache=analysis_execution_cache,
             skip_cache_storing=True,
-            resolve_inputs=False,
         )
         return {
             "success": True,

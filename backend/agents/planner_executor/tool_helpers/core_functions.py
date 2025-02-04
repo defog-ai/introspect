@@ -34,36 +34,6 @@ def safe_sql(query):
     return True
 
 
-# resolves an input to a tool
-# by replacing global_dict references to the actual variable values
-def resolve_input(inp, global_dict):
-    # if inp is list, replace each element in the list with call to resolve_input
-    if isinstance(inp, list):
-        resolved_inputs = []
-        for inp in inp:
-            resolved_inputs.append(resolve_input(inp, global_dict))
-
-        return resolved_inputs
-
-    elif isinstance(inp, str) and inp.startswith("global_dict."):
-        variable_name = inp.split(".")[1]
-        print(inp)
-        return global_dict.get(variable_name)
-
-    else:
-        if isinstance(inp, str):
-            # if only numbers, return float
-            if inp.isnumeric():
-                return float(inp)
-
-            # if None as a string after stripping, return None
-            if inp.strip() == "None":
-                return None
-            return inp
-
-        return inp
-
-
 async def analyse_data(question: str, data_csv: str, sql: str, api_key: str) -> str:
     """
     Generate a short summary of the results for the given qn.
