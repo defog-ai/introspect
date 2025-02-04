@@ -36,9 +36,6 @@ redis_client = redis.Redis(
     host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True
 )
 
-analysis_assets_dir = os.environ.get(
-    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
-)
 INTERNAL_DB = os.environ.get("INTERNAL_DB", None)
 IMPORTED_TABLES_DBNAME = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tables")
 TEMP_TABLES_DBNAME = os.environ.get("TEMP_TABLES_DBNAME", "temp_tables")

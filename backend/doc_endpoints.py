@@ -27,9 +27,6 @@ router = APIRouter()
 manager = ConnectionManager()
 
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
-analysis_assets_dir = os.environ.get(
-    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
-)
 
 
 # download csv using step_id and output_storage_key

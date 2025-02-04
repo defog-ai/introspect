@@ -8,10 +8,6 @@ import pandas as pd
 import os
 from db_utils import get_db_type_creds
 
-analysis_assets_dir = os.environ.get(
-    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
-)
-
 
 # make sure the query does not contain any malicious commands like drop, delete, etc.
 def safe_sql(query):

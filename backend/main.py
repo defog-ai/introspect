@@ -58,9 +58,6 @@ app.add_middleware(
 )
 
 request_types = ["clarify", "understand", "gen_steps", "gen_analysis"]
-analysis_assets_dir = os.environ.get(
-    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
-)
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 
 
@@ -152,16 +149,6 @@ async def create_analysis(request: Request):
     except Exception as e:
         print(e)
         return {"success": False, "error_message": "Incorrect request"}
-
-
-@app.get("/get_assets")
-async def get_assets(path: str):
-    try:
-        return FileResponse(os.path.join(analysis_assets_dir, path))
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        return {"success": False, "error_message": "Error getting assets"}
 
 
 @app.get("/")
