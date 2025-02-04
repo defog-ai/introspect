@@ -1,9 +1,7 @@
 # the executor converts the user's task to steps and maps those steps to tools.
 # also runs those steps
 from copy import deepcopy
-from io import StringIO
 import traceback
-from uuid import uuid4
 
 from agents.planner_executor.execute_tool import execute_tool
 from agents.clarifier.clarifier_agent import turn_into_statements
@@ -15,12 +13,8 @@ from db_utils import (
     update_assignment_understanding,
 )
 from utils import deduplicate_columns, add_indent
-from .tool_helpers.get_tool_library_prompt import get_tool_library_prompt
-import asyncio
-import requests
 
 import yaml
-import re
 import pandas as pd
 import os
 import warnings
@@ -512,202 +506,6 @@ async def prepare_cache(
     return analysis_execution_cache
 
 
-async def generate_single_step(
-    dfg_api_key,
-    analysis_id,
-    user_question,
-    dev=False,
-    temp=False,
-    assignment_understanding="",
-    # NOTE: we will remove this feature of "parent/nested/follow-on" analysis.
-    # Keeping this here for now, but will remove it once we reach a stable point.
-    # parent_analyses=[],
-    # similar_plans=[],
-    # direct_parent_analysis=None,
-):
-    """
-    This function:
-    1. Prepares all the data needed to generate a step: the global_dict, the tool_library_prompt, the assignment_understanding, etc.
-       Also prepares the previous steps in the analysis as a yaml for the prompt.
-    2. Calls defog-backend-python to generate the next step.
-    3. Runs that step.
-    4. Stores the result of the step.
-    5. Returns the generated step + result.
-    """
-    reset_indent_level()
-
-    unique_id = str(uuid4())
-
-    LOGGER.info("Question: " + user_question)
-
-    # prepare the cache
-    analysis_execution_cache = await prepare_cache(
-        analysis_id,
-        dfg_api_key,
-        user_question,
-        dev,
-        temp,
-    )
-
-    # NOTE: see note above
-    # err, user_question_context = await get_analysis_question_context(analysis_id)
-    # if err:
-    #     user_question_context = None
-
-    # NOTE: we don't need extra_tools here because the extra_tools have already been added to the DB in the calling function
-    tool_library_prompt = await get_tool_library_prompt(user_question)
-
-    # make calls to the LLM to get the next step
-    llm_server_url = os.environ.get("LLM_SERVER_ENDPOINT", None)
-
-    # this will default to empty string, so make sure to set to None
-    if not llm_server_url:
-        llm_server_url = None
-    info(f"LLM_SERVER_ENDPOINT set to: `{llm_server_url}`")
-
-    err, analysis_data = await get_analysis_data(analysis_id)
-    if err:
-        # can't do much about not being able to fetch data. fail.
-        raise Exception(err)
-
-    gen_steps_stage_output = analysis_data.get("gen_steps", {})
-
-    if gen_steps_stage_output.get("success", False):
-        # find the index of this
-        all_steps = gen_steps_stage_output.get("steps", [])
-    else:
-        all_steps = []
-
-    previous_steps = find_previous_steps_from_step_id(unique_id, all_steps)
-
-    # format the above steps into yaml strings for the prompt
-    previous_responses_yaml_for_prompt = create_yaml_for_prompt_from_steps(
-        previous_steps
-    )
-
-    # store number of rows and list of columns for all data in previous steps
-    previous_steps_output_descriptions = {}
-    for step in previous_steps:
-        outputs = step.get("outputs", {})
-        for df_name, out in outputs.items():
-            df_csv = out.get("data", None)
-            try:
-                # try to parse the csv string
-                df = pd.read_csv(StringIO(df_csv))
-                previous_steps_output_descriptions[df_name] = {
-                    "num_rows": len(df),
-                    "columns": list(df.columns),
-                }
-            except Exception as e:
-                warn(f"Could not parse csv for df: {df_name}. Error: {e}")
-                warn(f"Expected csv. Found: {df_csv}")
-                warn(f"This was the full output dict: {out}")
-
-    # if previous_steps_output_descriptions has keys,
-    # create a string from the object
-    if len(previous_steps_output_descriptions.keys()) > 0:
-        previous_steps_output_descriptions = yaml.dump(
-            previous_steps_output_descriptions,
-            default_flow_style=False,
-            sort_keys=False,
-        ).strip()
-
-        previous_steps_output_descriptions = (
-            "Here are the outputs from the previous steps:"
-            + "\n"
-            + "```yaml\n"
-            + previous_steps_output_descriptions
-            + "\n```\n"
-        )
-    else:
-        previous_steps_output_descriptions = ""
-
-    info(f"Previous step output descriptions: \n {previous_steps_output_descriptions}")
-
-    info(f"Previous responses: {previous_responses_yaml_for_prompt}")
-
-    payload = {
-        "request_type": "create_plan",
-        "question": user_question,
-        "tool_library_prompt": tool_library_prompt,
-        "assignment_understanding": analysis_execution_cache[
-            "assignment_understanding"
-        ],
-        "previous_responses": previous_responses_yaml_for_prompt,
-        "next_step_data_description": previous_steps_output_descriptions,
-        "api_key": dfg_api_key,
-        "plan_id": analysis_id,
-        "llm_server_url": llm_server_url,
-        "model_name": os.environ.get("LLM_MODEL_NAME", None),
-        "dev": dev,
-        "temp": temp,
-        "parent_questions": [],
-        "assignment_understanding": assignment_understanding,
-        # NOTE: disabled for now. See note above.
-        # "parent_questions": [p["user_question"] for p in parent_analyses],
-        # "similar_plans": similar_plans[:2],
-    }
-
-    res = (
-        await asyncio.to_thread(
-            requests.post, llm_calls_url, json=payload, verify=False
-        )
-    ).json()
-    step_yaml = res["generated_step"]
-    info("Generated step yaml:")
-    info(step_yaml)
-
-    step_yaml = re.search(r"(?:```yaml)([\s\S]*?)(?=```)", step_yaml)
-
-    if step_yaml is None:
-        error(
-            f"Seems like no step was generated. This was the response from the LLM: \n {step_yaml}"
-        )
-        raise Exception("Invalid response from the model")
-
-    step = yaml.safe_load(step_yaml[1].strip())[0]
-    # give a unique id to this step
-    step["id"] = unique_id
-
-    await run_step(
-        analysis_id=analysis_id,
-        step=step,
-        all_steps=all_steps,
-        analysis_execution_cache=analysis_execution_cache,
-        # just for testing for now
-        skip_cache_storing=True,
-    )
-
-    return step
-
-
-def find_dependent_steps(step, all_steps):
-    """
-    Given a step, find all the steps that depend on this step.
-    """
-    dependent_steps = []
-
-    # output keys of the step we want to find the dependents of
-    output_keys = step.get("outputs_storage_keys", [])
-
-    if len(output_keys) > 0:
-        for s in all_steps:
-            # skip if it's the same step
-            if step["id"] == s["id"]:
-                continue
-            inputs = s.get("inputs", {}).values()
-            # if any of the inputs to this step start with global_dict.[output_key], then this step is dependent on the step we're looking at
-            for inp in inputs:
-                if isinstance(inp, str) and inp.startswith("global_dict."):
-                    variable_name = inp.split(".")[1]
-                    if variable_name in output_keys:
-                        dependent_steps.append(s)
-                        # also find the dependents of this step
-                        dependent_steps.extend(find_dependent_steps(s, all_steps))
-
-    return dependent_steps
-
-
 async def rerun_step(
     step,
     all_steps,
@@ -744,20 +542,6 @@ async def rerun_step(
         all_steps=all_steps,
         analysis_execution_cache=analysis_execution_cache,
     )
-
-    dependent_steps = find_dependent_steps(step, all_steps)
-
-    LOGGER.info(
-        f"{len(dependent_steps)} dependent steps found: {[[x['id'], x['tool_name']]for x in dependent_steps]}"
-    )
-
-    for dependent_step in dependent_steps:
-        await run_step(
-            analysis_id=analysis_id,
-            step=dependent_step,
-            all_steps=all_steps,
-            analysis_execution_cache=analysis_execution_cache,
-        )
 
     # now after we've rerun everything, get the latest analysis data from the db and return those steps
     err, analysis_data = await get_analysis_data(analysis_id)
