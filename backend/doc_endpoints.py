@@ -7,15 +7,12 @@ from generic_utils import get_api_key_from_key_name
 
 logging.basicConfig(level=logging.INFO)
 
-from connection_manager import ConnectionManager
 from db_utils import (
     get_analysis_data,
     get_all_tools,
 )
 
 router = APIRouter()
-
-manager = ConnectionManager()
 
 # download csv using step_id and output_storage_key
 @router.post("/download_csv")
