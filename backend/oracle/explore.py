@@ -27,7 +27,6 @@ DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 MAX_ANALYSES = 5
 MAX_ROUNDS = 1
 RETRY_DATA_FETCH = 1
-RETRY_CHART_GEN = 1
 
 
 class CommentsWithRelevantText(BaseModel):
@@ -300,8 +299,7 @@ async def explore_generated_question(
     The tools include
     1) SQL generation
     2) data fetching
-    3) chart generation
-    4) data analysis
+    3) data analysis
 
     Retries are attempted if the tools fail to generate the answer.
 
@@ -324,7 +322,6 @@ async def explore_generated_question(
         - generated_sql: str
         - reason_for_qn: str
         - reason_for_analysis: str
-        - chart_fn_params: Dict[str, Any]
     - title: str, title of the data analysis
     - summary: str, summary of the data analysis
 
@@ -450,84 +447,6 @@ async def explore_generated_question(
         outputs["summary"] = "No data fetched"
         return outputs
 
-    # choose appropriate visualization and generate chart
-    # chart_path = os.path.join(report_chart_dir, f"q{qn_id}.png")
-    # error_str = None
-    # try:
-    #     dependent_variable_desc = dependent_variable["description"]
-    #     independent_variable_desc = independent_variable_group["description"]
-    #     chart_fn_params = await get_chart_fn(
-    #         api_key,
-    #         generated_qn,
-    #         data,
-    #         dependent_variable_desc,
-    #         independent_variable_desc,
-    #     )
-    #     run_chart_fn(chart_fn_params, data, chart_path)
-    #     # TODO inspect the chart visually by sending it to a VLM for ensuring
-    #     # that the chart is meaningful (not too cluttered, too many categories
-    #     # in the legend, etc)
-    # except Exception as e:
-    #     error_str = str(e) + "\n" + traceback.format_exc()
-    #     LOGGER.error(f"Error occurred in during chart generation: {error_str}")
-    # tries = 0
-    # while error_str and tries < RETRY_CHART_GEN:
-    #     # TODO call retry chart generation endpoint, update chart_fn_params, retry run_chart_fn
-    #     tries += 1
-    # if not os.path.exists(chart_path):
-    #     LOGGER.error(f"Chart could not be generated for {qn_id}: {generated_qn}")
-    #     return outputs
-    # # save chosen chart function and arguments
-    # outputs["working"]["chart_fn_params"] = chart_fn_params
-    # # add the data represented in the chart to the artifacts
-    # try:
-    #     chart_df = get_chart_df(data, chart_fn_params)
-    #     artifacts[TABLE_CSV] = {
-    #         "artifact_content": chart_df.to_csv(
-    #             float_format="%.3f", header=True, index=False
-    #         )
-    #     }
-    # except Exception as e:
-    #     LOGGER.error(f"Error occurred in getting chart data: {str(e)}")
-    #     LOGGER.error(traceback.format_exc())
-    # ts = save_timing(ts, f"{qn_id}) Get and Plot chart", timings)
-
-    # TODO: DEF-552 add retries for chart plotting based on error type and if chart
-    # visuals are not meaningful (e.g. axis labels overlap, no data points, etc)
-
-    # add chart to outputs
-    # artifacts[IMAGE] = {"artifact_location": chart_path}
-
-    # we get the anomalies from the chart data
-    # try:
-    #     anomalies_df = get_anomalies(chart_df, chart_fn_params)
-    #     LOGGER.debug(f"Anomalies {anomalies_df}")
-    #     if anomalies_df is not None:
-    #         LOGGER.debug(f"Anomalies found for {qn_id}: {generated_qn}")
-    #         artifacts[ANOMALIES_CSV] = {
-    #             "artifact_content": anomalies_df.to_csv(
-    #                 float_format="%.3f", header=True, index=False
-    #             )
-    #         }
-    # except Exception as e:
-    #     LOGGER.error(f"Error occurred in getting anomalies: {str(e)}")
-    #     LOGGER.error(traceback.format_exc())
-
-    # try:
-    #     correlation_dict = get_correlation(chart_df, chart_fn_params)
-    #     if correlation_dict is not None:
-    #         corr = correlation_dict["correlation"]
-    #         x_col = correlation_dict["x_col"]
-    #         y_col = correlation_dict["y_col"]
-    #         LOGGER.debug(f"Correlation between {x_col} and {y_col}: {corr}")
-    #         artifacts[CORRELATION] = {
-    #             "artifact_content": f"{corr:.3f}",
-    #             "artifact_description": f"Correlation between {x_col} and {y_col}"
-    #         }
-    # except Exception as e:
-    #     LOGGER.error(f"Error occurred in getting correlation: {str(e)}")
-    #     LOGGER.error(traceback.format_exc())
-
     # generate data analysis
     try:
         data_analysis = await gen_data_analysis(
@@ -536,10 +455,6 @@ async def explore_generated_question(
             generated_qn=generated_qn,
             sql=sql,
             analysis_data=data,
-            # data_chart=chart_df,
-            # data_anomalies=anomalies_df,
-            # correlation_dict=correlation_dict,
-            # chart_fn_params=chart_fn_params,
         )
         if "error" in data_analysis and data_analysis["error"]:
             LOGGER.error(
