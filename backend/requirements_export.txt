@@ -1,4 +1,3 @@
-aiohttp
 boto3
 colorama
 defog==0.65.24
@@ -41,6 +40,9 @@ asyncpg
 aiomysql
 aiosqlite
 aioodbc
+
+# celery
+celery[redis]==5.4.0
 
 # tests
 pytest
