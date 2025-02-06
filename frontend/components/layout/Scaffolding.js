@@ -1,11 +1,8 @@
-import React, { useState, useEffect, useContext } from "react";
-import { UserContext } from "../context/UserContext";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import Link from "next/link";
 import { NavBar } from "@defogdotai/agents-ui-components/core-ui";
 import { usePathname } from "next/navigation";
 import { twMerge } from "tailwind-merge";
-import { useTheme } from "../context/ThemeContext";
 
 const Scaffolding = ({
   id,
@@ -16,8 +13,6 @@ const Scaffolding = ({
   containerClassNames = "flex flex-col md:min-h-screen relative container mx-auto",
 }) => {
   const [items, setItems] = useState([]);
-  const [context, setContext] = useContext(UserContext);
-  const [darkMode] = useTheme();
 
   const router = useRouter();
 
@@ -40,44 +35,45 @@ const Scaffolding = ({
     if (userType == "admin") {
       items = [
         {
-          key: "manage-database",
-          title: "Manage Database",
-          href: "/extract-metadata",
-        },
-        {
-          key: "manage-users",
-          title: "Manage Users",
-          href: "/manage-users",
-        },
-        // {
-        //   key: "view-notebooks",
-        //   title: "View your notebook",
-        //   href: "/view-notebooks",
-        // },
-        // {
-        //   key: "manage-tools",
-        //   title: "Manage tools",
-        //   href: "/manage-tools",
-        // },
-        {
-          key: "test-regression",
-          title: "Test Regression",
-          href: "/test-regression",
-        },
-        {
-          key: "align-model",
-          title: "Align Model",
-          href: "/align-model",
-        },
-        {
-          key: "view-feedback",
-          title: "View Feedback",
-          href: "/view-feedback",
+          title: "Admin",
+          href: "#!",
+          children: [
+            {
+              key: "manage-database",
+              title: "Manage Database",
+              href: "/extract-metadata",
+            },
+            {
+              key: "manage-users",
+              title: "Manage Users",
+              href: "/manage-users",
+            },
+            {
+              key: "align-model",
+              title: "Align Model",
+              href: "/align-model",
+            },
+            {
+              key: "view-feedback",
+              title: "View Feedback",
+              href: "/view-feedback",
+            },
+            {
+              key: "evaluate-model",
+              title: "Evalute Model",
+              href: "/evaluate-model",
+            },
+          ]
         },
         {
           key: "query-data",
           title: "Query Data",
           href: "/query-data",
+        },
+        {
+          key: "reports",
+          title: "Reports",
+          href: "/reports",
         },
         {
           key: "logout",
@@ -91,15 +87,15 @@ const Scaffolding = ({
       items = [];
     } else {
       items = [
-        // {
-        //   key: "view-notebooks",
-        //   title: "View your notebook",
-        //   href: "/view-notebooks",
-        // },
         {
           key: "query-data",
           title: "Query Data",
           href: "/query-data",
+        },
+        {
+          key: "reports",
+          title: "Reports",
+          href: "/reports",
         },
         {
           key: "logout",
@@ -114,6 +110,17 @@ const Scaffolding = ({
     // set the item's current to true if it matches pathname
     items = items.map((item) => {
       item.current = item.href == pathname;
+      return item;
+    });
+
+    // do the same for children
+    items = items.map((item) => {
+      if (item.children) {
+        item.children = item.children.map((child) => {
+          child.current = child.href == pathname;
+          return child;
+        });
+      }
       return item;
     });
 
