@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { SpinningLoader } from "@defogdotai/agents-ui-components/core-ui";
+import Scaffolding from "$components/layout/Scaffolding";
 import {
   getReportMDX,
   getReportAnalysisIds,
@@ -186,22 +187,27 @@ export default function ViewOracleReport() {
           }),
         }}
       >
-        <div className="relative">
-          <EditorProvider
-            extensions={extensions}
-            content={mdx}
-            immediatelyRender={false}
-            editable={false}
-            slotBefore={<OracleNav />}
-            editorProps={{
-              attributes: {
-                class:
-                  "oracle-report-tiptap relative prose prose-base dark:prose-invert mx-auto p-2 mb-12 md:mb-0 focus:outline-none *:cursor-default",
-              },
-            }}
-          >
-          </EditorProvider>
-        </div>
+        <Scaffolding
+          id="oracle-report"
+          userType={"admin"}
+        >
+          <div className="relative">
+            <EditorProvider
+              extensions={extensions}
+              content={mdx}
+              immediatelyRender={false}
+              editable={false}
+              slotBefore={<OracleNav />}
+              editorProps={{
+                attributes: {
+                  class:
+                    "oracle-report-tiptap relative prose prose-base dark:prose-invert mx-auto p-2 mb-12 md:mb-0 focus:outline-none *:cursor-default",
+                },
+              }}
+            >
+            </EditorProvider>
+          </div>
+        </Scaffolding>
       </OracleReportContext.Provider>
     </AgentConfigContext.Provider>
   );

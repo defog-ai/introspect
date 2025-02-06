@@ -1,4 +1,5 @@
 // @ts-nocheck
+import Scaffolding from "$components/layout/Scaffolding";
 import { Button, SpinningLoader, TextArea, SingleSelect as Select, MultiSelect } from "@defogdotai/agents-ui-components/core-ui";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Sources from "../components/oracle/Sources";
@@ -158,6 +159,7 @@ function OracleDashboard() {
   const [token, setToken] = useState<string>(null);
   const [apiKeyName, setApiKeyName] = useState<string>("");
   const [apiKeyNames, setApiKeyNames] = useState<string[]>([]);
+  const [userType, setUserType] = useState("");
 
   // Report generation state
   const [userQuestion, setUserQuestion] = useState("");
@@ -183,6 +185,9 @@ function OracleDashboard() {
   const updateToken = useEffect(() => {
     const token = localStorage.getItem("defogToken");
     if (token) setToken(token);
+
+    const userType = localStorage.getItem("defogUserType");
+    if (userType) setUserType(userType);
   }, []);
 
   const getApiKeyNames = useCallback(async () => {
@@ -320,7 +325,7 @@ function OracleDashboard() {
   };
 
   return (
-    <>
+    <Scaffolding id="reports" userType={userType}>
       {apiKeyNames.length > 1 && (
         <div className="flex">
           <Select
@@ -510,7 +515,7 @@ function OracleDashboard() {
           </div>
         ))}
       </div>
-    </>
+    </Scaffolding>
   );
 }
 
