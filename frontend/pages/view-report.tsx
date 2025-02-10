@@ -10,18 +10,16 @@ import {
   parseMDX,
   getReportComments,
   commentManager,
-} from "$components/oracle/oracleUtils";
-
-import { EditorProvider } from "@tiptap/react";
-import React from "react";
-import {
+  OracleNav,
   OracleReportComment,
   OracleReportContext,
   Summary,
-} from "$components/oracle/OracleReportContext";
-import { OracleNav } from "$components/oracle/reports/OracleNav";
+  OracleReport,
+} from "@defogdotai/agents-ui-components/oracle";
+import React from "react";
 import { AgentConfigContext } from "@defogdotai/agents-ui-components/agent";
 
+const apiEndpoint = process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "";
 export default function ViewOracleReport() {
   const [keyName, setKeyName] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
@@ -57,6 +55,7 @@ export default function ViewOracleReport() {
           "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0";
         setLoading(true);
         const [mdx, status] = await getReportMDX(
+          apiEndpoint,
           reportId,
           keyName,
           token.current
@@ -75,6 +74,7 @@ export default function ViewOracleReport() {
         setMultiTables(parsed.multiTables);
 
         const sum: Summary = await getReportExecutiveSummary(
+          apiEndpoint,
           reportId,
           keyName,
           token.current
@@ -87,12 +87,14 @@ export default function ViewOracleReport() {
         }));
 
         const analysisIds = await getReportAnalysisIds(
+          apiEndpoint,
           reportId,
           keyName,
           token.current
         );
 
         const fetchedComments = await getReportComments(
+          apiEndpoint,
           reportId,
           keyName,
           token.current
@@ -173,6 +175,7 @@ export default function ViewOracleReport() {
     >
       <OracleReportContext.Provider
         value={{
+          apiEndpoint: apiEndpoint,
           tables: tables,
           multiTables: multiTables,
           images: images,
@@ -182,6 +185,7 @@ export default function ViewOracleReport() {
           keyName: keyName,
           token: token.current,
           commentManager: commentManager({
+            apiEndpoint: apiEndpoint,
             reportId: reportId,
             keyName: keyName,
             token: token.current,
@@ -191,7 +195,7 @@ export default function ViewOracleReport() {
       >
         <Scaffolding id="oracle-report" userType={"admin"}>
           <div className="relative oracle-report-ctr">
-            <EditorProvider
+            <OracleReport
               extensions={extensions}
               content={mdx}
               immediatelyRender={false}
@@ -203,7 +207,7 @@ export default function ViewOracleReport() {
                     "oracle-report-tiptap relative prose prose-base dark:prose-invert mx-auto p-2 mb-12 md:mb-0 focus:outline-none *:cursor-default",
                 },
               }}
-            ></EditorProvider>
+            ></OracleReport>
           </div>
         </Scaffolding>
       </OracleReportContext.Provider>
