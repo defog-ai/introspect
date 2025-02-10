@@ -8,8 +8,8 @@ import {
   MultiSelect,
 } from "@defogdotai/agents-ui-components/core-ui";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import Sources from "../components/oracle-reports/Sources";
-import ReportStatus from "../components/oracle-reports/ReportStatus";
+import Sources from "../components/oracle/Sources";
+import ReportStatus from "../components/oracle/ReportStatus";
 import { X, Trash, FileText } from "lucide-react";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
