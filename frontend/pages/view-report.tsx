@@ -170,7 +170,7 @@ export default function ViewOracleReport() {
     <AgentConfigContext.Provider
       value={{
         // @ts-ignore
-        val: { apiEndpoint: process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "" },
+        val: { apiEndpoint: apiEndpoint || "" },
       }}
     >
       <OracleReportContext.Provider

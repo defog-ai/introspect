@@ -1,9 +1,15 @@
 // @ts-nocheck
 import Scaffolding from "$components/layout/Scaffolding";
-import { Button, SpinningLoader, TextArea, SingleSelect as Select, MultiSelect } from "@defogdotai/agents-ui-components/core-ui";
+import {
+  Button,
+  SpinningLoader,
+  TextArea,
+  SingleSelect as Select,
+  MultiSelect,
+} from "@defogdotai/agents-ui-components/core-ui";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import Sources from "../components/oracle/Sources";
-import ReportStatus from "../components/oracle/ReportStatus";
+import Sources from "../components/oracle-reports/Sources";
+import ReportStatus from "../components/oracle-reports/ReportStatus";
 import { X, Trash, FileText } from "lucide-react";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
@@ -97,7 +103,11 @@ const useOracleApi = (token: string | undefined, apiKeyName: string) => {
     }
   };
 
-  const generateReport = async (userQuestion: string, sources: any[], clarifications: ClarificationObject[]) => {
+  const generateReport = async (
+    userQuestion: string,
+    sources: any[],
+    clarifications: ClarificationObject[]
+  ) => {
     if (!token) return false;
     try {
       const selectedSourceLinks = sources
@@ -129,8 +139,8 @@ const useOracleApi = (token: string | undefined, apiKeyName: string) => {
 // Utility Components
 const ReportDateTime = ({ date }: { date: string }) => {
   // Parse the date and adjust for local timezone
-  const localDate = new Date(date + 'Z');  // Append Z to treat the input as UTC
-  
+  const localDate = new Date(date + "Z"); // Append Z to treat the input as UTC
+
   return (
     <div className="text-gray-400 dark:text-gray-500 flex items-center space-x-2">
       <span>
@@ -168,7 +178,9 @@ function OracleDashboard() {
   const [isPolling, setIsPolling] = useState(false);
 
   // Clarification state
-  const [clarifications, setClarifications] = useState<ClarificationObject[]>([]);
+  const [clarifications, setClarifications] = useState<ClarificationObject[]>(
+    []
+  );
   const [hasClarified, setHasClarified] = useState(false);
   const [loadingClarifications, setLoadingClarifications] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
@@ -244,15 +256,17 @@ function OracleDashboard() {
       try {
         console.log("Polling for reports...");
         const reports = await fetchReports();
-        
+
         if (reports) {
           console.log("Poll complete:", reports.length, "reports");
           setReports(reports);
-          
+
           // Check if all reports are done
-          const allDone = reports.every(r => r.status === "done" || r.status === "error");
+          const allDone = reports.every(
+            (r) => r.status === "done" || r.status === "error"
+          );
           console.log("All reports done:", allDone);
-          
+
           if (allDone) {
             console.log("Stopping polling - all reports done");
             setIsPolling(false);
@@ -271,13 +285,16 @@ function OracleDashboard() {
   }, [isPolling, fetchReports]);
 
   // Clarification handlers
-  const handleClarificationAnswer = useCallback((index: number, answer: string | string[]) => {
-    setClarifications((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], is_answered: true, answer };
-      return updated;
-    });
-  }, []);
+  const handleClarificationAnswer = useCallback(
+    (index: number, answer: string | string[]) => {
+      setClarifications((prev) => {
+        const updated = [...prev];
+        updated[index] = { ...updated[index], is_answered: true, answer };
+        return updated;
+      });
+    },
+    []
+  );
 
   const handleClarificationDismiss = useCallback((index: number) => {
     setClarifications((prev) => {
@@ -287,9 +304,11 @@ function OracleDashboard() {
     });
   }, []);
 
-  const getClarificationOptions = useCallback((options: string[]) => 
-    options.map(opt => ({ value: opt, key: opt, label: opt })), 
-  []);
+  const getClarificationOptions = useCallback(
+    (options: string[]) =>
+      options.map((opt) => ({ value: opt, key: opt, label: opt })),
+    []
+  );
 
   // Action handlers
   const handleQuestionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -405,7 +424,7 @@ function OracleDashboard() {
                         {clarification.input_type === "text" && (
                           <TextArea
                             placeholder="Type your answer here..."
-                            value={clarification.answer as string || ""}
+                            value={(clarification.answer as string) || ""}
                             onChange={(e) =>
                               handleClarificationAnswer(index, e.target.value)
                             }
@@ -414,8 +433,10 @@ function OracleDashboard() {
                         )}
                         {clarification.input_type === "single_choice" && (
                           <Select
-                            options={getClarificationOptions(clarification.options)}
-                            value={clarification.answer as string || ""}
+                            options={getClarificationOptions(
+                              clarification.options
+                            )}
+                            value={(clarification.answer as string) || ""}
                             onChange={(value) =>
                               handleClarificationAnswer(index, value)
                             }
@@ -424,8 +445,10 @@ function OracleDashboard() {
                         {clarification.input_type === "multiple_choice" && (
                           <MultiSelect
                             style={{ width: "100%" }}
-                            options={getClarificationOptions(clarification.options)}
-                            value={clarification.answer as string[] || []}
+                            options={getClarificationOptions(
+                              clarification.options
+                            )}
+                            value={(clarification.answer as string[]) || []}
                             onChange={(value) =>
                               handleClarificationAnswer(index, value)
                             }
@@ -443,8 +466,12 @@ function OracleDashboard() {
         <Button
           id="generate-report-button"
           className="px-4 py-2 my-2 rounded-lg"
-          onClick={hasClarified ? handleGenerateReport : handleGetClarifications}
-          disabled={loadingClarifications || generatingReport || userQuestion.length < 1}
+          onClick={
+            hasClarified ? handleGenerateReport : handleGetClarifications
+          }
+          disabled={
+            loadingClarifications || generatingReport || userQuestion.length < 1
+          }
         >
           {hasClarified ? "Generate Report" : "Initialize Report"}
         </Button>
