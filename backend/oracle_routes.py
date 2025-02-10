@@ -8,14 +8,12 @@ from uuid import uuid4
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from utils import longest_substring_overlap
 from db_models import (
     OracleGuidelines,
     OracleReports
 )
 from db_config import (
-    engine,
-    redis_client
+    engine
 )
 from auth_utils import validate_user
 from db_oracle_utils import (
@@ -652,7 +650,7 @@ async def revision(req: ReviseReportRequest):
                 "message": "No comments or general comments provided",
             },
         )
-
+    
     """
     We will reuse the begin generation task to handle the new report's generation. (The handling of the fact that this is a revision is handled inside the explore stage)
 
@@ -666,15 +664,12 @@ async def revision(req: ReviseReportRequest):
     report_data = await get_report_data(req.report_id, api_key)
     if (
         "error" in report_data
-        or "data" not in report_data
-        or "inputs" not in report_data["data"]
+        or "inputs" not in report_data
     ):
         return JSONResponse(status_code=404, content=report_data)
 
-    report_data = report_data["data"]
     status = report_data["status"]
 
-    is_being_revised = status.startswith("Revision in progress: ")
     is_revision = status.startswith("Revision: ")
 
     # if, by some chance, this report is a temporary revision report, return an error
