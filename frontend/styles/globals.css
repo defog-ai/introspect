@@ -134,16 +134,16 @@ a {
   }
 }
 
-.oracle-report-tiptap pre code {
+.oracle-report-ctr pre code {
   color: theme("colors.gray.200");
   text-shadow: none;
 }
 
-.oracle-report-tiptap li br {
+.oracle-report-ctr li br {
   display: none;
 }
 
-.oracle-report-tiptap li p {
+.oracle-report-ctr li p {
   margin: 0;
 }
 

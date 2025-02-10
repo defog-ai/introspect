@@ -166,8 +166,10 @@ export default function ViewOracleReport() {
     // which defaults to demo.defog.ai if not provided
     // (╯°□°)╯︵ ┻━┻
     <AgentConfigContext.Provider
-      // @ts-ignore
-      value={{ val: { apiEndpoint: process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "" } }}
+      value={{
+        // @ts-ignore
+        val: { apiEndpoint: process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "" },
+      }}
     >
       <OracleReportContext.Provider
         value={{
@@ -187,11 +189,8 @@ export default function ViewOracleReport() {
           }),
         }}
       >
-        <Scaffolding
-          id="oracle-report"
-          userType={"admin"}
-        >
-          <div className="relative">
+        <Scaffolding id="oracle-report" userType={"admin"}>
+          <div className="relative oracle-report-ctr">
             <EditorProvider
               extensions={extensions}
               content={mdx}
@@ -204,8 +203,7 @@ export default function ViewOracleReport() {
                     "oracle-report-tiptap relative prose prose-base dark:prose-invert mx-auto p-2 mb-12 md:mb-0 focus:outline-none *:cursor-default",
                 },
               }}
-            >
-            </EditorProvider>
+            ></EditorProvider>
           </div>
         </Scaffolding>
       </OracleReportContext.Provider>
