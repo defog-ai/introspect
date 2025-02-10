@@ -28,7 +28,6 @@ from sqlalchemy import select
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 MAX_ANALYSES = 5
-MAX_ROUNDS = 1
 RETRY_DATA_FETCH = 1
 
 
@@ -75,7 +74,6 @@ async def explore_data(
     problem_statement = gather_context.get("problem_statement", "")
     hard_filters = inputs.get("hard_filters", [])
     db_type, db_creds = await get_db_type_creds(api_key)
-    max_rounds = inputs.get("max_rounds", MAX_ROUNDS)
     comments: List[CommentsWithRelevantText] = inputs.get("comments", [])
     general_comments: str = inputs.get("general_comments", "")
     original_report_mdx = inputs.get("original_report_mdx", "")
@@ -136,137 +134,92 @@ async def explore_data(
         return None
 
     generated_qns = generated_qns_response["generated_questions"]  # list of dict
-    dependent_variable = generated_qns_response["dependent_variable"]  # dict
-    independent_variable_groups = generated_qns_response[
-        "independent_variable_groups"
+    key_metric = generated_qns_response["key_metric"]  # dict
+    segments = generated_qns_response[
+        "segments"
     ]  # dict
 
     LOGGER.debug(f"Generated questions with data: {len(generated_qns)}")
 
     analyses = []
-    round = 0
     summary_all = ""
     qn_id = 0
-    while round < max_rounds:
-        round += 1
-        tasks = []
-        generated_qns_summaries = []
-        for question_dict in generated_qns:
-            qn_id += 1
-            # question used by 1st round question generation
-            generated_qn = question_dict["question"]
-            independent_variable_group_name = question_dict["group_name"]
-            independent_variable_group = independent_variable_groups.get(
-                independent_variable_group_name
+    tasks = []
+    generated_qns_summaries = []
+    for question_dict in generated_qns:
+        qn_id += 1
+        generated_qn = question_dict["question"]
+        segment_name = question_dict["segment"]
+        segment = segments.get(segment_name)
+        segment["name"] = segment_name
+        if segment is None:
+            LOGGER.error(
+                f"Segment not found for {qn_id}: {generated_qn}"
             )
-            if independent_variable_group is None:
-                LOGGER.error(
-                    f"Independent variable group not found for {qn_id}: {generated_qn}"
-                )
-                continue
-            independent_variable_group["name"] = independent_variable_group_name
-            if not independent_variable_group:
-                LOGGER.error(
-                    f"Independent variable group not found for {qn_id}: {generated_qn}"
-                )
-                continue
-            # add the summary of the question to the list of status updates
-            generated_qns_summaries.append(question_dict.get("summary", "exploring"))
-            tasks.append(
-                explore_generated_question(
-                    api_key=api_key,
-                    user_question=user_question,
-                    task_type=task_type,
-                    qn_id=qn_id,
-                    generated_qn=generated_qn,
-                    dependent_variable=dependent_variable,
-                    independent_variable_group=independent_variable_group,
-                    context=context,
-                    db_type=db_type,
-                    db_creds=db_creds,
-                    retry_data_fetch=inputs.get("retry_data_fetch", RETRY_DATA_FETCH),
-                    hard_filters=hard_filters,
-                )
+            continue
+        if not segment:
+            LOGGER.error(
+                f"Segment not found for {qn_id}: {generated_qn}"
             )
-        if tasks:
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for res in results:
-                if isinstance(res, Exception):
-                    LOGGER.error(f"Error during explore_generated_question: {res}")
-                elif res:
-                    analyses.append(res)
-        if (
-            is_follow_on
-            and follow_on_id
-            and generated_qns_summaries
-            and len(generated_qns_summaries)
-        ):
-            # we will update the status of the analysis instead of the report
-            update_status_task = asyncio.create_task(
-                update_analysis_status(
-                    api_key=api_key,
-                    analysis_id=follow_on_id,
-                    report_id=report_id,
-                    new_status=(
-                        generated_qns_summaries[0] if generated_qns_summaries else ""
-                    ),
-                )
+            continue
+        # add the summary of the question to the list of status updates
+        generated_qns_summaries.append(question_dict.get("summary", "exploring"))
+        tasks.append(
+            explore_generated_question(
+                api_key=api_key,
+                user_question=user_question,
+                task_type=task_type,
+                qn_id=qn_id,
+                generated_qn=generated_qn,
+                key_metric=key_metric,
+                segment=segment,
+                context=context,
+                db_type=db_type,
+                db_creds=db_creds,
+                retry_data_fetch=inputs.get("retry_data_fetch", RETRY_DATA_FETCH),
+                hard_filters=hard_filters,
             )
-        else:
-            update_status_task = asyncio.create_task(
-                independent_status_updater(
-                    report_id=report_id, generated_qns_summaries=generated_qns_summaries
-                )
-            )
-        
-        # Ensure background task of status update is terminated when primary tasks are done
-        if update_status_task.done():
-            update_status_task.cancel()
-            try:
-                await update_status_task
-            except asyncio.CancelledError:
-                LOGGER.info(
-                    "Background task of updating status terminated successfully."
-                )
-
-        LOGGER.debug(
-            f"Round {round} analyses count: {len(analyses)}\nTotal analyses count: {len(analyses)}"
         )
-
-        if round < max_rounds:
-            # generate new questions for the next round
-            get_deeper_qns_request = {
-                "api_key": api_key,
-                "user_question": user_question,
-                "task_type": task_type.value,
-                "problem_statement": problem_statement,
-                "context": context,
-                "dependent_variable": dependent_variable,
-                "past_analyses": analyses,
-                "comments": comments,
-                "general_comments": general_comments,
-                "is_revision": is_revision,
-                "generate_questions_deeper_guidelines": generate_questions_deeper_guidelines,
-            }
-            response = await make_request(
-                DEFOG_BASE_URL + "/oracle/gen_explorer_qns_deeper",
-                get_deeper_qns_request,
-                timeout=300,
+    if tasks:
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for res in results:
+            if isinstance(res, Exception):
+                LOGGER.error(f"Error during explore_generated_question: {res}")
+            elif res:
+                analyses.append(res)
+    if (
+        is_follow_on
+        and follow_on_id
+        and generated_qns_summaries
+        and len(generated_qns_summaries)
+    ):
+        # we will update the status of the analysis instead of the report
+        update_status_task = asyncio.create_task(
+            update_analysis_status(
+                api_key=api_key,
+                analysis_id=follow_on_id,
+                report_id=report_id,
+                new_status=(
+                    generated_qns_summaries[0] if generated_qns_summaries else ""
+                ),
             )
-            if (
-                "generated_questions" not in response
-                or "independent_variable_groups" not in response
-            ):
-                LOGGER.error(
-                    f"Error occurred in generating deeper questions: {response}"
-                )
-                break
-            generated_qns = response["generated_questions"]
-            LOGGER.info(f"Generated deeper questions with data: {len(generated_qns)}")
-            LOGGER.info(f"Generated questions are: {generated_qns}")
-            independent_variable_groups = response["independent_variable_groups"]
-            # this is the summary across all analyses so far
-            summary_all = response.get("summary", "")
+        )
+    else:
+        update_status_task = asyncio.create_task(
+            independent_status_updater(
+                report_id=report_id, generated_qns_summaries=generated_qns_summaries
+            )
+        )
+    
+    # Ensure background task of status update is terminated when primary tasks are done
+    if update_status_task.done():
+        update_status_task.cancel()
+        try:
+            await update_status_task
+        except asyncio.CancelledError:
+            LOGGER.info(
+                "Background task of updating status terminated successfully."
+            )
 
     # give each analysis a unique id and add these analyses to the report
     for analysis in analyses:
@@ -277,7 +230,7 @@ async def explore_data(
         "full_context_with_previous_analyses": generated_qns_response.get(
             "full_context_with_previous_analyses", ""
         ),
-        "dependent_variable": dependent_variable,
+        "key_metric": key_metric,
         "summary": summary_all,
     }
 
@@ -288,8 +241,8 @@ async def explore_generated_question(
     task_type: TaskType,
     qn_id: int,
     generated_qn: str,
-    dependent_variable: Dict[str, Any],
-    independent_variable_group: Dict[str, Any],
+    key_metric: Dict[str, Any],
+    segment: Dict[str, Any],
     context: str,
     db_type: str,
     db_creds: Dict[str, str],
@@ -309,10 +262,10 @@ async def explore_generated_question(
     Returns a dictionary with the following structure:
     - qn_id: int
     - generated_qn: str
-    - dependent_variable: Dict[str, Any]
+    - key_metric: Dict[str, Any]
         - description: str
         - table_column: List[str]
-    - independent_variable_group: Dict[str, Any]
+    - segment: Dict[str, Any]
         - name: str
         - description: str
         - table_column: List[str]
@@ -381,8 +334,8 @@ async def explore_generated_question(
             elif err_msg is not None:
                 LOGGER.error(f"Error occurred in executing SQL: {err_msg}")
             elif isinstance(data, pd.DataFrame) and data.empty:
-                dependent_variable_str = f"{dependent_variable['description']} ({dependent_variable['table_column']})"
-                independent_variable_str = f"{independent_variable_group['description']} ({independent_variable_group['table_column']})"
+                key_metric_str = f"{key_metric['description']} ({key_metric['table_column']})"
+                segment_str = f"{segment['description']} ({segment['table_column']})"
                 expand_sql_qn_response = await make_request(
                     DEFOG_BASE_URL + "/oracle/expand_sql_qn",
                     data={
@@ -390,8 +343,8 @@ async def explore_generated_question(
                         "user_question": user_question,
                         "generated_qn": generated_qn,
                         "sql": sql,
-                        "dependent_variable": dependent_variable_str,
-                        "independent_variable": independent_variable_str,
+                        "key_metric": key_metric_str,
+                        "segment": segment_str,
                     },
                 )
                 new_sql = expand_sql_qn_response["sql"]
@@ -432,14 +385,17 @@ async def explore_generated_question(
             )
         }
     }
-    LOGGER.debug(f"independent_variable_group: {independent_variable_group}")
     outputs = {
         "qn_id": qn_id,
         "generated_qn": generated_qn,
-        "independent_variable_group": {
-            "name": independent_variable_group["name"],
-            "description": independent_variable_group["description"],
-            "table_column": independent_variable_group["table_column"],
+        "key_metric": {
+            "description": key_metric["description"],
+            "table_column": key_metric["table_column"],
+        },
+        "segment": {
+            "name": segment["name"],
+            "description": segment["description"],
+            "table_column": segment["table_column"],
         },
         "artifacts": artifacts,
         "working": {"generated_sql": sql},
