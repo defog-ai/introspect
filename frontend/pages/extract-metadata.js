@@ -71,7 +71,7 @@ const ExtractMetadata = () => {
       setToken(token);
 
       if (user && token && userType) {
-        if (apiKeyName) {
+        if (!apiKeyName) return
           /**
            * This is because there are 2 triggers during page load
            * 1. The page loads and apiKeyName is null
@@ -82,9 +82,6 @@ const ExtractMetadata = () => {
            */
           await getTablesAndDbCreds(token, apiKeyName);
           await fetchMetadata(token, apiKeyName);
-        } else {
-          console.log("No apiKeyName provided");
-        }
       } else {
         router.push("/log-in");
       }

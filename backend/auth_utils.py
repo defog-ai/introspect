@@ -12,11 +12,11 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-SALT = os.getenv("SALT")
-if not SALT:
-    raise ValueError("SALT is not set")
-elif SALT == "default_salt":
-    raise ValueError("SALT is the default value. Please set a custom value.")
+from utils_logging import LOGGER
+
+SALT = os.getenv("SALT", "default_salt")
+if SALT == "default_salt":
+    LOGGER.info("SALT is the default value. Please set a custom value if you require a more secure authentication.")
 
 
 async def login_user(username: str, password: str | None = None) -> Optional[str]:
