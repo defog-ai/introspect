@@ -11,6 +11,9 @@ import asyncio
 import os
 from fastapi.responses import JSONResponse
 
+from request_models import LoginRequest
+from utils_logging import LOGGER
+
 INTERNAL_API_KEY = "DUMMY_KEY"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 
@@ -18,17 +21,22 @@ router = APIRouter()
 
 
 @router.post("/login")
-async def login(request: Request):
-    params = await request.json()
-    username = params.get("username", None)
-    password = params.get("password", None)
-    if not username:
-        return {"error": "no user id provided"}
-    if not password:
-        return {"error": "no password provided"}
-
-    dets = await login_user(username, password)
-    return dets
+async def login(req: LoginRequest):
+    token = await login_user(req.username, req.password)
+    if token:
+        return {
+            "status": "success",
+            "user_type": "admin", # TODO: remove after frontend references have been removed
+            "token": token,
+        }
+    else:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
 
 
 @router.post("/get_google_client_id")
@@ -48,16 +56,17 @@ async def validate_google_token(token: str):
         )
 
         # ID token is valid. Get the user's Google Account ID from the decoded token.
-        user_id = idinfo["sub"]
-        # You can also get other information from the token, like the user's email:
         user_email = idinfo.get("email")
         hashed_password = get_hashed_username(user_email)
 
         # Check if user exists
         if await validate_user(hashed_password):
-            dets = await login_user(user_email, "")
-            dets["user_email"] = user_email
-            return dets
+            token = await login_user(user_email, "")
+            return {
+                "status": "success",
+                "user_type": "admin", # TODO: remove after frontend references have been removed
+                "token": token,
+            }
         else:
             return {
                 "error": "user is not registered with the system. Please contact the administrator."

@@ -165,7 +165,7 @@ const DbCredentialsForm = ({
           </select>
         </div>
 
-        {dbCredOptions[dbType].map((field) => (
+        {dbType && dbCredOptions[dbType] && dbCredOptions[dbType].map((field) => (
           <div key={field} className="mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-dark-text-primary mb-1">
               {field.charAt(0).toUpperCase() + field.slice(1)}

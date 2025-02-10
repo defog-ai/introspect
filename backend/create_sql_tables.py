@@ -113,7 +113,6 @@ defog_users = Table(
     Column("username", Text, primary_key=True),
     Column("hashed_password", Text),
     Column("token", Text, nullable=False),
-    Column("user_type", Text, nullable=False),
     Column("created_at", DateTime),
 )
 

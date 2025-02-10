@@ -6,7 +6,7 @@ from sqlalchemy import (
     delete,
 )
 from db_config import engine
-from auth_utils import validate_user
+from auth_utils import SALT, validate_user
 from db_models import Users
 import hashlib
 import pandas as pd
@@ -18,9 +18,6 @@ import os
 
 router = APIRouter()
 
-SALT = "TOMMARVOLORIDDLE"
-INTERNAL_API_KEY = "DUMMY_KEY"
-
 
 @router.post("/admin/add_users")
 async def add_user(request: Request):
@@ -28,7 +25,7 @@ async def add_user(request: Request):
     token = params.get("token")
     gsheets_url = params.get("gsheets_url")
     user_dets_csv = params.get("users_csv")
-    if not (await validate_user(token, user_type="admin")):
+    if not (await validate_user(token)):
         return JSONResponse(
             status_code=401,
             content={
@@ -66,9 +63,7 @@ async def add_user(request: Request):
     for user in users:
         dets = {
             "username": user.get("username", user.get("user_email")).lower(),
-            "user_type": user.get("user_type", user.get("user_role")).lower(),
             "password": user.get("password", user.get("user_password")),
-            # "allowed_dbs": user.get("allowed_dbs", ""),
         }
         userdets.append(dets)
 
@@ -97,8 +92,7 @@ async def add_user(request: Request):
                     .where(Users.username == dets["username"])
                     .values(
                         hashed_password=hashed_password,
-                        user_type=dets["user_type"],
-                        # allowed_dbs=dets["allowed_dbs"],
+                        token=hashed_password   
                     )
                 )
             else:
@@ -106,9 +100,7 @@ async def add_user(request: Request):
                     insert(Users).values(
                         username=dets["username"],
                         hashed_password=hashed_password,
-                        token=INTERNAL_API_KEY,
-                        user_type=dets["user_type"],
-                        # allowed_dbs=dets["allowed_dbs"],
+                        token=hashed_password
                     )
                 )
 
@@ -119,7 +111,7 @@ async def add_user(request: Request):
 async def get_users(request: Request):
     params = await request.json()
     token = params.get("token", None)
-    if not (await validate_user(token, user_type="admin")):
+    if not (await validate_user(token)):
         return JSONResponse(
             status_code=401,
             content={
@@ -132,8 +124,9 @@ async def get_users(request: Request):
         users = await conn.execute(select(Users))
         users = users.fetchall()
 
-    users = pd.DataFrame(users)[["username", "user_type"]]
-    users["allowed_dbs"] = ""
+    users = pd.DataFrame(users)[["username"]]
+    users["user_type"] = "admin" # TODO remove user_typeonce frontend references have been removed
+    users["allowed_dbs"] = "" # TODO remove allowed_dbs once frontend references have been removed
     users = users.to_dict(orient="records")
     return {"users": users}
 
@@ -142,7 +135,7 @@ async def get_users(request: Request):
 async def delete_user(request: Request):
     params = await request.json()
     token = params.get("token", None)
-    if not (await validate_user(token, user_type="admin")):
+    if not (await validate_user(token)):
         return JSONResponse(
             status_code=401,
             content={
@@ -193,7 +186,7 @@ async def add_user_with_token(request: Request):
     user_token = params.get("user_token")
     username = params.get("username")
     user_type = params.get("user_type")
-    if not (await validate_user(auth_token, user_type="admin")):
+    if not (await validate_user(auth_token)):
         return JSONResponse(
             status_code=401,
             content={
@@ -212,7 +205,7 @@ async def add_user_with_token(request: Request):
                 .where(Users.username == username)
                 .values(
                     hashed_password=user_token,  # this is horribly confusing nomenclature, but me from 7 months ago did this monstrosity. So I guess we just roll with it 🤦🏽‍♂️
-                    token=INTERNAL_API_KEY,
+                    token=user_token,
                     user_type=user_type,
                 )
             )
@@ -221,7 +214,7 @@ async def add_user_with_token(request: Request):
                 insert(Users).values(
                     username=username,
                     hashed_password=user_token,  # this is horribly confusing nomenclature, but me from 7 months ago did this monstrosity. So I guess we just roll with it 🤦🏽‍♂️
-                    token=INTERNAL_API_KEY,
+                    token=user_token,
                     user_type=user_type,
                 )
             )

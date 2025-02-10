@@ -15,6 +15,7 @@ import {
 const ExtractMetadata = () => {
   const router = useRouter();
   const [apiKeyNames, setApiKeyNames] = useState([]);
+  const [apiKeyName, setApiKeyName] = useState(null);
 
   const getApiKeyNames = async (token) => {
     const res = await fetch(
@@ -38,7 +39,6 @@ const ExtractMetadata = () => {
     setApiKeyNames(data.api_key_names);
     setApiKeyName(data.api_key_names[0]);
   };
-  const [apiKeyName, setApiKeyName] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("defogToken");
@@ -71,8 +71,20 @@ const ExtractMetadata = () => {
       setToken(token);
 
       if (user && token && userType) {
-        await getTablesAndDbCreds(token, apiKeyName);
-        await fetchMetadata(token, apiKeyName);
+        if (apiKeyName) {
+          /**
+           * This is because there are 2 triggers during page load
+           * 1. The page loads and apiKeyName is null
+           * 2. getApiKeyNames finishes and apiKeyName is set
+           *
+           * If we don't check for apiKeyName, we will make requests where
+           * apiKeyName is null and the request will fail
+           */
+          await getTablesAndDbCreds(token, apiKeyName);
+          await fetchMetadata(token, apiKeyName);
+        } else {
+          console.log("No apiKeyName provided");
+        }
       } else {
         router.push("/log-in");
       }
@@ -91,6 +103,9 @@ const ExtractMetadata = () => {
           token,
           key_name: apiKeyName,
         }),
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
     );
     // check if the response has status 200
@@ -120,6 +135,9 @@ const ExtractMetadata = () => {
         token,
         key_name: apiKeyName,
       }),
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
     // check if the response has status 200
     if (res.status === 401) {

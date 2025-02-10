@@ -1,10 +1,37 @@
-from datetime import datetime
 from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, Text
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.ext.declarative import declarative_base
 from db_config import metadata, ORACLE_ENABLED, imported_tables_engine
 
 Base = declarative_base(metadata=metadata)
+
+class Users(Base):
+    """
+    Represents the Users table.
+    username is generally the email address of the user.
+    hashed_password is hash(username, salt, password)
+    token is what we use to authenticate the user for all user-related requests.
+    created_at is the timestamp when the user was created.
+    """
+    __tablename__ = "defog_users"
+    username = Column(Text, primary_key=True)
+    hashed_password = Column(Text)
+    token = Column(Text, nullable=False)
+    created_at = Column(DateTime)
+
+
+class DbCreds(Base):
+    """
+    Table to store the database credentials for the user.
+    Each api_key is associated with a single user profile's database.
+    Note that api_key/key_name is an orthogonal concept to username/token.
+    TODO (DEF-720): rename api_key to key_name
+    """
+    __tablename__ = "defog_db_creds"
+    api_key = Column(Text, primary_key=True)
+    db_type = Column(Text)
+    db_creds = Column(JSON)
+
 
 class Analyses(Base):
     __tablename__ = "defog_analyses"
@@ -60,14 +87,6 @@ class Tools(Base):
     cannot_delete = Column(Boolean, default=False)
     cannot_disable = Column(Boolean, default=False)
 
-class Users(Base):
-    __tablename__ = "defog_users"
-    username = Column(Text, primary_key=True)
-    hashed_password = Column(Text)
-    token = Column(Text, nullable=False)
-    user_type = Column(Text, nullable=False)
-    created_at = Column(DateTime)
-
 class PlansFeedback(Base):
     __tablename__ = "defog_plans_feedback"
     analysis_id = Column(Text, primary_key=True)
@@ -79,12 +98,6 @@ class PlansFeedback(Base):
     feedback_metadata = Column(Text, name="metadata", nullable=False)
     client_description = Column(Text)
     glossary = Column(Text)
-
-class DbCreds(Base):
-    __tablename__ = "defog_db_creds"
-    api_key = Column(Text, primary_key=True)
-    db_type = Column(Text)
-    db_creds = Column(JSON)
 
 class UserHistory(Base):
     __tablename__ = "defog_user_history"

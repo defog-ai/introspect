@@ -7,7 +7,11 @@ from auth_utils import get_hashed_username
 from db_models import DbCreds, Users
 from sqlalchemy import create_engine, insert, select, update
 
-SALT = "TOMMARVOLORIDDLE"
+SALT = os.getenv("SALT")
+if not SALT:
+    raise ValueError("SALT is not set")
+elif SALT == "default_salt":
+    raise ValueError("SALT is the default value. Please set a custom value.")
 
 # Edit this section based on your data setup
 users = [
@@ -16,60 +20,60 @@ users = [
         "password": "admin",
     },
     {
-        "username": "card",
+        "username": "Card",
         "password": "password",
     },
     {
-        "username": "housing",
+        "username": "Housing",
         "password": "password",
     },
     {
-        "username": "restaurant",
+        "username": "Restaurant",
         "password": "password",
     },
     {
-        "username": "macmillan",
+        "username": "Macmillan",
         "password": "admin",
     },
     {
-        "username": "webshop",
+        "username": "Webshop",
         "password": "test",
     },
     {
-        "username": "cricket",
+        "username": "Cricket",
         "password": "test",
     },
     {
         "username": "jp@defog.ai",
-    },
+    }
 ]
 databases = [
     {
-        "api_key": "123",
+        "api_key": "Card",
         "database": "card",
     },
     {
-        "api_key": "456",
+        "api_key": "Housing",
         "database": "housing",
     },
     {
-        "api_key": "test_restaurant",
+        "api_key": "Restaurant",
         "database": "restaurants",
     },
     {
-        "api_key": "test_macmillan",
+        "api_key": "Macmillan",
         "database": "macmillan",
     },
     {
-        "api_key": "fbc046431bd131d1c6c55c782d8bbd413a339d9c78ec6da6fea73cdfaeacb897",
+        "api_key": "Macmillan",
         "database": "macmillan",
     },
     {
-        "api_key": "test_webshop",
+        "api_key": "Webshop",
         "database": "webshop",
     },
     {
-        "api_key": "test_cricket",
+        "api_key": "Cricket",
         "database": "cricket",
     },
 ]
@@ -119,7 +123,7 @@ with engine.begin() as conn:
                 .values(
                     username=username,
                     hashed_password=hashed_password,
-                    user_type="admin",
+                    token=hashed_password,
                 )
             )
             print(f"User {username} updated.")
@@ -129,7 +133,6 @@ with engine.begin() as conn:
                     username=username,
                     hashed_password=hashed_password,
                     token=hashed_password,
-                    user_type="admin",
                     created_at=datetime.datetime.now(),
                 )
             )

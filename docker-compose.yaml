@@ -14,6 +14,7 @@ services:
 
   agents-python-server:
     environment:
+      - SALT=${SALT}
       - DEFOG_API_KEY=${DEFOG_API_KEY} # for backwards compatibility. avoid using DEFOG_API_KEY going forward due to potential conflicts with usage in defog-python
       - DEFOG_API_KEYS=${DEFOG_API_KEYS}
       - DEFOG_API_KEY_NAMES=${DEFOG_API_KEY_NAMES}

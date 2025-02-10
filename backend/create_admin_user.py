@@ -1,11 +1,20 @@
+# This script is used to create an admin user in the database during the
+# first deployment of the backend.
+#
+# This script is idempotent, meaning it can be run multiple times without
+# causing an error.
+
 import hashlib
 import os
 
 from db_models import Users
 from sqlalchemy import create_engine, select, insert
 
-SALT = "TOMMARVOLORIDDLE"
-INTERNAL_API_KEY = "dummy_api_key"
+SALT = os.getenv("SALT")
+if not SALT:
+    raise ValueError("SALT is not set")
+elif SALT == "default_salt":
+    raise ValueError("SALT is the default value. Please set a custom value.")
 
 username = "admin"
 password = "admin"
@@ -39,8 +48,7 @@ else:
             insert(Users).values(
                 username=username,
                 hashed_password=hashed_password,
-                token=INTERNAL_API_KEY,
-                user_type="admin",
+                token=hashed_password,
             )
         )
-    print("Admin user created.")
+    print("Admin user created. Please reset the default admin password when you log in.")

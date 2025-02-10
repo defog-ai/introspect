@@ -474,7 +474,7 @@ async def get_question_type(request: QuestionTypeRequest):
     key_name = request.key_name
     question = request.question
     token = request.token
-    username = await validate_user(token, user_type=None, get_username=True)
+    username = await validate_user(token)
     if not username:
         return JSONResponse(
             status_code=401,

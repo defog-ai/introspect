@@ -1,4 +1,8 @@
 import hashlib
+import os
+from typing import Optional
+
+from fastapi import HTTPException, Request
 from db_config import engine
 from db_models import Users
 from sqlalchemy import (
@@ -6,17 +10,23 @@ from sqlalchemy import (
     update,
     and_,
 )
-from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
-SALT = "TOMMARVOLORIDDLE"
+SALT = os.getenv("SALT")
+if not SALT:
+    raise ValueError("SALT is not set")
+elif SALT == "default_salt":
+    raise ValueError("SALT is the default value. Please set a custom value.")
 
 
-async def login_user(username, password):
-    hashed_password = hashlib.sha256((username + SALT + password).encode()).hexdigest()
-    hashed_username = hashlib.sha256((username + SALT).encode()).hexdigest()
-    async with engine.begin() as conn:
-        if password:
-            user = await conn.execute(
+async def login_user(username: str, password: str | None = None) -> Optional[str]:
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            if password:
+                hashed_password = get_hashed_password(username, password)
+            else:
+                hashed_password = get_hashed_username(username)
+            result = await session.execute(
                 select(Users).where(
                     and_(
                         Users.hashed_password == hashed_password,
@@ -24,32 +34,8 @@ async def login_user(username, password):
                     )
                 )
             )
-            user = user.fetchone()
-        else:
-            user = await conn.execute(
-                select(Users).where(
-                    and_(
-                        Users.hashed_password == hashed_username,
-                        Users.username == username,
-                    )
-                )
-            )
-            user = user.fetchone()
-
-    if user:
-        return {
-            "status": "success",
-            "user_type": user.user_type,
-            "token": hashed_password,
-        }
-    else:
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
+            user = result.scalar_one_or_none()
+            return user.token if user else None
 
 
 async def reset_password(username, new_password):
@@ -60,7 +46,7 @@ async def reset_password(username, new_password):
         await conn.execute(
             update(Users)
             .where(Users.username == username)
-            .values(hashed_password=hashed_password)
+            .values(hashed_password=hashed_password, token=hashed_password)
         )
 
 
@@ -81,23 +67,24 @@ async def validate_user_email(email):
     else:
         return False
 
-async def validate_user(token, user_type=None, get_username=False):
-    async with engine.begin() as conn:
-        user = await conn.execute(select(Users).where(Users.hashed_password == token))
-        user = user.fetchone()
-    if user:
-        if user_type == "admin":
-            if user.user_type == "admin":
-                if get_username:
-                    return user.username
-                else:
-                    return True
-            else:
-                return False
-        else:
-            if get_username:
-                return user.username
-            else:
-                return True
-    else:
-        return False
+async def validate_user(api_key: str) -> Optional[Users]:
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            stmt = select(Users).where(Users.token == api_key)
+            result = await session.execute(stmt)
+            user = result.scalar_one_or_none()
+    return user
+        
+
+
+async def validate_user_request(request: Request):
+    """
+    Function to be used as a dependency to validate the user request.
+    Should be used for all routes that require user validation, ideally during
+    the router initialization.
+    """
+    params = await request.json()
+    token = params.get("token")
+    user = await validate_user(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")

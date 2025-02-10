@@ -27,6 +27,9 @@ const LogIn = () => {
     const response = await fetch(urlToUse, {
       method: "POST",
       body: JSON.stringify(values),
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
 
     const data = await response.json();
