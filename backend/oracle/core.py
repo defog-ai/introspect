@@ -11,7 +11,7 @@ from generic_utils import make_request
 from db_config import engine
 from db_models import OracleReports
 from db_oracle_utils import add_or_update_analysis, get_report_data
-from oracle.celery_app import celery_app
+from oracle.celery_app import celery_app, celery_async_executors
 from oracle.constants import TaskStage, TaskType, STAGE_TO_STATUS
 from oracle.explore import explore_data
 from oracle.export import generate_report
@@ -21,8 +21,6 @@ from sqlalchemy import select
 from utils_logging import LOGGER, save_and_log, save_timing
 import os
 
-
-celery_async_executors = ThreadPoolExecutor(max_workers=4)
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
