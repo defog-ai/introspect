@@ -19,7 +19,7 @@ from utils_imported_data import (
     update_imported_tables_db,
 )
 from utils_logging import save_and_log, save_timing
-
+from oracle.guidelines_tasks import populate_default_guidelines_task
 
 async def gather_context(
     api_key: str,
@@ -217,6 +217,11 @@ async def gather_context(
                     "imported": True,
                 },
             )
+            if response.get("status") == "success":
+                task = populate_default_guidelines_task.apply_async(
+                    args=[api_key, md]
+                )
+                LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for api_key {api_key}")
             LOGGER.info(f"Updated metadata for api_key {api_key}")
             ts = save_timing(ts, "Metadata updated", timings)
         else:

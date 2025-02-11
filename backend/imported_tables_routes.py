@@ -25,7 +25,7 @@ from utils_imported_data import (
 from pydantic import BaseModel
 from sqlalchemy import delete, insert, select, text, update
 from utils_logging import LOGGER, save_and_log, save_timing
-
+from oracle.guidelines_tasks import populate_default_guidelines_task
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 router = APIRouter()
@@ -323,6 +323,11 @@ async def sources_import_route(req: ImportSourcesRequest):
                 "imported": True,
             },
         )
+        if response.get("status") == "success":
+            task = populate_default_guidelines_task.apply_async(
+                args=[api_key, md]
+            )
+            LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for api_key {api_key}")
         LOGGER.info(f"Updated metadata for api_key {api_key}")
         save_and_log(ts, "Metadata updated", timings)
     else:
@@ -582,6 +587,11 @@ async def imported_tables_create_route(req: CreateImportedTablesRequest):
             url=f"{DEFOG_BASE_URL}/update_metadata",
             data=update_request,
         )
+        if response.get("status") == "success":
+            task = populate_default_guidelines_task.apply_async(
+                args=[api_key, md]
+            )
+            LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for api_key {api_key}")
     except Exception as e:
         LOGGER.error(f"Failed to get and update metadata: {str(e)}")
         return JSONResponse(

@@ -24,6 +24,7 @@ from generic_utils import (
 from request_models import MetadataGetRequest, UserRequest
 from utils_logging import LOGGER
 from utils_md import metadata_error
+from oracle.guidelines_tasks import populate_default_guidelines_task
 
 home_dir = os.path.expanduser("~")
 defog_path = os.path.join(home_dir, ".defog")
@@ -282,6 +283,10 @@ async def update_metadata(request: Request):
             "dev": dev,
         },
     )
+    if r.get("status") == "success":
+        # Run as a background task so it doesn't block
+        task = populate_default_guidelines_task.apply_async(args=[api_key, table_metadata])
+        LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for api_key {api_key}")
 
     return r
 
@@ -720,6 +725,10 @@ async def upload_metadata(request: Request):
             "dev": dev,
         },
     )
+    if r.get("status") == "success":
+        # Run as a background task so it doesn't block
+        task = populate_default_guidelines_task.apply_async(args=[api_key, table_metadata])
+        LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for api_key {api_key}")
 
     return r
 
