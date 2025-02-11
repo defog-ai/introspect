@@ -67,7 +67,7 @@ async def validate_user_email(email):
     else:
         return False
 
-async def validate_user(api_key: str) -> Optional[Users]:
+async def validate_user(api_key: str, **kwargs) -> Optional[Users]:
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = select(Users).where(Users.token == api_key)
