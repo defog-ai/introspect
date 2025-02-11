@@ -18,7 +18,7 @@ while ! nc -z $REDIS_INTERNAL_HOST $REDIS_INTERNAL_PORT; do
 done
 
 # Start celery worker
-celery -A oracle.celery_app.celery_app worker --loglevel=info &
+nohup celery -A oracle.celery_app.celery_app worker --loglevel=info --logfile=/dev/stdout &
 
 echo "Starting FastAPI server"
 echo "PROD: $PROD"
