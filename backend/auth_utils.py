@@ -67,6 +67,7 @@ async def validate_user_email(email):
     else:
         return False
 
+# Added **kwargs for legacy compatibility for instances where it is invoked with multiple arguments
 async def validate_user(api_key: str, **kwargs) -> Optional[Users]:
     async with AsyncSession(engine) as session:
         async with session.begin():
