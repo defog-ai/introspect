@@ -1,10 +1,5 @@
 from fastapi import APIRouter, Request, HTTPException
-from auth_utils import (
-    login_user,
-    reset_password,
-    get_hashed_username,
-    validate_user
-)
+from auth_utils import login_user, reset_password, get_hashed_username, validate_user
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import asyncio
@@ -26,7 +21,7 @@ async def login(req: LoginRequest):
     if token:
         return {
             "status": "success",
-            "user_type": "admin", # TODO: remove after frontend references have been removed
+            "user_type": "admin",  # TODO: remove after frontend references have been removed
             "token": token,
         }
     else:
@@ -64,7 +59,7 @@ async def validate_google_token(token: str):
             token = await login_user(user_email, "")
             return {
                 "status": "success",
-                "user_type": "admin", # TODO: remove after frontend references have been removed
+                "user_type": "admin",  # TODO: remove after frontend references have been removed
                 "token": token,
             }
         else:
@@ -97,7 +92,7 @@ async def reset_password_endpoint(request: Request):
     username = params.get("username", None)
     new_password = params.get("password", None)
     token = params.get("token", None)
-    if not (await validate_user(token, user_type="admin")):
+    if not (await validate_user(token)):
         return JSONResponse(
             status_code=401,
             content={

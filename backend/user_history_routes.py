@@ -18,9 +18,11 @@ router = APIRouter()
 async def get_user_history(request: Request):
     params = await request.json()
     token = params.get("token")
-    username = await validate_user(token, get_username=True)
-    if not username:
+    user = await validate_user(token)
+    if not user:
         return {"error": "Invalid token"}
+
+    username = user.username
 
     async with engine.begin() as conn:
         user_history = await conn.execute(
@@ -55,15 +57,17 @@ class UpdateHistoryRequest(BaseModel):
 @router.post("/update_user_history")
 async def update_user_history(request: UpdateHistoryRequest):
     token = request.token
-    username = await validate_user(token, get_username=True)
+    user = await validate_user(token)
     key_name = request.key_name
     history = request.history
 
     if not key_name:
         return {"error": "Invalid key name."}
 
-    if not username:
+    if not user:
         return {"error": "Invalid token"}
+
+    username = user.username
 
     if history is None:
         history = {}

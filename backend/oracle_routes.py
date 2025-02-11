@@ -8,13 +8,8 @@ from uuid import uuid4
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import (
-    OracleGuidelines,
-    OracleReports
-)
-from db_config import (
-    engine
-)
+from db_models import OracleGuidelines, OracleReports
+from db_config import engine
 from auth_utils import validate_user
 from db_oracle_utils import (
     add_or_update_analysis,
@@ -53,11 +48,13 @@ router = APIRouter()
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
+
 class GuidelineType(Enum):
     clarification = "clarification"
     generate_questions = "generate_questions"
     generate_questions_deeper = "generate_questions_deeper"
     generate_report = "generate_report"
+
 
 class SetGuidelinesRequest(BaseModel):
     guideline_type: GuidelineType
@@ -75,18 +72,22 @@ GUIDELINE_TYPE_MAPPING = {
     GuidelineType.generate_report: "generate_report_guidelines",
 }
 
+
 @router.post("/oracle/set_guidelines")
 async def set_guidelines(req: SetGuidelinesRequest):
     if req.api_key is None and req.key_name is None:
         return JSONResponse(
             status_code=400,
-            content={"error": "Bad Request", "message": "Either api_key or key_name is required"},
+            content={
+                "error": "Bad Request",
+                "message": "Either api_key or key_name is required",
+            },
         )
-    
+
     if not req.api_key:
         # validate user
-        username = await validate_user(req.token, user_type=None, get_username=True)
-        if not username:
+        user = await validate_user(req.token)
+        if not user:
             return JSONResponse(
                 status_code=401,
                 content={
@@ -97,16 +98,16 @@ async def set_guidelines(req: SetGuidelinesRequest):
         api_key = get_api_key_from_key_name(req.key_name)
     else:
         api_key = req.api_key
-    
+
     column_name = GUIDELINE_TYPE_MAPPING[req.guideline_type]
-    
+
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = await session.execute(
                 select(OracleGuidelines).where(OracleGuidelines.api_key == api_key)
             )
             result = stmt.scalar_one_or_none()
-            
+
             if not result:
                 # Add new row with the specified guideline
                 await session.execute(
@@ -115,14 +116,15 @@ async def set_guidelines(req: SetGuidelinesRequest):
                         # this looks hacky, but is a great way to
                         # get the column name neatly into the query
                         # w/o re-writing a lot of boilerplate
-                        **{column_name: req.guidelines}
+                        **{column_name: req.guidelines},
                     )
                 )
             else:
                 # Update existing row
                 setattr(result, column_name, req.guidelines)
-    
+
     return JSONResponse(status_code=200, content={"message": "Success"})
+
 
 class GetGuidelinesRequest(BaseModel):
     guideline_type: GuidelineType
@@ -130,18 +132,22 @@ class GetGuidelinesRequest(BaseModel):
     token: Optional[str] = None
     api_key: Optional[str] = None
 
+
 @router.post("/oracle/get_guidelines")
 async def get_guidelines(req: GetGuidelinesRequest):
     if not req.api_key and not req.key_name:
         return JSONResponse(
             status_code=400,
-            content={"error": "Bad Request", "message": "Either api_key or key_name is required"},
+            content={
+                "error": "Bad Request",
+                "message": "Either api_key or key_name is required",
+            },
         )
-    
+
     if not req.api_key:
         # validate user
-        username = await validate_user(req.token, user_type=None, get_username=True)
-        if not username:
+        user = await validate_user(req.token)
+        if not user:
             return JSONResponse(
                 status_code=401,
                 content={
@@ -152,16 +158,19 @@ async def get_guidelines(req: GetGuidelinesRequest):
         api_key = get_api_key_from_key_name(req.key_name)
     else:
         api_key = req.api_key
-        
+
     stmt = select(OracleGuidelines).where(OracleGuidelines.api_key == api_key)
     async with AsyncSession(engine) as session:
         result = await session.execute(stmt)
         result = result.scalar_one_or_none()
         if not result:
-            return JSONResponse(status_code=404, content={"error": "Guidelines not found"})
-        
+            return JSONResponse(
+                status_code=404, content={"error": "Guidelines not found"}
+            )
+
         column_name = GUIDELINE_TYPE_MAPPING[req.guideline_type]
         return JSONResponse(content={"guidelines": getattr(result, column_name)})
+
 
 class ClarifyQuestionRequest(BaseModel):
     key_name: str
@@ -204,8 +213,8 @@ async def clarify_question(req: ClarifyQuestionRequest):
         task_type: str
     """
     ts, timings = time.time(), []
-    username = await validate_user(req.token, user_type=None, get_username=True)
-    if not username:
+    user = await validate_user(req.token)
+    if not user:
         return JSONResponse(
             status_code=401,
             content={
@@ -245,19 +254,25 @@ async def clarify_question(req: ClarifyQuestionRequest):
                             clarification_guidelines=req.clarification_guidelines,
                         )
                     )
-                LOGGER.debug(f"Saved clarification guidelines to DB for API key {api_key}")
+                LOGGER.debug(
+                    f"Saved clarification guidelines to DB for API key {api_key}"
+                )
     else:
         LOGGER.debug("No clarification guidelines provided, retrieving from DB")
         async with AsyncSession(engine) as session:
             async with session.begin():
                 result = await session.execute(
-                    select(OracleGuidelines.clarification_guidelines).where(OracleGuidelines.api_key == api_key)
+                    select(OracleGuidelines.clarification_guidelines).where(
+                        OracleGuidelines.api_key == api_key
+                    )
                 )
                 guidelines = result.scalar_one_or_none()
                 if not guidelines:
                     LOGGER.warning("No clarification guidelines found in DB")
                 else:
-                    LOGGER.debug(f"Retrieved clarification guidelines from DB: {guidelines}")
+                    LOGGER.debug(
+                        f"Retrieved clarification guidelines from DB: {guidelines}"
+                    )
                     clarify_request["clarification_guidelines"] = guidelines
     try:
         clarify_response = await make_request(
@@ -293,8 +308,8 @@ async def suggest_web_sources(req: Request):
     body = await req.json()
     key_name = body.pop("key_name")
     token = body.pop("token")
-    username = await validate_user(token, user_type=None, get_username=True)
-    if not username:
+    user = await validate_user(token)
+    if not user:
         return JSONResponse(
             status_code=401,
             content={
@@ -356,9 +371,9 @@ class GenerateAnalysis(AnalysisRequest):
 
 @router.post("/oracle/get_analysis_status")
 async def get_analysis_status_endpoint(req: AnalysisRequest):
-    username = await validate_user(req.token, user_type=None, get_username=True)
+    user = await validate_user(req.token)
 
-    if not username:
+    if not user:
         return JSONResponse(
             status_code=401,
             content={
@@ -388,9 +403,9 @@ async def delete_analysis_endpoint(req: AnalysisRequest):
     If recommendation_idx is provided, deletes the analysis for that recommendation.
     Also cancels any running Celery task for this analysis.
     """
-    username = await validate_user(req.token, user_type=None, get_username=True)
+    user = await validate_user(req.token)
 
-    if not username:
+    if not user:
         return JSONResponse(
             status_code=401,
             content={
@@ -448,9 +463,9 @@ async def delete_analysis_endpoint(req: AnalysisRequest):
 
 @router.post("/oracle/generate_analysis")
 async def generate_analysis(req: GenerateAnalysis):
-    username = await validate_user(req.token, user_type=None, get_username=True)
+    user = await validate_user(req.token)
 
-    if not username:
+    if not user:
         return JSONResponse(
             status_code=401,
             content={
@@ -551,8 +566,8 @@ async def begin_generation(req: BeginGenerationRequest):
     full list of configuration options, this endpoint will begin the process of
     generating a report asynchronously as a celery task.
     """
-    username = await validate_user(req.token, user_type=None, get_username=True)
-    if not username:
+    user = await validate_user(req.token)
+    if not user:
         return JSONResponse(
             status_code=401,
             content={
@@ -560,8 +575,10 @@ async def begin_generation(req: BeginGenerationRequest):
                 "message": "Invalid username or password",
             },
         )
+
+    username = user.username
     api_key = get_api_key_from_key_name(req.key_name)
-    
+
     # clean up clarifications
     answered_clarifications = []
     if req.clarifications:
@@ -573,12 +590,9 @@ async def begin_generation(req: BeginGenerationRequest):
             else:
                 answer = str(clarification["answer"])
             answered_clarifications.append(
-                {
-                    "clarification": clarification["clarification"],
-                    "answer": answer
-                }
+                {"clarification": clarification["clarification"], "answer": answer}
             )
-    
+
     # insert a new row into the OracleReports table and get a new report_id
     user_inputs = {
         "user_question": req.user_question,
@@ -586,6 +600,7 @@ async def begin_generation(req: BeginGenerationRequest):
         "clarifications": answered_clarifications,
         "hard_filters": req.hard_filters,
     }
+
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = (
@@ -629,8 +644,8 @@ async def revision(req: ReviseReportRequest):
     """
     Given a report_id, this endpoint will submit the report for revision based on the comments passed.
     """
-    username = await validate_user(req.token, user_type=None, get_username=True)
-    if not username:
+    user = await validate_user(req.token)
+    if not user:
         return JSONResponse(
             status_code=401,
             content={
@@ -638,6 +653,8 @@ async def revision(req: ReviseReportRequest):
                 "message": "Invalid username or password",
             },
         )
+
+    username = user.username
 
     api_key = get_api_key_from_key_name(req.key_name)
 
@@ -650,7 +667,7 @@ async def revision(req: ReviseReportRequest):
                 "message": "No comments or general comments provided",
             },
         )
-    
+
     """
     We will reuse the begin generation task to handle the new report's generation. (The handling of the fact that this is a revision is handled inside the explore stage)
 
@@ -662,10 +679,7 @@ async def revision(req: ReviseReportRequest):
 
     # get the report's data
     report_data = await get_report_data(req.report_id, api_key)
-    if (
-        "error" in report_data
-        or "inputs" not in report_data
-    ):
+    if "error" in report_data or "inputs" not in report_data:
         return JSONResponse(status_code=404, content=report_data)
 
     status = report_data["status"]

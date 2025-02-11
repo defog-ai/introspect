@@ -8,12 +8,15 @@ from db_config import engine
 from utils_logging import LOGGER
 from auth_utils import validate_user
 
+
 async def initialise_analysis(
     user_question, token, api_key, custom_id=None, other_initialisation_details={}
 ):
-    username = await validate_user(token, get_username=True)
-    if not username:
+    user = await validate_user(token)
+    if not user:
         return "Invalid token.", None
+
+    username = user.username
 
     err = None
     timestamp = datetime.now()
@@ -86,6 +89,7 @@ async def initialise_analysis(
     finally:
         return err, new_analysis_data
 
+
 async def get_analysis_data(analysis_id: str) -> Dict:
     """Get analysis data from the database."""
     async with AsyncSession(engine) as session:
@@ -102,13 +106,15 @@ async def get_analysis_data(analysis_id: str) -> Dict:
             LOGGER.error(f"Error getting analysis data: {e}")
             return str(e), None
 
+
 async def get_assignment_understanding(analysis_id: str) -> Dict:
     """Get the assignment understanding for an analysis."""
     async with AsyncSession(engine) as session:
         try:
             result = await session.execute(
-                select(Analyses.assignment_understanding)
-                .where(Analyses.analysis_id == analysis_id)
+                select(Analyses.assignment_understanding).where(
+                    Analyses.analysis_id == analysis_id
+                )
             )
             row = result.first()
             result = row[0] if row else None
@@ -116,6 +122,7 @@ async def get_assignment_understanding(analysis_id: str) -> Dict:
         except Exception as e:
             LOGGER.error(f"Error getting assignment understanding: {e}")
             return str(e), None
+
 
 async def update_assignment_understanding(analysis_id: str, understanding: Dict):
     """Update the assignment understanding for an analysis."""
@@ -132,12 +139,13 @@ async def update_assignment_understanding(analysis_id: str, understanding: Dict)
             await session.rollback()
             raise
 
+
 async def update_analysis_data(
     analysis_id: str,
     request_type: str = None,
     new_data: Dict = None,
     replace: bool = False,
-    overwrite_key: str = None
+    overwrite_key: str = None,
 ) -> Dict:
     """Update analysis data in the database."""
     async with AsyncSession(engine) as session:
@@ -148,7 +156,7 @@ async def update_analysis_data(
             analysis = result.first()
             if not analysis:
                 return None
-            
+
             analysis = analysis[0]
             if request_type == "clarify":
                 if replace:
@@ -157,7 +165,7 @@ async def update_analysis_data(
                     current_data = analysis.clarify or []
                     current_data.append(new_data)
                     analysis.clarify = current_data
-            
+
             elif request_type == "gen_steps":
                 if replace:
                     analysis.gen_steps = new_data
@@ -165,16 +173,17 @@ async def update_analysis_data(
                     current_data = analysis.gen_steps or []
                     current_data.append(new_data)
                     analysis.gen_steps = current_data
-            
+
             elif overwrite_key:
                 setattr(analysis, overwrite_key, new_data)
-            
+
             await session.commit()
             return analysis_data_from_row(analysis)
         except Exception as e:
             LOGGER.error(f"Error updating analysis data: {e}")
             await session.rollback()
             raise
+
 
 def analysis_data_from_row(row):
     clarify = None if row.clarify is None else row.clarify

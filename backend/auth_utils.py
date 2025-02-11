@@ -16,7 +16,9 @@ from utils_logging import LOGGER
 
 SALT = os.getenv("SALT", "default_salt")
 if SALT == "default_salt":
-    LOGGER.info("SALT is the default value. Please set a custom value if you require a more secure authentication.")
+    LOGGER.info(
+        "SALT is the default value. Please set a custom value if you require a more secure authentication."
+    )
 
 
 async def login_user(username: str, password: str | None = None) -> Optional[str]:
@@ -67,15 +69,15 @@ async def validate_user_email(email):
     else:
         return False
 
-# Added **kwargs for legacy compatibility for instances where it is invoked with multiple arguments
-async def validate_user(api_key: str, **kwargs) -> Optional[Users]:
+
+async def validate_user(api_key: str) -> Optional[Users]:
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = select(Users).where(Users.token == api_key)
             result = await session.execute(stmt)
             user = result.scalar_one_or_none()
+            session.expunge(user)
     return user
-        
 
 
 async def validate_user_request(request: Request):
