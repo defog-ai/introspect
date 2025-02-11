@@ -219,7 +219,7 @@ async def gather_context(
             )
             if response.get("status") == "success":
                 task = populate_default_guidelines_task.apply_async(
-                    args=[api_key, md]
+                    args=[api_key]
                 )
                 LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for api_key {api_key}")
             LOGGER.info(f"Updated metadata for api_key {api_key}")

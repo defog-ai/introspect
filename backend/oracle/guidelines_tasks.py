@@ -14,7 +14,7 @@ DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 
 @celery_app.task(name="populate_default_guidelines_task")
-def populate_default_guidelines_task(api_key: str, table_metadata: Dict[str, Any]):
+def populate_default_guidelines_task(api_key: str):
     """Celery task to populate default guidelines for an API key if they don't exist."""
 
     async def _populate_guidelines():
@@ -33,7 +33,7 @@ def populate_default_guidelines_task(api_key: str, table_metadata: Dict[str, Any
                     # Make request to generate guidelines
                     response = await make_request(
                         f"{DEFOG_BASE_URL}/generate_clarification_guidelines",
-                        data={"api_key": api_key, "table_metadata": table_metadata},
+                        data={"api_key": api_key},
                     )
 
                     if (

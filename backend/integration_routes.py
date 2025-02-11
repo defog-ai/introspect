@@ -285,7 +285,7 @@ async def update_metadata(request: Request):
     )
     if r.get("status") == "success":
         # Run as a background task so it doesn't block
-        task = populate_default_guidelines_task.apply_async(args=[api_key, table_metadata])
+        task = populate_default_guidelines_task.apply_async(args=[api_key])
         LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for api_key {api_key}")
 
     return r
@@ -727,7 +727,7 @@ async def upload_metadata(request: Request):
     )
     if r.get("status") == "success":
         # Run as a background task so it doesn't block
-        task = populate_default_guidelines_task.apply_async(args=[api_key, table_metadata])
+        task = populate_default_guidelines_task.apply_async(args=[api_key])
         LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for api_key {api_key}")
 
     return r
