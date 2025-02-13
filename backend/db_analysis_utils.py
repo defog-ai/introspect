@@ -179,8 +179,9 @@ async def update_analysis_data(
             elif overwrite_key:
                 setattr(analysis, overwrite_key, new_data)
 
+            data = analysis_data_from_row(analysis)
             await session.commit()
-            return analysis_data_from_row(analysis)
+            return data
         except Exception as e:
             LOGGER.error(f"Error updating analysis data: {e}")
             await session.rollback()
