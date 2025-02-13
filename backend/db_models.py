@@ -1,9 +1,20 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, Text
-from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.ext.declarative import declarative_base
-from db_config import metadata, ORACLE_ENABLED, imported_tables_engine
+import os
 
-Base = declarative_base(metadata=metadata)
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, MetaData, Text
+from sqlalchemy.ext.declarative import declarative_base
+
+ORACLE_ENABLED: bool = os.environ.get("ORACLE_ENABLED", "no") == "yes"
+
+base_metadata = MetaData()
+Base = declarative_base(metadata=base_metadata)
+
+################################################################################
+# This file should only contain the database models.
+# All other files should import this file and use the models where required.
+# This file should not import stateful objects like engines, sessions, etc. to
+# avoid circular imports.
+################################################################################
+
 
 class Users(Base):
     """
@@ -13,6 +24,7 @@ class Users(Base):
     token is what we use to authenticate the user for all user-related requests.
     created_at is the timestamp when the user was created.
     """
+
     __tablename__ = "defog_users"
     username = Column(Text, primary_key=True)
     hashed_password = Column(Text)
@@ -27,6 +39,7 @@ class DbCreds(Base):
     Note that api_key/key_name is an orthogonal concept to username/token.
     TODO (DEF-720): rename api_key to key_name
     """
+
     __tablename__ = "defog_db_creds"
     api_key = Column(Text, primary_key=True)
     db_type = Column(Text)
@@ -50,6 +63,7 @@ class Analyses(Base):
     direct_parent_id = Column(Text)
     username = Column(Text)
 
+
 class TableCharts(Base):
     __tablename__ = "defog_table_charts"
     table_id = Column(Text, primary_key=True)
@@ -63,6 +77,7 @@ class TableCharts(Base):
     error = Column(Text)
     reactive_vars = Column(JSON)
 
+
 class ToolRuns(Base):
     __tablename__ = "defog_tool_runs"
     tool_run_id = Column(Text, primary_key=True)
@@ -73,6 +88,7 @@ class ToolRuns(Base):
     error_message = Column(Text)
     edited = Column(Integer)
     analysis_id = Column(Text)
+
 
 class Tools(Base):
     __tablename__ = "defog_tools"
@@ -87,6 +103,7 @@ class Tools(Base):
     cannot_delete = Column(Boolean, default=False)
     cannot_disable = Column(Boolean, default=False)
 
+
 class PlansFeedback(Base):
     __tablename__ = "defog_plans_feedback"
     analysis_id = Column(Text, primary_key=True)
@@ -98,13 +115,17 @@ class PlansFeedback(Base):
     feedback_metadata = Column(Text, name="metadata", nullable=False)
     client_description = Column(Text)
     glossary = Column(Text)
+    db_type = Column(Text, nullable=False)
+
 
 class UserHistory(Base):
     __tablename__ = "defog_user_history"
     username = Column(Text, primary_key=True)
     history = Column(JSON)
 
+
 if ORACLE_ENABLED:
+
     class OracleGuidelines(Base):
         __tablename__ = "oracle_guidelines"
         api_key = Column(Text, primary_key=True)
@@ -124,6 +145,7 @@ if ORACLE_ENABLED:
         inputs = Column(JSON)
         outputs = Column(JSON)
         feedback = Column(Text)
+        general_comments = Column(Text, default=None)
         comments = Column(JSON, default=None)
 
     class OracleAnalyses(Base):
@@ -154,12 +176,3 @@ if ORACLE_ENABLED:
         table_position = Column(Integer, primary_key=True)
         table_name = Column(Text)
         table_description = Column(Text)
-
-    # Set up imported tables base
-    try:
-        ImportedTablesBase = automap_base()
-        ImportedTablesBase.prepare(autoload_with=imported_tables_engine)
-        ImportedTablesBase.classes.imported_tables = ImportedTables
-    except Exception as e:
-        from utils_logging import LOGGER
-        LOGGER.debug(f"Error loading oracle tables: {e}")

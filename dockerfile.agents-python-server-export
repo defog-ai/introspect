@@ -3,7 +3,7 @@ FROM python:3.12-slim
 
 WORKDIR /backend
 
-RUN apt-get update && apt-get install -y python3-pip netcat-openbsd
+RUN apt-get update && apt-get install -y python3-pip
 
 COPY ./backend /backend
 
@@ -38,5 +38,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends msodbcsql18
 # Cleanup
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# start startup script
-CMD sh ./startup.sh
+# run start_docker.sh file as entrypoint to run as PID 1
+ENTRYPOINT ["/backend/startup.sh"]

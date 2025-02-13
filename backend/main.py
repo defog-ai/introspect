@@ -1,18 +1,19 @@
 import logging
 import os
 import traceback
+
+import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, feedback_routes, imgo_routes, integration_routes, oracle_report_routes, query_routes, readiness_routes, slack_routes, user_history_routes
+from db_analysis_utils import get_analysis_data, initialise_analysis
+from db_config import ORACLE_ENABLED
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-import doc_endpoints
-
-from db_config import ORACLE_ENABLED
-from db_analysis_utils import get_analysis_data, initialise_analysis
 from generic_utils import get_api_key_from_key_name
-import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes, agent_routes, imgo_routes, user_history_routes, oracle_report_routes
+from startup import lifespan
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
+
 app.include_router(integration_routes.router)
 app.include_router(query_routes.router)
 app.include_router(admin_routes.router)
@@ -26,7 +27,10 @@ app.include_router(slack_routes.router)
 app.include_router(agent_routes.router)
 app.include_router(user_history_routes.router)
 if ORACLE_ENABLED:
-    import oracle_routes, imported_tables_routes, xdb_routes, oracle_report_routes
+    import imported_tables_routes
+    import oracle_report_routes
+    import oracle_routes
+    import xdb_routes
 
     app.include_router(imported_tables_routes.router)
     app.include_router(oracle_routes.router)

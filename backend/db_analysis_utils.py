@@ -1,12 +1,14 @@
-from datetime import datetime
+import traceback
 import uuid
+from datetime import datetime
 from typing import Dict
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
-from db_models import Analyses
-from db_config import engine
-from utils_logging import LOGGER
+
 from auth_utils import validate_user
+from db_config import engine
+from db_models import Analyses
+from sqlalchemy import insert, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+from utils_logging import LOGGER
 
 
 async def initialise_analysis(

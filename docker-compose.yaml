@@ -11,6 +11,12 @@ services:
       POSTGRES_PASSWORD: postgres
     volumes:
       - agents-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 1s
+      timeout: 1s
+      retries: 5
+      start_period: 1s
 
   agents-python-server:
     environment:
@@ -68,14 +74,15 @@ services:
       context: .
       dockerfile: dockerfile.agents-python-server
     restart: always
-    stop_grace_period: 1s
     ports:
       - "1235:1235"
     volumes:
       - ./backend:/backend
     depends_on:
-      - agents-postgres
-      - agents-redis
+      agents-postgres:
+        condition: service_healthy
+      agents-redis:
+        condition: service_healthy
     networks:
       - agents-network
 
@@ -106,6 +113,12 @@ services:
       - redis-data:/data
     environment:
       - REDIS_MAXMEMORY=128mb
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 1s
+      timeout: 1s
+      retries: 5
+      start_period: 1s
 
 volumes:
   agents-postgres:
