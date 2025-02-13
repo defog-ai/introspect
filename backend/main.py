@@ -2,7 +2,12 @@ import logging
 import os
 import traceback
 
-import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, feedback_routes, imgo_routes, integration_routes, oracle_report_routes, query_routes, readiness_routes, slack_routes, user_history_routes
+import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, \
+    feedback_routes, imgo_routes, integration_routes, oracle_report_routes, \
+    query_routes, readiness_routes, slack_routes, user_history_routes, \
+    imported_tables_routes, oracle_report_routes, oracle_routes, xdb_routes, \
+    tools.tool_routes
+
 from db_analysis_utils import get_analysis_data, initialise_analysis
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,15 +30,11 @@ app.include_router(imgo_routes.router)
 app.include_router(slack_routes.router)
 app.include_router(agent_routes.router)
 app.include_router(user_history_routes.router)
-import imported_tables_routes
-import oracle_report_routes
-import oracle_routes
-import xdb_routes
-
 app.include_router(imported_tables_routes.router)
 app.include_router(oracle_routes.router)
 app.include_router(xdb_routes.router)
 app.include_router(oracle_report_routes.router)
+app.include_router(tools.tool_routes.router)
 from oracle.setup import setup_dir
 
 # check if the oracle directory structure exists and create if not
