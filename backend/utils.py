@@ -83,54 +83,6 @@ def log_warn(msg=""):
     logging.warning(f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
 
 
-simple_tool_types = {
-    "DBColumn": "Column name",
-    "DBColumnList": "List of column names",
-    "pandas.core.frame.DataFrame": "Dataframe",
-    "str": "String",
-    "int": "Integer",
-    "float": "Float",
-    "bool": "Boolean",
-    "list[str]": "List of strings",
-    "list": "List",
-    "DropdownSingleSelect": "String",
-}
-
-
-def create_simple_tool_types(_type):
-    # if type starts with DBColumnList...
-    if _type.startswith("DBColumnList"):
-        return "List of column names"
-    if _type.startswith("ListWithDefault"):
-        return "List"
-
-    else:
-        return simple_tool_types.get(_type, _type)
-
-
-def get_clean_plan(analysis_data):
-    generated_plan = analysis_data.get("gen_steps", {}).get("steps", [])
-    cleaned_plan = []
-    for item in generated_plan:
-        cleaned_item = {}
-        for key, value in item.items():
-            if key in [
-                "tool_name",
-                "model_generated_inputs",
-                "outputs_storage_keys",
-                "done",
-                "error_message",
-            ]:
-                # if key is model_generated_inputs, just change it to inputs
-                if key == "model_generated_inputs":
-                    cleaned_item["inputs"] = value
-                else:
-                    cleaned_item[key] = value
-        cleaned_plan.append(cleaned_item)
-
-    return cleaned_plan
-
-
 def snake_case(s):
     return re.sub(r"(?<!^)(?=[A-Z])", "_", s).lower()
 
