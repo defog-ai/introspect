@@ -207,7 +207,7 @@ async def run_step(
         await update_analysis_data(
             analysis_id=analysis_id,
             request_type="gen_steps",
-            new_data=[step],
+            new_data=step,
             # if this is a new step, this will simply append
             # but if we're running an existing step, this will overwrite it with the new one
             overwrite_key="id",
@@ -309,7 +309,6 @@ async def rerun_step(
     await run_step(
         analysis_id=analysis_id,
         step=step,
-        all_steps=all_steps,
         analysis_execution_cache=analysis_execution_cache,
     )
 
