@@ -16,6 +16,10 @@
     "@defogdotai/agents-ui-components": "1.1.46",
     "@notionhq/client": "^2.2.14",
     "@react-oauth/google": "^0.12.1",
+    "@sereneinserenade/tiptap-comment-extension": "^0.1.2",
+    "@tiptap/core": "^2.11.5",
+    "@tiptap/react": "^2.11.5",
+    "@tiptap/starter-kit": "^2.11.5",
     "@types/react-dom": "19.0.0",
     "@uiw/react-codemirror": "^4.23.7",
     "antd": "^5.22.5",
@@ -32,7 +36,8 @@
     "react-fast-marquee": "^1.6.2",
     "recharts": "^2.15.0",
     "sass": "^1.69.7",
-    "tailwind-merge": "^2.3.0"
+    "tailwind-merge": "^2.3.0",
+    "tiptap-markdown": "^0.8.10"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "15.1.1",
