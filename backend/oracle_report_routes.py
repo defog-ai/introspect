@@ -99,19 +99,20 @@ async def reports_list(req: BasicRequest):
     api_key = get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
-        stmt = (
-            select(
-                OracleReports.report_id,
-                OracleReports.report_name,
-                OracleReports.status,
-                OracleReports.created_ts,
-                OracleReports.inputs,
+        async with session.begin():
+            stmt = (
+                select(
+                    OracleReports.report_id,
+                    OracleReports.report_name,
+                    OracleReports.status,
+                    OracleReports.created_ts,
+                    OracleReports.inputs,
+                )
+                .where(OracleReports.api_key == api_key)
+                .order_by(OracleReports.created_ts.desc())
             )
-            .where(OracleReports.api_key == api_key)
-            .order_by(OracleReports.created_ts.desc())
-        )
-        result = await session.execute(stmt)
-        reports = result.fetchall()
+            result = await session.execute(stmt)
+            reports = result.fetchall()
 
     reports_list = []
     for report in reports:
@@ -193,56 +194,57 @@ async def get_report_mdx(req: ReportRequest):
     api_key = get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
-        stmt = select(OracleReports).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
-        )
-        result = await session.execute(stmt)
-        report = result.scalar_one_or_none()
-
-        if report:
-            mdx = report.outputs.get(TaskStage.EXPORT.value, {}).get("mdx", "")
-            md = report.outputs.get(TaskStage.EXPORT.value, {}).get("md", "")
-            tiptap_mdx = report.outputs.get(TaskStage.EXPORT.value, {}).get(
-                "tiptap_mdx", ""
+        async with session.begin():
+            stmt = select(OracleReports).where(
+                OracleReports.api_key == api_key,
+                OracleReports.report_id == req.report_id,
             )
+            result = await session.execute(stmt)
+            report = result.scalar_one_or_none()
 
-            summary_dict = report.outputs.get(TaskStage.EXPORT.value, {}).get(
-                "executive_summary", None
-            )
+            if report:
+                mdx = report.outputs.get(TaskStage.EXPORT.value, {}).get("mdx", "")
+                md = report.outputs.get(TaskStage.EXPORT.value, {}).get("md", "")
+                tiptap_mdx = report.outputs.get(TaskStage.EXPORT.value, {}).get(
+                    "tiptap_mdx", ""
+                )
 
-            if not summary_dict:
+                summary_dict = report.outputs.get(TaskStage.EXPORT.value, {}).get(
+                    "executive_summary", None
+                )
+
+                if not summary_dict:
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            "error": "Bad Request",
+                            "message": "No summary dict found for report",
+                        },
+                    )
+
+                if not mdx:
+                    _, summary_mdx = summary_dict_to_markdown(summary_dict)
+                    mdx = summary_mdx.strip()
+
+                if not tiptap_mdx:
+                    _, summary_mdx = summary_dict_to_markdown(
+                        summary_dict, wrap_in_tags=True
+                    )
+                    tiptap_mdx = summary_mdx.strip()
+
                 return JSONResponse(
-                    status_code=400,
+                    status_code=200,
                     content={
-                        "error": "Bad Request",
-                        "message": "No summary dict found for report",
+                        "mdx": mdx,
+                        "md": md,
+                        "tiptap_mdx": tiptap_mdx,
                     },
                 )
-
-            if not mdx:
-                _, summary_mdx = summary_dict_to_markdown(summary_dict)
-                mdx = summary_mdx.strip()
-
-            if not tiptap_mdx:
-                _, summary_mdx = summary_dict_to_markdown(
-                    summary_dict, wrap_in_tags=True
+            else:
+                return JSONResponse(
+                    status_code=404,
+                    content={"error": "Report not found"},
                 )
-                tiptap_mdx = summary_mdx.strip()
-
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "mdx": mdx,
-                    "md": md,
-                    "tiptap_mdx": tiptap_mdx,
-                },
-            )
-        else:
-            return JSONResponse(
-                status_code=404,
-                content={"error": "Report not found"},
-            )
 
 
 class UpdateReportMDXRequest(ReportRequest):
@@ -352,15 +354,16 @@ async def get_report_analysis_ids(req: ReportRequest):
     api_key = get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
-        stmt = select(OracleAnalyses).where(
-            OracleAnalyses.api_key == api_key,
-            OracleAnalyses.report_id == req.report_id,
-        )
-        result = await session.execute(stmt)
-        result = result.scalars().all()
-        analyses = [row.analysis_id for row in result]
+        async with session.begin():
+            stmt = select(OracleAnalyses).where(
+                OracleAnalyses.api_key == api_key,
+                OracleAnalyses.report_id == req.report_id,
+            )
+            result = await session.execute(stmt)
+            result = result.scalars().all()
+            analyses = [row.analysis_id for row in result]
 
-        return JSONResponse(status_code=200, content={"analyses": analyses})
+            return JSONResponse(status_code=200, content={"analyses": analyses})
 
 
 @router.post("/oracle/get_report_analysis")
@@ -374,23 +377,26 @@ async def get_report_analysis(req: ReportAnalysisRequest):
 
     # get the report
     async with AsyncSession(engine) as session:
-        stmt = select(OracleAnalyses).where(
-            OracleAnalyses.api_key == api_key,
-            OracleAnalyses.report_id == req.report_id,
-            OracleAnalyses.analysis_id == req.analysis_id,
-        )
-        result = await session.execute(stmt)
-        row = result.scalar_one_or_none()
-        if row:
-            analysis = {
-                column.name: getattr(row, column.name)
-                for column in OracleAnalyses.__table__.columns
-            }
-            return JSONResponse(
-                status_code=200,
-                content=analysis,
+        async with session.begin():
+            stmt = select(OracleAnalyses).where(
+                OracleAnalyses.api_key == api_key,
+                OracleAnalyses.report_id == req.report_id,
+                OracleAnalyses.analysis_id == req.analysis_id,
             )
-        return JSONResponse(status_code=404, content={"error": "Analysis not found"})
+            result = await session.execute(stmt)
+            row = result.scalar_one_or_none()
+            if row:
+                analysis = {
+                    column.name: getattr(row, column.name)
+                    for column in OracleAnalyses.__table__.columns
+                }
+                return JSONResponse(
+                    status_code=200,
+                    content=analysis,
+                )
+            return JSONResponse(
+                status_code=404, content={"error": "Analysis not found"}
+            )
 
 
 @router.post("/oracle/get_report_status")
@@ -404,18 +410,19 @@ async def get_report_status(req: ReportRequest):
 
     # get the report
     async with AsyncSession(engine) as session:
-        stmt = select(OracleReports).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
-        )
-        result = await session.execute(stmt)
-        row = result.scalar_one_or_none()
-        if row:
-            return JSONResponse(
-                status_code=200,
-                content={"status": row.status},
+        async with session.begin():
+            stmt = select(OracleReports).where(
+                OracleReports.api_key == api_key,
+                OracleReports.report_id == req.report_id,
             )
-        return JSONResponse(status_code=404, content={"error": "Report not found"})
+            result = await session.execute(stmt)
+            row = result.scalar_one_or_none()
+            if row:
+                return JSONResponse(
+                    status_code=200,
+                    content={"status": row.status},
+                )
+            return JSONResponse(status_code=404, content={"error": "Report not found"})
 
 
 @router.post("/oracle/get_report_summary")
@@ -431,15 +438,16 @@ async def get_report_summary(req: ReportRequest):
     # get from export key's executive_summary
     executive_summary = None
     async with AsyncSession(engine) as session:
-        stmt = select(OracleReports.outputs).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
-        )
-        result = await session.execute(stmt)
-        outputs = result.scalar_one_or_none()
-        executive_summary = outputs.get(TaskStage.EXPORT.value, {}).get(
-            "executive_summary", None
-        )
+        async with session.begin():
+            stmt = select(OracleReports.outputs).where(
+                OracleReports.api_key == api_key,
+                OracleReports.report_id == req.report_id,
+            )
+            result = await session.execute(stmt)
+            outputs = result.scalar_one_or_none()
+            executive_summary = outputs.get(TaskStage.EXPORT.value, {}).get(
+                "executive_summary", None
+            )
     if executive_summary:
         return JSONResponse(
             status_code=200, content={"executive_summary": executive_summary}
@@ -461,19 +469,22 @@ async def get_report_comments(req: ReportRequest):
     api_key = get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
-        stmt = select(OracleReports).where(
-            OracleReports.api_key == api_key,
-            OracleReports.report_id == req.report_id,
-        )
-        result = await session.execute(stmt)
-        report = result.scalar_one_or_none()
-        if report:
-            return JSONResponse(status_code=200, content={"comments": report.comments})
-        else:
-            return JSONResponse(
-                status_code=404,
-                content={"error": "Report not found"},
+        async with session.begin():
+            stmt = select(OracleReports).where(
+                OracleReports.api_key == api_key,
+                OracleReports.report_id == req.report_id,
             )
+            result = await session.execute(stmt)
+            report = result.scalar_one_or_none()
+            if report:
+                return JSONResponse(
+                    status_code=200, content={"comments": report.comments}
+                )
+            else:
+                return JSONResponse(
+                    status_code=404,
+                    content={"error": "Report not found"},
+                )
 
 
 class UpdateReportCommentsRequest(ReportRequest):

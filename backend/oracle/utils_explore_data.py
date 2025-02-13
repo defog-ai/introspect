@@ -40,6 +40,7 @@ async def gen_sql(
             "glossary": glossary,
             "hard_filters": hard_filters,
         },
+        log_time=True,
     )
     # anything that returns a status code other than 200 will return None
     if resp:
@@ -68,6 +69,7 @@ async def retry_sql_gen(
     response = await make_request(
         f"{DEFOG_BASE_URL}/retry_query_after_error",
         data=json_data,
+        log_time=True,
     )
     if response:
         new_query = response["new_query"]

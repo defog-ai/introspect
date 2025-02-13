@@ -439,7 +439,6 @@ async def delete_analysis_endpoint(req: AnalysisRequest):
     if req.recommendation_idx is not None:
         summary_dict = (
             (await get_report_data(req.report_id, api_key))
-            .get("data", {})
             .get("outputs", {})
             .get(TaskStage.EXPORT.value, {})
             .get("executive_summary", None)
@@ -499,8 +498,6 @@ async def generate_analysis(req: GenerateAnalysis):
 
     if "error" in report_data:
         return JSONResponse(status_code=404, content=report_data)
-
-    report_data = report_data["data"]
 
     # Get previous analyses data
     err, previous_analyses = await get_multiple_analyses(

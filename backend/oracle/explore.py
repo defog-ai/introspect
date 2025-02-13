@@ -93,13 +93,14 @@ async def explore_data(
     general_comments_md = ""
     if general_comments:
         general_comments_md = general_comments
-    
+
     # get generate_questions_guidelines from DB
     async with engine.begin() as conn:
         row = await conn.execute(
-            select(OracleGuidelines.generate_questions_guidelines, OracleGuidelines.generate_questions_deeper_guidelines).where(
-                OracleGuidelines.api_key == api_key
-            )
+            select(
+                OracleGuidelines.generate_questions_guidelines,
+                OracleGuidelines.generate_questions_deeper_guidelines,
+            ).where(OracleGuidelines.api_key == api_key)
         )
         row = row.scalar_one_or_none()
         generate_questions_guidelines = row[0] if row else None
@@ -125,7 +126,10 @@ async def explore_data(
 
     LOGGER.info(f"Generating explorer questions")
     generated_qns_response = await make_request(
-        DEFOG_BASE_URL + "/oracle/gen_explorer_qns", json_data, timeout=300
+        DEFOG_BASE_URL + "/oracle/gen_explorer_qns",
+        json_data,
+        timeout=300,
+        log_time=True,
     )
     if "error" in generated_qns_response and generated_qns_response["error"]:
         LOGGER.error(
@@ -135,9 +139,7 @@ async def explore_data(
 
     generated_qns = generated_qns_response["generated_questions"]  # list of dict
     key_metric = generated_qns_response["key_metric"]  # dict
-    segments = generated_qns_response[
-        "segments"
-    ]  # dict
+    segments = generated_qns_response["segments"]  # dict
 
     LOGGER.debug(f"Generated questions with data: {len(generated_qns)}")
 
@@ -153,14 +155,10 @@ async def explore_data(
         segment = segments.get(segment_name)
         segment["name"] = segment_name
         if segment is None:
-            LOGGER.error(
-                f"Segment not found for {qn_id}: {generated_qn}"
-            )
+            LOGGER.error(f"Segment not found for {qn_id}: {generated_qn}")
             continue
         if not segment:
-            LOGGER.error(
-                f"Segment not found for {qn_id}: {generated_qn}"
-            )
+            LOGGER.error(f"Segment not found for {qn_id}: {generated_qn}")
             continue
         # add the summary of the question to the list of status updates
         generated_qns_summaries.append(question_dict.get("summary", "exploring"))
@@ -210,16 +208,14 @@ async def explore_data(
                 report_id=report_id, generated_qns_summaries=generated_qns_summaries
             )
         )
-    
+
     # Ensure background task of status update is terminated when primary tasks are done
     if update_status_task.done():
         update_status_task.cancel()
         try:
             await update_status_task
         except asyncio.CancelledError:
-            LOGGER.info(
-                "Background task of updating status terminated successfully."
-            )
+            LOGGER.info("Background task of updating status terminated successfully.")
 
     # give each analysis a unique id and add these analyses to the report
     for analysis in analyses:
@@ -295,6 +291,7 @@ async def explore_generated_question(
     glossary_dict = await make_request(
         DEFOG_BASE_URL + "/prune_glossary",
         data={"question": generated_qn, "api_key": api_key},
+        log_time=True,
     )
     glossary = f"{glossary_dict.get('pruned_glossary', '')}\n{context}"
     ts = save_timing(ts, f"{qn_id}) Glossary", timings)
@@ -334,7 +331,9 @@ async def explore_generated_question(
             elif err_msg is not None:
                 LOGGER.error(f"Error occurred in executing SQL: {err_msg}")
             elif isinstance(data, pd.DataFrame) and data.empty:
-                key_metric_str = f"{key_metric['description']} ({key_metric['table_column']})"
+                key_metric_str = (
+                    f"{key_metric['description']} ({key_metric['table_column']})"
+                )
                 segment_str = f"{segment['description']} ({segment['table_column']})"
                 expand_sql_qn_response = await make_request(
                     DEFOG_BASE_URL + "/oracle/expand_sql_qn",
@@ -346,6 +345,7 @@ async def explore_generated_question(
                         "key_metric": key_metric_str,
                         "segment": segment_str,
                     },
+                    log_time=True,
                 )
                 new_sql = expand_sql_qn_response["sql"]
                 new_generated_qn = expand_sql_qn_response["question"]

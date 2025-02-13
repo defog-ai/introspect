@@ -19,7 +19,8 @@ if not DEFOG_API_KEYS:
 DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
 
 
-async def make_request(url, data, timeout=180):
+async def make_request(url, data, timeout=180, log_time=False):
+    start_time = datetime.now()
     if LOG_LEVEL == "DEBUG":
         LOGGER.debug(f"Making request to: {url}")
         # avoid excessively long logs (e.g. for base64 encoded images)
@@ -34,6 +35,11 @@ async def make_request(url, data, timeout=180):
         )
     response = r.json()
     response_str = truncate_obj(response)
+    if log_time:
+        LOGGER.info(
+            f"Request to {url} took: {(datetime.now() - start_time).total_seconds()}s"
+        )
+
     if r.status_code != 200:
         LOGGER.error(f"Error in request:\n{response_str}")
         return response

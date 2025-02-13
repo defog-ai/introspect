@@ -85,7 +85,9 @@ async def begin_generation_async_task(
             async with AsyncSession(engine) as session:
                 async with session.begin():
                     # update status of the report
-                    stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+                    stmt = select(OracleReports).where(
+                        OracleReports.report_id == report_id
+                    )
                     result = await session.execute(stmt)
                     report = result.scalar_one()
                     # we want to add some sort of indicator to a revision report
@@ -106,7 +108,7 @@ async def begin_generation_async_task(
                         original_report.status = (
                             "Revision in progress: " + STAGE_TO_STATUS[stage]
                         )
-            
+
             stage_result = await execute_stage(
                 api_key=api_key,
                 report_id=report_id,
@@ -119,7 +121,9 @@ async def begin_generation_async_task(
             # update the status and current outputs of the report generation
             async with AsyncSession(engine) as session:
                 async with session.begin():
-                    stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+                    stmt = select(OracleReports).where(
+                        OracleReports.report_id == report_id
+                    )
                     result = await session.execute(stmt)
                     report = result.scalar_one()
                     report.status = (
@@ -145,10 +149,14 @@ async def begin_generation_async_task(
             # update the status of the report
             async with AsyncSession(engine) as session:
                 async with session.begin():
-                    stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+                    stmt = select(OracleReports).where(
+                        OracleReports.report_id == report_id
+                    )
                     result = await session.execute(stmt)
                     report = result.scalar_one()
-                    outputs[stage.value] = {"error": str(e) + "\n" + traceback.format_exc()}
+                    outputs[stage.value] = {
+                        "error": str(e) + "\n" + traceback.format_exc()
+                    }
                     report.outputs = outputs
                     report.status = "error"
                     # if this is is_revision, then just delete this report
@@ -289,8 +297,6 @@ def generate_analysis_task(
                 delete_analysis_task_id(analysis_id)
                 return {"error": report_data["error"]}
 
-            report_data = report_data["data"]
-
             # Call explore_data with a single analysis request
             inputs = {
                 "user_question": new_analysis_question,
@@ -376,6 +382,7 @@ def generate_analysis_task(
                     "skip_rephrase": True,
                     "table_last": True,
                 },
+                log_time=True,
             )
 
             mdx = res["mdx"]
