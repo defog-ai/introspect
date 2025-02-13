@@ -63,6 +63,8 @@ services:
 
       # for users that want to use OpenAI for narrative generation
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
 
       # front end non-admin config
       - HIDE_SQL_TAB_FOR_NON_ADMIN=${HIDE_SQL_TAB_FOR_NON_ADMIN}
