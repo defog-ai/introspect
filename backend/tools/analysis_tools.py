@@ -1,14 +1,17 @@
 from defog.llm.utils import chat_async
-from analysis_models import AnswerQuestionFromDatabaseInput, AnswerQuestionFromDatabaseOutput
+from tools.analysis_models import AnswerQuestionFromDatabaseInput, AnswerQuestionFromDatabaseOutput
 from generic_utils import make_request
 from db_utils import get_db_type_creds
 from utils_md import mk_create_ddl
 from defog.query import async_execute_query_once
+import os
 
 async def answer_question_from_database(input: AnswerQuestionFromDatabaseInput) -> AnswerQuestionFromDatabaseOutput:
     question = input.question
     db_name = input.db_name
     
+    print(question, flush=True)
+
     db_type, db_creds = await get_db_type_creds(db_name)
 
     # FOR NOW, JUST GET THESE FROM THE API
@@ -23,11 +26,11 @@ async def answer_question_from_database(input: AnswerQuestionFromDatabaseInput) 
 
     # get instruction manual from API
     glossary = (await make_request(
-        os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai") + "/get_instruction_manual",
+        os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai") + "/get_glossary",
         data={"api_key": db_name},
     ))
 
-    instruction_manual = glossary["glossary_compulsory"] + "\n".join(glossary["glossary_prunable_units"])
+    instruction_manual = glossary["glossary"]["glossary_compulsory"] + "\n".join(glossary["glossary"]["glossary_prunable_units"])
 
     # get SQL from LLM
     response = await chat_async(
@@ -49,5 +52,10 @@ async def answer_question_from_database(input: AnswerQuestionFromDatabaseInput) 
 
     # execute SQL
     colnames, rows = await async_execute_query_once(db_type=db_type, db_creds=db_creds, query=sql)
+
+    print(colnames, flush=True)
+    print(rows[:100], flush=True)
+
+    # known issue: if the query returns way too much data, it may run out of context window limits
 
     return AnswerQuestionFromDatabaseOutput(sql=sql, colnames=colnames, rows=rows)
