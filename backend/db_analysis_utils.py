@@ -146,7 +146,6 @@ async def update_analysis_data(
     analysis_id: str,
     request_type: str = None,
     new_data: Dict = None,
-    replace: bool = False,
     overwrite_key: str = None,
 ) -> Dict:
     """Update analysis data in the database."""
@@ -155,26 +154,18 @@ async def update_analysis_data(
             result = await session.execute(
                 select(Analyses).where(Analyses.analysis_id == analysis_id)
             )
-            analysis = result.first()
+            analysis = result.scalar_one_or_none()
             if not analysis:
-                return None
-
-            analysis = analysis[0]
+                return "Analysis not found", None
             if request_type == "clarify":
-                if replace:
-                    analysis.clarify = new_data
-                else:
-                    current_data = analysis.clarify or []
-                    current_data.append(new_data)
-                    analysis.clarify = current_data
+                current_data = analysis.clarify or []
+                current_data.append(new_data)
+                analysis.clarify = current_data
 
             elif request_type == "gen_steps":
-                if replace:
-                    analysis.gen_steps = new_data
-                else:
-                    current_data = analysis.gen_steps or []
-                    current_data.append(new_data)
-                    analysis.gen_steps = current_data
+                current_data = analysis.gen_steps or []
+                current_data.append(new_data)
+                analysis.gen_steps = current_data
 
             elif overwrite_key:
                 setattr(analysis, overwrite_key, new_data)
@@ -189,8 +180,8 @@ async def update_analysis_data(
 
 
 def analysis_data_from_row(row):
-    clarify = None if row.clarify is None else row.clarify
-    gen_steps = None if row.gen_steps is None else row.gen_steps
+    clarify = row.clarify
+    gen_steps = row.gen_steps
     parent_analyses = row.parent_analyses or []
     follow_up_analyses = row.follow_up_analyses or []
     direct_parent_id = row.direct_parent_id or None
