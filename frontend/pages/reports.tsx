@@ -6,7 +6,7 @@ import { OracleEmbed } from "@defogdotai/agents-ui-components/oracle";
 export default function OracleDashboard() {
   const [token, setToken] = useState<string>(null);
 
-  const updateToken = useEffect(() => {
+  useEffect(() => {
     const token = localStorage.getItem("defogToken");
     if (token) setToken(token);
   }, []);
