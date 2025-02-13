@@ -4,7 +4,6 @@ import traceback
 
 import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, feedback_routes, imgo_routes, integration_routes, oracle_report_routes, query_routes, readiness_routes, slack_routes, user_history_routes
 from db_analysis_utils import get_analysis_data, initialise_analysis
-from db_config import ORACLE_ENABLED
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from generic_utils import get_api_key_from_key_name
@@ -26,20 +25,19 @@ app.include_router(imgo_routes.router)
 app.include_router(slack_routes.router)
 app.include_router(agent_routes.router)
 app.include_router(user_history_routes.router)
-if ORACLE_ENABLED:
-    import imported_tables_routes
-    import oracle_report_routes
-    import oracle_routes
-    import xdb_routes
+import imported_tables_routes
+import oracle_report_routes
+import oracle_routes
+import xdb_routes
 
-    app.include_router(imported_tables_routes.router)
-    app.include_router(oracle_routes.router)
-    app.include_router(xdb_routes.router)
-    app.include_router(oracle_report_routes.router)
-    from oracle.setup import setup_dir
+app.include_router(imported_tables_routes.router)
+app.include_router(oracle_routes.router)
+app.include_router(xdb_routes.router)
+app.include_router(oracle_report_routes.router)
+from oracle.setup import setup_dir
 
-    # check if the oracle directory structure exists and create if not
-    setup_dir(os.getcwd())
+# check if the oracle directory structure exists and create if not
+setup_dir(os.getcwd())
 
 
 origins = ["*"]

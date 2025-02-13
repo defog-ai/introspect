@@ -3,8 +3,6 @@ import os
 from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, MetaData, Text
 from sqlalchemy.ext.declarative import declarative_base
 
-ORACLE_ENABLED: bool = os.environ.get("ORACLE_ENABLED", "no") == "yes"
-
 base_metadata = MetaData()
 Base = declarative_base(metadata=base_metadata)
 
@@ -124,55 +122,53 @@ class UserHistory(Base):
     history = Column(JSON)
 
 
-if ORACLE_ENABLED:
+class OracleGuidelines(Base):
+    __tablename__ = "oracle_guidelines"
+    api_key = Column(Text, primary_key=True)
+    clarification_guidelines = Column(Text)
+    generate_questions_guidelines = Column(Text)
+    generate_questions_deeper_guidelines = Column(Text)
+    generate_report_guidelines = Column(Text)
 
-    class OracleGuidelines(Base):
-        __tablename__ = "oracle_guidelines"
-        api_key = Column(Text, primary_key=True)
-        clarification_guidelines = Column(Text)
-        generate_questions_guidelines = Column(Text)
-        generate_questions_deeper_guidelines = Column(Text)
-        generate_report_guidelines = Column(Text)
+class OracleReports(Base):
+    __tablename__ = "oracle_reports"
+    report_id = Column(Integer, primary_key=True, autoincrement=True)
+    report_name = Column(Text)
+    status = Column(Text)
+    created_ts = Column(DateTime)
+    api_key = Column(Text)
+    username = Column(Text)
+    inputs = Column(JSON)
+    outputs = Column(JSON)
+    feedback = Column(Text)
+    general_comments = Column(Text, default=None)
+    comments = Column(JSON, default=None)
 
-    class OracleReports(Base):
-        __tablename__ = "oracle_reports"
-        report_id = Column(Integer, primary_key=True, autoincrement=True)
-        report_name = Column(Text)
-        status = Column(Text)
-        created_ts = Column(DateTime)
-        api_key = Column(Text)
-        username = Column(Text)
-        inputs = Column(JSON)
-        outputs = Column(JSON)
-        feedback = Column(Text)
-        general_comments = Column(Text, default=None)
-        comments = Column(JSON, default=None)
+class OracleAnalyses(Base):
+    __tablename__ = "oracle_analyses"
+    api_key = Column(Text, primary_key=True)
+    report_id = Column(Integer, primary_key=True)
+    analysis_id = Column(Text, primary_key=True)
+    status = Column(Text, default="pending")
+    analysis_json = Column(JSON)
+    mdx = Column(Text, default=None)
 
-    class OracleAnalyses(Base):
-        __tablename__ = "oracle_analyses"
-        api_key = Column(Text, primary_key=True)
-        report_id = Column(Integer, primary_key=True)
-        analysis_id = Column(Text, primary_key=True)
-        status = Column(Text, default="pending")
-        analysis_json = Column(JSON)
-        mdx = Column(Text, default=None)
+class OracleSources(Base):
+    __tablename__ = "oracle_sources"
+    api_key = Column(Text, primary_key=True)
+    link = Column(Text, primary_key=True)
+    title = Column(Text)
+    position = Column(Integer)
+    source_type = Column(Text)
+    attributes = Column(Text)
+    snippet = Column(Text)
+    text_parsed = Column(Text)
+    text_summary = Column(Text)
 
-    class OracleSources(Base):
-        __tablename__ = "oracle_sources"
-        api_key = Column(Text, primary_key=True)
-        link = Column(Text, primary_key=True)
-        title = Column(Text)
-        position = Column(Integer)
-        source_type = Column(Text)
-        attributes = Column(Text)
-        snippet = Column(Text)
-        text_parsed = Column(Text)
-        text_summary = Column(Text)
-
-    class ImportedTables(Base):
-        __tablename__ = "imported_tables"
-        api_key = Column(Text, primary_key=True)
-        table_link = Column(Text, primary_key=True)
-        table_position = Column(Integer, primary_key=True)
-        table_name = Column(Text)
-        table_description = Column(Text)
+class ImportedTables(Base):
+    __tablename__ = "imported_tables"
+    api_key = Column(Text, primary_key=True)
+    table_link = Column(Text, primary_key=True)
+    table_position = Column(Integer, primary_key=True)
+    table_name = Column(Text)
+    table_description = Column(Text)

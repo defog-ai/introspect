@@ -3,7 +3,6 @@ from contextlib import asynccontextmanager
 from typing import Union
 
 from auth_utils import get_hashed_password, login_user
-from db_config import ORACLE_ENABLED
 from db_models import Base, ImportedTables, Users
 from fastapi import FastAPI
 from sqlalchemy import Engine, insert
@@ -36,7 +35,7 @@ async def init_db(
         else:
             Base.metadata.create_all(engine)
 
-        if ORACLE_ENABLED and imported_tables_engine:
+        if imported_tables_engine:
             try:
                 ImportedTablesBase = automap_base()
                 ImportedTablesBase.prepare(autoload_with=imported_tables_engine)
@@ -99,12 +98,11 @@ async def lifespan(app: FastAPI):
         await create_admin_user()
         LOGGER.info("Admin user check completed")
 
-        if ORACLE_ENABLED:
-            from oracle.setup import setup_dir
+        from oracle.setup import setup_dir
 
-            # check if the oracle directory structure exists and create if not
-            setup_dir(os.getcwd())
-            LOGGER.info("Oracle directory structure checked")
+        # check if the oracle directory structure exists and create if not
+        setup_dir(os.getcwd())
+        LOGGER.info("Oracle directory structure checked")
 
         LOGGER.info("All startup events completed successfully")
 
