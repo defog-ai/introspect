@@ -1,6 +1,8 @@
 import os
 
 import redis
+import psycopg2
+import pyodbc
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from utils_logging import LOGGER
@@ -57,31 +59,38 @@ def get_db_engine() -> tuple[AsyncEngine, Engine | None, Engine | None]:
                     f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider use a different database name."
                 )
             
-            # Create a temporary connection to default database to check/create IMPORTED_TABLES_DBNAME
-            temp_engine = create_engine(
-                f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/postgres"
+            # Create databases using psycopg2 with autocommit
+            conn = psycopg2.connect(
+                dbname="postgres",
+                user=db_creds["user"],
+                password=db_creds["password"],
+                host=db_creds["host"],
+                port=db_creds["port"]
             )
-            with temp_engine.connect() as conn:
-                # Check if database exists
-                result = conn.execute(text(f"SELECT 1 FROM pg_database WHERE datname = '{IMPORTED_TABLES_DBNAME}'"))
-                exists = result.scalar() is not None
-                
-                if not exists:
-                    # Close all connections to create database
-                    conn.execute(text(f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{IMPORTED_TABLES_DBNAME}'"))
-                    conn.execute(text(f"CREATE DATABASE {IMPORTED_TABLES_DBNAME}"))
-                    LOGGER.info(f"Created database {IMPORTED_TABLES_DBNAME}")
-                
-                # Do the same for temp tables database
-                result = conn.execute(text(f"SELECT 1 FROM pg_database WHERE datname = '{TEMP_TABLES_DBNAME}'"))
-                exists = result.scalar() is not None
-                
-                if not exists:
-                    conn.execute(text(f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{TEMP_TABLES_DBNAME}'"))
-                    conn.execute(text(f"CREATE DATABASE {TEMP_TABLES_DBNAME}"))
-                    LOGGER.info(f"Created database {TEMP_TABLES_DBNAME}")
+            conn.autocommit = True
+            cur = conn.cursor()
+
+            # Check and create IMPORTED_TABLES_DBNAME
+            cur.execute(f"SELECT 1 FROM pg_database WHERE datname = %s", (IMPORTED_TABLES_DBNAME,))
+            exists = cur.fetchone() is not None
             
-            temp_engine.dispose()
+            if not exists:
+                # Terminate existing connections
+                cur.execute(f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s", (IMPORTED_TABLES_DBNAME,))
+                cur.execute(f"CREATE DATABASE {IMPORTED_TABLES_DBNAME}")
+                LOGGER.info(f"Created database {IMPORTED_TABLES_DBNAME}")
+            
+            # Check and create TEMP_TABLES_DBNAME
+            cur.execute(f"SELECT 1 FROM pg_database WHERE datname = %s", (TEMP_TABLES_DBNAME,))
+            exists = cur.fetchone() is not None
+            
+            if not exists:
+                cur.execute(f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s", (TEMP_TABLES_DBNAME,))
+                cur.execute(f"CREATE DATABASE {TEMP_TABLES_DBNAME}")
+                LOGGER.info(f"Created database {TEMP_TABLES_DBNAME}")
+            
+            cur.close()
+            conn.close()
 
             imported_tables_engine = create_engine(
                 f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}"
@@ -116,28 +125,29 @@ def get_db_engine() -> tuple[AsyncEngine, Engine | None, Engine | None]:
                     f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider using a different database name."
                 )
             
-            # Create a temporary connection to master database to check/create IMPORTED_TABLES_DBNAME
-            temp_engine = create_engine(
-                f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/master?driver=ODBC+Driver+18+for+SQL+Server"
-            )
-            with temp_engine.connect() as conn:
-                # Check if database exists
-                result = conn.execute(text(f"SELECT 1 FROM sys.databases WHERE name = '{IMPORTED_TABLES_DBNAME}'"))
-                exists = result.scalar() is not None
-                
-                if not exists:
-                    conn.execute(text(f"CREATE DATABASE {IMPORTED_TABLES_DBNAME}"))
-                    LOGGER.info(f"Created database {IMPORTED_TABLES_DBNAME}")
-                
-                # Do the same for temp tables database
-                result = conn.execute(text(f"SELECT 1 FROM sys.databases WHERE name = '{TEMP_TABLES_DBNAME}'"))
-                exists = result.scalar() is not None
-                
-                if not exists:
-                    conn.execute(text(f"CREATE DATABASE {TEMP_TABLES_DBNAME}"))
-                    LOGGER.info(f"Created database {TEMP_TABLES_DBNAME}")
+            # Create databases using pyodbc directly
+            conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={db_creds['host']},{db_creds['port']};DATABASE=master;UID={db_creds['user']};PWD={db_creds['password']}"
+            conn = pyodbc.connect(conn_str, autocommit=True)
+            cur = conn.cursor()
+
+            # Check and create IMPORTED_TABLES_DBNAME
+            cur.execute("SELECT 1 FROM sys.databases WHERE name = ?", (IMPORTED_TABLES_DBNAME,))
+            exists = cur.fetchone() is not None
             
-            temp_engine.dispose()
+            if not exists:
+                cur.execute(f"CREATE DATABASE {IMPORTED_TABLES_DBNAME}")
+                LOGGER.info(f"Created database {IMPORTED_TABLES_DBNAME}")
+            
+            # Check and create TEMP_TABLES_DBNAME
+            cur.execute("SELECT 1 FROM sys.databases WHERE name = ?", (TEMP_TABLES_DBNAME,))
+            exists = cur.fetchone() is not None
+            
+            if not exists:
+                cur.execute(f"CREATE DATABASE {TEMP_TABLES_DBNAME}")
+                LOGGER.info(f"Created database {TEMP_TABLES_DBNAME}")
+            
+            cur.close()
+            conn.close()
 
             imported_tables_engine = create_engine(
                 f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}?driver=ODBC+Driver+18+for+SQL+Server"

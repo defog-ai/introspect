@@ -72,8 +72,7 @@ async def create_admin_user():
                         hashed_password=get_hashed_password(
                             admin_username, admin_password
                         ),
-                        token=get_hashed_password(admin_username, admin_password),
-                        user_type="admin",
+                        token=get_hashed_password(admin_username, admin_password)
                     )
                 )
             LOGGER.info("Admin user created successfully")
