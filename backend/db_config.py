@@ -1,7 +1,7 @@
 import os
 
 import redis
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from utils_logging import LOGGER
 
@@ -56,6 +56,33 @@ def get_db_engine() -> tuple[AsyncEngine, Engine | None, Engine | None]:
                 print(
                     f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider use a different database name."
                 )
+            
+            # Create a temporary connection to default database to check/create IMPORTED_TABLES_DBNAME
+            temp_engine = create_engine(
+                f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/postgres"
+            )
+            with temp_engine.connect() as conn:
+                # Check if database exists
+                result = conn.execute(text(f"SELECT 1 FROM pg_database WHERE datname = '{IMPORTED_TABLES_DBNAME}'"))
+                exists = result.scalar() is not None
+                
+                if not exists:
+                    # Close all connections to create database
+                    conn.execute(text(f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{IMPORTED_TABLES_DBNAME}'"))
+                    conn.execute(text(f"CREATE DATABASE {IMPORTED_TABLES_DBNAME}"))
+                    LOGGER.info(f"Created database {IMPORTED_TABLES_DBNAME}")
+                
+                # Do the same for temp tables database
+                result = conn.execute(text(f"SELECT 1 FROM pg_database WHERE datname = '{TEMP_TABLES_DBNAME}'"))
+                exists = result.scalar() is not None
+                
+                if not exists:
+                    conn.execute(text(f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{TEMP_TABLES_DBNAME}'"))
+                    conn.execute(text(f"CREATE DATABASE {TEMP_TABLES_DBNAME}"))
+                    LOGGER.info(f"Created database {TEMP_TABLES_DBNAME}")
+            
+            temp_engine.dispose()
+
             imported_tables_engine = create_engine(
                 f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}"
             )
@@ -88,6 +115,30 @@ def get_db_engine() -> tuple[AsyncEngine, Engine | None, Engine | None]:
                 print(
                     f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider using a different database name."
                 )
+            
+            # Create a temporary connection to master database to check/create IMPORTED_TABLES_DBNAME
+            temp_engine = create_engine(
+                f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/master?driver=ODBC+Driver+18+for+SQL+Server"
+            )
+            with temp_engine.connect() as conn:
+                # Check if database exists
+                result = conn.execute(text(f"SELECT 1 FROM sys.databases WHERE name = '{IMPORTED_TABLES_DBNAME}'"))
+                exists = result.scalar() is not None
+                
+                if not exists:
+                    conn.execute(text(f"CREATE DATABASE {IMPORTED_TABLES_DBNAME}"))
+                    LOGGER.info(f"Created database {IMPORTED_TABLES_DBNAME}")
+                
+                # Do the same for temp tables database
+                result = conn.execute(text(f"SELECT 1 FROM sys.databases WHERE name = '{TEMP_TABLES_DBNAME}'"))
+                exists = result.scalar() is not None
+                
+                if not exists:
+                    conn.execute(text(f"CREATE DATABASE {TEMP_TABLES_DBNAME}"))
+                    LOGGER.info(f"Created database {TEMP_TABLES_DBNAME}")
+            
+            temp_engine.dispose()
+
             imported_tables_engine = create_engine(
                 f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}?driver=ODBC+Driver+18+for+SQL+Server"
             )
