@@ -19,7 +19,7 @@ async def answer_question_from_database_route(request: Request):
         return await chat_async(
             model=model,
             tools=tools,
-            messages=[{"role": "user", "content": f"{question} Look in the database {db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to.\n\nPlease give your final answer as a descriptive report."}],
+            messages=[{"role": "user", "content": f"{question} Look in the database {db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few. Try to aggregate data in clear and understandable buckets.\n\nPlease give your final answer as a descriptive report."}],
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
