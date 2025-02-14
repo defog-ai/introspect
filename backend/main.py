@@ -3,7 +3,7 @@ import os
 import traceback
 
 import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, \
-    feedback_routes, imgo_routes, integration_routes, oracle_report_routes, \
+    feedback_routes, imgo_routes, integration_routes, metadata_routes, oracle_report_routes, \
     query_routes, readiness_routes, slack_routes, user_history_routes, \
     imported_tables_routes, oracle_report_routes, oracle_routes, xdb_routes, \
     tools.tool_routes
@@ -18,23 +18,24 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(lifespan=lifespan)
 
-app.include_router(integration_routes.router)
-app.include_router(query_routes.router)
 app.include_router(admin_routes.router)
+app.include_router(agent_routes.router)
 app.include_router(auth_routes.router)
-app.include_router(readiness_routes.router)
-app.include_router(doc_endpoints.router)
 app.include_router(csv_routes.router)
+app.include_router(doc_endpoints.router)
 app.include_router(feedback_routes.router)
 app.include_router(imgo_routes.router)
-app.include_router(slack_routes.router)
-app.include_router(agent_routes.router)
-app.include_router(user_history_routes.router)
 app.include_router(imported_tables_routes.router)
-app.include_router(oracle_routes.router)
-app.include_router(xdb_routes.router)
+app.include_router(integration_routes.router)
+app.include_router(metadata_routes.router)
 app.include_router(oracle_report_routes.router)
+app.include_router(oracle_routes.router)
+app.include_router(query_routes.router)
+app.include_router(readiness_routes.router)
+app.include_router(slack_routes.router)
 app.include_router(tools.tool_routes.router)
+app.include_router(user_history_routes.router)
+app.include_router(xdb_routes.router)
 from oracle.setup import setup_dir
 
 # check if the oracle directory structure exists and create if not

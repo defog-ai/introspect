@@ -16,14 +16,13 @@ from defog.query import execute_query
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from generic_utils import (
-    convert_nested_dict_to_list,
     format_sql,
     get_api_key_from_key_name,
     make_request,
 )
-from request_models import MetadataGetRequest, UserRequest
+from request_models import UserRequest
 from utils_logging import LOGGER
-from utils_md import metadata_error
+from utils_md import check_metadata_validity
 from oracle.guidelines_tasks import populate_default_guidelines_task
 
 home_dir = os.path.expanduser("~")
@@ -59,48 +58,29 @@ async def get_tables_db_creds(req: UserRequest):
         db_type = defog.db_type
         db_creds = defog.db_creds
 
+        # get selected_tables from file. this is a legacy way of keeping track
+        # of tables that the user has selected to add to the metadata
+        # ideally we'd want this to be stored somewhere more persistent like in
+        # the database, but we just keep it around for now to avoid breaking changes
+        selected_tables_path = os.path.join(defog_path, f"selected_tables_{req.key_name}.json")
+        if os.path.exists(selected_tables_path):
+            with open(selected_tables_path, "r") as f:
+                selected_tables_saved = json.load(f)
+                if isinstance(selected_tables_saved, list):
+                    selected_tables = selected_tables_saved
+                else:
+                    selected_tables = table_names
+        else:
+            selected_tables = table_names
+
         return {
             "tables": table_names,
             "db_creds": db_creds,
             "db_type": db_type,
-            "selected_tables": table_names,
+            "selected_tables": selected_tables,
         }
     else:
         return {"error": "no db creds found"}
-
-
-@router.post("/integration/get_metadata")
-async def get_metadata(req: MetadataGetRequest):
-    """
-    Get metadata for a given API key.
-    TODO: Get metadata from postgres database using key_name as the api_key
-    """
-    api_key = get_api_key_from_key_name(req.key_name) # TODO use key_name as the api_key
-    format = req.format
-    try:
-        md = await make_request(
-            f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key}
-        )
-        table_metadata = md["table_metadata"]
-
-        metadata = convert_nested_dict_to_list(table_metadata)
-        if format == "csv":
-            metadata = pd.DataFrame(metadata)[
-                ["table_name", "column_name", "data_type", "column_description"]
-            ].to_csv(index=False)
-        # save the keys to selected tables
-        try:
-            with open(
-                os.path.join(defog_path, f"selected_tables_{api_key}.json"), "w"
-            ) as f:
-                json.dump(list(table_metadata.keys()), f)
-        except Exception as e:
-            LOGGER.info(e)
-            LOGGER.info("Error saving selected tables to JSON")
-
-        return {"metadata": metadata}
-    except Exception:
-        return {"error": "no metadata found"}
 
 
 @router.post("/integration/validate_db_connection")
@@ -165,174 +145,6 @@ async def update_db_creds(request: Request):
     print(success)
 
     return {"success": True}
-
-
-@router.post("/integration/generate_metadata")
-async def generate_metadata(request: Request):
-    params = await request.json()
-    key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
-    res = await get_db_type_creds(api_key)
-    if res:
-        db_type, db_creds = res
-    else:
-        return {"error": "no db creds found"}
-
-    tables = params.get("tables")
-    dev = params.get("dev", False)
-
-    with open(os.path.join(defog_path, f"selected_tables_{api_key}.json"), "w") as f:
-        json.dump(tables, f)
-
-    defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
-    defog.base_url = DEFOG_BASE_URL
-
-    table_metadata = await asyncio.to_thread(
-        defog.generate_db_schema,
-        tables=tables,
-        upload=False,
-        scan=False,
-    )
-
-    md = await make_request(
-        f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key, "dev": dev}
-    )
-    try:
-        existing_metadata = md["table_metadata"]
-    except:
-        print("No existing metadata found", flush=True)
-        existing_metadata = {}
-
-    for table_name in table_metadata:
-        for idx, item in enumerate(table_metadata[table_name]):
-            if table_name in existing_metadata:
-                print(f"Found table {table_name} in existing metadata", flush=True)
-                for existing_item in existing_metadata[table_name]:
-                    if existing_item["column_name"] == item["column_name"]:
-                        print(
-                            f"Found column {item['column_name']} in existing metadata",
-                            flush=True,
-                        )
-                        table_metadata[table_name][idx]["column_description"] = (
-                            existing_item.get("column_description", "")
-                        )
-
-    metadata = convert_nested_dict_to_list(table_metadata)
-
-    # sort metadata dict by table name
-    metadata = sorted(metadata, key=lambda x: x["table_name"])
-    return {"metadata": metadata}
-
-
-@router.post("/integration/update_metadata")
-async def update_metadata(request: Request):
-    params = await request.json()
-    token = params.get("token")
-    if not (await validate_user(token)):
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
-    res = await get_db_type_creds(api_key)
-    if res:
-        db_type, db_creds = res
-    else:
-        return {"error": "no db creds found"}
-
-    metadata = params.get("metadata")
-    dev = params.get("dev", False)
-
-    # convert metadata to nested dictionary
-    table_metadata = {}
-    for item in metadata:
-        table_name = item["table_name"]
-        if table_name not in table_metadata:
-            table_metadata[table_name] = []
-        table_metadata[table_name].append(
-            {
-                "column_name": item["column_name"],
-                "data_type": item["data_type"],
-                "column_description": item["column_description"],
-            }
-        )
-
-    # check if metadata is valid
-    md_err = metadata_error(table_metadata=table_metadata, db_type=db_type)
-    if md_err:
-        return JSONResponse(
-            {
-                "status": "error",
-                "error": f"Metadata is not valid for the given database type. {md_err}",
-            },
-            status_code=400,
-        )
-
-    # update on API server
-    r = await make_request(
-        DEFOG_BASE_URL + "/update_metadata",
-        data={
-            "api_key": api_key,
-            "table_metadata": table_metadata,
-            "db_type": db_type,
-            "dev": dev,
-        },
-    )
-    if r.get("status") == "success":
-        # Run as a background task so it doesn't block
-        task = populate_default_guidelines_task.apply_async(args=[api_key])
-        LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for api_key {api_key}")
-
-    return r
-
-
-@router.post("/integration/copy_prod_to_dev")
-async def copy_prod_to_dev(request: Request):
-    params = await request.json()
-    token = params.get("token")
-    if not (await validate_user(token)):
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-    key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
-
-    r = await make_request(
-        DEFOG_BASE_URL + "/copy_prod_to_dev", data={"api_key": api_key}
-    )
-
-    return r
-
-
-@router.post("/integration/copy_dev_to_prod")
-async def copy_prod_to_dev(request: Request):
-    params = await request.json()
-    token = params.get("token")
-    if not (await validate_user(token)):
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-    key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
-
-    r = await make_request(
-        DEFOG_BASE_URL + "/copy_dev_to_prod", data={"api_key": api_key}
-    )
-
-    return r
 
 
 @router.post("/integration/get_glossary_golden_queries")
@@ -686,25 +498,10 @@ async def upload_metadata(request: Request):
         return {"error": "no db creds found"}
 
     metadata_csv = params.get("metadata_csv")
-    metadata = pd.read_csv(StringIO(metadata_csv)).fillna("").to_dict(orient="records")
-
-    # convert metadata to nested dictionary
-    table_metadata = {}
-    for item in metadata:
-        table_name = item["table_name"]
-        if table_name not in table_metadata:
-            table_metadata[table_name] = []
-
-        table_metadata[table_name].append(
-            {
-                "column_name": item["column_name"],
-                "data_type": item["data_type"],
-                "column_description": item.get("column_description", ""),
-            }
-        )
+    metadata_list = pd.read_csv(StringIO(metadata_csv)).fillna("").to_dict(orient="records")
 
     # check if metadata is valid
-    md_err = metadata_error(table_metadata=table_metadata, db_type=db_type)
+    md_err = check_metadata_validity(table_metadata=metadata_list, db_type=db_type)
     if md_err:
         return JSONResponse(
             {

@@ -61,6 +61,9 @@ const MetadataTable = ({
     setLoading(true);
     const res = await fetch(setupBaseUrl("http", `integration/get_metadata`), {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({
         token,
         key_name: apiKeyName,
@@ -87,6 +90,9 @@ const MetadataTable = ({
         setupBaseUrl("http", `integration/update_metadata`),
         {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify({
             metadata: metadata,
             token: token,
@@ -156,6 +162,9 @@ const MetadataTable = ({
         setupBaseUrl("http", `integration/generate_metadata`),
         {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify({
             tables: selectedTablesForIndexing,
             token: token,
@@ -297,6 +306,9 @@ const MetadataTable = ({
       setupBaseUrl("http", `integration/get_metadata`),
       {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
           token: token,
           key_name: apiKeyName,
@@ -336,6 +348,9 @@ const MetadataTable = ({
           setupBaseUrl("http", `integration/upload_metadata`),
           {
             method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
             body: JSON.stringify({
               token: token,
               key_name: apiKeyName,

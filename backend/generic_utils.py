@@ -48,8 +48,13 @@ async def make_request(url, data, timeout=180, log_time=False):
 
 
 def convert_nested_dict_to_list(table_metadata):
+    """
+    Convert a nested dictionary of table metadata to a list of dictionaries.
+    """
     metadata = []
-    for key in table_metadata:
+    # get sorted keys (table names)
+    sorted_keys = sorted(table_metadata.keys())
+    for key in sorted_keys:
         table_name = key
         for item in table_metadata[key]:
             item["table_name"] = table_name

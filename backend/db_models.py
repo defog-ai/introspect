@@ -1,6 +1,16 @@
 import os
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, MetaData, Text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Index,
+    Integer,
+    JSON,
+    MetaData,
+    String,
+    Text,
+)
 from sqlalchemy.ext.declarative import declarative_base
 
 base_metadata = MetaData()
@@ -11,6 +21,15 @@ Base = declarative_base(metadata=base_metadata)
 # All other files should import this file and use the models where required.
 # This file should not import stateful objects like engines, sessions, etc. to
 # avoid circular imports.
+#
+# We order the models based on the timing of their creation / usage in the
+# product:
+# 1. Users
+# 2. Credentials for connecting to databases
+# 3. Metadata of the user's database tables
+# 4. Additional context (glossary, golden queries, etc.)
+# 5. Analyses and tool runs from the agents ui
+# 6. Oracle related tables
 ################################################################################
 
 
@@ -42,6 +61,23 @@ class DbCreds(Base):
     api_key = Column(Text, primary_key=True)
     db_type = Column(Text)
     db_creds = Column(JSON)
+
+
+class DefogMetadata(Base):
+    """
+    Table to store the metadata for the user.
+    1 user's metadata is associated with 1 api_key.
+    Every column in the user's metadata maps to a row in this table.
+    """
+
+    __tablename__ = "defog_metadata"
+    api_key = Column(String(255), primary_key=True)
+    table_name = Column(Text, primary_key=True)
+    column_name = Column(Text, primary_key=True)
+    data_type = Column(Text)
+    column_description = Column(Text)
+
+    __table_args__ = (Index("defog_metadata_api_key_idx", "api_key"),)
 
 
 class Analyses(Base):
@@ -130,6 +166,7 @@ class OracleGuidelines(Base):
     generate_questions_deeper_guidelines = Column(Text)
     generate_report_guidelines = Column(Text)
 
+
 class OracleReports(Base):
     __tablename__ = "oracle_reports"
     report_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -144,6 +181,7 @@ class OracleReports(Base):
     general_comments = Column(Text, default=None)
     comments = Column(JSON, default=None)
 
+
 class OracleAnalyses(Base):
     __tablename__ = "oracle_analyses"
     api_key = Column(Text, primary_key=True)
@@ -152,6 +190,7 @@ class OracleAnalyses(Base):
     status = Column(Text, default="pending")
     analysis_json = Column(JSON)
     mdx = Column(Text, default=None)
+
 
 class OracleSources(Base):
     __tablename__ = "oracle_sources"
@@ -164,6 +203,7 @@ class OracleSources(Base):
     snippet = Column(Text)
     text_parsed = Column(Text)
     text_summary = Column(Text)
+
 
 class ImportedTables(Base):
     __tablename__ = "imported_tables"
