@@ -76,7 +76,8 @@ async def validate_user(token: str) -> Optional[Users]:
             stmt = select(Users).where(Users.token == token)
             result = await session.execute(stmt)
             user = result.scalar_one_or_none()
-            session.expunge(user)
+            if user:
+                session.expunge(user)
     return user
 
 
