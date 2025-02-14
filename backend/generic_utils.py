@@ -53,6 +53,8 @@ def convert_nested_dict_to_list(table_metadata):
     """
     metadata = []
     # get sorted keys (table names)
+    # we sort the keys to ensure consistent ordering of the metadata in the UI
+    # without this, the ordering can be inconsistent - making it hard for users to find a specific table
     sorted_keys = sorted(table_metadata.keys())
     for key in sorted_keys:
         table_name = key
