@@ -28,7 +28,7 @@ async def generate_follow_on_questions(
     if instructions is None:
         instructions = await get_instructions(db_name)
     
-    user_prompt = CLARIFY_QUESTION_USER_PROMPT.format(
+    user_prompt = FOLLOW_ON_USER_PROMPT.format(
         question=question,
         table_metadata_ddl=mk_create_ddl(metadata),
         instructions=instructions
@@ -39,15 +39,13 @@ async def generate_follow_on_questions(
         messages = [
             {"role": "user", "content": user_prompt},
         ],
-        metadata=metadata,
-        instructions=instructions,
         max_completion_tokens=64,
     )
     
     LOGGER.info("Cost of generating follow-on questions: %s", follow_on_questions.cost_in_cents)
     LOGGER.info("Time taken to generate follow-on questions: %s", follow_on_questions.time)
 
-    follow_on_questions = follow_on_questions.content.choices[0].message.content.splitlines()
+    follow_on_questions = follow_on_questions.content.splitlines()
 
     # remove all leading digits and spaces in the format 1. or 1)
     follow_on_questions = [re.sub(r"^\d+[.)] ", "", q) for q in follow_on_questions]

@@ -43,8 +43,6 @@ async def generate_clarification(
         messages = [
             {"role": "user", "content": user_prompt},
         ],
-        metadata=metadata,
-        instructions=instructions,
         max_completion_tokens=32,
     )
     
@@ -89,7 +87,7 @@ Question: What do you mean by the "worst" players? Answer: those with the lowest
 
 
 class QuestionType(BaseModel):
-    question_type: Literal["follow-on-analysis", "edit-chart"]
+    question_type: Literal["analysis", "edit-chart"]
     default_open_tab: Literal["table", "chart"]
 
 
@@ -112,4 +110,4 @@ async def classify_question_type(
     LOGGER.info("Cost of classifying question type: %s", response.cost_in_cents)
     LOGGER.info("Time taken to classify question type: %s", response.time)
 
-    return response.content
+    return response.content.model_dump()

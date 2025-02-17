@@ -21,7 +21,7 @@ from db_analysis_utils import (
     get_analysis_data,
     get_assignment_understanding,
 )
-from generic_utils import get_api_key_from_key_name, make_request
+from generic_utils import make_request
 from auth_utils import validate_user
 from uuid import uuid4
 
@@ -83,22 +83,15 @@ async def generate_step(request: Request):
             )
 
         prev_questions = []
-        for idx, item in enumerate(previous_context):
-            prev_question = item.get("user_question", "")
-            if idx == 0:
-                # if assignment understanding exists, add it to the first question and the first question only
-                if assignment_understanding:
-                    prev_question += " (" + assignment_understanding + ")"
-            prev_steps = (
-                item.get("steps", [])
-            )
-            if len(prev_steps) > 0:
-                for step in prev_steps:
-                    if "sql" in step:
-                        prev_sql = step["sql"]
-                        prev_questions.append(prev_question)
-                        prev_questions.append(prev_sql)
-                        break
+        for item in previous_context:
+            for step in item["steps"]:
+                prev_question = step["inputs"].get("question", "")
+                prev_sql = step.get("sql")
+                if prev_sql:
+                    prev_questions.append({
+                        "question": prev_question,
+                        "sql": prev_sql
+                    })
         
         # if sql_only is true, just call the sql generation function and return, while saving the step
         if type(assignment_understanding) == str and len(prev_questions) == 0:
@@ -143,7 +136,7 @@ async def generate_step(request: Request):
         }
 
         analysis_execution_cache = {
-            "dfg_api_key": api_key,
+            "db_name": db_name,
             "user_question": question,
             "hard_filters": hard_filters,
             "dev": dev,
@@ -167,7 +160,7 @@ async def generate_step(request: Request):
 
 
 @router.post("/generate_follow_on_questions")
-async def generate_follow_on_questions(request: Request):
+async def generate_follow_on_questions_route(request: Request):
     """
     Function that returns follow on questions for a given question.
 
@@ -184,8 +177,8 @@ async def generate_follow_on_questions(request: Request):
         question = params.get("user_question")
 
         # if key name or question is none or blank, return error
-        if not key_name or key_name == "":
-            raise Exception("Invalid request. Must have API key name.")
+        if not db_name or db_name == "":
+            raise Exception("Invalid request. Must have database name.")
 
         if not question or question == "":
             raise Exception("Invalid request. Must have a question.")
@@ -194,10 +187,6 @@ async def generate_follow_on_questions(request: Request):
             question=question, 
             db_name=db_name
         )
-        if follow_on_questions:
-            follow_on_questions = follow_on_questions.get("follow_on_questions", [])
-        else:
-            follow_on_questions = []
 
         return {
             "success": True,
@@ -248,10 +237,15 @@ async def clarify(request: Request):
             db_name=db_name,
         )
 
+        if "not ambiguous" in clarification_questions.lower() or "no clarifi" in clarification_questions.lower():
+            clarification_questions = []
+        else:
+            clarification_questions = [clarification_questions]
+
         return {
             "success": True,
             "done": True,
-            "clarification_questions": [clarification_questions],
+            "clarification_questions": clarification_questions,
         }
 
     except Exception as e:
