@@ -22,7 +22,7 @@ def populate_default_guidelines_task(api_key: str):
             async with AsyncSession(engine) as session:
                 # Check if guidelines exist
                 stmt = select(OracleGuidelines).where(
-                    OracleGuidelines.api_key == api_key
+                    OracleGuidelines.db_name == api_key
                 )
                 result = await session.execute(stmt)
                 existing = result.fetchone()
@@ -50,7 +50,7 @@ def populate_default_guidelines_task(api_key: str):
                         .values(
                             clarification_guidelines=guidelines,
                         )
-                        .where(OracleGuidelines.api_key == api_key)
+                        .where(OracleGuidelines.db_name == api_key)
                     )
                     await session.commit()
                     LOGGER.info(

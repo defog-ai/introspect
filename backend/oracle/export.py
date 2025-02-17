@@ -42,7 +42,7 @@ async def generate_report(
         async with session.begin():
             row = await session.execute(
                 select(OracleGuidelines.generate_report_guidelines).where(
-                    OracleGuidelines.api_key == api_key
+                    OracleGuidelines.db_name == api_key
                 )
             )
             row = row.scalar_one_or_none()

@@ -100,7 +100,7 @@ async def explore_data(
             select(
                 OracleGuidelines.generate_questions_guidelines,
                 OracleGuidelines.generate_questions_deeper_guidelines,
-            ).where(OracleGuidelines.api_key == api_key)
+            ).where(OracleGuidelines.db_name == api_key)
         )
         row = row.scalar_one_or_none()
         generate_questions_guidelines = row[0] if row else None

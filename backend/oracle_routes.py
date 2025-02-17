@@ -236,19 +236,19 @@ async def clarify_question(req: ClarifyQuestionRequest):
             async with session.begin():
                 # check if the api_key already exists
                 result = await session.execute(
-                    select(OracleGuidelines).where(OracleGuidelines.api_key == api_key)
+                    select(OracleGuidelines).where(OracleGuidelines.db_name == api_key)
                 )
                 if result.scalar_one_or_none():
                     await session.execute(
                         update(OracleGuidelines).values(
-                            api_key=api_key,
+                            db_name=api_key,
                             clarification_guidelines=req.clarification_guidelines,
                         )
                     )
                 else:
                     await session.execute(
                         insert(OracleGuidelines).values(
-                            api_key=api_key,
+                            db_name=api_key,
                             clarification_guidelines=req.clarification_guidelines,
                         )
                     )
@@ -261,7 +261,7 @@ async def clarify_question(req: ClarifyQuestionRequest):
             async with session.begin():
                 result = await session.execute(
                     select(OracleGuidelines.clarification_guidelines).where(
-                        OracleGuidelines.api_key == api_key
+                        OracleGuidelines.db_name == api_key
                     )
                 )
                 guidelines = result.scalar_one_or_none()
@@ -601,7 +601,7 @@ async def begin_generation(req: BeginGenerationRequest):
             stmt = (
                 insert(OracleReports)
                 .values(
-                    api_key=api_key,
+                    db_name=api_key,
                     username=username,
                     inputs=user_inputs,
                     status="started",
@@ -741,7 +741,7 @@ async def revision(req: ReviseReportRequest):
             stmt = (
                 insert(OracleReports)
                 .values(
-                    api_key=api_key,
+                    db_name=api_key,
                     username=username,
                     inputs=inputs_with_comments,
                     status="Revision: started",

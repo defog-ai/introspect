@@ -29,7 +29,7 @@ async def get_report_data(report_id: int, api_key: str) -> Dict:
             result = await session.execute(
                 select(OracleReports).where(
                     OracleReports.report_id == report_id,
-                    OracleReports.api_key == api_key,
+                    OracleReports.db_name == api_key,
                 )
             )
             row = result.first()
@@ -42,7 +42,7 @@ async def get_report_data(report_id: int, api_key: str) -> Dict:
                 "created_ts": (
                     row[0].created_ts.isoformat() if row[0].created_ts else None
                 ),
-                "api_key": row[0].api_key,
+                "api_key": row[0].db_name,
                 "username": row[0].username,
                 "inputs": row[0].inputs,
                 "outputs": row[0].outputs,
@@ -57,7 +57,7 @@ async def delete_analysis(api_key: str, analysis_id: str, report_id: int):
         async with session.begin():
             await session.execute(
                 delete(OracleAnalyses).where(
-                    OracleAnalyses.api_key == api_key,
+                    OracleAnalyses.db_name == api_key,
                     OracleAnalyses.analysis_id == analysis_id,
                     OracleAnalyses.report_id == report_id,
                 )
@@ -77,7 +77,7 @@ async def add_or_update_analysis(
         async with session.begin():
             result = await session.execute(
                 select(OracleAnalyses).where(
-                    OracleAnalyses.api_key == api_key,
+                    OracleAnalyses.db_name == api_key,
                     OracleAnalyses.analysis_id == analysis_id,
                     OracleAnalyses.report_id == report_id,
                 )
@@ -88,7 +88,7 @@ async def add_or_update_analysis(
                 await session.execute(
                     update(OracleAnalyses)
                     .where(
-                        OracleAnalyses.api_key == api_key,
+                        OracleAnalyses.db_name == api_key,
                         OracleAnalyses.analysis_id == analysis_id,
                         OracleAnalyses.report_id == report_id,
                     )
@@ -112,7 +112,7 @@ async def get_analysis_status(api_key: str, analysis_id: str, report_id: int) ->
         async with session.begin():
             result = await session.execute(
                 select(OracleAnalyses.status).where(
-                    OracleAnalyses.api_key == api_key,
+                    OracleAnalyses.db_name == api_key,
                     OracleAnalyses.analysis_id == analysis_id,
                     OracleAnalyses.report_id == report_id,
                 )
@@ -131,7 +131,7 @@ async def update_analysis_status(
             result = await session.execute(
                 update(OracleAnalyses)
                 .where(
-                    OracleAnalyses.api_key == api_key,
+                    OracleAnalyses.db_name == api_key,
                     OracleAnalyses.analysis_id == analysis_id,
                     OracleAnalyses.report_id == report_id,
                 )
@@ -148,7 +148,7 @@ async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
             report = await session.execute(
                 select(OracleReports).where(
                     OracleReports.report_id == report_id,
-                    OracleReports.api_key == api_key,
+                    OracleReports.db_name == api_key,
                 )
             )
             report = report.first()
@@ -170,7 +170,7 @@ async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
                 update(OracleReports)
                 .where(
                     OracleReports.report_id == report_id,
-                    OracleReports.api_key == api_key,
+                    OracleReports.db_name == api_key,
                 )
                 .values(**update_dict)
             )
