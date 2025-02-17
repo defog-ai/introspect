@@ -85,6 +85,10 @@ async def create_admin_user():
 async def lifespan(app: FastAPI):
     """Initialize database tables and admin user on startup"""
     try:
+        # Run validation on current llm sdk version to ensure models used are supported
+        from llm_api import ALL_MODELS, validate_models
+        validate_models(ALL_MODELS)
+
         from db_config import engine, imported_tables_engine
 
         LOGGER.info("Running startup events...")

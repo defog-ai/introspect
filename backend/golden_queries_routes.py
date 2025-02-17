@@ -1,12 +1,13 @@
+import traceback
+
 from auth_utils import validate_user_request
-from db_utils import engine
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
-from request_models import GoldenQueriesDeleteRequest, GoldenQueriesUpdateRequest, UserRequest
-import traceback
-from utils_logging import LOGGER
+from request_models import (GoldenQueriesDeleteRequest,
+                            GoldenQueriesUpdateRequest, UserRequest)
 from utils_embedding import get_embedding
-from utils_golden_queries import get_all_golden_queries, set_golden_query, delete_golden_query
+from utils_golden_queries import delete_golden_query, get_all_golden_queries, set_golden_query
+from utils_logging import LOGGER
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
@@ -18,7 +19,6 @@ router = APIRouter(
 async def get_golden_queries_route(request: UserRequest):
     try:
         golden_queries = await get_all_golden_queries(request.db_name)
-        golden_queries = [{"question": r.question, "sql": r.sql} for r in golden_queries]
         return {"golden_queries": golden_queries}
     except Exception as e:
         LOGGER.error(f"Error getting golden queries: {e}")

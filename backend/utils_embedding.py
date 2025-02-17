@@ -9,7 +9,6 @@ async def get_embedding(
 ):
     """
     Returns the embedding of the given text, using the text-embedding-3-small model.
-    Keep the 
     """
     resp = await client_openai.embeddings.create(
         input=text,

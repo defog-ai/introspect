@@ -2,7 +2,7 @@ import os
 import time
 
 from db_models import Metadata
-from sqlalchemy import create_engine, insert
+from sqlalchemy import create_engine, insert, delete
 
 SALT = "TOMRIDDLEISVOLDEMORT"
 
@@ -97,6 +97,8 @@ restaurant_api_key = "Restaurant"
 
 try:
     with engine.begin() as conn:
+        # delete all existing metadata for the restaurant api key
+        conn.execute(delete(Metadata).where(Metadata.db_name == restaurant_api_key))
         for table in restaurant_metadata:
             for column in restaurant_metadata[table]:
                 conn.execute(
@@ -109,7 +111,7 @@ try:
                     )
                 )
 except Exception as e:
-    print(f"Error inserting metadata for ({restaurant_api_key}) into metadata")
+    print(f"Error inserting metadata for ({restaurant_api_key}) into metadata:\n{e}")
 
 
 # insert metadata for accounts
@@ -191,6 +193,8 @@ accounts_api_key = "Cards"
 
 try:
     with engine.begin() as conn:
+        # delete all existing metadata for the accounts api key
+        conn.execute(delete(Metadata).where(Metadata.db_name == accounts_api_key))
         for table in accounts_metadata:
             for column in accounts_metadata[table]:
                 conn.execute(
@@ -203,7 +207,7 @@ try:
                     )
                 )
 except Exception as e:
-    print(f"Error inserting metadata for ({accounts_api_key}) into metadata")
+    print(f"Error inserting metadata for ({accounts_api_key}) into metadata:\n{e}")
 
 
 accounts_metadata_imported = {
@@ -225,16 +229,6 @@ accounts_metadata_imported = {
         },
     ]
 }
-
-
-# TODO: insert accounts metadata *imported*
-# try:
-#     ...
-# except Exception as e:
-#     print(
-#         f"Error inserting metadata for ({restaurant_api_key}) into metadata"
-#     )
-
 
 # insert metadata for housing
 housing_metadata = {
@@ -578,6 +572,8 @@ housing_metadata = {
 housing_api_key = "Housing"
 try:
     with engine.begin() as conn:
+        # delete all existing metadata for the housing api key
+        conn.execute(delete(Metadata).where(Metadata.db_name == housing_api_key))
         for table in housing_metadata:
             for column in housing_metadata[table]:
                 conn.execute(
@@ -590,7 +586,7 @@ try:
                     )
                 )
 except Exception as e:
-    print(f"Error inserting metadata for ({housing_api_key}) into metadata")
+    print(f"Error inserting metadata for ({housing_api_key}) into metadata:\n{e}")
 
 
 # insert metadata for webshop
@@ -986,6 +982,8 @@ webshop_metadata = {
 
 try:
     with engine.begin() as conn:
+        # delete all existing metadata for the webshop api key
+        conn.execute(delete(Metadata).where(Metadata.db_name == webshop_api_key))
         for table in webshop_metadata:
             for column in webshop_metadata[table]:
                 conn.execute(
@@ -998,7 +996,7 @@ try:
                     )
                 )
 except Exception as e:
-    print(f"Error inserting metadata for ({webshop_api_key}) into metadata")
+    print(f"Error inserting metadata for ({webshop_api_key}) into metadata:\n{e}")
 
 
 # Insert metadata for cricket
@@ -1197,6 +1195,8 @@ cricket_metadata = {
 
 try:
     with engine.begin() as conn:
+        # delete all existing metadata for the cricket api key
+        conn.execute(delete(Metadata).where(Metadata.db_name == cricket_api_key))
         for table in cricket_metadata:
             for column in cricket_metadata[table]:
                 conn.execute(
@@ -1209,4 +1209,4 @@ try:
                     )
                 )
 except Exception as e:
-    print(f"Error inserting metadata for ({cricket_api_key}) into metadata")
+    print(f"Error inserting metadata for ({cricket_api_key}) into metadata:\n{e}")

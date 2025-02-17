@@ -110,3 +110,74 @@ class GoldenQueriesDeleteRequest(UserRequest):
     """
 
     questions: list[str]
+
+
+class HardFilter(BaseModel):
+    table_name: str
+    column_name: str
+    operator: str
+    value: str
+
+
+class QuestionAnswer(BaseModel):
+    question: str
+    answer: str
+
+
+class GenerateSQLQueryRequest(UserRequest):
+    """
+    Request model for generating SQL queries.
+    """
+
+    question: str
+    metadata: list[ColumnMetadata] = []
+    instructions: str = ""
+    previous_context: list[QuestionAnswer] = []
+    hard_filters: list[HardFilter] = []
+
+    # optional prompt-level parameters
+    num_golden_queries: int = 4
+    model_name: str | None = None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "123",
+                    "db_name": "my_key_name",
+                    "question": "Show me any 5 rows from the first table",
+                },
+                {
+                    "token": "123",
+                    "db_name": "my_key_name",
+                    "question": "Show me any 5 rows from the first table",
+                    "instructions": "",
+                    "metadata": [
+                        {
+                            "table_name": "table1",
+                            "column_name": "column1",
+                            "data_type": "int",
+                            "column_description": "",
+                        },
+                        {
+                            "table_name": "table1",
+                            "column_name": "column2",
+                            "data_type": "varchar",
+                            "column_description": "",
+                        },
+                    ],
+                    "previous_context": [],
+                    "hard_filters": [
+                        {
+                            "table_name": "table1",
+                            "column_name": "column1",
+                            "operator": "=",
+                            "value": "1",
+                        }
+                    ],
+                    "num_golden_queries": 2,
+                    "model_name": "gpt-4o-mini",
+                },
+            ]
+        }
+    }

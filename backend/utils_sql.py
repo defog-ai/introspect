@@ -4,11 +4,13 @@ from typing import Dict, Optional, Tuple
 
 import pandas as pd
 from pandas.testing import assert_frame_equal, assert_series_equal
-from sqlalchemy import text
 from sqlglot import exp, parse_one
+from request_models import HardFilter
 from utils_df import mk_df
 from generic_utils import is_sorry
 from defog.query import async_execute_query_once
+
+from utils_logging import LOGGER
 
 # Functions mostly lifted from https://github.com/defog-ai/sql-eval/blob/main/eval/eval.py
 # but adapted to use the engine from db_utils and without some extra labels like
@@ -284,3 +286,121 @@ def add_schema_to_tables(query, schema):
 
     # Return the modified SQL query as a string
     return tree.sql()
+
+
+def add_hard_filters(sql: str, hard_filters: list[HardFilter]) -> str:
+    """
+    Takes in a SQL query and a list of HardFilter objects.
+    For every SELECT that references a table_name from any HardFilter,
+    add conditions (table_alias.column_name operator 'value') into the WHERE.
+    """
+    if not hard_filters:
+        return sql
+    
+    # Parse into sqlglot Expression Tree
+    parsed = parse_one(sql, read="postgres")
+
+    # Map each SELECT node -> {table_name: set_of_aliases}
+    select_table_aliases = {}
+
+    def collect_tables(node, current_select=None):
+        # If this node is a SELECT, mark it as the current SELECT
+        if isinstance(node, exp.Select):
+            current_select = node
+            if current_select not in select_table_aliases:
+                select_table_aliases[current_select] = {}
+
+        # If this node is a table reference, record it in the current SELECT
+        if isinstance(node, exp.Table):
+            table_name = node.name  # e.g. 'my_table'
+            alias = node.alias or table_name
+            if current_select:
+                select_table_aliases[current_select].setdefault(table_name, set()).add(alias)
+        
+        # Recurse into children
+        for value in node.args.values():
+            if isinstance(value, exp.Expression):
+                collect_tables(value, current_select)
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, exp.Expression):
+                        collect_tables(item, current_select)
+
+    collect_tables(parsed)
+
+    def build_filter_expr(hf: HardFilter, alias: str) -> exp.Expression:
+        """
+        Build something like `alias.column_name = 'value'`.
+        """
+        col = exp.Column(
+            this=exp.to_identifier(hf.column_name),
+            table=exp.to_identifier(alias),
+        )
+        val = exp.Literal.string(hf.value)
+        op_map = {
+            "=":  exp.EQ,
+            "!=": exp.NEQ,
+            ">":  exp.GT,
+            ">=": exp.GTE,
+            "<":  exp.LT,
+            "<=": exp.LTE,
+        }
+        op_class = op_map.get(hf.operator, exp.EQ)
+        return op_class(this=col, expression=val)
+
+    def apply_filters_to_select(select_node: exp.Select):
+        """
+        For a given SELECT node, gather *all* the filters that apply
+        to any tables it references, and AND them all into the WHERE.
+        """
+        if select_node not in select_table_aliases:
+            return
+
+        table_map = select_table_aliases[select_node]
+        # Example: table_map = {"my_table": {"t"}}
+
+        # Build a list of all new conditions
+        new_conds = []
+        for table_name, aliases in table_map.items():
+            # For each HardFilter that mentions `table_name`, build conditions
+            for hf in hard_filters:
+                if hf.table_name == table_name:
+                    for alias in aliases:
+                        new_conds.append(build_filter_expr(hf, alias))
+
+        # If no new conditions, do nothing
+        if not new_conds:
+            return
+
+        # Combine them into a single expression with AND
+        # e.g. t.foo = 'bar' AND t.baz = 'qux' AND ...
+        final_new_cond = new_conds[0]
+        for cond in new_conds[1:]:
+            final_new_cond = exp.And(this=final_new_cond, expression=cond)
+
+        # Merge with existing WHERE
+        existing_where = select_node.args.get("where")
+        if existing_where:
+            combined = exp.And(this=existing_where.this, expression=final_new_cond)
+            select_node.set("where", exp.Where(this=combined))
+        else:
+            select_node.set("where", exp.Where(this=final_new_cond))
+
+    def walk(node):
+        # If it's a SELECT, apply all relevant filters at once
+        if isinstance(node, exp.Select):
+            apply_filters_to_select(node)
+
+        # Recurse to children
+        for k, v in node.args.items():
+            if isinstance(v, exp.Expression):
+                walk(v)
+            elif isinstance(v, list):
+                for x in v:
+                    if isinstance(x, exp.Expression):
+                        walk(x)
+
+    # Walk the AST once, applying filters to each SELECT node
+    walk(parsed)
+
+    return parsed.sql(dialect="postgres")
