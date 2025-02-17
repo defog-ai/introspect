@@ -1,0 +1,1 @@
+Your task is to fix {db_type} SQL queries that are causing runtime errors.

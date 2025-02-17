@@ -11,7 +11,7 @@ from utils_df import mk_df
 from generic_utils import is_sorry
 from defog.query import async_execute_query_once
 from request_models import ColumnMetadata, HardFilter, QuestionAnswer
-from llm_api import O3_MINI
+from llm_api import O3_MINI, GPT_4O
 from utils_md import get_metadata, mk_create_ddl
 from utils_instructions import get_instructions
 from utils_embedding import get_embedding
@@ -27,6 +27,13 @@ with open("./prompts/generate_sql/system.md", "r") as f:
 
 with open("./prompts/generate_sql/user.md", "r") as f:
     GENERATE_SQL_USER_PROMPT = f.read()
+
+with open("./prompts/fix_sql/system.md", "r") as f:
+    FIX_SQL_SYSTEM_PROMPT = f.read()
+
+with open("./prompts/fix_sql/user.md", "r") as f:
+    FIX_SQL_USER_PROMPT = f.read()
+
 
 UNSAFE_KEYWORDS = ['CREATE', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'INSERT']
 # Combine keywords into one regex pattern for efficiency
@@ -598,3 +605,74 @@ async def generate_sql_query(
         response = {"sql": sql_generated, "error": None}
 
     return response
+
+
+async def retry_query_after_error(
+    question: str,
+    sql: str = None,
+    error: str = None,
+    db_name: str = None,
+    metadata: list[ColumnMetadata] = None,
+    db_type: str = None,
+) -> Optional[str]:
+    """
+    Fix the error that occurred while generating SQL / executing the query.
+    Returns the fixed sql query if successful, else None.
+    """
+    if not db_type:
+        db_type = await get_db_type(db_name)
+    
+    if not metadata or len(metadata) == 0:
+        metadata = await get_metadata(db_name)
+    
+    if not metadata or len(metadata) == 0:
+        LOGGER.error("No metadata found while fixing SQL query")
+        return {
+            "sql": None,
+            "error": "No metadata found",
+        }
+
+    metadata_ddl = mk_create_ddl(metadata)
+
+    system_prompt = FIX_SQL_SYSTEM_PROMPT.format(db_type=db_type)
+    user_prompt = FIX_SQL_USER_PROMPT.format(
+        db_type=db_type,
+        sql=sql,
+        error=error,
+        question=question,
+        table_metadata_ddl=metadata_ddl,
+    )
+
+    query = await chat_async(
+        model=GPT_4O,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.0,
+        prediction={
+            "type": "content",
+            "content": sql,
+        }
+    )
+    LOGGER.info("Latency of query correction in seconds: " + "{:.2f}".format(query.time) + "s")
+    LOGGER.info(
+        "Cost of query correction in cents: " + "{:.2f}".format(query.cost_in_cents) + "¢"
+    )
+    
+    sql_generated = query.content
+    sql_generated = sql_generated.split("```sql", 1)[-1].split(";", 1)[0].replace("```", "").strip()
+    sql_generated = clean_generated_query(sql_generated)
+
+    if not safe_sql(sql_generated):
+        LOGGER.error("Unsafe SQL query")
+        LOGGER.info(sql_generated)
+        return {
+            "sql": None,
+            "error": "Unsafe SQL query",
+        }
+    else:
+        return {
+            "sql": sql_generated,
+            "error": None,
+        }
