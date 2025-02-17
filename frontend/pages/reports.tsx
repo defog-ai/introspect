@@ -9,6 +9,30 @@ export default function OracleDashboard() {
   const [token, setToken] = useState<string>("");
   const [userType, setUserType] = useState<string>("");
   const [user, setUser] = useState<string>("");
+  const [dbNames, setDbNames] = useState<string[]>([]);
+
+  const getApiKeyNames = async () => {
+    const token = localStorage.getItem("defogToken");
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+        }),
+      }
+    );
+    if (!res.ok) {
+      throw new Error(
+        "Failed to get api key names - are you sure your network is working?"
+      );
+    }
+    const data = await res.json();
+    setDbNames(data.api_key_names);
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("defogToken");
@@ -17,6 +41,7 @@ export default function OracleDashboard() {
     setUser(user);
     setUserType(userType);
     setToken(token);
+    getApiKeyNames();
     if (token) setToken(token);
   }, []);
 
@@ -35,6 +60,7 @@ export default function OracleDashboard() {
           <OracleEmbed
             apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
             token={token}
+            keyNames={dbNames}
           />
         </Scaffolding>
       </div>
