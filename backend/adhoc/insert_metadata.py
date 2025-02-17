@@ -4,7 +4,7 @@ import time
 from db_models import Metadata
 from sqlalchemy import create_engine, insert, delete
 
-SALT = "TOMRIDDLEISVOLDEMORT"
+SALT = os.getenv("SALT", "default_salt")
 
 
 db_creds = {
