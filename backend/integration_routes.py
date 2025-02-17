@@ -12,7 +12,7 @@ from db_utils import (
 from db_config import redis_client
 from auth_utils import validate_user, validate_user_request
 from defog import Defog
-from defog.query import execute_query
+from defog.query import async_execute_query_once
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from generic_utils import (
@@ -92,13 +92,10 @@ async def validate_db_connection(request: Request):
     key_name = params.get("db_name")
     sql_query = "SELECT 'test';"
     try:
-        await asyncio.to_thread(
-            execute_query,
-            sql_query,
-            key_name,
+        await async_execute_query_once(
             db_type,
             db_creds,
-            retries=0,
+            sql_query,
         )
         return {"status": "success"}
     except Exception as e:
@@ -210,8 +207,8 @@ async def preview_table(request: Request):
     print(sql_query, flush=True)
 
     try:
-        colnames, data, _ = await asyncio.to_thread(
-            execute_query, sql_query, api_key, db_type, db_creds, retries=0, temp=temp
+        colnames, data, _ = await async_execute_query_once(
+            db_type, db_creds, sql_query
         )
     except:
         return {"error": "error executing query"}
