@@ -1,7 +1,5 @@
 # the executor converts the user's task to steps and maps those steps to tools.
 # also runs those steps
-from copy import deepcopy
-import traceback
 
 from agents.planner_executor.execute_tool import execute_tool
 from utils_clarification import turn_clarifications_into_statement
@@ -12,170 +10,103 @@ from db_analysis_utils import (
     update_analysis_data,
     update_assignment_understanding,
 )
-from utils import deduplicate_columns, add_indent
+from utils import deduplicate_columns
+from utils_logging import LOGGER
 
 import pandas as pd
 import warnings
 warnings.simplefilter(action='ignore', category=SyntaxWarning)
 
-import logging
-
-LOGGER = logging.getLogger("server")
-
-
-# some helper functions for prettier logging
-
-indent_level = 0
-
-
-def add_indent_levels(level=1):
-    global indent_level
-    indent_level += level
-
-
-def set_indent_level(level=0):
-    global indent_level
-    indent_level = level
-
-
-def reset_indent_level():
-    global indent_level
-    indent_level = 0
-
-
-def info(msg):
-    global indent_level
-    LOGGER.info(add_indent(indent_level) + " " + str(msg))
-
-
-def error(msg):
-    global indent_level
-    LOGGER.error(add_indent(indent_level) + " " + str(msg))
-
-
-def warn(msg):
-    global indent_level
-    LOGGER.warn(add_indent(indent_level) + " " + str(msg))
-
-
-async def run_step(
-    analysis_id,
-    step,
-    analysis_execution_cache,
-    skip_cache_storing=False,
-):
+async def run_step(analysis_id, step, analysis_execution_cache, skip_cache_storing=False):
     """
-    Runs a single step, updating the steps object *in place* with the results. Also re-runs all parent steps if required.
-
-    General flow:
-    1. Now the inputs are resolved, run this step.
-    2. Stores the run step in the respective analysis in the db
+    Runs a single step, updating the steps object in place with the results.
+    
+    Args:
+        analysis_id: ID of the analysis
+        step: Step object containing tool and input information
+        analysis_execution_cache: Cache for storing analysis results
+        skip_cache_storing: Whether to skip storing results in cache
     """
+    LOGGER.info(f"Running step {step['id']} with tool: {step['tool_name']}")
 
-    outputs_storage_keys = step["outputs_storage_keys"]
-    info(f"Running step: {step['id']} with tool: {step['tool_name']}")
-    add_indent_levels(1)
+    async def handle_data_fetcher():
+        """Handle data fetcher and aggregator specific logic"""
+        if not ("model_generated_inputs" in step and "inputs" in step):
+            return None, False
+            
+        if step["tool_name"] != "data_fetcher_and_aggregator":
+            return None, False
 
-    inputs = step["inputs"]
+        model_generated_question = step["model_generated_inputs"]["question"]
+        current_question = step["inputs"]["question"]
 
-    # once we have the resolved inputs, run the step
-    # but if this is data fetcher and aggregator, we need to check what changed in the inputs
-    # if the question changed, then run the tool itself, where we send a req to defog and get the sql
-    # if the question is the same, but the sql changed, then just run the sql again
-    results = None
-    executed = False
-    tool_input_metadata = step.get("input_metadata", {})
+        if model_generated_question != current_question:
+            LOGGER.info("Question has changed. Re-running tool to fetch new SQL.")
+            return None, False
 
-    # for us to check anything, we need to ensure this isn't the first time this step is running
-    # check if model_generated_inputs and inputs even exist
-    if "model_generated_inputs" in step and "inputs" in step:
-        if step["tool_name"] == "data_fetcher_and_aggregator":
-            model_generated_question = step["model_generated_inputs"]["question"]
-            current_question = step["inputs"]["question"]
+        LOGGER.info("Question unchanged. Re-running SQL only.")
+        try:
+            output_df, final_sql_query = await fetch_query_into_df(
+                db_name=analysis_execution_cache["db_name"],
+                sql_query=step["sql"],
+                question=current_question,
+            )
+            results = {
+                "sql": final_sql_query,
+                "outputs": [{"data": output_df}]
+            }
+            analysis_execution_cache[step["outputs_storage_keys"][0]] = output_df
+            return results, True
+        except Exception as e:
+            LOGGER.error(f"SQL execution failed: {str(e)}")
+            return {"error_message": "Could not run the SQL query. Is it correct?"}, True
 
-            # if the question has not changed, we will make executed to True, then run the sql
-            if model_generated_question == current_question:
-                info("Question has not changed. Re-running only the sql.")
-                executed = True
-                try:
-                    output_df, final_sql_query = await fetch_query_into_df(
-                        api_key=analysis_execution_cache["dfg_api_key"],
-                        sql_query=step["sql"],
-                        question=current_question,
-                    )
-                    results = {
-                        "sql": final_sql_query,
-                        "outputs": [
-                            {
-                                "data": output_df,
-                            }
-                        ],
-                    }
-                    analysis_execution_cache[outputs_storage_keys[0]] = output_df
-                except Exception as e:
-                    traceback.print_exc()
-                    results = {
-                        "error_message": "Could not run the sql query. Is it correct?"
-                    }
-            else:
-                info(
-                    "Question has changed. Re-running the tool to fetch the sql for the new question."
-                )
+    def align_output_keys(output_storage_keys, outputs):
+        """Align output storage keys with outputs"""
+        if len(output_storage_keys) == len(outputs):
+            return output_storage_keys
 
-    # if we didn't execute yet, do it now by running the tool
+        LOGGER.warning(f"Mismatched outputs_storage_keys and outputs length. Adjusting...")
+        if len(output_storage_keys) <= len(outputs):
+            return output_storage_keys + [
+                f"{step['tool_name']}_output_{i}"
+                for i in range(len(output_storage_keys), len(outputs))
+            ]
+        return output_storage_keys[:len(outputs)]
+
+    # Try data fetcher specific handling first
+    results, executed = await handle_data_fetcher()
+    
+    # If not handled by data fetcher, execute the tool
     if not executed:
         results, tool_input_metadata = await execute_tool(
             function_name=step["tool_name"],
-            tool_function_inputs=inputs,
+            tool_function_inputs=step["inputs"],
         )
+        step["input_metadata"] = tool_input_metadata
 
+    # Update step with results
     step["error_message"] = results.get("error_message")
-
-    step["input_metadata"] = tool_input_metadata
-
-    step["model_generated_inputs"] = deepcopy(step["inputs"])
-
-    # merge result into the step object
+    step["model_generated_inputs"] = step["inputs"].copy()
     step.update(results)
-
-    # but not outputs
-    # we will construct the outputs object below
     step["outputs"] = {}
 
-    # if there's no error, check if zip is possible
+    # Process outputs if no errors
     if not results.get("error_message"):
-        # if number of outputs does not match the number of keys to store the outputs in
-        # raise exception
-        # this should never really happen
-        output_storage_keys = step.get("outputs_storage_keys", [])
         outputs = results.get("outputs", [])
-        if len(output_storage_keys) != len(outputs):
-            warn(
-                f"Length of outputs_storage_keys and outputs don't match. Outputs: {results.get('outputs')}. Force matching with index suffixes."
-            )
-            # if outputs_storage_keys <= outputs, append the difference with output_idx
-            if len(output_storage_keys) <= len(outputs):
-                for i in range(len(output_storage_keys), len(outputs)):
-                    step["outputs_storage_keys"].append(
-                        f"{step['tool_name']}_output_{i}"
-                    )
-            else:
-                step["outputs_storage_keys"] = step["outputs_storage_keys"][
-                    : len(outputs)
-                ]
+        step["outputs_storage_keys"] = align_output_keys(
+            step.get("outputs_storage_keys", []), 
+            outputs
+        )
 
-        # zip and store the output keys to analysis_execution_cache
-        for output_name, output_value in zip(
-            step["outputs_storage_keys"], results.get("outputs")
-        ):
-            data = output_value.get("data")
-            reactive_vars = output_value.get("reactive_vars")
-            chart_images = output_value.get("chart_images")
-
+        # Process each output
+        for output_name, output_value in zip(step["outputs_storage_keys"], outputs):
+            LOGGER.info(f"Processing output: {output_name}")
             step["outputs"][output_name] = {}
-
-            info("Parsing output: " + output_name)
-
+            
+            # Extract data from output_value
+            data = output_value.get("data")
+            
             # if the output has data and it is a pandas dataframe,
             # 1. deduplicate the columns
             # 2. store the dataframe in the analysis_execution_cache
@@ -194,23 +125,14 @@ async def run_step(
                     float_format="%.3f", index=False
                 )
 
-            if reactive_vars is not None:
-                step["outputs"][output_name]["reactive_vars"] = reactive_vars
-
-            if chart_images is not None:
-                step["outputs"][output_name]["chart_images"] = chart_images
-
-            info(f"Stored output: {output_name}")
+            LOGGER.info(f"Stored output: {output_name}")
 
     # update the analysis data in the db
     if analysis_id:
         await update_analysis_data(
             analysis_id=analysis_id,
             request_type="gen_steps",
-            new_data=step,
-            # if this is a new step, this will simply append
-            # but if we're running an existing step, this will overwrite it with the new one
-            overwrite_key="id",
+            new_data=[step],
         )
 
 
@@ -225,9 +147,8 @@ async def generate_assignment_understanding(
     # get the assignment understanding aka answers to clarification questions
     err = None
     assignment_understanding = None
-    reset_indent_level()
-
-    info(f"Clarification questions: {clarification_questions}")
+    
+    LOGGER.info(f"Clarification questions: {clarification_questions}")
 
     if len(clarification_questions) > 0:
         try:
@@ -238,10 +159,10 @@ async def generate_assignment_understanding(
                 analysis_id=analysis_id, understanding=assignment_understanding
             )
         except Exception as e:
-            error(e)
+            LOGGER.error(e)
             assignment_understanding = None
 
-    info(f"Assignment understanding: {assignment_understanding}")
+    LOGGER.info(f"Assignment understanding: {assignment_understanding}")
 
     return err, assignment_understanding
 
@@ -253,7 +174,6 @@ async def prepare_cache(
     dev=False,
     temp=False,
 ):
-    reset_indent_level()
     analysis_execution_cache = {}
     analysis_execution_cache["db_name"] = db_name
     analysis_execution_cache["user_question"] = user_question
@@ -265,13 +185,13 @@ async def prepare_cache(
     )
 
     if err:
-        warn("Could not fetch assignment understanding from the db. Using empty list")
+        LOGGER.warning("Could not fetch assignment understanding from the db. Using empty list")
         assignment_understanding = []
 
     analysis_execution_cache["assignment_understanding"] = assignment_understanding
 
-    info("Created cache:")
-    info(analysis_execution_cache)
+    LOGGER.info("Created cache:")
+    LOGGER.info(analysis_execution_cache)
 
     return analysis_execution_cache
 
