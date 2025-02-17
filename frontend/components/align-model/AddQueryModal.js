@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Modal, Input, Spin } from "antd";
 import { StarFilled } from "@ant-design/icons";
 import LineBlock from "$components/layout/LineBlock";
@@ -17,15 +17,29 @@ const AddQueryModal = ({
 }) => {
   const [loading, setLoading] = useState(false);
 
-  // generates a new SQL query based on the new question
-  const onUpdate = async (newQuestion) => {
-    setLoading(true);
+  // Track if we need to generate SQL for a new question
+  const [shouldGenerateSQL, setShouldGenerateSQL] = useState(false);
+
+  // Handle question updates
+  const onUpdate = (newQuestion) => {
     setNewQuestion(newQuestion);
-    setNewSql("Generating SQL...");
-    const query = await generateSqlQuery(newQuestion);
-    setNewSql(query);
-    setLoading(false);
+    setShouldGenerateSQL(true);
   };
+
+  // Generate SQL when question changes
+  useEffect(() => {
+    if (shouldGenerateSQL && newQuestion) {
+      const generateSQL = async () => {
+        setLoading(true);
+        setNewSql("Generating SQL...");
+        const query = await generateSqlQuery(newQuestion);
+        setNewSql(query);
+        setLoading(false);
+        setShouldGenerateSQL(false);
+      };
+      generateSQL();
+    }
+  }, [shouldGenerateSQL, newQuestion, generateSqlQuery]);
 
   return (
     <Modal

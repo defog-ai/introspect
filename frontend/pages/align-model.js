@@ -65,11 +65,6 @@ const AlignModel = () => {
     getGlossaryGoldenQueries(devMode);
   }, [devMode, apiKeyName]);
 
-  // triggers golden queries when updatedGoldenQueriesToggle is toggled
-  useEffect(() => {
-    updateGoldenQueries();
-  }, [updatedGoldenQueriesToggle]);
-
   const getGlossaryGoldenQueries = async (dev) => {
     setIsLoading(true);
     const token = localStorage.getItem("defogToken");
@@ -147,7 +142,7 @@ const AlignModel = () => {
     }
   };
 
-  const updateGoldenQueries = async () => {
+  const updateGoldenQueries = async (question, sql) => {
     if (token) {
       setIsUpdatingGoldenQueries(true);
       const res = await fetch(
@@ -160,51 +155,63 @@ const AlignModel = () => {
           body: JSON.stringify({
             token,
             db_name: apiKeyName,
-            golden_queries: goldenQueries,
+            golden_queries: [
+              {
+                question: question,
+                sql: sql,
+              },
+            ],
           }),
         }
       );
 
       const data = await res.json();
       setIsUpdatingGoldenQueries(false);
-      if (data.status === "success") {
+      if (data.success === true) {
         message.success("Golden queries updated successfully!");
       }
     }
   };
 
-  const updateMetadata = async (metadata, setLoading) => {
-    try {
-      setLoading(true);
-      console.log("metadata", metadata);
-      console.log("token", token);
-      console.log("apiKeyName", apiKeyName);
+  const deleteGoldenQueries = async (question) => {
+    if (!token || !apiKeyName) {
+      message.error("Please log in to continue");
+      return;
+    }
 
-      const res = await fetch(
-        setupBaseUrl("http", `integration/update_metadata`),
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token: token,
-            db_name: apiKeyName,
-            metadata: metadata,
-          }),
-        }
-      );
-      const data = await res.json();
-      setLoading(false);
-      if (data.error) {
-        message.error(data.error || "Error updating metadata");
+    // check if user is sure that they want to delete golden query
+    const isConfirmed = confirm("Are you sure you want to delete this golden query?");
+    if (!isConfirmed) {
+      return;
+    }
+
+    try {
+      const response = await fetch(setupBaseUrl("http", `integration/delete_golden_queries`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+          db_name: apiKeyName,
+          questions: [question]
+        }),
+      });
+
+      if (!response.ok) {
+        message.error("Failed to delete golden query");
       } else {
-        message.success("Metadata updated successfully!");
+        message.success("Golden query deleted successfully");
       }
+
+      const newGoldenQueries = [...goldenQueries];
+      // get index of current question
+      const index = newGoldenQueries.findIndex((gq) => gq.question === question);
+      // remove current question
+      newGoldenQueries.splice(index, 1);
+      setGoldenQueries(newGoldenQueries);
     } catch (error) {
-      console.error("Error saving data:", error);
-      message.error("Error saving data");
-      setLoading(false);
+      console.error("Error deleting golden query:", error);
     }
   };
 
@@ -231,11 +238,10 @@ const AlignModel = () => {
         apiKeyName={apiKeyName}
         goldenQueries={goldenQueries}
         setGoldenQueries={setGoldenQueries}
-        updateMetadata={updateMetadata}
-        updateMetadataLoadingFunction={setIsUpdatingGoldenQueries}
+        updateGoldenQueries={updateGoldenQueries}
+        deleteGoldenQueries={deleteGoldenQueries}
         isLoading={isLoading}
         isUpdatingGoldenQueries={isUpdatingGoldenQueries}
-        setUpdatedGoldenQueriesToggle={setUpdatedGoldenQueriesToggle}
       />,
     },
     {

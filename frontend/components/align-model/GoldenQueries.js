@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Table, Input, Button, Space, Spin } from "antd";
 import { EditOutlined, DeleteOutlined, SaveOutlined } from "@ant-design/icons";
 import LineBlock from "../layout/LineBlock";
@@ -11,12 +11,15 @@ const GoldenQueries = ({
   goldenQueries,
   setGoldenQueries,
   isLoading,
+  updateGoldenQueries,
+  deleteGoldenQueries,
   isUpdatingGoldenQueries,
-  setUpdatedGoldenQueriesToggle,
 }) => {
-  const [editMode, setEditMode] = useState(
-    Array(goldenQueries.length).fill(false)
-  );
+  const [editingRows, setEditingRows] = useState({});
+  useEffect(() => {
+    setEditingRows({});
+  }, [goldenQueries.length]);
+
   // add new question and query modal state
   const [isModalVisible, setIsModalVisible] = useState(false);
 
@@ -27,21 +30,16 @@ const GoldenQueries = ({
   const [newColumns, setNewColumns] = useState([]);
   const [newData, setNewData] = useState([]);
 
-  const toggleEditMode = (index) => {
-    const newEditMode = [...editMode];
-    newEditMode[index] = !newEditMode[index];
-    setEditMode(newEditMode);
+  const toggleEditMode = (key) => {
+    setEditingRows(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   // handles submission of new question and query under modal
-  const handleOk = () => {
-    if (newQuestion && newSql) {
-      setGoldenQueries([
-        ...goldenQueries,
-        { question: newQuestion, sql: newSql },
-      ]);
+  const handleOk = (question, sql) => {
+    if (question && sql) {
+      updateGoldenQueries(question, sql);
       handleCancel();
-      setUpdatedGoldenQueriesToggle((prev) => !prev);
+      setGoldenQueries((prev) => [...prev, { question, sql }]);
     }
   };
 
@@ -61,13 +59,16 @@ const GoldenQueries = ({
       width: "30%",
 
       render: (text, record, index) =>
-        editMode[index] ? (
+        editingRows[record.question] ? (
           <Input.TextArea
             value={text}
             onChange={(e) => {
-              const newGoldenQueries = [...goldenQueries];
-              newGoldenQueries[index].question = e.target.value;
-              setGoldenQueries(newGoldenQueries);
+              const value = e.target.value;
+              setGoldenQueries(prev => {
+                const newQueries = [...prev];
+                newQueries[index].question = value;
+                return newQueries;
+              });
             }}
             rows={1}
             disabled={isLoading || isUpdatingGoldenQueries}
@@ -87,13 +88,16 @@ const GoldenQueries = ({
       key: "sql",
       width: "65%",
       render: (text, record, index) =>
-        editMode[index] ? (
+        editingRows[record.question] ? (
           <Input.TextArea
             value={text}
             onChange={(e) => {
-              const newGoldenQueries = [...goldenQueries];
-              newGoldenQueries[index].sql = e.target.value;
-              setGoldenQueries(newGoldenQueries);
+              const value = e.target.value;
+              setGoldenQueries(prev => {
+                const newQueries = [...prev];
+                newQueries[index].sql = value;
+                return newQueries;
+              });
             }}
             rows={4}
             disabled={isLoading || isUpdatingGoldenQueries}
@@ -114,18 +118,16 @@ const GoldenQueries = ({
         <Space>
           <Button
             icon={
-              editMode[index] ? (
-                <SaveOutlined />
-              ) : (
-                <EditOutlined />
-              )
+              editingRows[record.question] ? <SaveOutlined /> : <EditOutlined />
             }
             onClick={() => {
-              if (editMode[index]) {
+              console.log("CLicked!")
+              if (editingRows[record.question]) {
                 // If we're saving (i.e. exiting edit mode), trigger the update
-                setUpdatedGoldenQueriesToggle(prev => !prev);
+                console.log("Saving!");
+                updateGoldenQueries(record.question, record.sql);
               }
-              toggleEditMode(index);
+              toggleEditMode(record.question);
             }}
             disabled={isLoading || isUpdatingGoldenQueries}
           />
@@ -133,32 +135,9 @@ const GoldenQueries = ({
             icon={<DeleteOutlined />}
             type="primary"
             danger
-            onClick={async () => {
-              try {
-                const response = await fetch(setupBaseUrl("http", `integration/delete_golden_queries`), {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    token: token,
-                    db_name: apiKeyName,
-                    questions: [record.question]
-                  }),
-                });
-
-                if (!response.ok) {
-                  throw new Error("Failed to delete golden query");
-                }
-
-                const newGoldenQueries = [...goldenQueries];
-                newGoldenQueries.splice(index, 1);
-                setGoldenQueries(newGoldenQueries);
-                // Remove the editMode for the deleted query so it does not carry over
-                setEditMode(editMode.filter((_, i) => i !== index));
-              } catch (error) {
-                console.error("Error deleting golden query:", error);
-              }
+            onClick={() => {
+              console.log("Clicked delete!")
+              deleteGoldenQueries(record.question)
             }}
             disabled={isLoading || isUpdatingGoldenQueries}
           />
@@ -237,7 +216,7 @@ const GoldenQueries = ({
       </Button>
       {isModalVisible && (
         <AddQueryModal
-          handleOk={handleOk}
+          handleOk={() => handleOk(newQuestion, newSql)}
           handleCancel={handleCancel}
           newQuestion={newQuestion}
           setNewQuestion={setNewQuestion}
