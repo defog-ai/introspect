@@ -10,7 +10,7 @@ from utils_sql import safe_sql
 
 async def fetch_query_into_df(
     db_name: str, sql_query: str, temp: bool = False
-) -> pd.DataFrame:
+) -> tuple(pd.DataFrame, str):
     """
     Runs a sql query and stores the results in a pandas dataframe.
     """
