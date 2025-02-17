@@ -3,7 +3,6 @@ import os
 from typing import Optional
 
 from fastapi import HTTPException, Request
-from db_config import engine
 from db_models import Users
 from sqlalchemy import (
     select,
@@ -22,6 +21,8 @@ if SALT == "default_salt":
 
 
 async def login_user(username: str, password: str | None = None) -> Optional[str]:
+    from db_config import engine
+
     async with AsyncSession(engine) as session:
         async with session.begin():
             if password:
@@ -41,6 +42,8 @@ async def login_user(username: str, password: str | None = None) -> Optional[str
 
 
 async def reset_password(username, new_password):
+    from db_config import engine
+
     hashed_password = hashlib.sha256(
         (username + SALT + new_password).encode()
     ).hexdigest()
@@ -61,6 +64,8 @@ def get_hashed_username(username):
 
 
 async def validate_user_email(email):
+    from db_config import engine
+
     async with engine.begin() as conn:
         user = await conn.execute(select(Users).where(Users.username == email))
         user = user.fetchone()
@@ -71,6 +76,8 @@ async def validate_user_email(email):
 
 
 async def validate_user(token: str) -> Optional[Users]:
+    from db_config import engine
+
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = select(Users).where(Users.token == token)

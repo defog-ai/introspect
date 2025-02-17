@@ -1,8 +1,6 @@
 import os
 from contextlib import asynccontextmanager
-from typing import Union
 
-from auth_utils import get_hashed_password, login_user
 from db_models import Base, ImportedTables, Users
 from fastapi import FastAPI
 from sqlalchemy import Engine, insert, text
@@ -19,9 +17,7 @@ from utils_logging import LOGGER
 ################################################################################
 
 
-async def init_db(
-    engine: AsyncEngine, imported_tables_engine: Engine | None
-):
+async def init_db(engine: AsyncEngine, imported_tables_engine: Engine | None):
     """
     Initialize database tables
     Args:
@@ -34,7 +30,7 @@ async def init_db(
             # that contain vector columns
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             await conn.run_sync(Base.metadata.create_all)
-    
+
         if imported_tables_engine:
             try:
                 ImportedTablesBase = automap_base()
@@ -55,6 +51,7 @@ async def init_db(
 async def create_admin_user():
     """Create admin user if it doesn't exist"""
     from db_config import engine
+    from auth_utils import get_hashed_password, login_user
 
     admin_username = os.environ.get("ADMIN_USERNAME", "admin")
     admin_password = os.environ.get("ADMIN_PASSWORD", "admin")
@@ -71,7 +68,7 @@ async def create_admin_user():
                         hashed_password=get_hashed_password(
                             admin_username, admin_password
                         ),
-                        token=get_hashed_password(admin_username, admin_password)
+                        token=get_hashed_password(admin_username, admin_password),
                     )
                 )
             LOGGER.info("Admin user created successfully")
