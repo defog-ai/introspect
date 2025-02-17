@@ -7,10 +7,11 @@ import re
 import pandas as pd
 from db_utils import get_db_type_creds
 from utils_sql import safe_sql
+from typing import Tuple
 
 async def fetch_query_into_df(
     db_name: str, sql_query: str, temp: bool = False
-) -> tuple(pd.DataFrame, str):
+) -> Tuple[pd.DataFrame, str]:
     """
     Runs a sql query and stores the results in a pandas dataframe.
     """
