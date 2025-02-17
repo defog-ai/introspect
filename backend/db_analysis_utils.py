@@ -146,37 +146,28 @@ async def update_analysis_data(
     analysis_id: str,
     request_type: str = None,
     new_data: Dict = None,
-    overwrite_key: str = None,
 ) -> Dict:
     """Update analysis data in the database."""
     async with AsyncSession(engine) as session:
-        try:
-            result = await session.execute(
-                select(Analyses).where(Analyses.analysis_id == analysis_id)
-            )
-            analysis = result.scalar_one_or_none()
-            if not analysis:
-                return "Analysis not found", None
-            if request_type == "clarify":
-                current_data = analysis.clarify or []
-                current_data.append(new_data)
-                analysis.clarify = current_data
+        async with session.begin():
+            try:
+                result = await session.execute(
+                    select(Analyses).where(Analyses.analysis_id == analysis_id)
+                )
+                analysis = result.scalar_one_or_none()
+                if not analysis:
+                    return "Analysis not found", None
+                if request_type == "clarify":
+                    analysis.clarify = new_data
 
-            elif request_type == "gen_steps":
-                current_data = analysis.gen_steps or []
-                current_data.append(new_data)
-                analysis.gen_steps = current_data
+                elif request_type == "gen_steps":
+                    analysis.gen_steps = new_data
 
-            elif overwrite_key:
-                setattr(analysis, overwrite_key, new_data)
-
-            data = analysis_data_from_row(analysis)
-            await session.commit()
-            return data
-        except Exception as e:
-            LOGGER.error(f"Error updating analysis data: {e}")
-            await session.rollback()
-            raise
+                data = analysis_data_from_row(analysis)
+                return data
+            except Exception as e:
+                LOGGER.error(f"Error updating analysis data: {e}")
+                raise
 
 
 def analysis_data_from_row(row):
