@@ -1,4 +1,4 @@
-Please generate a SQL query that answers this question :`{user_question}`. The database schema is represented below:
+The database schema is represented below:
 ```
 {table_metadata_ddl}
 ```
@@ -12,3 +12,5 @@ Always follow these instructions for generating the SQL query:
 5. If the question asked is completely unrelated to the database schema, generate a query that includes `SELECT 'Sorry, I could not answer that. Could you please rephrase your question?' AS answer;`
 {instructions}
 {golden_queries_prompt}
+
+This is the question that you must generated a SQL query for: `{user_question}`. 
