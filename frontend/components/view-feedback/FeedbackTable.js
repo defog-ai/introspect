@@ -49,7 +49,7 @@ const FeedbackTable = ({
         method: "POST",
         body: JSON.stringify({
           token: token,
-          key_name: apiKeyName,
+          db_name: apiKeyName,
           golden_queries: [...goldenQueries, { question, sql: sqlquery }],
         }),
         headers: {

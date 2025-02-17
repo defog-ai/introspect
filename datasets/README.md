@@ -21,7 +21,7 @@ sudo apt install postgresql-client
 
 ### Postgres
 
-Assuming you have Postgres installed and running, with `defog_db_creds` updated,
+Assuming you have Postgres installed and running, with `db_creds` updated,
 
 ```bash
 psql -U postgres -d tickit -h localhost -1 -f fname.sql

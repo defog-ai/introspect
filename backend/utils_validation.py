@@ -18,7 +18,7 @@ run_query_semaphore = Semaphore(3)
 
 
 async def run_query(
-    api_key: str, question: str, db_type: str, previous_context: list[str] = []
+    db_name: str, question: str, db_type: str, previous_context: list[str] = []
 ):
     """
     Send the data to the Defog servers, and get a response from it.
@@ -32,7 +32,7 @@ async def run_query(
     res = await make_request(
         url=generate_query_url,
         data={
-            "api_key": api_key,
+            "api_key": db_name,  # our backend uses api_key as db_name
             "question": question,
             "previous_context": previous_context,
             "db_type": db_type,

@@ -6,12 +6,12 @@ class UserRequest(BaseModel):
     """
     Request model for user requests.
     `token` is used for authentication.
-    `key_name` defines a given user profile, which is a set of metadata, glossary,
+    `db_name` defines a given user profile, which is a set of metadata, glossary,
     golden queries, database credentials, etc.
     """
 
     token: str
-    key_name: str
+    db_name: str
 
 
 class LoginRequest(BaseModel):
@@ -48,7 +48,7 @@ class MetadataUpdateRequest(UserRequest):
             "examples": [
                 {
                     "token": "my_token",
-                    "key_name": "my_key_name",
+                    "db_name": "my_key_name",
                     "metadata": [
                         {
                             "table_name": "users_table",
@@ -75,9 +75,30 @@ class MetadataGenerateRequest(UserRequest):
             "examples": [
                 {
                     "token": "my_token",
-                    "key_name": "my_key_name",
+                    "db_name": "my_key_name",
                     "tables": ["users_table", "orders_table"],
                 }
             ]
         }
     }
+
+
+class InstructionsUpdateRequest(UserRequest):
+    """
+    Request model for updating instructions.
+    """
+
+    instructions: str
+
+
+class GoldenQuery(BaseModel):
+    question: str
+    sql: str
+
+
+class GoldenQueriesUpdateRequest(UserRequest):
+    """
+    Request model for updating golden queries.
+    """
+
+    golden_queries: list[GoldenQuery]

@@ -48,31 +48,31 @@ users = [
 ]
 databases = [
     {
-        "api_key": "Card",
-        "database": "card",
+        "db_name": "Card",   # db_name is what we typically call api_key
+        "database": "card",  # name of the database in defog-data
     },
     {
-        "api_key": "Housing",
+        "db_name": "Housing",
         "database": "housing",
     },
     {
-        "api_key": "Restaurant",
+        "db_name": "Restaurant",
         "database": "restaurants",
     },
     {
-        "api_key": "Macmillan",
+        "db_name": "Macmillan",
         "database": "macmillan",
     },
     {
-        "api_key": "Macmillan",
+        "db_name": "Macmillan",
         "database": "macmillan",
     },
     {
-        "api_key": "Webshop",
+        "db_name": "Webshop",
         "database": "webshop",
     },
     {
-        "api_key": "Cricket",
+        "db_name": "Cricket",
         "database": "cricket",
     },
 ]
@@ -139,32 +139,32 @@ with engine.begin() as conn:
         print(f"Token to use for {username}: {hashed_password}")
 
     for db in databases:
-        api_key = db["api_key"]
+        db_name = db["db_name"]
         database = db["database"]
         # check if db_creds exists and update
         db_creds = conn.execute(
-            select(DbCreds.db_creds).where(DbCreds.api_key == api_key)
+            select(DbCreds.db_creds).where(DbCreds.db_name == db_name)
         ).fetchone()
         if db_creds:
             db_creds = copy.deepcopy(DB_CREDS)
             db_creds["database"] = database
             conn.execute(
                 update(DbCreds)
-                .where(DbCreds.api_key == api_key)
+                .where(DbCreds.db_name == db_name)
                 .values(
                     db_creds=db_creds,
                     db_type="postgres",
                 )
             )
-            print(f"DbCreds for api_key={api_key} updated.")
+            print(f"DbCreds for db_name={db_name} updated.")
         else:
             db_creds = copy.deepcopy(DB_CREDS)
             db_creds["database"] = database
             conn.execute(
                 insert(DbCreds).values(
-                    api_key=api_key,
+                    db_name=db_name,
                     db_creds=db_creds,
                     db_type="postgres",
                 )
             )
-            print(f"DbCreds for api_key={api_key} created.")
+            print(f"DbCreds for db_name={db_name} created.")

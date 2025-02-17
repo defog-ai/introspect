@@ -1,11 +1,8 @@
 import os
 import time
-import traceback
 
+from db_models import Metadata
 from sqlalchemy import create_engine, insert
-import requests
-
-from db_models import DefogMetadata
 
 SALT = "TOMRIDDLEISVOLDEMORT"
 
@@ -103,8 +100,8 @@ try:
         for table in restaurant_metadata:
             for column in restaurant_metadata[table]:
                 conn.execute(
-                    insert(DefogMetadata).values(
-                        api_key=restaurant_api_key,
+                    insert(Metadata).values(
+                        db_name=restaurant_api_key,
                         table_name=table,
                         column_name=column["column_name"],
                         data_type=column["data_type"],
@@ -112,7 +109,7 @@ try:
                     )
                 )
 except Exception as e:
-    print(f"Error inserting metadata for ({restaurant_api_key}) into defog_metadata")
+    print(f"Error inserting metadata for ({restaurant_api_key}) into metadata")
 
 
 # insert metadata for accounts
@@ -197,8 +194,8 @@ try:
         for table in accounts_metadata:
             for column in accounts_metadata[table]:
                 conn.execute(
-                    insert(DefogMetadata).values(
-                        api_key=accounts_api_key,
+                    insert(Metadata).values(
+                        db_name=accounts_api_key,
                         table_name=table,
                         column_name=column["column_name"],
                         data_type=column["data_type"],
@@ -206,7 +203,7 @@ try:
                     )
                 )
 except Exception as e:
-    print(f"Error inserting metadata for ({accounts_api_key}) into defog_metadata")
+    print(f"Error inserting metadata for ({accounts_api_key}) into metadata")
 
 
 accounts_metadata_imported = {
@@ -235,7 +232,7 @@ accounts_metadata_imported = {
 #     ...
 # except Exception as e:
 #     print(
-#         f"Error inserting metadata for ({restaurant_api_key}) into defog_metadata"
+#         f"Error inserting metadata for ({restaurant_api_key}) into metadata"
 #     )
 
 
@@ -584,8 +581,8 @@ try:
         for table in housing_metadata:
             for column in housing_metadata[table]:
                 conn.execute(
-                    insert(DefogMetadata).values(
-                        api_key=housing_api_key,
+                    insert(Metadata).values(
+                        db_name=housing_api_key,
                         table_name=table,
                         column_name=column["column_name"],
                         data_type=column["data_type"],
@@ -593,7 +590,7 @@ try:
                     )
                 )
 except Exception as e:
-    print(f"Error inserting metadata for ({housing_api_key}) into defog_metadata")
+    print(f"Error inserting metadata for ({housing_api_key}) into metadata")
 
 
 # insert metadata for webshop
@@ -992,8 +989,8 @@ try:
         for table in webshop_metadata:
             for column in webshop_metadata[table]:
                 conn.execute(
-                    insert(DefogMetadata).values(
-                        api_key=webshop_api_key,
+                    insert(Metadata).values(
+                        db_name=webshop_api_key,
                         table_name=table,
                         column_name=column["column_name"],
                         data_type=column["data_type"],
@@ -1001,7 +998,7 @@ try:
                     )
                 )
 except Exception as e:
-    print(f"Error inserting metadata for ({webshop_api_key}) into defog_metadata")
+    print(f"Error inserting metadata for ({webshop_api_key}) into metadata")
 
 
 # Insert metadata for cricket
@@ -1203,8 +1200,8 @@ try:
         for table in cricket_metadata:
             for column in cricket_metadata[table]:
                 conn.execute(
-                    insert(DefogMetadata).values(
-                        api_key=cricket_api_key,
+                    insert(Metadata).values(
+                        db_name=cricket_api_key,
                         table_name=table,
                         column_name=column["column_name"],
                         data_type=column["data_type"],
@@ -1212,4 +1209,4 @@ try:
                     )
                 )
 except Exception as e:
-    print(f"Error inserting metadata for ({cricket_api_key}) into defog_metadata")
+    print(f"Error inserting metadata for ({cricket_api_key}) into metadata")

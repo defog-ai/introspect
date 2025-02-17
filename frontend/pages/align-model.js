@@ -62,6 +62,7 @@ const AlignModel = () => {
     setToken(token);
 
     // after 100ms, get the glossary and golden queries
+    if (!apiKeyName) return;
     getGlossaryGoldenQueries(devMode);
   }, [devMode, apiKeyName]);
 
@@ -75,8 +76,9 @@ const AlignModel = () => {
     const token = localStorage.getItem("defogToken");
     console.log("Right now, devMode is", dev);
     try {
-      const res = await fetch(
-        setupBaseUrl("http", `integration/get_glossary_golden_queries`),
+      // get instructions
+      const instructionsRes = await fetch(
+        setupBaseUrl("http", `integration/get_instructions`),
         {
           method: "POST",
           headers: {
@@ -84,15 +86,31 @@ const AlignModel = () => {
           },
           body: JSON.stringify({
             token,
-            dev: dev,
-            key_name: apiKeyName,
+            db_name: apiKeyName,
           }),
         }
       );
-      const data = await res.json();
-      setCompulsoryGlossary(data.glossary_compulsory);
-      setPrunableGlossary(data.glossary_prunable_units);
-      setGoldenQueries(data.golden_queries);
+      const instructionsData = await instructionsRes.json();
+      // map instructions to compulsory glossary
+      setCompulsoryGlossary(instructionsData.instructions);
+      
+      // get golden queries
+      const goldenQueriesRes = await fetch(
+        setupBaseUrl("http", `integration/get_golden_queries`),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            db_name: apiKeyName,
+          }),
+        }
+      );
+      const goldenQueriesData = await goldenQueriesRes.json();
+      setGoldenQueries(goldenQueriesData.golden_queries);
+
       setIsLoading(false);
     } catch (e) {
       console.error(e);
@@ -110,18 +128,16 @@ const AlignModel = () => {
   ) => {
     setLoading(true);
     const res = await fetch(
-      setupBaseUrl("http", `integration/update_glossary`),
+      setupBaseUrl("http", `integration/update_instructions`),
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          glossary_compulsory: compulsoryGlossary,
-          glossary_prunable_units: prunableGlossary,
+          instructions: compulsoryGlossary,
           token,
-          dev: devMode,
-          key_name: apiKeyName,
+          db_name: apiKeyName,
         }),
       }
     );
@@ -144,9 +160,8 @@ const AlignModel = () => {
           },
           body: JSON.stringify({
             token,
+            db_name: apiKeyName,
             golden_queries: goldenQueries,
-            dev: devMode,
-            key_name: apiKeyName,
           }),
         }
       );
@@ -175,7 +190,7 @@ const AlignModel = () => {
           },
           body: JSON.stringify({
             token: token,
-            key_name: apiKeyName,
+            db_name: apiKeyName,
             metadata: metadata,
           }),
         }

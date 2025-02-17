@@ -3,7 +3,6 @@ import traceback
 from fastapi import APIRouter, Request
 from agents.planner_executor.planner_executor_agent import rerun_step
 import logging
-from generic_utils import get_api_key_from_key_name
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,8 +23,7 @@ async def download_csv(request: Request):
         step_id = data.get("step_id")
         output_storage_key = data.get("output_storage_key")
         analysis_id = data.get("analysis_id")
-        key_name = data.get("key_name")
-        api_key = get_api_key_from_key_name(key_name)
+        db_name = data.get("key_name")
 
         if step_id is None or type(step_id) != str:
             return {"success": False, "error_message": "Invalid tool run id."}
@@ -62,7 +60,7 @@ async def download_csv(request: Request):
         analysis_data = await rerun_step(
             step=target_step,
             all_steps=all_steps,
-            dfg_api_key=api_key,
+            db_name=db_name,
             analysis_id=analysis_id,
             user_question=None,
             dev=False,

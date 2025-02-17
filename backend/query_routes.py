@@ -20,8 +20,7 @@ async def query(request: Request):
     dev = body.get("dev", False)
     key_name = body.get("key_name")
     glossary = body.get("glossary", "")
-    api_key = get_api_key_from_key_name(key_name)
-    res = await get_db_type_creds(api_key)
+    res = await get_db_type_creds(key_name)
 
     if res:
         db_type, db_creds = res
@@ -44,7 +43,7 @@ async def query(request: Request):
         flush=True,
     )
 
-    defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
+    defog = Defog(api_key=key_name, db_type=db_type, db_creds=db_creds)
     defog.base_url = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
     defog.generate_query_url = os.environ.get(
         "DEFOG_GENERATE_URL", f"{defog.base_url}/generate_query_chat"

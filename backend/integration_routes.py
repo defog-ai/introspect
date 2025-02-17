@@ -16,7 +16,6 @@ from defog.query import execute_query
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from generic_utils import (
-    format_sql,
     get_api_key_from_key_name,
     make_request,
 )
@@ -41,46 +40,44 @@ router = APIRouter(
 
 @router.post("/integration/get_tables_db_creds")
 async def get_tables_db_creds(req: UserRequest):
-    res = await get_db_type_creds(req.key_name)
+    res = await get_db_type_creds(req.db_name)
+    LOGGER.info(f"Res: {res}")
+    if not res:
+        return {"error": "No database credentials found"}
+    db_type, db_creds = res
+    defog = Defog(api_key=req.db_name, db_type=db_type, db_creds=db_creds)
+    table_names = await asyncio.to_thread(
+        defog.generate_db_schema,
+        tables=[],
+        upload=False,
+        scan=False,
+        return_tables_only=True,
+    )
 
-    if res:
-        db_type, db_creds = res
-        defog = Defog(api_key=req.key_name, db_type=db_type, db_creds=db_creds)
-        defog.base_url = DEFOG_BASE_URL
-        table_names = await asyncio.to_thread(
-            defog.generate_db_schema,
-            tables=[],
-            upload=False,
-            scan=False,
-            return_tables_only=True,
-        )
+    db_type = defog.db_type
+    db_creds = defog.db_creds
 
-        db_type = defog.db_type
-        db_creds = defog.db_creds
-
-        # get selected_tables from file. this is a legacy way of keeping track
-        # of tables that the user has selected to add to the metadata
-        # ideally we'd want this to be stored somewhere more persistent like in
-        # the database, but we just keep it around for now to avoid breaking changes
-        selected_tables_path = os.path.join(defog_path, f"selected_tables_{req.key_name}.json")
-        if os.path.exists(selected_tables_path):
-            with open(selected_tables_path, "r") as f:
-                selected_tables_saved = json.load(f)
-                if isinstance(selected_tables_saved, list):
-                    selected_tables = selected_tables_saved
-                else:
-                    selected_tables = table_names
-        else:
-            selected_tables = table_names
-
-        return {
-            "tables": table_names,
-            "db_creds": db_creds,
-            "db_type": db_type,
-            "selected_tables": selected_tables,
-        }
+    # get selected_tables from file. this is a legacy way of keeping track
+    # of tables that the user has selected to add to the metadata
+    # ideally we'd want this to be stored somewhere more persistent like in
+    # the database, but we just keep it around for now to avoid breaking changes
+    selected_tables_path = os.path.join(defog_path, f"selected_tables_{req.db_name}.json")
+    if os.path.exists(selected_tables_path):
+        with open(selected_tables_path, "r") as f:
+            selected_tables_saved = json.load(f)
+            if isinstance(selected_tables_saved, list):
+                selected_tables = selected_tables_saved
+            else:
+                selected_tables = table_names
     else:
-        return {"error": "no db creds found"}
+        selected_tables = table_names
+
+    return {
+        "tables": table_names,
+        "db_creds": db_creds,
+        "db_type": db_type,
+        "selected_tables": selected_tables,
+    }
 
 
 @router.post("/integration/validate_db_connection")
@@ -96,13 +93,12 @@ async def validate_db_connection(request: Request):
         db_creds["json_key_path"] = "./bq.json"
 
     key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
     sql_query = "SELECT 'test';"
     try:
         await asyncio.to_thread(
             execute_query,
             sql_query,
-            api_key,
+            key_name,
             db_type,
             db_creds,
             retries=0,
@@ -123,7 +119,6 @@ async def validate_db_connection(request: Request):
 async def update_db_creds(request: Request):
     params = await request.json()
     key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
     db_type = params.get("db_type")
     db_creds = params.get("db_creds")
     for k in ["api_key", "db_type"]:
@@ -140,233 +135,11 @@ async def update_db_creds(request: Request):
         db_creds["json_key_path"] = os.path.join(defog_path, fname)
 
     success = await update_db_type_creds(
-        api_key=api_key, db_type=db_type, db_creds=db_creds
+        db_name=key_name, db_type=db_type, db_creds=db_creds
     )
     print(success)
 
     return {"success": True}
-
-
-@router.post("/integration/get_glossary_golden_queries")
-async def get_glossary_golden_queries(request: Request):
-    params = await request.json()
-    token = params.get("token")
-    dev = params.get("dev", False)
-    if not (await validate_user(token)):
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
-    res = await get_db_type_creds(api_key)
-    if res:
-        db_type, db_creds = res
-    else:
-        return {"error": "no db creds found"}
-
-    # get glossary
-    url = DEFOG_BASE_URL + "/get_glossary"
-    resp = await make_request(url, {"api_key": api_key, "dev": dev})
-    resp = resp.get("glossary", {})
-
-    # for backwards compatibility
-    glossary = resp.get("glossary", "")
-    glossary_compulsory = resp.get("glossary_compulsory", "")
-    if not glossary_compulsory:
-        glossary_compulsory = ""
-    glossary_prunable_units = resp.get("glossary_prunable_units", [])
-    if not glossary_prunable_units:
-        glossary_prunable_units = []
-    glossary_prunable_units = "\n".join(glossary_prunable_units)
-    # for backwards compatibility
-    # if `glossary` is non empty and glossary compulsory is empty, set glossary compulsory to glossary
-    if glossary_compulsory == "" and glossary != "":
-        glossary_compulsory = glossary
-
-    # get golden queries
-    url = DEFOG_BASE_URL + "/get_golden_queries"
-    resp = await make_request(url, {"api_key": api_key, "dev": dev})
-    golden_queries = resp.get("golden_queries", [])
-    for item in golden_queries:
-        item["sql"] = format_sql(item["sql"])
-
-    return {
-        "glossary_compulsory": glossary_compulsory,
-        "glossary_prunable_units": glossary_prunable_units,
-        "golden_queries": golden_queries,
-    }
-
-
-@router.post("/integration/update_glossary")
-async def update_glossary(request: Request):
-    params = await request.json()
-    token = params.get("token")
-    if not (await validate_user(token)):
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
-    res = await get_db_type_creds(api_key)
-    if res:
-        db_type, db_creds = res
-    else:
-        return {"error": "no db creds found"}
-
-    append = params.get("append", False)
-
-    if not append:
-        # completely overwrite the existing glossary
-        glossary_compulsory = params.get("glossary_compulsory", "")
-        glossary_prunable_units = params.get("glossary_prunable_units", "")
-        dev = params.get("dev", False)
-
-        glossary_prunable_units = glossary_prunable_units.split("\n")
-
-        url = DEFOG_BASE_URL + "/update_glossary"
-        r = await make_request(
-            url,
-            {
-                "api_key": api_key,
-                "glossary_compulsory": glossary_compulsory,
-                "glossary_prunable_units": glossary_prunable_units,
-                "dev": dev,
-            },
-        )
-    else:
-        dev = params.get("dev", False)
-        # first, get the existing glossary
-        url = DEFOG_BASE_URL + "/get_glossary"
-        resp = await make_request(url, {"api_key": api_key, "dev": dev})
-        resp = resp.get("glossary", {})
-        glossary = resp.get("glossary", "")
-        glossary_compulsory = resp.get("glossary_compulsory", "")
-        glossary_prunable_units = resp.get("glossary_prunable_units", [])
-        # for backwards compatibility
-        # if `glossary` is non empty and glossary compulsory is empty, set glossary compulsory to glossary
-        if glossary_compulsory == "" and glossary != "":
-            glossary_compulsory = glossary
-
-        new_instructions = params.get("new_instructions")
-        if new_instructions:
-            glossary_prunable_units += new_instructions.split("\n")
-
-        url = DEFOG_BASE_URL + "/update_glossary"
-        r = await make_request(
-            url,
-            {
-                "api_key": api_key,
-                "glossary_compulsory": glossary_compulsory,
-                "glossary_prunable_units": glossary_prunable_units,
-                "dev": dev,
-            },
-        )
-    return r
-
-
-@router.post("/integration/update_golden_queries")
-async def update_golden_queries(request: Request):
-    params = await request.json()
-    token = params.get("token")
-    if not (await validate_user(token)):
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
-    res = await get_db_type_creds(api_key)
-    if res:
-        db_type, db_creds = res
-    else:
-        return {"error": "no db creds found"}
-
-    golden_queries = params.get("golden_queries")
-    dev = params.get("dev", False)
-
-    # first, delete the existing golden queries
-    url = DEFOG_BASE_URL + "/delete_golden_queries"
-    r = await make_request(url, {"api_key": api_key, "dev": dev, "all": True})
-
-    # now, update the golden queries
-    url = DEFOG_BASE_URL + "/update_golden_queries"
-    r = await make_request(
-        url,
-        {
-            "api_key": api_key,
-            "golden_queries": golden_queries,
-            "dev": dev,
-            "scrub": False,
-        },
-    )
-    return r
-
-
-@router.post("/integration/update_single_golden_query")
-async def update_single_golden_query(request: Request):
-    params = await request.json()
-    token = params.get("token")
-    if not (await validate_user(token)):
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
-
-    dev = params.get("dev", False)
-    question = params.get("question")
-    sql = params.get("sql")
-
-    if question is None:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "question is required"},
-        )
-
-    if sql is None:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "sql is required"},
-        )
-
-    print("Updating golden query for a question", flush=True)
-
-    # update the golden query
-    url = DEFOG_BASE_URL + "/update_golden_queries"
-    r = await make_request(
-        url,
-        {
-            "api_key": api_key,
-            "golden_queries": [
-                {
-                    "question": question,
-                    "sql": sql,
-                }
-            ],
-            "dev": dev,
-            "scrub": False,
-        },
-    )
-    return r
 
 
 @router.post("/integration/preview_table")

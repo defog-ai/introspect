@@ -1,19 +1,19 @@
-from fastapi import APIRouter, Request
-import os
-from slack_sdk.web.async_client import AsyncWebClient
-from auth_utils import validate_user_email
-from generic_utils import get_api_key_from_key_name
-from db_utils import get_db_type_creds
-from feedback_routes import send_feedback
-import re
+import asyncio
 import json
+import os
+import re
 
+import pandas as pd
+from auth_utils import validate_user_email
+from db_utils import get_db_type_creds
+from defog import Defog
+from fastapi import APIRouter, Request
+from generic_utils import get_api_key_from_key_name, make_request
+from slack_sdk.web.async_client import AsyncWebClient
+
+DEFOG_BASE_URL = os.getenv("DEFOG_BASE_URL")
 slack_client = AsyncWebClient(token=os.environ["SLACK_BOT_TOKEN"])
 router = APIRouter()
-
-from defog import Defog
-import pandas as pd
-import asyncio
 
 
 @router.post("/slack/events")
@@ -393,3 +393,27 @@ async def fetch_previous_thread_messages(channel_id, thread_ts):
             prev_context.append(sql)
 
     return prev_context
+
+async def send_feedback(params_obj):
+    """
+    Sends the feedback to the api.defog.ai endpoint.
+
+    Args:
+        params_obj (dict): A dictionary containing key-value pairs representing feedback details.
+            The dictionary should have the following keys:
+            - 'api_key' (str): The API key for authentication.
+            - 'feedback' (str): The type of feedback: 'Good' or 'Bad'.
+            - 'text' (str): Feedback text provided by the user; empty if the feedback is 'Good'.
+            - 'dev' (bool): Indicates if the feedback is being sent in development mode.
+            - 'response' (dict): A dictionary representing the response object related to the feedback.
+                This dictionary must contain the following keys:
+                - 'question' (str): The question asked by the user.
+                - 'questionId' (str): The unique identifier for the question.
+                - 'generatedSQL' (str): The SQL query generated in response to the question.
+    Returns:
+        response (dict): The response object from the API request with desired "status" key with value "received".
+
+    """
+    url = DEFOG_BASE_URL + "/feedback"
+    res = await make_request(url, data=params_obj)
+    return res

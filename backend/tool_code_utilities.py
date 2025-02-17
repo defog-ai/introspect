@@ -30,7 +30,7 @@ def safe_sql(query):
 
 
 async def fetch_query_into_df(
-    api_key: str, sql_query: str, temp: bool = False
+    db_name: str, sql_query: str, temp: bool = False
 ) -> pd.DataFrame:
     """
     Runs a sql query and stores the results in a pandas dataframe.
@@ -39,7 +39,7 @@ async def fetch_query_into_df(
     # important note: this is currently a blocking call
     # TODO: add an option to the defog library to make this async
     if not temp:
-        res = await get_db_type_creds(api_key)
+        res = await get_db_type_creds(db_name)
         db_type, db_creds = res
     else:
         db_type = "postgres"
@@ -57,7 +57,7 @@ async def fetch_query_into_df(
 
     colnames, data, new_sql_query = await async_execute_query(
         query=sql_query,
-        api_key=api_key,
+        db_name=db_name,
         db_type=db_type,
         db_creds=db_creds,
         retries=2,

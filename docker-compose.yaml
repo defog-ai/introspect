@@ -1,7 +1,7 @@
 version: "3"
 services:
   agents-postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg17
     networks:
       - agents-network
     environment:

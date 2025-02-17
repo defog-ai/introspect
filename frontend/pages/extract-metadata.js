@@ -98,7 +98,7 @@ const ExtractMetadata = () => {
         method: "POST",
         body: JSON.stringify({
           token,
-          key_name: apiKeyName,
+          db_name: apiKeyName,
         }),
         headers: {
           "Content-Type": "application/json",
@@ -130,7 +130,7 @@ const ExtractMetadata = () => {
       method: "POST",
       body: JSON.stringify({
         token,
-        key_name: apiKeyName,
+        db_name: apiKeyName,
       }),
       headers: {
         "Content-Type": "application/json",

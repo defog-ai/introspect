@@ -66,7 +66,7 @@ const MetadataTable = ({
       },
       body: JSON.stringify({
         token,
-        key_name: apiKeyName,
+        db_name: apiKeyName,
       }),
     });
     // check if the response has status 200
@@ -96,7 +96,7 @@ const MetadataTable = ({
           body: JSON.stringify({
             metadata: metadata,
             token: token,
-            key_name: apiKeyName,
+            db_name: apiKeyName,
           }),
         }
       );
@@ -168,7 +168,7 @@ const MetadataTable = ({
           body: JSON.stringify({
             tables: selectedTablesForIndexing,
             token: token,
-            key_name: apiKeyName,
+            db_name: apiKeyName,
           }),
         }
       );
@@ -311,7 +311,7 @@ const MetadataTable = ({
         },
         body: JSON.stringify({
           token: token,
-          key_name: apiKeyName,
+          db_name: apiKeyName,
           format: "csv",
         }),
       }
@@ -353,7 +353,7 @@ const MetadataTable = ({
             },
             body: JSON.stringify({
               token: token,
-              key_name: apiKeyName,
+              db_name: apiKeyName,
               metadata_csv: metadataCsv,
             }),
           }

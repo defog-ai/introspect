@@ -124,7 +124,10 @@ const ViewFeedback = () => {
     return glossary;
   };
 
-  const fetchGoldenQueries = async (token, apiKeyName) => {
+  const getGoldenQueries = async () => {
+    if (!token || !apiKeyName) {
+      return;
+    }
     const res = await fetch(
       setupBaseUrl("http", `integration/get_glossary_golden_queries`),
       {
@@ -138,16 +141,13 @@ const ViewFeedback = () => {
         },
       }
     );
-    const data = await res.json();
-    return data["golden_queries"];
-  };
-
-  const getGoldenQueries = async () => {
-    if (!token || !apiKeyName) {
-      return;
+    if (!res.ok) {
+      throw new Error(
+        "Failed to get golden queries - are you sure your network is working?"
+      );
     }
-    const { goldenQueries } = await fetchGoldenQueries(token, apiKeyName);
-    setGoldenQueries(goldenQueries);
+    const data = await res.json();
+    setGoldenQueries(data["golden_queries"]);
   };
 
   const handleNegativeFeedback = async (question, sqlQuery, userFeedback) => {

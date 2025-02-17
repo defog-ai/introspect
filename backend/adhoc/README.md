@@ -33,3 +33,10 @@ $ docker exec -it defog-self-hosted-agents-python-server-1 /bin/bash -c "python 
 ```
 
 This script is idempotent, so it can be run multiple times without any issues. We will update the existing users and db creds if they already exist, instead of throwing an error or creating duplicates.
+
+We can also insert metadata for the imported tables. This script is idempotent, so it can be run multiple times without any issues. We will update the existing metadata if it already exists, instead of throwing an error or creating duplicates.
+
+```sh
+$ docker exec -it defog-self-hosted-agents-python-server-1 /bin/bash -c "python adhoc/insert_metadata.py"
+```
+

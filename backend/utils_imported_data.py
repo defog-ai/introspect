@@ -54,7 +54,7 @@ def get_source_type(link: str) -> str:
 
 
 def update_imported_tables_db(
-    api_key: str,
+    db_name: str,
     link: str,
     table_index: int,
     new_table_name: str,
@@ -100,7 +100,7 @@ def update_imported_tables_db(
 
     # check if link and table_index already exist in imported_tables table
     stmt = select(ImportedTables.table_name).where(
-        ImportedTables.api_key == api_key,
+        ImportedTables.db_name == db_name,
         ImportedTables.table_link == link,
         ImportedTables.table_position == table_index,
     )
@@ -163,7 +163,7 @@ def update_imported_tables_db(
 
 
 def update_imported_tables(
-    api_key: str,
+    db_name: str,
     link: str,
     table_index: int,
     old_table_name: Optional[str],
@@ -181,7 +181,7 @@ def update_imported_tables(
             update_stmt = (
                 update(ImportedTables)
                 .where(
-                    ImportedTables.api_key == api_key,
+                    ImportedTables.db_name == db_name,
                     ImportedTables.table_link == link,
                     ImportedTables.table_position == table_index,
                 )
@@ -201,7 +201,7 @@ def update_imported_tables(
         try:
             # insert the table's info into imported_tables table
             table_data = {
-                "api_key": api_key,
+                "db_name": db_name,
                 "table_link": link,
                 "table_position": table_index,
                 "table_name": table_name,

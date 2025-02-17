@@ -12,7 +12,7 @@ from utils_logging import LOGGER
 
 
 async def initialise_analysis(
-    user_question, token, api_key, custom_id=None, other_initialisation_details={}
+    user_question, token, db_name, custom_id=None, other_initialisation_details={}
 ):
     user = await validate_user(token)
     if not user:
@@ -25,7 +25,7 @@ async def initialise_analysis(
     new_analysis_data = None
 
     try:
-        """Create a new analyis in the defog_analyses table"""
+        """Create a new analyis in the analyses table"""
         async with engine.begin() as conn:
             if not custom_id or custom_id == "":
                 analysis_id = str(uuid.uuid4())
@@ -36,7 +36,7 @@ async def initialise_analysis(
                 "user_question": user_question,
                 "timestamp": timestamp,
                 "analysis_id": analysis_id,
-                "api_key": api_key,
+                "db_name": db_name,
                 "username": username,
             }
             if (

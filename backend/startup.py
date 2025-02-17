@@ -5,7 +5,7 @@ from typing import Union
 from auth_utils import get_hashed_password, login_user
 from db_models import Base, ImportedTables, Users
 from fastapi import FastAPI
-from sqlalchemy import Engine, insert
+from sqlalchemy import Engine, insert, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.ext.automap import automap_base
 from utils_logging import LOGGER
@@ -20,21 +20,21 @@ from utils_logging import LOGGER
 
 
 async def init_db(
-    engine: Union[AsyncEngine, Engine], imported_tables_engine: Engine | None
+    engine: AsyncEngine, imported_tables_engine: Engine | None
 ):
     """
     Initialize database tables
     Args:
         engine: AsyncEngine for main database
-        imported_tables_engine: AsyncEngine for imported tables database, None if not using imported tables
+        imported_tables_engine: Engine for imported tables database, None if not using imported tables
     """
     try:
-        if isinstance(engine, AsyncEngine):
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-        else:
-            Base.metadata.create_all(engine)
-
+        async with engine.begin() as conn:
+            # need to create the vector extension first before creating tables
+            # that contain vector columns
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            await conn.run_sync(Base.metadata.create_all)
+    
         if imported_tables_engine:
             try:
                 ImportedTablesBase = automap_base()

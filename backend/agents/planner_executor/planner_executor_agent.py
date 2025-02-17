@@ -220,7 +220,7 @@ async def generate_assignment_understanding(
     """
     Generates the assignment understanding from the clarification questions.
 
-    And stores in the defog_analyses table.
+    And stores in the analyses table.
     """
     # get the assignment understanding aka answers to clarification questions
     err = None
@@ -248,14 +248,14 @@ async def generate_assignment_understanding(
 
 async def prepare_cache(
     analysis_id,
-    dfg_api_key,
+    db_name,
     user_question,
     dev=False,
     temp=False,
 ):
     reset_indent_level()
     analysis_execution_cache = {}
-    analysis_execution_cache["dfg_api_key"] = dfg_api_key
+    analysis_execution_cache["db_name"] = db_name
     analysis_execution_cache["user_question"] = user_question
     analysis_execution_cache["dev"] = dev
     analysis_execution_cache["temp"] = temp
@@ -300,7 +300,7 @@ async def rerun_step(
     # prepare the cache
     analysis_execution_cache = await prepare_cache(
         analysis_id,
-        dfg_api_key,
+        db_name,
         user_question,
         dev,
         temp,

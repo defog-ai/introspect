@@ -15,7 +15,7 @@ from db_config import (
 )
 from db_models import ImportedTables, OracleSources
 from auth_utils import validate_user
-from generic_utils import get_api_key_from_key_name, make_request
+from generic_utils import make_request
 from utils_imported_data import (
     IMPORTED_SCHEMA,
     get_source_type,
@@ -61,11 +61,11 @@ async def sources_list_route(req: SourcesListRequest):
                 "message": "Invalid username or password",
             },
         )
-    api_key = get_api_key_from_key_name(req.key_name)
+    db_name = req.key_name
     sources = {}
-    # get all sources for api_key from engine
+    # get all sources for db_name from engine
     async with engine.connect() as connection:
-        stmt_sources = select(OracleSources).where(OracleSources.api_key == api_key)
+        stmt_sources = select(OracleSources).where(OracleSources.db_name == db_name)
         result_sources = await connection.execute(stmt_sources)
         result_sources = result_sources.fetchall()
         for source in result_sources:
@@ -76,12 +76,12 @@ async def sources_list_route(req: SourcesListRequest):
                 "tables": [],
             }
     source_links = list(sources.keys())
-    # get all imported tables where api_key matches and link is in source_links
+    # get all imported tables where db_name matches and link is in source_links
     with imported_tables_engine.connect() as connection:
         stmt_list = (
             select(ImportedTables)
             .where(
-                ImportedTables.api_key == api_key,
+                ImportedTables.db_name == db_name,
                 ImportedTables.table_link.in_(source_links),
             )
             .order_by(ImportedTables.table_link, ImportedTables.table_position)
@@ -162,13 +162,14 @@ async def sources_import_route(req: ImportSourcesRequest):
         )
     if not req.links:
         return
-    api_key = get_api_key_from_key_name(req.key_name)
     sources_to_parse = []
     for link in req.links:
         source_type = get_source_type(link)
         sources_to_parse.append({"link": link, "type": source_type})
+    db_name = req.key_name
+
     json_data = {
-        "api_key": api_key,
+        "db_name": db_name,
         "sources": sources_to_parse,
         "resummarize": True,
     }
@@ -183,7 +184,7 @@ async def sources_import_route(req: ImportSourcesRequest):
         if isinstance(attributes, Dict) or isinstance(attributes, List):
             attributes = json.dumps(attributes)
         source_to_insert = {
-            "api_key": api_key,
+            "db_name": db_name,
             "link": source["link"],
             "title": source.get("title", ""),
             "position": source.get("position"),
@@ -199,7 +200,7 @@ async def sources_import_route(req: ImportSourcesRequest):
         # insert the sources into the database if not present. otherwise update
             for source in sources_to_insert:
                 stmt = select(OracleSources).where(
-                    OracleSources.api_key == api_key, OracleSources.link == source["link"]
+                    OracleSources.db_name == db_name, OracleSources.link == source["link"]
                 )
                 result = await session.execute(stmt)
                 if result.scalar() is None:
@@ -210,7 +211,7 @@ async def sources_import_route(req: ImportSourcesRequest):
                     stmt = (
                         update(OracleSources)
                         .where(
-                            OracleSources.api_key == api_key,
+                            OracleSources.db_name == db_name,
                             OracleSources.link == source["link"],
                         )
                         .values(source)
@@ -233,7 +234,7 @@ async def sources_import_route(req: ImportSourcesRequest):
                 )
                 continue
             table_data = {
-                "api_key": api_key,
+                "db_name": db_name,
                 "all_rows": [table["column_names"]] + table["rows"],
                 "previous_text": table.get("previous_text"),
             }
@@ -282,7 +283,7 @@ async def sources_import_route(req: ImportSourcesRequest):
             # create the table and insert the data into imported_tables database, parsed schema
             data = [column_names] + rows
             success, old_table_name = update_imported_tables_db(
-                api_key, link, table_index, table_name, data, IMPORTED_SCHEMA
+                db_name, link, table_index, table_name, data, IMPORTED_SCHEMA
             )
             if not success:
                 LOGGER.error(
@@ -291,7 +292,7 @@ async def sources_import_route(req: ImportSourcesRequest):
                 continue
             # update the imported_tables table in internal db
             update_imported_tables(
-                api_key,
+                db_name,
                 link,
                 table_index,
                 old_table_name,
@@ -310,14 +311,14 @@ async def sources_import_route(req: ImportSourcesRequest):
     # get and update metadata if inserted_tables is not empty
     if inserted_tables:
         response = await make_request(
-            DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "imported": True}
+            DEFOG_BASE_URL + "/get_metadata", {"db_name": db_name, "imported": True}
         )
         md = response.get("table_metadata", {}) if response else {}
         md.update(inserted_tables)
         response = await make_request(
             DEFOG_BASE_URL + "/update_metadata",
             {
-                "api_key": api_key,
+                "db_name": db_name,
                 "table_metadata": md,
                 "db_type": INTERNAL_DB,
                 "imported": True,
@@ -325,10 +326,10 @@ async def sources_import_route(req: ImportSourcesRequest):
         )
         if response.get("status") == "success":
             task = populate_default_guidelines_task.apply_async(
-                args=[api_key]
+                args=[db_name],
             )
-            LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for api_key {api_key}")
-        LOGGER.info(f"Updated metadata for api_key {api_key}")
+            LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for db_name {db_name}")
+        LOGGER.info(f"Updated metadata for db_name {db_name}")
         save_and_log(ts, "Metadata updated", timings)
     else:
         LOGGER.info("No parsed tables to save.")
@@ -371,12 +372,12 @@ async def delete_source(req: DeleteSourceRequest):
                 "message": "Invalid username or password",
             },
         )
-    api_key = get_api_key_from_key_name(req.key_name)
+    db_name = req.key_name
     # delete source from oracle_sources
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = select(OracleSources).where(
-                OracleSources.api_key == api_key, OracleSources.link == req.link
+                OracleSources.db_name == db_name, OracleSources.link == req.link
             )
             result = await session.execute(stmt)
             source = result.fetchone()
@@ -389,7 +390,7 @@ async def delete_source(req: DeleteSourceRequest):
                 },
             )
             stmt = delete(OracleSources).where(
-                OracleSources.api_key == api_key, OracleSources.link == req.link
+                OracleSources.db_name == db_name, OracleSources.link == req.link
             )
             await session.execute(stmt)
     # delete source's tables from imported_tables
@@ -487,9 +488,9 @@ async def imported_tables_create_route(req: CreateImportedTablesRequest):
                 "message": "Invalid username or password",
             },
         )
-    api_key = get_api_key_from_key_name(req.key_name)
+    db_name = req.key_name
     success, old_table_name = update_imported_tables_db(
-        api_key=api_key,
+        db_name==db_name,
         link=req.link,
         table_index=req.table_index,
         new_table_name=req.table_name,
@@ -508,7 +509,7 @@ async def imported_tables_create_route(req: CreateImportedTablesRequest):
     LOGGER.debug(f"Old table name: {old_table_name}")
 
     success = update_imported_tables(
-        api_key=api_key,
+        db_name=db_name,
         link=req.link,
         table_index=req.table_index,
         old_table_name=old_table_name,
@@ -524,7 +525,7 @@ async def imported_tables_create_route(req: CreateImportedTablesRequest):
             },
         )
     infer_request = {
-        "api_key": api_key,
+        "db_name": db_name,
         "all_rows": req.data,
         "previous_text": None,
     }
@@ -571,14 +572,14 @@ async def imported_tables_create_route(req: CreateImportedTablesRequest):
     try:
         response = await make_request(
             url=f"{DEFOG_BASE_URL}/get_metadata",
-            data={"api_key": api_key, "imported": True},
+            data={"db_name": db_name, "imported": True},
         )
         md = response.get("table_metadata", {})
         if old_table_name and old_table_name in md:
             del md[old_table_name]
         md.update(md_new_table)
         update_request = {
-            "api_key": api_key,
+            "db_name": db_name,
             "table_metadata": md,
             "imported": True,
             "db_type": INTERNAL_DB,
@@ -589,9 +590,9 @@ async def imported_tables_create_route(req: CreateImportedTablesRequest):
         )
         if response.get("status") == "success":
             task = populate_default_guidelines_task.apply_async(
-                args=[api_key]
+                args=[db_name]
             )
-            LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for api_key {api_key}")
+            LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for db_name {db_name}")
     except Exception as e:
         LOGGER.error(f"Failed to get and update metadata: {str(e)}")
         return JSONResponse(

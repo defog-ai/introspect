@@ -95,16 +95,16 @@ async def set_guidelines(req: SetGuidelinesRequest):
                     "message": "Invalid username or password",
                 },
             )
-        api_key = get_api_key_from_key_name(req.key_name)
+        db_name = get_api_key_from_key_name(req.key_name)
     else:
-        api_key = req.api_key
+        db_name = req.api_key
 
     column_name = GUIDELINE_TYPE_MAPPING[req.guideline_type]
 
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = await session.execute(
-                select(OracleGuidelines).where(OracleGuidelines.api_key == api_key)
+                select(OracleGuidelines).where(OracleGuidelines.db_name == db_name)
             )
             result = stmt.scalar_one_or_none()
 
@@ -112,7 +112,7 @@ async def set_guidelines(req: SetGuidelinesRequest):
                 # Add new row with the specified guideline
                 await session.execute(
                     insert(OracleGuidelines).values(
-                        api_key=api_key,
+                        db_name=db_name,
                         # this looks hacky, but is a great way to
                         # get the column name neatly into the query
                         # w/o re-writing a lot of boilerplate
@@ -155,18 +155,16 @@ async def get_guidelines(req: GetGuidelinesRequest):
                     "message": "Invalid username or password",
                 },
             )
-        api_key = get_api_key_from_key_name(req.key_name)
+        db_name = get_api_key_from_key_name(req.key_name)
     else:
-        api_key = req.api_key
+        db_name = req.api_key
 
-    stmt = select(OracleGuidelines).where(OracleGuidelines.api_key == api_key)
+    stmt = select(OracleGuidelines).where(OracleGuidelines.db_name == db_name)
     async with AsyncSession(engine) as session:
         result = await session.execute(stmt)
         result = result.scalar_one_or_none()
         if not result:
-            return JSONResponse(
-                status_code=404, content={"error": "Guidelines not found"}
-            )
+            return {"guidelines": ""}
 
         column_name = GUIDELINE_TYPE_MAPPING[req.guideline_type]
         return JSONResponse(content={"guidelines": getattr(result, column_name)})

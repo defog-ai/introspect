@@ -9,7 +9,6 @@ from fastapi.responses import JSONResponse
 from request_models import LoginRequest
 from utils_logging import LOGGER
 
-INTERNAL_API_KEY = "DUMMY_KEY"
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 
 router = APIRouter()
@@ -53,6 +52,7 @@ async def validate_google_token(token: str):
         # ID token is valid. Get the user's Google Account ID from the decoded token.
         user_email = idinfo.get("email")
         hashed_password = get_hashed_username(user_email)
+        LOGGER.info(f"user_email: {user_email}, hashed_password: {hashed_password}")
 
         # Check if user exists
         if await validate_user(hashed_password):

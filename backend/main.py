@@ -2,16 +2,12 @@ import logging
 import os
 import traceback
 
-import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, \
-    feedback_routes, imgo_routes, integration_routes, metadata_routes, oracle_report_routes, \
-    query_routes, readiness_routes, slack_routes, user_history_routes, \
-    imported_tables_routes, oracle_report_routes, oracle_routes, xdb_routes, \
-    tools.tool_routes
+import instructions_routes
+import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, golden_queries_routes, integration_routes, metadata_routes, oracle_report_routes, query_routes, slack_routes, user_history_routes, imported_tables_routes, oracle_report_routes, oracle_routes, xdb_routes, tools.tool_routes
 
 from db_analysis_utils import get_analysis_data, initialise_analysis
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from generic_utils import get_api_key_from_key_name
 from startup import lifespan
 
 logging.basicConfig(level=logging.INFO)
@@ -23,19 +19,18 @@ app.include_router(agent_routes.router)
 app.include_router(auth_routes.router)
 app.include_router(csv_routes.router)
 app.include_router(doc_endpoints.router)
-app.include_router(feedback_routes.router)
-app.include_router(imgo_routes.router)
+app.include_router(golden_queries_routes.router)
 app.include_router(imported_tables_routes.router)
 app.include_router(integration_routes.router)
 app.include_router(metadata_routes.router)
 app.include_router(oracle_report_routes.router)
 app.include_router(oracle_routes.router)
 app.include_router(query_routes.router)
-app.include_router(readiness_routes.router)
 app.include_router(slack_routes.router)
 app.include_router(tools.tool_routes.router)
 app.include_router(user_history_routes.router)
 app.include_router(xdb_routes.router)
+app.include_router(instructions_routes.router)
 from oracle.setup import setup_dir
 
 # check if the oracle directory structure exists and create if not
@@ -53,8 +48,6 @@ app.add_middleware(
 
 request_types = ["clarify", "understand", "gen_steps", "gen_analysis"]
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
-
-
 
 
 @app.get("/ping")
@@ -97,15 +90,13 @@ async def create_analysis(request: Request):
         params = await request.json()
         token = params.get("token")
 
-        key_name = params.get("key_name")
-        api_key = get_api_key_from_key_name(key_name)
-
+        db_name = params.get("key_name")
         print("create_analysis", params)
 
         err, analysis_data = await initialise_analysis(
             user_question="",
             token=token,
-            api_key=api_key,
+            db_name=db_name,
             custom_id=params.get("custom_id"),
             other_initialisation_details=params.get(
                 "initialisation_details",

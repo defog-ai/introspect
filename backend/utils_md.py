@@ -3,14 +3,15 @@
 ########################################
 
 import sqlglot
-from sqlalchemy import delete, insert, select, update
-from db_models import DefogMetadata
+from sqlalchemy import delete, insert, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from db_models import Metadata as DbMetadata # to disambiguate from sqlalchemy's Metadata
 from db_config import engine
 
 
-async def get_metadata(api_key: str) -> list[dict[str, str]]:
+async def get_metadata(db_name: str) -> list[dict[str, str]]:
     """
-    Get metadata for a given API key.
+    Get metadata for a given db name.
     Returns a list of dictionaries, each containing:
         - table_name: str
         - column_name: str
@@ -20,13 +21,13 @@ async def get_metadata(api_key: str) -> list[dict[str, str]]:
     async with engine.begin() as conn:
         metadata_result = await conn.execute(
             select(
-                DefogMetadata.table_name,
-                DefogMetadata.column_name,
-                DefogMetadata.data_type,
-                DefogMetadata.column_description,
+                DbMetadata.table_name,
+                DbMetadata.column_name,
+                DbMetadata.data_type,
+                DbMetadata.column_description,
             )
-            .where(DefogMetadata.api_key == api_key)
-            .order_by(DefogMetadata.table_name, DefogMetadata.column_name)
+            .where(DbMetadata.db_name == db_name)
+            .order_by(DbMetadata.table_name, DbMetadata.column_name)
         )
         # Convert to list of dictionaries with proper keys
         metadata = [
@@ -41,11 +42,11 @@ async def get_metadata(api_key: str) -> list[dict[str, str]]:
     return metadata
 
 
-async def set_metadata(api_key: str, table_metadata: list[dict[str, str]]):
+async def set_metadata(db_name: str, table_metadata: list[dict[str, str]]):
     """
     Update or insert metadata for a given API key.
     Args:
-        api_key: The API key to update metadata for
+        db_name: The API key to update metadata for
         table_metadata: List of dictionaries containing column metadata with keys:
             - table_name: str
             - column_name: str
@@ -62,27 +63,28 @@ async def set_metadata(api_key: str, table_metadata: list[dict[str, str]]):
         if missing_fields:
             raise ValueError(f"Missing required fields: {missing_fields}")
 
-    async with engine.begin() as conn:
-        # Delete existing metadata for this api_key
-        await conn.execute(
-            delete(DefogMetadata).where(DefogMetadata.api_key == api_key)
-        )
-        # Insert the new metadata
-        await conn.execute(
-            insert(DefogMetadata),
-            [
-                {
-                    "api_key": api_key,
-                    "table_name": item["table_name"],
-                    "column_name": item["column_name"],
-                    "data_type": item["data_type"],
-                    "column_description": item.get(
-                        "column_description", ""
-                    ),  # Default to empty string if not provided
-                }
-                for item in table_metadata
-            ],
-        )
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            # Delete existing metadata for this db_name
+            await session.execute(
+                delete(DbMetadata).where(DbMetadata.db_name == db_name)
+            )
+            # Insert the new metadata
+            await session.execute(
+                insert(DbMetadata),
+                [
+                    {
+                        "db_name": db_name,
+                        "table_name": item["table_name"],
+                        "column_name": item["column_name"],
+                        "data_type": item["data_type"],
+                        "column_description": item.get(
+                            "column_description", ""
+                        ),  # Default to empty string if not provided
+                    }
+                    for item in table_metadata
+                ],
+            )
 
 
 def mk_create_table_ddl(table_name: str, columns: list[dict[str, str]]) -> str:

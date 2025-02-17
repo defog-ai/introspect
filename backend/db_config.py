@@ -3,7 +3,7 @@ import os
 import redis
 import psycopg2
 import pyodbc
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from utils_logging import LOGGER
 
@@ -18,10 +18,16 @@ IMPORTED_TABLES_DBNAME = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tabl
 TEMP_TABLES_DBNAME = os.environ.get("TEMP_TABLES_DBNAME", "temp_tables")
 
 def get_db_engine() -> tuple[AsyncEngine, Engine | None, Engine | None]:
+    """
+    Returns a tuple of the 
+    - async engine for querying the user's database,
+    - engine for querying the imported tables database, and
+    - engine for querying the temp tables database.
+    """
     if INTERNAL_DB == "sqlite":
         print("using sqlite as our internal db")
         connection_uri = "sqlite:///defog_local.db"
-        engine = create_engine(connection_uri, connect_args={"timeout": 3})
+        engine = create_async_engine(connection_uri, connect_args={"timeout": 3})
         imported_tables_engine = create_engine(
             f"sqlite:///{IMPORTED_TABLES_DBNAME}.db", connect_args={"timeout": 3}
         )
