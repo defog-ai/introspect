@@ -53,7 +53,7 @@ async def generate_step(request: Request):
     try:
         LOGGER.info("Generating step")
         params = await request.json()
-        key_name = params.get("key_name")
+        db_name = params.get("key_name")
         question = params.get("user_question")
         analysis_id = params.get("analysis_id")
         hard_filters = params.get("hard_filters", [])
@@ -64,16 +64,11 @@ async def generate_step(request: Request):
         root_analysis_id = params.get("root_analysis_id", analysis_id)
 
         # if key name or question is none or blank, return error
-        if not key_name or key_name == "":
-            raise Exception("Invalid request. Must have API key name.")
+        if not db_name or db_name == "":
+            raise Exception("Invalid request. Must have DB name.")
 
         if not question or question == "":
             raise Exception("Invalid request. Must have a question.")
-
-        api_key = get_api_key_from_key_name(key_name)
-
-        if not api_key:
-            raise Exception("Invalid API key name.")
 
         # check if the assignment_understanding exists in the db for the root analysis (aka the original question in this thread)
         err, assignment_understanding = await get_assignment_understanding(
@@ -85,7 +80,7 @@ async def generate_step(request: Request):
             _, assignment_understanding = await generate_assignment_understanding(
                 analysis_id=root_analysis_id,
                 clarification_questions=clarification_questions,
-                dfg_api_key=api_key,
+                db_name=db_name,
             )
 
         prev_questions = []
@@ -106,25 +101,6 @@ async def generate_step(request: Request):
                         prev_questions.append(prev_sql)
                         break
         
-        # unify questions if there are previous questions
-        if len(prev_questions) > 0:
-            # make a request to combine the previous questions and the current question
-
-            question_unifier_url = (
-                os.getenv("DEFOG_BASE_URL", "https://api.defog.ai")
-                + "/convert_question_to_single"
-            )
-            unified_question = await make_request(
-                url=question_unifier_url,
-                data={
-                    "api_key": api_key,
-                    "question": question,
-                    "previous_context": prev_questions,
-                },
-            )
-            question = unified_question.get("rephrased_question", question)
-            print(f"*******\nUnified question: {question}\n********", flush=True)
-
         # if sql_only is true, just call the sql generation function and return, while saving the step
         if type(assignment_understanding) == str and len(prev_questions) == 0:
             # remove any numbers, like "1. " from the beginning of assignment understanding
@@ -138,7 +114,7 @@ async def generate_step(request: Request):
         inputs = {
             "question": question,
             "hard_filters": hard_filters,
-            "key_name": key_name,
+            "db_name": db_name,
             "previous_context": prev_questions,
         }
 
@@ -320,18 +296,13 @@ async def rerun_step_endpoint(request: Request):
     """
     try:
         params = await request.json()
-        key_name = params.get("key_name")
+        db_name = params.get("key_name")
         analysis_id = params.get("analysis_id")
         step_id = params.get("step_id")
         edited_step = params.get("edited_step")
         
-        if not key_name or key_name == "":
+        if not db_name or db_name == "":
             raise Exception("Invalid request. Must have API key name.")
-
-        api_key = get_api_key_from_key_name(key_name)
-
-        if not api_key:
-            raise Exception("Invalid API key name.")
 
         if not analysis_id or analysis_id == "":
             raise Exception("Invalid request. Must have analysis id.")
@@ -365,8 +336,8 @@ async def rerun_step_endpoint(request: Request):
         new_steps = await rerun_step(
             step=all_steps[step_idx],
             all_steps=all_steps,
+            db_name=db_name,
             analysis_id=analysis_id,
-            dfg_api_key=api_key,
             user_question=None,
             dev=False,
             temp=False,

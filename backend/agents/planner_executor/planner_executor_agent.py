@@ -215,7 +215,7 @@ async def run_step(
 
 
 async def generate_assignment_understanding(
-    analysis_id, clarification_questions, dfg_api_key
+    analysis_id, clarification_questions, db_name
 ):
     """
     Generates the assignment understanding from the clarification questions.
@@ -232,7 +232,7 @@ async def generate_assignment_understanding(
     if len(clarification_questions) > 0:
         try:
             assignment_understanding = await turn_into_statements(
-                clarification_questions, dfg_api_key
+                clarification_questions, db_name
             )
             err = await update_assignment_understanding(
                 analysis_id=analysis_id, understanding=assignment_understanding
@@ -279,7 +279,7 @@ async def prepare_cache(
 async def rerun_step(
     step,
     all_steps,
-    dfg_api_key,
+    db_name,
     analysis_id,
     user_question,
     dev=False,
