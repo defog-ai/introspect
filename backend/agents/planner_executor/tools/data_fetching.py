@@ -16,9 +16,10 @@ async def data_fetcher_and_aggregator(
     import os
     import pandas as pd
     from generic_utils import make_request, get_api_key_from_key_name
-    from tool_code_utilities import safe_sql, fetch_query_into_df
+    from tool_code_utilities import fetch_query_into_df
     from utils import SqlExecutionError
     from db_utils import get_db_type_creds
+    from utils_sql import safe_sql
 
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")
