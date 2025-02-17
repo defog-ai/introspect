@@ -240,7 +240,7 @@ async def clarify(request: Request):
         if "not ambiguous" in clarification_questions.lower() or "no clarifi" in clarification_questions.lower():
             clarification_questions = []
         else:
-            clarification_questions = [clarification_questions]
+            clarification_questions = [{"question": clarification_questions}]
 
         return {
             "success": True,
