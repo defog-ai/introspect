@@ -29,9 +29,6 @@ async def generate_query_csv_route(request: Request):
             },
         )
 
-    if len(previous_context) > 0:
-        previous_context = previous_context[:-1]
-
     prev_questions = []
     for item in previous_context:
         prev_question = item.get("user_question")
@@ -43,8 +40,10 @@ async def generate_query_csv_route(request: Request):
                 for step in prev_steps:
                     if "sql" in step:
                         prev_sql = step["sql"]
-                        prev_questions.append(prev_question)
-                        prev_questions.append(prev_sql)
+                        prev_questions.append({
+                            "question": prev_question,
+                            "sql": prev_sql
+                        })
                         break
 
     # metadata should be a list of dictionaries with keys 'table_name', 'column_name', 'data_type', and 'column_description'\

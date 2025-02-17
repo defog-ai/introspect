@@ -462,7 +462,7 @@ def get_messages(
                 {
                     "role": "user",
                     "content": (
-                        f"Create a SQL query for answering the following question: `{question_answer.question}`."
+                        f"Create a SQL query for answering the following question: `{question_answer['question']}`."
                         "Note that subsequent questions are a follow-on question from one, and you should keep this in mind when creating the query for future questions."
                     ),
                 }
@@ -470,7 +470,7 @@ def get_messages(
             previous_messages.append(
                 {
                     "role": "assistant",
-                    "content": f"```sql\n{question_answer.answer};\n```",
+                    "content": f"```sql\n{question_answer['sql']};\n```",
                 }
             )
 
@@ -517,7 +517,7 @@ async def generate_sql_query(
     db_type: str = None, 
     metadata: list[ColumnMetadata] = None,
     instructions: str = None,
-    previous_context: list[QuestionAnswer] = None,
+    previous_context: list[Dict[str, str]] = None,
     hard_filters: list[HardFilter] = None,
     num_golden_queries: int = 4,
     model_name: str = O3_MINI,
