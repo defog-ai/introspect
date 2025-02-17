@@ -4,9 +4,14 @@ from utils_md import get_metadata, mk_create_ddl
 from utils_instructions import get_instructions
 from llm_api import GPT_4O, GPT_4O_MINI
 from request_models import ColumnMetadata
+from pydantic import BaseModel
+from typing import Literal
 
 with open("./prompts/clarify_question/user.md", "r") as f:
     CLARIFY_QUESTION_USER_PROMPT = f.read()
+
+with open("./prompts/classify_question/system.md", "r") as f:
+    CLASSIFY_QUESTION_SYSTEM_PROMPT = f.read()
 
 async def generate_clarification(
     question: str, 
@@ -81,3 +86,30 @@ Question: What do you mean by the "worst" players? Answer: those with the lowest
     LOGGER.info("Time taken to generate clarification: %s", statement.time)
 
     return statement.content
+
+
+class QuestionType(BaseModel):
+    question_type: Literal["follow-on-analysis", "edit-chart"]
+    default_open_tab: Literal["table", "chart"]
+
+
+async def classify_question_type(
+    question: str,
+) -> QuestionType:
+    """
+    Classify the question type.
+    """
+    response = await chat_async(
+        model=GPT_4O_MINI,
+        messages = [
+            {"role": "system", "content": CLASSIFY_QUESTION_SYSTEM_PROMPT},
+            {"role": "user", "content": f"Here is the user's question: `{question}`"},
+        ],
+        max_completion_tokens=32,
+        response_format=QuestionType,
+    )
+
+    LOGGER.info("Cost of classifying question type: %s", response.cost_in_cents)
+    LOGGER.info("Time taken to classify question type: %s", response.time)
+
+    return response.content

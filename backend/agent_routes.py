@@ -5,8 +5,8 @@ import logging
 from uuid import uuid4
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
-from utils_clarification import generate_clarification
-from utils_follow_on import generate_follow_on_questions
+from utils_clarification import generate_clarification, classify_question_type
+from utils_question_related import generate_follow_on_questions
 from pydantic import BaseModel
 
 from agents.planner_executor.planner_executor_agent import (
@@ -28,8 +28,6 @@ from uuid import uuid4
 router = APIRouter()
 LOGGER = logging.getLogger("server")
 
-
-DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 @router.post("/generate_step")
 async def generate_step(request: Request):
@@ -417,16 +415,11 @@ async def analyse_data_streaming_endpoint(websocket: WebSocket):
     finally:
         await websocket.close()
 
-class QuestionTypeRequest(BaseModel):
-    key_name: str
-    question: str
-    token: str
-
 @router.post("/get_question_type")
-async def get_question_type(request: QuestionTypeRequest):
-    key_name = request.key_name
-    question = request.question
-    token = request.token
+async def get_question_type(request: Request):
+    params = await request.json()
+    question = params.get("question")
+    token = params.get("token")
     username = await validate_user(token)
     if not username:
         return JSONResponse(
@@ -437,12 +430,7 @@ async def get_question_type(request: QuestionTypeRequest):
             },
         )
 
-    api_key = get_api_key_from_key_name(key_name)
-
-    res = await make_request(
-        DEFOG_BASE_URL + "/agents/question_type",
-        data={"question": question, "api_key": api_key},
-    )
+    res = await classify_question_type(question)
 
     return JSONResponse(
         status_code=200,
