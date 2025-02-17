@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from utils_clarification import generate_clarification, classify_question_type
 from utils_question_related import generate_follow_on_questions
-from pydantic import BaseModel
+from utils_chart import edit_chart
 
 from agents.planner_executor.planner_executor_agent import (
     generate_assignment_understanding,
@@ -324,7 +324,7 @@ async def rerun_step_endpoint(request: Request):
 
 
 @router.post("/edit_chart")
-async def edit_chart(request: Request):
+async def edit_chart_route(request: Request):
     """
     This is called when a user wants to edit a chart, via the search bar in the chart container.
 
@@ -357,20 +357,12 @@ async def edit_chart(request: Request):
         )
 
         LOGGER.info(f"Editing chart with request: {user_request}")
-        LOGGER.info(f"Columns: {columns}")
-        LOGGER.info(f"Current chart state: {current_chart_state}")
-
-        res = await make_request(
-            url=edit_chart_url,
-            data={
-                "user_request": user_request,
-                "columns": [
-                    {"title": c["title"], "col_type": c["col_type"]} for c in columns
-                ],
-                "current_chart_state": current_chart_state,
-            },
+        
+        chart_state_edits = await edit_chart(
+            current_chart_state=current_chart_state,
+            columns=columns,
+            user_request=user_request,
         )
-        chart_state_edits = res["chart_state_edits"]
 
         if not chart_state_edits or type(chart_state_edits) != dict:
             raise Exception("Error editing chart.")
