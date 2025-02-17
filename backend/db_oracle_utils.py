@@ -96,7 +96,7 @@ async def add_or_update_analysis(
                 )
             else:
                 new_analysis = OracleAnalyses(
-                    api_key=api_key,
+                    db_name=api_key,
                     analysis_id=analysis_id,
                     report_id=report_id,
                     analysis_json=analysis_json,
