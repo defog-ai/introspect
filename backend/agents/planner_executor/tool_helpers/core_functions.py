@@ -9,26 +9,6 @@ from .analysis_prompts import (
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 
-# make sure the query does not contain any malicious commands like drop, delete, etc.
-def safe_sql(query):
-    if query is None:
-        return False
-
-    query = query.lower()
-    if (
-        "drop" in query
-        or "delete" in query
-        or "truncate" in query
-        or "append" in query
-        or "insert" in query
-        or "update" in query
-        or "create" in query
-    ):
-        return False
-
-    return True
-
-
 async def analyse_data_streaming(question: str, data_csv: str, sql: str, api_key: str):
     """
     Generate a short summary of the results for the given qn, yielding tokens one at a time.
