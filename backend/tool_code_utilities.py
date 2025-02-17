@@ -2,7 +2,7 @@
 # top level for a cleaner import statement
 # from tool_code_utilities import xx
 
-from defog.query import async_execute_query
+from defog.query import async_execute_query_once
 import re
 import pandas as pd
 from db_utils import get_db_type_creds
@@ -35,19 +35,11 @@ async def fetch_query_into_df(
     if not safe_sql(sql_query):
         raise ValueError("Unsafe SQL Query")
 
-    colnames, data, new_sql_query = await async_execute_query(
+    colnames, data = await async_execute_query_once(
         query=sql_query,
-        db_name=db_name,
         db_type=db_type,
         db_creds=db_creds,
-        retries=2,
-        temp=temp,
     )
-
-    # again, make sure new query that was run is safe
-    # make sure not unsafe
-    if not safe_sql(new_sql_query):
-        raise ValueError("Unsafe SQL Query")
 
     df = pd.DataFrame(data, columns=colnames)
 
@@ -55,11 +47,6 @@ async def fetch_query_into_df(
     for col in df.columns:
         if df[col].apply(type).eq(list).any():
             df = df.drop(col, axis=1)
-
-    if new_sql_query:
-        sql_query = new_sql_query
-    else:
-        sql_query = sql_query
 
     df.sql_query = sql_query
     return df, sql_query
