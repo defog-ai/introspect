@@ -29,7 +29,7 @@ async def answer_question_from_database(input: AnswerQuestionFromDatabaseInput) 
     # get embedding of the question, and then get the closest golden queries
     embedding = await get_embedding(text=question)
     golden_queries = await get_closest_golden_queries(db_name=db_name, question_embedding=embedding)
-    print(golden_queries, flush=True)
+    # not using this for now, but we can make it part of the prompt in the future
 
     # get SQL from LLM
     response = await chat_async(
