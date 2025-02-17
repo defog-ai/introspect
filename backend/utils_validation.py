@@ -6,10 +6,12 @@ from uuid import uuid4
 
 from utils_logging import LOGGER
 from utils_sql import compare_query_results
-from generic_utils import make_request, format_sql
+from generic_utils import  format_sql
 import pandas as pd
 from asyncio import Semaphore
 from defog import AsyncDefog
+from utils_sql import generate_sql_query
+from tool_code_utilities import fetch_query_into_df
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
@@ -23,27 +25,18 @@ async def run_query(
     """
     Send the data to the Defog servers, and get a response from it.
     """
-    generate_query_url = os.environ.get(
-        "DEFOG_GENERATE_URL",
-        os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-        + "/generate_query_chat",
-    )
     # make async request to the url, using the appropriate library
-    res = await make_request(
-        url=generate_query_url,
-        data={
-            "api_key": db_name,  # our backend uses api_key as db_name
-            "question": question,
-            "previous_context": previous_context,
-            "db_type": db_type,
-        },
+    res = await generate_sql_query(
+        db_name=db_name,
+        question=question,
+        db_type=db_type,
+        previous_context=previous_context
     )
-
     return res
 
 
 async def test_query(
-    api_key: str,
+    db_name: str,
     db_type: str,
     db_creds: Dict[str, str],
     question: str,
@@ -60,15 +53,19 @@ async def test_query(
     # we also want to be loudly notified on Slack if the SQL generation fails for this api key
 
     async with test_query_semaphore:
-        defog = AsyncDefog(api_key=api_key, db_type=db_type, db_creds=db_creds)
-        defog.base_url = DEFOG_BASE_URL
-        defog.generate_query_url = f"{DEFOG_BASE_URL}/generate_query_chat"
-
-        res = await defog.run_query(
-            question=question, previous_context=previous_context
+        res = await generate_sql_query(
+            question=question,
+            db_name=db_name,
+            previous_context=previous_context
         )
-        sql_gen = res["query_generated"]
-        df_gen = pd.DataFrame(res["data"], columns=res["columns"])
+
+        sql_gen = res["sql"]
+        # df_gen = pd.DataFrame(res["data"], columns=res["columns"])
+
+        df_gen, sql_gen = await fetch_query_into_df(
+            db_name=db_name,
+            sql_query=sql_gen,
+        )
 
         result = await compare_query_results(
             query_gold=original_sql,
