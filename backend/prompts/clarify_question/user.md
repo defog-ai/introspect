@@ -8,10 +8,16 @@ And this was the context that the user provided me:
 {instructions}
 </context>
 
-Is this unambigious? And if not, can you please generate a clarification that I can ask the user to make it unambigious?
+Can the question be answered by the context provided, or does it require further clarification?
 
-Most of the time, a clarification will NOT be needed. Your default answer should be "Not ambiguous. No clarifying question is needed." ONLY ask a clarifying question if:
-- the intent of the user's question is highly ambiguous
+If it requires further clarification, can you please generate a specific clarification question that I can ask the user to make it unambigious?
+
+Most of the time, a clarification will NOT be needed. ONLY ask a clarifying question if:
+- the intent of the user's question is ambiguous wrt the DDL statements and/or the context
 - the question cannot be answered by the instructions given, or by the DDL
 
-If a clarifying question is indeed needed, ensure that it is clear and concise, and is less than 20 words. Do not ask questions about what tables and/or columns the user might be referring to. ONLY ask questions if the intent of their question is ambiguous.
+If a clarifying question is needed, ensure that it is short, clear, and concise. Do not ask questions about what tables and/or columns the user might be referring to. ONLY ask questions if it seems like answering the question (given the DDL/instructions) would be ambiguous.
+
+The user's question is: `{question}`.
+
+Please generate a clarifying question (if needed) for it. Return just the clarifying question, without any preamble, justification, or any other text.
