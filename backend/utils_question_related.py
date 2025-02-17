@@ -39,7 +39,7 @@ async def generate_follow_on_questions(
         messages = [
             {"role": "user", "content": user_prompt},
         ],
-        max_completion_tokens=64,
+        max_completion_tokens=128,
     )
     
     LOGGER.info("Cost of generating follow-on questions: %s", follow_on_questions.cost_in_cents)

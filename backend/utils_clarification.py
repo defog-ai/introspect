@@ -39,13 +39,13 @@ async def generate_clarification(
     )
 
     clarifications = await chat_async(
-        model_name,
+        model=model_name,
         messages = [
             {"role": "user", "content": user_prompt},
         ],
-        max_completion_tokens=32,
+        max_completion_tokens=128,
     )
-    
+
     LOGGER.info("Cost of generating clarification: %s", clarifications.cost_in_cents)
     LOGGER.info("Time taken to generate clarification: %s", clarifications.time)
 
@@ -77,7 +77,7 @@ Question: What do you mean by the "worst" players? Answer: those with the lowest
         messages = [
             {"role": "user", "content": user_prompt},
         ],
-        max_completion_tokens=32,
+        max_completion_tokens=128,
     )
 
     LOGGER.info("Cost of generating clarification: %s", statement.cost_in_cents)
@@ -103,7 +103,7 @@ async def classify_question_type(
             {"role": "system", "content": CLASSIFY_QUESTION_SYSTEM_PROMPT},
             {"role": "user", "content": f"Here is the user's question: `{question}`"},
         ],
-        max_completion_tokens=32,
+        max_completion_tokens=128,
         response_format=QuestionType,
     )
 
