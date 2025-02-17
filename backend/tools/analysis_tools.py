@@ -1,12 +1,17 @@
 from defog.llm.utils import chat_async
 from tools.analysis_models import AnswerQuestionFromDatabaseInput, AnswerQuestionFromDatabaseOutput
-from generic_utils import make_request
 from db_utils import get_db_type_creds
-from utils_md import mk_create_ddl
+from utils_md import mk_create_ddl, get_metadata
+from utils_instructions import get_instructions
+from utils_golden_queries import get_closest_golden_queries
+from utils_embedding import get_embedding
 from defog.query import async_execute_query_once
-import os
 
 async def answer_question_from_database(input: AnswerQuestionFromDatabaseInput) -> AnswerQuestionFromDatabaseOutput:
+    """
+    Given a *single* question for a *single* database, this function will first generate a SQL query to answer the question.
+    Then, it will execute the SQL query on the database and return the results.
+    """
     question = input.question
     db_name = input.db_name
     
@@ -14,23 +19,17 @@ async def answer_question_from_database(input: AnswerQuestionFromDatabaseInput) 
 
     db_type, db_creds = await get_db_type_creds(db_name)
 
-    # FOR NOW, JUST GET THESE FROM THE API
-    # LATER, WE WILL START STORING THEM IN THE DB
-
     # get metadata from API
-    metadata = (await make_request(
-        os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai") + "/get_metadata",
-        data={"api_key": db_name},
-    ))["table_metadata"]
+    metadata = await get_metadata(db_name)
     ddl_statements = mk_create_ddl(metadata)
 
     # get instruction manual from API
-    glossary = (await make_request(
-        os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai") + "/get_glossary",
-        data={"api_key": db_name},
-    ))
+    instructions = await get_instructions(db_name)
 
-    instruction_manual = glossary["glossary"]["glossary_compulsory"] + "\n".join(glossary["glossary"]["glossary_prunable_units"])
+    # get embedding of the question, and then get the closest golden queries
+    embedding = await get_embedding(text=question)
+    golden_queries = await get_closest_golden_queries(db_name=db_name, question_embedding=embedding)
+    print(golden_queries, flush=True)
 
     # get SQL from LLM
     response = await chat_async(
@@ -42,7 +41,7 @@ async def answer_question_from_database(input: AnswerQuestionFromDatabaseInput) 
                 f"The SQL query must be valid and executable on a {db_type} database.\n"
                 "Here are DDL statements and instruction manual associated with this database: \n"
                 f"*DDL Statements*\n```sql\n{ddl_statements}\n```\n\n"
-                f"*Instruction Manual*\n```{instruction_manual}\n```\n"
+                f"*Instruction Manual*\n```{instructions}\n```\n"
             },
         ],
         reasoning_effort="low",
