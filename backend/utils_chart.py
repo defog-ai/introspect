@@ -11,7 +11,8 @@ with open("./prompts/chart_edits/user.md", "r") as f:
 
 async def edit_chart(
     current_chart_state: dict,
-    columns: list[ColumnMetadata],
+    columns: list[str],
+    user_request: str,
     model_name: str = GPT_4O
 ):
     """
@@ -35,6 +36,8 @@ async def edit_chart(
 
     LOGGER.info("Cost of generating chart edit: %s", response.cost_in_cents)
     LOGGER.info("Time taken to generate chart edit: %s", response.time)
+
+    response = response.content
 
     # parse the response
     if isinstance(response, str):

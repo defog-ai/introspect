@@ -353,11 +353,6 @@ async def edit_chart_route(request: Request):
         if current_chart_state is None or type(current_chart_state) != dict:
             raise Exception("Invalid chart state provided.")
 
-        # send this to the main defog python backend
-        edit_chart_url = (
-            os.getenv("DEFOG_BASE_URL", "https://api.defog.ai") + "/edit_chart"
-        )
-
         LOGGER.info(f"Editing chart with request: {user_request}")
         
         chart_state_edits = await edit_chart(
