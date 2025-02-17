@@ -83,9 +83,11 @@ async def generate_step(request: Request):
             )
 
         prev_questions = []
-        for item in previous_context:
+        for idx, item in enumerate(previous_context):
             for step in item["steps"]:
                 prev_question = step["inputs"].get("question", "")
+                if idx == 0:
+                    previous_question += " (" + assignment_understanding + ")"
                 prev_sql = step.get("sql")
                 if prev_sql:
                     prev_questions.append({
