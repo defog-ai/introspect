@@ -5,7 +5,8 @@ import logging
 from uuid import uuid4
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
-from agents.clarifier.clarifier_agent import get_clarification
+from utils_clarification import generate_clarification
+from utils_follow_on import generate_follow_on_questions
 from pydantic import BaseModel
 
 from agents.planner_executor.planner_executor_agent import (
@@ -181,7 +182,7 @@ async def generate_follow_on_questions(request: Request):
     try:
         LOGGER.info("Generating follow on questions")
         params = await request.json()
-        key_name = params.get("key_name")
+        db_name = params.get("key_name")
         question = params.get("user_question")
 
         # if key name or question is none or blank, return error
@@ -191,18 +192,9 @@ async def generate_follow_on_questions(request: Request):
         if not question or question == "":
             raise Exception("Invalid request. Must have a question.")
 
-        api_key = get_api_key_from_key_name(key_name)
-
-        if not api_key:
-            raise Exception("Invalid API key name.")
-
-        follow_on_questions = await make_request(
-            url=os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-            + "/generate_follow_on_questions",
-            data={
-                "api_key": api_key,
-                "question": question,
-            },
+        follow_on_questions = await generate_follow_on_questions(
+            question=question, 
+            db_name=db_name
         )
         if follow_on_questions:
             follow_on_questions = follow_on_questions.get("follow_on_questions", [])
@@ -236,7 +228,7 @@ async def clarify(request: Request):
     try:
         LOGGER.info("Generating clarification questions")
         params = await request.json()
-        key_name = params.get("key_name")
+        db_name = params.get("key_name")
         question = params.get("user_question")
         previous_context = params.get("previous_context", [])
         if len(previous_context) > 1:
@@ -247,31 +239,21 @@ async def clarify(request: Request):
             }
 
         # if key name or question is none or blank, return error
-        if not key_name or key_name == "":
+        if not db_name or db_name == "":
             raise Exception("Invalid request. Must have API key name.")
 
         if not question or question == "":
             raise Exception("Invalid request. Must have a question.")
 
-        api_key = get_api_key_from_key_name(key_name)
-
-        if not api_key:
-            raise Exception("Invalid API key name.")
-
-        dev = params.get("dev", False)
-        temp = params.get("temp", False)
-
-        clarification_questions = await get_clarification(
+        clarification_questions = await generate_clarification(
             question=question,
-            api_key=api_key,
-            dev=dev,
-            temp=temp,
+            db_name=db_name,
         )
 
         return {
             "success": True,
             "done": True,
-            "clarification_questions": clarification_questions,
+            "clarification_questions": [clarification_questions],
         }
 
     except Exception as e:
