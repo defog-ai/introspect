@@ -8,13 +8,15 @@ from db_oracle_utils import (
     update_report_name,
 )
 from generic_utils import make_request
-from oracle.constants import DEFOG_BASE_URL, TaskStage, TaskType
+from oracle.constants import TaskStage, TaskType
 from oracle.utils_report import summary_dict_to_markdown
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from utils_logging import LOGGER, truncate_obj
+import os
 
+DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 async def generate_report(
     api_key: str,

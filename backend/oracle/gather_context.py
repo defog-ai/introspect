@@ -10,7 +10,7 @@ from db_config import INTERNAL_DB, engine
 from db_models import OracleSources
 from generic_utils import make_request
 from oracle.celery_app import LOGGER
-from oracle.constants import DEFOG_BASE_URL, TaskType
+from oracle.constants import TaskType
 from sqlalchemy import insert, select, update
 from utils_imported_data import (
     IMPORTED_SCHEMA,
@@ -20,6 +20,9 @@ from utils_imported_data import (
 )
 from utils_logging import save_and_log, save_timing
 from oracle.guidelines_tasks import populate_default_guidelines_task
+import os
+
+DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 async def gather_context(
     api_key: str,
