@@ -1,100 +1,16 @@
 import os
 from fastapi import APIRouter, Request
-from generic_utils import get_api_key_from_key_name, make_request
 from auth_utils import validate_user
-import pandas as pd
-from io import StringIO
 from fastapi.responses import JSONResponse
+from utils_sql import generate_sql_query, retry_query_after_error
 
 router = APIRouter()
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 
-@router.post("/generate_column_descriptions_for_csv")
-async def generate_column_descriptions_for_csv(request: Request):
-    """
-    Adds column descriptions to the metadata of a CSV file
-    Expects a list of dictionaries with keys 'column_name' and 'data_type'
-    Return a list of dictionaries with keys 'column_name', 'data_type', and 'column_description'
-    This is done by sending a POST request to the /generate_metadata_csv endpoint
-    """
-    params = await request.json()
-    key_name = params.get("key_name", None)
-    metadata = params.get("metadata", None)
-    table_name = params.get("table_name", None)
-    token = params.get("token", None)
-    if not (await validate_user(token)):
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    if not key_name:
-        return {"error": "no key name provided"}
-    if not metadata:
-        return {"error": "no metadata provided"}
-    if not table_name:
-        return {"error": "no table name provided"}
-
-    api_key = get_api_key_from_key_name(key_name)
-
-    # verify that metadata is a list
-    if not isinstance(metadata, list):
-        return {"error": "metadata must be a list of dictionaries"}
-
-    # verify that each element in metadata is a dictionary
-    for element in metadata:
-        if not isinstance(element, dict):
-            return {"error": "each element in metadata must be a dictionary"}
-
-    # verify that each dictionary in metadata has the keys 'column_name' and 'data_type'
-    for element in metadata:
-        if "column_name" not in element:
-            return {
-                "error": "each dictionary in metadata must have the key 'column_name'"
-            }
-        if "data_type" not in element:
-            return {
-                "error": "each dictionary in metadata must have the key 'data_type'"
-            }
-
-    # now, send a request to `/get_schema_csv`
-    schemas = {table_name: metadata}
-    r = await make_request(
-        f"{DEFOG_BASE_URL}/get_schema_csv",
-        {
-            "api_key": api_key,
-            "schemas": schemas,
-        },
-    )
-
-    if "csv" in r:
-        metadata_csv_string = r["csv"]
-        metadata_json = (
-            pd.read_csv(StringIO(metadata_csv_string))
-            .fillna("")
-            .to_dict(orient="records")
-        )
-    else:
-        metadata_json = [
-            {
-                "table_name": table_name,
-                "column_name": element["column_name"],
-                "data_type": element["data_type"],
-                "column_description": "",
-            }
-            for element in metadata
-        ]
-
-    return metadata_json
-
-
 @router.post("/generate_query_csv")
-async def generate_query_csv(request: Request):
+async def generate_query_csv_route(request: Request):
     """
     Generates a CSV file with the results of a query
     Expects a query string
@@ -102,7 +18,6 @@ async def generate_query_csv(request: Request):
     This is done by sending a POST request to the /generate_query_csv endpoint
     """
     params = await request.json()
-    key_name = params.get("key_name", None)
     question = params.get("question", None)
     metadata = params.get("metadata", None)
     previous_context = params.get("previous_context", [])
@@ -137,68 +52,35 @@ async def generate_query_csv(request: Request):
 
     # metadata should be a list of dictionaries with keys 'table_name', 'column_name', 'data_type', and 'column_description'\
 
-    if not key_name:
-        return {"error": "no key name provided"}
     if not question:
         return {"error": "no question provided"}
     if not metadata:
         return {"error": "no metadata provided"}
-
-    if not isinstance(metadata, list):
-        return {"error": "metadata must be a list of dictionaries"}
-
-    for element in metadata:
-        if not isinstance(element, dict):
-            return {"error": "each element in metadata must be a dictionary"}
-        if "table_name" not in element:
-            return {
-                "error": "each dictionary in metadata must have the key 'table_name'"
-            }
-        if "column_name" not in element:
-            return {
-                "error": "each dictionary in metadata must have the key 'column_name'"
-            }
-        if "data_type" not in element:
-            return {
-                "error": "each dictionary in metadata must have the key 'data_type'"
-            }
-        # let's keep column descriptions optional for now
-        # if "column_description" not in element:
-        #     return {
-        #         "error": "each dictionary in metadata must have the key 'column_description'"
-        #     }
-
-    api_key = get_api_key_from_key_name(key_name)
-
-    # convert metadata to a dictionary
-    metadata_dict = {}
-    for element in metadata:
-        table_name = element["table_name"]
-        if table_name not in metadata_dict:
-            metadata_dict[table_name] = []
-        metadata_dict[table_name].append(
-            {
-                "column_name": element["column_name"],
-                "data_type": element["data_type"],
-                "column_description": element.get("column_description"),
-            }
-        )
-
-    r = await make_request(
-        f"{DEFOG_BASE_URL}/generate_query_chat",
-        {
-            "api_key": api_key,
-            "question": question,
-            "metadata": metadata_dict,
-            "db_type": "sqlite",
-            "previous_context": prev_questions,
-        },
+    
+    resp = await generate_sql_query(
+        question=question,
+        metadata=metadata,
+        db_type="sqlite",
+        previous_context=prev_questions,
     )
-    return r
+
+    if "error" in resp and resp["error"]:
+        return {
+            "ran_successfully": False,
+            "error": resp["error"],
+        }
+    
+    else:
+        return {
+            "ran_successfully": True,
+            "sql": resp["sql"],
+            "error": resp.get("error", None),
+            "previous_context": previous_context + [question, resp["sql"]],
+        }
 
 
 @router.post("/retry_query_csv")
-async def generate_query_csv(request: Request):
+async def retry_query_csv_route(request: Request):
     """
     Generates a CSV file with the results of a query
     Expects a query string
@@ -235,34 +117,21 @@ async def generate_query_csv(request: Request):
         )
     if not error:
         return JSONResponse(content={"error": "no error provided"}, status_code=400)
-
-    api_key = get_api_key_from_key_name(key_name)
-
-    # convert metadata to a dictionary
-    metadata_dict = {}
-    for element in metadata:
-        table_name = element["table_name"]
-        if table_name not in metadata_dict:
-            metadata_dict[table_name] = []
-        metadata_dict[table_name].append(
-            {
-                "column_name": element["column_name"],
-                "data_type": element["data_type"],
-                "column_description": element.get("column_description"),
-            }
-        )
-
-    r = await make_request(
-        f"{DEFOG_BASE_URL}/retry_query_after_error",
-        {
-            "api_key": api_key,
-            "question": question,
-            "metadata": metadata_dict,
-            "db_type": "sqlite",
-            "previous_query": previous_query,
-            "error": error,
-        },
+    
+    resp = await retry_query_after_error(
+        question=question,
+        db_type="sqlite",
+        metadata=metadata,
+        sql=previous_query,
+        error=error,
     )
-    r["sql"] = r["new_query"]
-    del r["new_query"]
-    return r
+
+    if "error" in resp and resp["error"]:
+        return JSONResponse(content={"error": resp["error"]}, status_code=400)
+
+    return JSONResponse(content={
+        "new_query": resp["sql"],
+        "query_db": "sqlite",
+        "error": resp.get("error", None),
+        "status": "success",
+    }, status_code=200)
