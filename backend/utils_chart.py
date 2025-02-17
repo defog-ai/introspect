@@ -3,10 +3,10 @@ from utils_logging import LOGGER
 from llm_api import GPT_4O
 import json
 
-with open("./prompts/chart_edit/system.md", "r") as f:
+with open("./prompts/chart_edits/system.md", "r") as f:
     CHART_EDIT_SYSTEM_PROMPT = f.read()
 
-with open("./prompts/chart_edit/user.md", "r") as f:
+with open("./prompts/chart_edits/user.md", "r") as f:
     CHART_EDIT_USER_PROMPT = f.read()
 
 async def edit_chart(
