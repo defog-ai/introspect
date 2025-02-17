@@ -344,28 +344,6 @@ async def get_report_image(req: GetReportImageRequest):
     )
 
 
-@router.post("/oracle/get_report_analysis_ids")
-async def get_report_analysis_ids(req: ReportRequest):
-    """
-    Given a report_id, this endpoint will return the list of analyses ids for the report.
-    """
-    if not (await validate_user(req.token)):
-        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
-
-    async with AsyncSession(engine) as session:
-        async with session.begin():
-            stmt = select(OracleAnalyses).where(
-                OracleAnalyses.api_key == api_key,
-                OracleAnalyses.report_id == req.report_id,
-            )
-            result = await session.execute(stmt)
-            result = result.scalars().all()
-            analyses = [row.analysis_id for row in result]
-
-            return JSONResponse(status_code=200, content={"analyses": analyses})
-
-
 @router.post("/oracle/get_report_analysis")
 async def get_report_analysis(req: ReportAnalysisRequest):
     """
