@@ -89,7 +89,7 @@ async def validate_db_connection(request: Request):
     if db_type == "bigquery":
         db_creds["json_key_path"] = "./bq.json"
 
-    key_name = params.get("key_name")
+    key_name = params.get("db_name")
     sql_query = "SELECT 'test';"
     try:
         await asyncio.to_thread(
@@ -115,7 +115,7 @@ async def validate_db_connection(request: Request):
 @router.post("/integration/update_db_creds")
 async def update_db_creds(request: Request):
     params = await request.json()
-    key_name = params.get("key_name")
+    key_name = params.get("db_name")
     db_type = params.get("db_type")
     db_creds = params.get("db_creds")
     for k in ["api_key", "db_type"]:
@@ -157,7 +157,7 @@ async def preview_table(request: Request):
             },
         )
 
-    key_name = params.get("key_name")
+    key_name = params.get("db_name")
     api_key = get_api_key_from_key_name(key_name)
     temp = params.get("temp", False)
     if temp:
@@ -232,7 +232,7 @@ async def upload_metadata(request: Request):
             },
         )
 
-    db_name = params.get("key_name")
+    db_name = params.get("db_name")
     res = await get_db_type_creds(db_name)
     if res:
         db_type, _ = res

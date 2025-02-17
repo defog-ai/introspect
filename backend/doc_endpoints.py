@@ -23,7 +23,7 @@ async def download_csv(request: Request):
         step_id = data.get("step_id")
         output_storage_key = data.get("output_storage_key")
         analysis_id = data.get("analysis_id")
-        db_name = data.get("key_name")
+        db_name = data.get("db_name")
 
         if step_id is None or type(step_id) != str:
             return {"success": False, "error_message": "Invalid tool run id."}

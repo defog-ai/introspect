@@ -52,7 +52,7 @@ async def generate_step(request: Request):
     try:
         LOGGER.info("Generating step")
         params = await request.json()
-        db_name = params.get("key_name")
+        db_name = params.get("db_name")
         question = params.get("user_question")
         analysis_id = params.get("analysis_id")
         hard_filters = params.get("hard_filters", [])
@@ -180,7 +180,7 @@ async def generate_follow_on_questions(request: Request):
     try:
         LOGGER.info("Generating follow on questions")
         params = await request.json()
-        db_name = params.get("key_name")
+        db_name = params.get("db_name")
         question = params.get("user_question")
 
         # if key name or question is none or blank, return error
@@ -226,7 +226,7 @@ async def clarify(request: Request):
     try:
         LOGGER.info("Generating clarification questions")
         params = await request.json()
-        db_name = params.get("key_name")
+        db_name = params.get("db_name")
         question = params.get("user_question")
         previous_context = params.get("previous_context", [])
         if len(previous_context) > 1:
@@ -276,7 +276,7 @@ async def rerun_step_endpoint(request: Request):
     """
     try:
         params = await request.json()
-        db_name = params.get("key_name")
+        db_name = params.get("db_name")
         analysis_id = params.get("analysis_id")
         step_id = params.get("step_id")
         edited_step = params.get("edited_step")
@@ -395,13 +395,11 @@ async def analyse_data_streaming_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
         data_in = await websocket.receive_json()
-        key_name = data_in.get("key_name")
-        api_key = get_api_key_from_key_name(key_name)
         question = data_in.get("question")
         data_csv = data_in.get("data_csv")
         sql = data_in.get("sql")
         async for token in analyse_data_streaming(
-            question=question, data_csv=data_csv, sql=sql, api_key=api_key
+            question=question, data_csv=data_csv, sql=sql
         ):
             await websocket.send_text(token)
         

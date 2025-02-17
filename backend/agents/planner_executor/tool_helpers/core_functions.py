@@ -6,7 +6,7 @@ from .analysis_prompts import (
 )
 
 
-async def analyse_data_streaming(question: str, data_csv: str, sql: str, api_key: str):
+async def analyse_data_streaming(question: str, data_csv: str, sql: str):
     """
     Generate a short summary of the results for the given qn, yielding tokens one at a time.
     """

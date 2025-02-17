@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 from pydantic import BaseModel
 
 
@@ -11,7 +11,7 @@ class UserRequest(BaseModel):
     """
 
     token: str
-    db_name: str
+    db_name: Optional[str] = None
 
 
 class LoginRequest(BaseModel):

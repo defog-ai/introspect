@@ -90,7 +90,7 @@ async def create_analysis(request: Request):
         params = await request.json()
         token = params.get("token")
 
-        db_name = params.get("key_name")
+        db_name = params.get("db_name")
         print("create_analysis", params)
 
         err, analysis_data = await initialise_analysis(
