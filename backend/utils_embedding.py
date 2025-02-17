@@ -11,8 +11,9 @@ async def get_embedding(
     Returns the embedding of the given text, using the text-embedding-3-small model.
     Keep the 
     """
-    return await client_openai.embeddings.create(
+    resp = await client_openai.embeddings.create(
         input=text,
         model=model,
         dimensions=dimensions,
-    ).data[0].embedding
+    )
+    return resp.data[0].embedding

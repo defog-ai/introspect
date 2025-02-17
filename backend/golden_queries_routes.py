@@ -8,6 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 import traceback
 from utils_logging import LOGGER
+from utils_embedding import get_embedding
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
@@ -63,11 +64,13 @@ async def update_golden_queries_route(request: GoldenQueriesUpdateRequest):
                         # update existing golden query
                         existing_golden_query.sql = golden_query.sql
                     else:
+                        embedding = await get_embedding(text = golden_query.question)
                         session.add(
                             GoldenQueries(
                                 db_name=request.db_name,
                                 question=golden_query.question,
                                 sql=golden_query.sql,
+                                embedding=embedding
                             )
                         )
                 return {"success": True}
