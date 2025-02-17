@@ -69,8 +69,6 @@ async def data_fetcher_and_aggregator(
     return {
         "outputs": [{"data": df, "analysis": analysis}],
         "sql": sql_query.strip(),
-        "reference_queries": reference_queries,
-        "instructions_used": instructions_used,
     }
 
 
