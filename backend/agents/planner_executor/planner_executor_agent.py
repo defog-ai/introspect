@@ -4,7 +4,7 @@ from copy import deepcopy
 import traceback
 
 from agents.planner_executor.execute_tool import execute_tool
-from agents.clarifier.clarifier_agent import turn_into_statements
+from utils_clarification import turn_clarifications_into_statement
 from tool_code_utilities import fetch_query_into_df
 from db_analysis_utils import (
     get_analysis_data,
@@ -231,7 +231,7 @@ async def generate_assignment_understanding(
 
     if len(clarification_questions) > 0:
         try:
-            assignment_understanding = await turn_into_statements(
+            assignment_understanding = await turn_clarifications_into_statement(
                 clarification_questions, db_name
             )
             err = await update_assignment_understanding(
