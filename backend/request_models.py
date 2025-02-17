@@ -130,6 +130,7 @@ class GenerateSQLQueryRequest(UserRequest):
     """
 
     question: str
+    db_type: str | None = None
     metadata: list[ColumnMetadata] = []
     instructions: str = ""
     previous_context: list[QuestionAnswer] = []
