@@ -26,7 +26,6 @@ router = APIRouter(
 
 home_dir = os.path.expanduser("~")
 defog_path = os.path.join(home_dir, ".defog")
-DEFOG_BASE_URL = os.getenv("DEFOG_BASE_URL")
 
 
 @router.post("/integration/get_metadata")

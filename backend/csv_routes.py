@@ -6,9 +6,6 @@ from utils_sql import generate_sql_query, retry_query_after_error
 
 router = APIRouter()
 
-DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-
-
 @router.post("/generate_query_csv")
 async def generate_query_csv_route(request: Request):
     """

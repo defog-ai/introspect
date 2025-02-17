@@ -1,7 +1,6 @@
 from enum import Enum
 import os
 
-DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 INTERNAL_DB = os.environ.get("INTERNAL_DB", "postgres")
 
 

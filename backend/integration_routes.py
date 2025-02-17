@@ -17,16 +17,13 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from generic_utils import (
     get_api_key_from_key_name,
-    make_request,
 )
 from request_models import UserRequest
 from utils_logging import LOGGER
-from utils_md import check_metadata_validity
-from oracle.guidelines_tasks import populate_default_guidelines_task
+from utils_md import check_metadata_validity, set_metadata
 
 home_dir = os.path.expanduser("~")
 defog_path = os.path.join(home_dir, ".defog")
-DEFOG_BASE_URL = os.getenv("DEFOG_BASE_URL")
 
 # create defog_path if it doesn't exist
 if not os.path.exists(defog_path):
@@ -222,32 +219,6 @@ async def preview_table(request: Request):
     return {"data": data, "columns": colnames}
 
 
-@router.post("/integration/get_dynamic_glossary")
-async def get_dynamic_glossary(request: Request):
-    params = await request.json()
-    token = params.get("token")
-    if not (await validate_user(token)):
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    key_name = params.get("key_name")
-    api_key = get_api_key_from_key_name(key_name)
-    dev = params.get("dev", False)
-    question = params.get("question")
-
-    r = await make_request(
-        DEFOG_BASE_URL + "/prune_glossary",
-        {"question": question, "api_key": api_key, "dev": dev},
-    )
-
-    return r
-
-
 @router.post("/integration/upload_metadata")
 async def upload_metadata(request: Request):
     params = await request.json()
@@ -261,10 +232,8 @@ async def upload_metadata(request: Request):
             },
         )
 
-    key_name = params.get("key_name")
-    dev = params.get("dev", False)
-    api_key = get_api_key_from_key_name(key_name)
-    res = await get_db_type_creds(api_key)
+    db_name = params.get("key_name")
+    res = await get_db_type_creds(db_name)
     if res:
         db_type, _ = res
     else:
@@ -286,21 +255,11 @@ async def upload_metadata(request: Request):
         )
 
     # update on API server
-    r = await make_request(
-        DEFOG_BASE_URL + "/update_metadata",
-        {
-            "api_key": api_key,
-            "table_metadata": table_metadata,
-            "db_type": db_type,
-            "dev": dev,
-        },
-    )
-    if r.get("status") == "success":
-        # Run as a background task so it doesn't block
-        task = populate_default_guidelines_task.apply_async(args=[api_key])
-        LOGGER.info(f"Scheduled populate_default_guidelines_task with id {task.id} for api_key {api_key}")
-
-    return r
+    await set_metadata(db_name=db_name, table_metadata=metadata_list)
+    return {
+        "status": "success",
+        "message": "Metadata updated successfully",
+    }
 
 
 @router.post("/integration/get_bedrock_analysis_params")

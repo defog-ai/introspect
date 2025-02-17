@@ -85,6 +85,7 @@ async def set_metadata(db_name: str, table_metadata: list[dict[str, str]]):
                     for item in table_metadata
                 ],
             )
+    return
 
 
 def mk_create_table_ddl(table_name: str, columns: list[dict[str, str]]) -> str:

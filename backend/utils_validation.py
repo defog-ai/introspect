@@ -13,8 +13,6 @@ from defog import AsyncDefog
 from utils_sql import generate_sql_query
 from tool_code_utilities import fetch_query_into_df
 
-DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-
 test_query_semaphore = Semaphore(5)
 run_query_semaphore = Semaphore(3)
 

@@ -135,26 +135,7 @@ async def send_email(
             Source=os.environ.get("FROM_EMAIL"),
         )
         success = True
-    elif EMAIL_OPTION == "DEFOG":
-        import httpx
-
-        async with httpx.AsyncClient(verify=False) as client:
-            r = await client.post(
-                url=os.getenv("DEFOG_BASE_URL", "https://api.defog.ai")
-                + "/email_data_report",
-                json={
-                    "api_key": api_key,
-                    "to_email": recipient_email_address,
-                    "subject": email_subject,
-                    "data_csv": full_data.to_csv(index=False),
-                },
-                timeout=300,
-            )
-            if r.status_code == 200:
-                success = True
-            else:
-                success = False
-
+    
     if success:
         message = f"Email sent successfully to {recipient_email_address}"
     else:
