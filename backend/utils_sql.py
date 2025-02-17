@@ -530,37 +530,42 @@ async def generate_sql_query(
     """
     t_start, timings = time.time(), []
 
+    using_db_metadata = metadata is None or len(metadata) == 0
+
     if db_type is None:
         db_type, _ = await get_db_type_creds(db_name)
     t_start = save_timing(t_start, "Retrieved db type", timings)    
     
-    if metadata is None or len(metadata) == 0:
+    if using_db_metadata:
         metadata = await get_metadata(db_name)
     t_start = save_timing(t_start, "Retrieved metadata", timings)
-    
-    if instructions is None:
-        instructions = await get_instructions(db_name)
-    t_start = save_timing(t_start, "Retrieved instructions", timings)
-    
+
     if metadata is None or len(metadata) == 0:
         return {"error": "metadata is required"}
     
-    question_embedding = await get_embedding(question)
-    t_start = save_timing(t_start, "Embedded question", timings)
+    if instructions is None:
+        if using_db_metadata:
+            instructions = await get_instructions(db_name)
+    t_start = save_timing(t_start, "Retrieved instructions", timings)
     
-    golden_queries = await get_closest_golden_queries(
-        db_name=db_name,
-        question_embedding=question_embedding,
-        num_queries=num_golden_queries,
-    )
-    t_start = save_timing(t_start, "Retrieved golden queries", timings)
-
     golden_queries_prompt = ""
-    for i, golden_query in enumerate(golden_queries):
-        golden_queries_prompt += f"Example question {i+1}: {golden_query.question}\nExample query {i+1}:\n```sql\n{golden_query.sql}\n```\n\n"
     
-    if golden_queries_prompt != "":
-        golden_queries_prompt = "The following are some potentially relevant questions and their corresponding SQL queries:\n\n" + golden_queries_prompt
+    if using_db_metadata:
+        question_embedding = await get_embedding(question)
+        t_start = save_timing(t_start, "Embedded question", timings)
+
+        golden_queries = await get_closest_golden_queries(
+            db_name=db_name,
+            question_embedding=question_embedding,
+            num_queries=num_golden_queries,
+        )
+        t_start = save_timing(t_start, "Retrieved golden queries", timings)
+
+        for i, golden_query in enumerate(golden_queries):
+            golden_queries_prompt += f"Example question {i+1}: {golden_query.question}\nExample query {i+1}:\n```sql\n{golden_query.sql}\n```\n\n"
+        
+        if golden_queries_prompt != "":
+            golden_queries_prompt = "The following are some potentially relevant questions and their corresponding SQL queries:\n\n" + golden_queries_prompt
     
     messages = get_messages(
         db_type=db_type,
@@ -573,7 +578,7 @@ async def generate_sql_query(
         previous_context=previous_context,
         golden_queries_prompt=golden_queries_prompt,
     )
-    
+
     query = await chat_async(
         model=model_name,
         messages=messages,
@@ -594,7 +599,7 @@ async def generate_sql_query(
     sql_generated = sql_generated.split("```sql", 1)[-1].split(";", 1)[0].replace("```", "").strip()
     sql_generated = add_hard_filters(sql_generated, hard_filters)
     sql_generated = clean_generated_query(sql_generated)
-
+    
     log_timings(timings)
 
     if not safe_sql(sql_generated):
