@@ -70,7 +70,6 @@ async def update_golden_queries_route(request: GoldenQueriesUpdateRequest):
                                 sql=golden_query.sql,
                             )
                         )
-                await session.commit()
                 return {"success": True}
     except Exception as e:
         LOGGER.error(f"Error updating golden queries: {e}")
@@ -90,7 +89,6 @@ async def delete_golden_queries_route(request: GoldenQueriesDeleteRequest):
             async with session.begin():
                 for question in request.questions:
                     await session.execute(delete(GoldenQueries).where(GoldenQueries.question == question))
-                await session.commit()
                 return {"success": True}
     except Exception as e:
         LOGGER.error(f"Error deleting golden queries: {e}")
