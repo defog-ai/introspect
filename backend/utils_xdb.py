@@ -12,7 +12,7 @@ from db_config import INTERNAL_DB, imported_tables_engine, temp_tables_engine
 from generic_utils import make_request
 from utils_imported_data import IMPORTED_SCHEMA
 from utils_logging import log_timings, save_and_log, save_timing
-from utils_sql import execute_sql, add_schema_to_tables
+from utils_sql import execute_sql, add_schema_to_tables, generate_sql_query
 
 LOGGER = logging.getLogger(__name__)
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
@@ -164,8 +164,10 @@ async def xdb_query(
         "db_type": INTERNAL_DB,
     }
     try:
-        gqc_response = await make_request(
-            f"{DEFOG_BASE_URL}/generate_query_chat", gqc_request
+        gqc_response = await generate_sql_query(
+            question = source_queries["combined"],
+            db_type = INTERNAL_DB,
+            metadata = md_both,
         )
     except Exception as e:
         LOGGER.error(f"Failed to generate final query: {e}")
