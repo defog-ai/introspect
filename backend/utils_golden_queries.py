@@ -53,11 +53,11 @@ async def set_golden_query(
 ) -> None:
     async with AsyncSession(engine) as session:
         async with session.begin():
-            new_query = await session.execute(
+            new_query = (await session.execute(
                 select(GoldenQueries)
                 .where(GoldenQueries.db_name == db_name)
                 .where(GoldenQueries.question == question)
-            ).scalar_one_or_none()
+            )).scalar_one_or_none()
 
             if new_query is None:
                 # add new query to db
