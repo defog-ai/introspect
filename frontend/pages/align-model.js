@@ -10,8 +10,7 @@ import { MessageManagerContext, SingleSelect as Select, Tabs } from "@defogdotai
 
 const AlignModel = () => {
   const [devMode, setDevMode] = useState(false);
-  const [compulsoryGlossary, setCompulsoryGlossary] = useState("");
-  const [prunableGlossary, setPrunableGlossary] = useState("");
+  const [instructions, setInstructions] = useState("");
   const [goldenQueries, setGoldenQueries] = useState([]); // [ { question: "", sql: "" }, ... ]
   const [token, setToken] = useState("");
 
@@ -92,7 +91,7 @@ const AlignModel = () => {
       );
       const instructionsData = await instructionsRes.json();
       // map instructions to compulsory glossary
-      setCompulsoryGlossary(instructionsData.instructions);
+      setInstructions(instructionsData.instructions);
       
       // get golden queries
       const goldenQueriesRes = await fetch(
@@ -121,9 +120,8 @@ const AlignModel = () => {
     }
   };
 
-  const updateGlossary = async (
-    compulsoryGlossary,
-    prunableGlossary,
+  const updateInstructions = async (
+    instructions,
     setLoading
   ) => {
     setLoading(true);
@@ -135,7 +133,7 @@ const AlignModel = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          instructions: compulsoryGlossary,
+          instructions: instructions,
           token,
           db_name: apiKeyName,
         }),
@@ -143,7 +141,8 @@ const AlignModel = () => {
     );
     const data = await res.json();
     setLoading(false);
-    if (data.status === "success") {
+    console.log(data);
+    if (data.success === true) {
       message.success("Instructions updated successfully!");
     }
   };
@@ -216,12 +215,10 @@ const AlignModel = () => {
       content: <Instructions
         title="Instructions"
         description="This the information about your data that the model considers when generating your SQL queries. Feel free to edit these instructions to get the best results."
-        compulsoryGlossary={compulsoryGlossary}
-        setCompulsoryGlossary={setCompulsoryGlossary}
-        prunableGlossary={prunableGlossary}
-        setPrunableGlossary={setPrunableGlossary}
-        updateGlossary={updateGlossary}
-        updateGlossaryLoadingFunction={setIsUpdatingInstructions}
+        instructions={instructions}
+        setInstructions={setInstructions}
+        updateInstructions={updateInstructions}
+        updateInstructionsLoadingFunction={setIsUpdatingInstructions}
         isLoading={isLoading}
         isUpdatingInstructions={isUpdatingInstructions}
       />,
