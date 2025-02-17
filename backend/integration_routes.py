@@ -58,7 +58,9 @@ async def get_tables_db_creds(req: UserRequest):
     # of tables that the user has selected to add to the metadata
     # ideally we'd want this to be stored somewhere more persistent like in
     # the database, but we just keep it around for now to avoid breaking changes
-    selected_tables_path = os.path.join(defog_path, f"selected_tables_{req.db_name}.json")
+    selected_tables_path = os.path.join(
+        defog_path, f"selected_tables_{req.db_name}.json"
+    )
     if os.path.exists(selected_tables_path):
         with open(selected_tables_path, "r") as f:
             selected_tables_saved = json.load(f)
@@ -204,9 +206,7 @@ async def preview_table(request: Request):
         sql_query = f"SELECT * FROM `{table_name}` LIMIT 10"
 
     try:
-        colnames, data = await async_execute_query_once(
-            db_type, db_creds, sql_query
-        )
+        colnames, data = await async_execute_query_once(db_type, db_creds, sql_query)
     except Exception as e:
         return {"error": f"Error executing query: {str(e)}"}
 
@@ -234,7 +234,9 @@ async def upload_metadata(request: Request):
         return {"error": "no db creds found"}
 
     metadata_csv = params.get("metadata_csv")
-    metadata_list = pd.read_csv(StringIO(metadata_csv)).fillna("").to_dict(orient="records")
+    metadata_list = (
+        pd.read_csv(StringIO(metadata_csv)).fillna("").to_dict(orient="records")
+    )
 
     # check if metadata is valid
     md_err = check_metadata_validity(table_metadata=metadata_list, db_type=db_type)

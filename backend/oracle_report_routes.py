@@ -96,7 +96,7 @@ async def reports_list(req: BasicRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
         async with session.begin():
@@ -143,7 +143,7 @@ async def download_report(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
     if "report_id" not in req:
         return JSONResponse(
             status_code=400,
@@ -162,7 +162,7 @@ async def delete_report(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
     report = None
 
     async with AsyncSession(engine) as session:
@@ -191,7 +191,7 @@ async def get_report_mdx(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
         async with session.begin():
@@ -273,7 +273,7 @@ async def update_report_mdx(req: UpdateReportMDXRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     if req.mdx is None and req.tiptap_mdx is None:
         return JSONResponse(
@@ -315,7 +315,7 @@ async def get_report_data_endpoint(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     report_data = await get_report_data(req.report_id, api_key)
 
@@ -332,7 +332,7 @@ async def get_report_image(req: GetReportImageRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     # construct the image path
     image_path = get_report_image_path(api_key, req.report_id, req.image_file_name)
@@ -351,7 +351,7 @@ async def get_report_analysis_ids(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
         async with session.begin():
@@ -373,7 +373,7 @@ async def get_report_analysis(req: ReportAnalysisRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     # get the report
     async with AsyncSession(engine) as session:
@@ -406,7 +406,7 @@ async def get_report_status(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     # get the report
     async with AsyncSession(engine) as session:
@@ -434,7 +434,7 @@ async def get_report_summary(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
     # get from export key's executive_summary
     executive_summary = None
     async with AsyncSession(engine) as session:
@@ -466,7 +466,7 @@ async def get_report_comments(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
         async with session.begin():
@@ -510,7 +510,7 @@ async def update_report_comments(req: UpdateReportCommentsRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
         async with session.begin():

@@ -99,7 +99,7 @@ async def process_event(event):
 
             # first, get the default API key
             key_name = "Slack"  # if this key name does not exist, the function below default to the first key
-            defog_api_key = get_api_key_from_key_name(key_name)
+            defog_api_key = await get_api_key_from_key_name(key_name)
 
             # then, get the db type and db creds associated with the API key
             res = await get_db_type_creds(defog_api_key)
@@ -327,7 +327,7 @@ async def submit_feedback_to_defog_server(
     """
     # Construct the feedback object for sending to the Defog server via send_feedback
     feedback_obj = {
-        "api_key": get_api_key_from_key_name(None),
+        "api_key": (await get_api_key_from_key_name(None)),
         "feedback": feedback_type,  # "Good" or "Bad"
         "text": feedback_text,  # feedback text, empty if feedback is Good
         "response": feedback_response_obj,  # response: dict, required keys: "questionId", "question", "generatedSql"
@@ -393,6 +393,7 @@ async def fetch_previous_thread_messages(channel_id, thread_ts):
             prev_context.append(sql)
 
     return prev_context
+
 
 async def send_feedback(params_obj):
     """

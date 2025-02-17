@@ -135,7 +135,7 @@ async def send_email(
             Source=os.environ.get("FROM_EMAIL"),
         )
         success = True
-    
+
     if success:
         message = f"Email sent successfully to {recipient_email_address}"
     else:

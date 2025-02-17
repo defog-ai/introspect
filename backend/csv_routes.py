@@ -6,6 +6,7 @@ from utils_sql import generate_sql_query, retry_query_after_error
 
 router = APIRouter()
 
+
 @router.post("/generate_query_csv")
 async def generate_query_csv_route(request: Request):
     """
@@ -33,17 +34,14 @@ async def generate_query_csv_route(request: Request):
     for item in previous_context:
         prev_question = item.get("user_question")
         if question:
-            prev_steps = (
-                item.get("steps", [])
-            )
+            prev_steps = item.get("steps", [])
             if len(prev_steps) > 0:
                 for step in prev_steps:
                     if "sql" in step:
                         prev_sql = step["sql"]
-                        prev_questions.append({
-                            "question": prev_question,
-                            "sql": prev_sql
-                        })
+                        prev_questions.append(
+                            {"question": prev_question, "sql": prev_sql}
+                        )
                         break
 
     # metadata should be a list of dictionaries with keys 'table_name', 'column_name', 'data_type', and 'column_description'\
@@ -52,7 +50,7 @@ async def generate_query_csv_route(request: Request):
         return {"error": "no question provided"}
     if not metadata:
         return {"error": "no metadata provided"}
-    
+
     resp = await generate_sql_query(
         question=question,
         metadata=metadata,
@@ -65,7 +63,7 @@ async def generate_query_csv_route(request: Request):
             "ran_successfully": False,
             "error": resp["error"],
         }
-    
+
     else:
         return {
             "ran_successfully": True,
@@ -113,7 +111,7 @@ async def retry_query_csv_route(request: Request):
         )
     if not error:
         return JSONResponse(content={"error": "no error provided"}, status_code=400)
-    
+
     resp = await retry_query_after_error(
         question=question,
         db_type="sqlite",
@@ -125,9 +123,12 @@ async def retry_query_csv_route(request: Request):
     if "error" in resp and resp["error"]:
         return JSONResponse(content={"error": resp["error"]}, status_code=400)
 
-    return JSONResponse(content={
-        "new_query": resp["sql"],
-        "query_db": "sqlite",
-        "error": resp.get("error", None),
-        "status": "success",
-    }, status_code=200)
+    return JSONResponse(
+        content={
+            "new_query": resp["sql"],
+            "query_db": "sqlite",
+            "error": resp.get("error", None),
+            "status": "success",
+        },
+        status_code=200,
+    )

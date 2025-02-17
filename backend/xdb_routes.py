@@ -20,7 +20,7 @@ async def xdb_query_route(request: Request):
         token = body.get("token")
         key_name = body.get("key_name")
         user = await validate_user(token)
-        api_key = get_api_key_from_key_name(key_name)
+        api_key = await get_api_key_from_key_name(key_name)
         if not user:
             return JSONResponse(
                 status_code=401,

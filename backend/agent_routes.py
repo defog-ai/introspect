@@ -43,7 +43,7 @@ async def generate_step(request: Request):
     The mandatory inputs are analysis_id, a valid key_name and question.
 
     Note on previous_context:
-    It is an array of objects. Each object references a "parent" analysis. 
+    It is an array of objects. Each object references a "parent" analysis.
     Each parent analysis has a user_question and analysis_id, steps:
      - `user_question` - contains the question asked by the user.
      - `analysis_id` - is the id of the parent analysis.
@@ -90,11 +90,8 @@ async def generate_step(request: Request):
                     previous_question += " (" + assignment_understanding + ")"
                 prev_sql = step.get("sql")
                 if prev_sql:
-                    prev_questions.append({
-                        "question": prev_question,
-                        "sql": prev_sql
-                    })
-        
+                    prev_questions.append({"question": prev_question, "sql": prev_sql})
+
         # if sql_only is true, just call the sql generation function and return, while saving the step
         if type(assignment_understanding) == str and len(prev_questions) == 0:
             # remove any numbers, like "1. " from the beginning of assignment understanding
@@ -104,7 +101,7 @@ async def generate_step(request: Request):
                 )
 
             question = question + " (" + assignment_understanding + ")"
-        
+
         inputs = {
             "question": question,
             "hard_filters": hard_filters,
@@ -186,8 +183,7 @@ async def generate_follow_on_questions_route(request: Request):
             raise Exception("Invalid request. Must have a question.")
 
         follow_on_questions = await generate_follow_on_questions(
-            question=question, 
-            db_name=db_name
+            question=question, db_name=db_name
         )
 
         return {
@@ -239,7 +235,10 @@ async def clarify(request: Request):
             db_name=db_name,
         )
 
-        if "not ambiguous" in clarification_questions.lower() or "no clarifi" in clarification_questions.lower():
+        if (
+            "not ambiguous" in clarification_questions.lower()
+            or "no clarifi" in clarification_questions.lower()
+        ):
             clarification_questions = []
         else:
             clarification_questions = [{"question": clarification_questions}]
@@ -276,7 +275,7 @@ async def rerun_step_endpoint(request: Request):
         analysis_id = params.get("analysis_id")
         step_id = params.get("step_id")
         edited_step = params.get("edited_step")
-        
+
         if not db_name or db_name == "":
             raise Exception("Invalid request. Must have API key name.")
 
@@ -354,7 +353,7 @@ async def edit_chart_route(request: Request):
             raise Exception("Invalid chart state provided.")
 
         LOGGER.info(f"Editing chart with request: {user_request}")
-        
+
         chart_state_edits = await edit_chart(
             current_chart_state=current_chart_state,
             columns=columns,
@@ -385,7 +384,7 @@ async def analyse_data_streaming_endpoint(websocket: WebSocket):
             question=question, data_csv=data_csv, sql=sql
         ):
             await websocket.send_text(token)
-        
+
         # Send a final message to indicate the end of the stream
         await websocket.send_text("Defog data analysis has ended")
     except WebSocketDisconnect:
@@ -395,6 +394,7 @@ async def analyse_data_streaming_endpoint(websocket: WebSocket):
         traceback.print_exc()
     finally:
         await websocket.close()
+
 
 @router.post("/get_question_type")
 async def get_question_type(request: Request):

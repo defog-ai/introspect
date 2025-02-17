@@ -95,7 +95,7 @@ async def set_guidelines(req: SetGuidelinesRequest):
                     "message": "Invalid username or password",
                 },
             )
-        db_name = get_api_key_from_key_name(req.key_name)
+        db_name = await get_api_key_from_key_name(req.key_name)
     else:
         db_name = req.api_key
 
@@ -155,7 +155,7 @@ async def get_guidelines(req: GetGuidelinesRequest):
                     "message": "Invalid username or password",
                 },
             )
-        db_name = get_api_key_from_key_name(req.key_name)
+        db_name = await get_api_key_from_key_name(req.key_name)
     else:
         db_name = req.api_key
 
@@ -220,7 +220,7 @@ async def clarify_question(req: ClarifyQuestionRequest):
                 "message": "Invalid username or password",
             },
         )
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
     ts = save_timing(ts, "validate_user", timings)
 
     clarify_request = {
@@ -315,7 +315,7 @@ async def suggest_web_sources(req: Request):
                 "message": "Invalid username or password",
             },
         )
-    body["api_key"] = get_api_key_from_key_name(key_name)
+    body["api_key"] = await get_api_key_from_key_name(key_name)
     if "user_question" not in body:
         return JSONResponse(
             status_code=400,
@@ -380,7 +380,7 @@ async def get_analysis_status_endpoint(req: AnalysisRequest):
             },
         )
 
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     err, status = await get_analysis_status(
         api_key=api_key,
@@ -412,7 +412,7 @@ async def delete_analysis_endpoint(req: AnalysisRequest):
             },
         )
 
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     # First try to cancel any running task
     task_id = get_analysis_task_id(req.analysis_id)
@@ -471,7 +471,7 @@ async def generate_analysis(req: GenerateAnalysis):
             },
         )
 
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
     analysis_id = req.analysis_id or str(uuid4())
 
     # start an empty analysis
@@ -572,7 +572,7 @@ async def begin_generation(req: BeginGenerationRequest):
         )
 
     username = user.username
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     # clean up clarifications
     answered_clarifications = []
@@ -651,7 +651,7 @@ async def revision(req: ReviseReportRequest):
 
     username = user.username
 
-    api_key = get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.key_name)
 
     # if comment length is 0 and general comments is empty, return an error
     if not len(req.comments_with_relevant_text) and not req.general_comments:

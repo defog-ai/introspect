@@ -4,6 +4,7 @@ import re
 import json
 import traceback
 from typing import Optional
+from uuid import uuid4
 from colorama import Fore, Style
 
 import pandas as pd
@@ -11,9 +12,28 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+
 def replace_whitespace(s):
     pattern = re.compile(r'",\s*"')
     return re.sub(pattern, '", "', s)
+
+
+def clean_table_name(table_name):
+    """
+    Cleans a table name by snake casing it and making it lower case.
+    If the table name is not a string, raises a ValueError.
+    If the table name is empty, adds a random string.
+    If the table name has special characters, quotes it.
+    """
+    validated = str(table_name).strip().lower()
+    validated = re.sub(r"[^a-zA-Z0-9_ ]", "_", validated)
+
+    if not isinstance(table_name, str):
+        raise ValueError("Table name must be a string.")
+    if not validated:
+        validated = f"table_{uuid4().hex[:7]}"
+
+    return validated
 
 
 def fix_JSON(json_message=None):

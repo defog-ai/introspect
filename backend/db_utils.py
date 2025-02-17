@@ -1,9 +1,11 @@
 """Database credential utility functions."""
+
 from typing import Dict, Tuple
 from sqlalchemy import select, update, insert
 from db_config import engine
 from db_models import DbCreds
 from utils_logging import LOGGER
+
 
 async def get_db_type_creds(db_name: str) -> Tuple[str, Dict[str, str]] | None:
     async with engine.begin() as conn:
@@ -12,6 +14,14 @@ async def get_db_type_creds(db_name: str) -> Tuple[str, Dict[str, str]] | None:
         )
         row = row.fetchone()
     return row
+
+
+async def get_db_names() -> list[str]:
+    async with engine.begin() as conn:
+        result = await conn.execute(select(DbCreds.db_name))
+        db_names = result.scalars().all()
+        LOGGER.info(f"db_names: {db_names}")
+    return db_names
 
 
 async def update_db_type_creds(db_name, db_type, db_creds):

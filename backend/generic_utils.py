@@ -5,6 +5,7 @@ import sqlparse
 from datetime import datetime
 import re
 
+from db_utils import get_db_names
 from utils_logging import LOGGER, LOG_LEVEL, truncate_obj
 
 DEFOG_API_KEYS = os.environ.get("DEFOG_API_KEYS")
@@ -66,12 +67,12 @@ def convert_nested_dict_to_list(table_metadata):
     return metadata
 
 
-def get_api_key_from_key_name(key_name):
-    if key_name and key_name in DEFOG_API_KEY_NAMES:
-        idx = DEFOG_API_KEY_NAMES.split(",").index(key_name)
-        api_key = DEFOG_API_KEYS.split(",")[idx]
-    else:
-        api_key = DEFOG_API_KEYS.split(",")[0]
+async def get_api_key_from_key_name(key_name):
+    db_names = await get_db_names()
+    api_key = None
+    if key_name in db_names:
+        api_key = key_name
+
     return api_key
 
 
