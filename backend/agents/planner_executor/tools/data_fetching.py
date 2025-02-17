@@ -3,7 +3,7 @@ import pandas as pd
 
 async def data_fetcher_and_aggregator(
     question: str,
-    key_name: str,
+    db_name: str,
     hard_filters: list = [],
     previous_context: list = [],
     **kwargs,
@@ -13,44 +13,29 @@ async def data_fetcher_and_aggregator(
 
     IMPORTANT NOTE: Changing this function directly will NOT change the behavior of the tool immediately. You will have to rebuild the docker image to see changes in effect. This is because the tool code is compiled into a string that lives inside a postgres database, and that code string is then run to execute the tool.
     """
-    import os
     import pandas as pd
-    from generic_utils import make_request, get_api_key_from_key_name
     from tool_code_utilities import fetch_query_into_df
     from utils import SqlExecutionError
     from db_utils import get_db_type_creds
-    from utils_sql import safe_sql
+    from utils_sql import safe_sql, generate_sql_query
 
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")
 
-    api_key = get_api_key_from_key_name(key_name)
-    res = await get_db_type_creds(api_key)
+    res = await get_db_type_creds(db_name)
     db_type, _ = res
 
     print(f"Previous context: {previous_context}", flush=True)
 
-    # send the data to the Defog, and get a response from it
-    generate_query_url = os.environ.get(
-        "DEFOG_GENERATE_URL",
-        os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-        + "/generate_query_chat",
+    # generate SQL
+    res = await generate_sql_query(
+        question=question,
+        db_name=db_name,
+        db_type=db_type,
+        hard_filters=hard_filters,
+        previous_context=previous_context,
     )
-    # make async request to the url, using the appropriate library
-    res = await make_request(
-        url=generate_query_url,
-        data={
-            "api_key": api_key,
-            "question": question,
-            "hard_filters": hard_filters,
-            "previous_context": previous_context,
-            "db_type": db_type,
-        },
-    )
-    print(generate_query_url, flush=True)
 
-    reference_queries = res.get("reference_queries", [])
-    instructions_used = res.get("pruned_instructions", "")
     query = res.get("sql")
 
     if query is None:
@@ -68,15 +53,13 @@ async def data_fetcher_and_aggregator(
                 }
             ],
             "sql": query.strip(),
-            "reference_queries": reference_queries,
-            "instructions_used": instructions_used,
         }
 
     print(f"Running query: {query}")
 
     try:
         df, sql_query = await fetch_query_into_df(
-            api_key=api_key, sql_query=query
+            db_name=db_name, sql_query=query
         )
     except Exception as e:
         print("Raising execution error", flush=True)
