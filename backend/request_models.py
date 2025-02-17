@@ -102,3 +102,11 @@ class GoldenQueriesUpdateRequest(UserRequest):
     """
 
     golden_queries: list[GoldenQuery]
+
+
+class GoldenQueriesDeleteRequest(UserRequest):
+    """
+    Request model for deleting golden queries.
+    """
+
+    questions: list[str]

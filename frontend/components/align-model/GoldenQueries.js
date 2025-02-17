@@ -115,14 +115,18 @@ const GoldenQueries = ({
           <Button
             icon={
               editMode[index] ? (
-                <SaveOutlined
-                  onClick={() => setUpdatedGoldenQueriesToggle((prev) => !prev)}
-                />
+                <SaveOutlined />
               ) : (
                 <EditOutlined />
               )
             }
-            onClick={() => toggleEditMode(index)}
+            onClick={() => {
+              if (editMode[index]) {
+                // If we're saving (i.e. exiting edit mode), trigger the update
+                setUpdatedGoldenQueriesToggle(prev => !prev);
+              }
+              toggleEditMode(index);
+            }}
             disabled={isLoading || isUpdatingGoldenQueries}
           />
           <Button
@@ -130,12 +134,31 @@ const GoldenQueries = ({
             type="primary"
             danger
             onClick={async () => {
-              const newGoldenQueries = [...goldenQueries];
-              newGoldenQueries.splice(index, 1);
-              setGoldenQueries(newGoldenQueries);
-              // Remove the editMode for the deleted query so it does not carry over
-              setEditMode(editMode.filter((_, i) => i !== index));
-              setUpdatedGoldenQueriesToggle((prev) => !prev);
+              try {
+                const response = await fetch(setupBaseUrl("http", `integration/delete_golden_queries`), {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    token: token,
+                    db_name: apiKeyName,
+                    questions: [record.question]
+                  }),
+                });
+
+                if (!response.ok) {
+                  throw new Error("Failed to delete golden query");
+                }
+
+                const newGoldenQueries = [...goldenQueries];
+                newGoldenQueries.splice(index, 1);
+                setGoldenQueries(newGoldenQueries);
+                // Remove the editMode for the deleted query so it does not carry over
+                setEditMode(editMode.filter((_, i) => i !== index));
+              } catch (error) {
+                console.error("Error deleting golden query:", error);
+              }
             }}
             disabled={isLoading || isUpdatingGoldenQueries}
           />
