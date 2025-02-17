@@ -1,20 +1,43 @@
 import collections
 import re
 from typing import Dict, Optional, Tuple
+import time
+from datetime import datetime
 
 import pandas as pd
 from pandas.testing import assert_frame_equal, assert_series_equal
 from sqlglot import exp, parse_one
-from request_models import HardFilter
 from utils_df import mk_df
 from generic_utils import is_sorry
 from defog.query import async_execute_query_once
+from request_models import ColumnMetadata, HardFilter, QuestionAnswer
+from llm_api import O3_MINI
+from utils_md import get_metadata, mk_create_ddl
+from utils_instructions import get_instructions
+from utils_embedding import get_embedding
+from utils_golden_queries import get_closest_golden_queries
+from defog.llm.utils import chat_async
+import sqlparse
+from utils_logging import LOGGER, log_timings, save_timing
+from db_utils import get_db_type_creds
+import re
 
-from utils_logging import LOGGER
+with open("./prompts/generate_sql/system.md", "r") as f:
+    GENERATE_SQL_SYSTEM_PROMPT = f.read()
 
-# Functions mostly lifted from https://github.com/defog-ai/sql-eval/blob/main/eval/eval.py
-# but adapted to use the engine from db_utils and without some extra labels like
-# query_category
+with open("./prompts/generate_sql/user.md", "r") as f:
+    GENERATE_SQL_USER_PROMPT = f.read()
+
+UNSAFE_KEYWORDS = ['CREATE', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'INSERT']
+# Combine keywords into one regex pattern for efficiency
+UNSAFE_REGEX = re.compile(r'\b(?:' + '|'.join(UNSAFE_KEYWORDS) + r')\b', re.IGNORECASE)
+
+
+# make sure the query does not contain any malicious commands like drop, delete, etc.
+def safe_sql(query: str):
+    if query is None:
+        query = ""
+    return not UNSAFE_REGEX.search(query)
 
 
 async def execute_sql(
@@ -34,6 +57,10 @@ async def execute_sql(
 
     if is_sorry(sql):
         err_msg = "Obtained Sorry SQL query"
+        return None, err_msg
+    
+    if not safe_sql(sql):
+        err_msg = "Unsafe SQL query"
         return None, err_msg
 
     try:
@@ -294,7 +321,7 @@ def add_hard_filters(sql: str, hard_filters: list[HardFilter]) -> str:
     For every SELECT that references a table_name from any HardFilter,
     add conditions (table_alias.column_name operator 'value') into the WHERE.
     """
-    if not hard_filters:
+    if not hard_filters or len(hard_filters) == 0:
         return sql
     
     # Parse into sqlglot Expression Tree
@@ -404,3 +431,170 @@ def add_hard_filters(sql: str, hard_filters: list[HardFilter]) -> str:
     walk(parsed)
 
     return parsed.sql(dialect="postgres")
+
+
+def get_messages(
+    db_type: str,
+    date_today: str,
+    instructions: str,
+    user_question: str,
+    table_metadata_ddl: str,
+    system_prompt: str,
+    user_prompt: str,
+    previous_context: list[QuestionAnswer] | None = None,
+    golden_queries_prompt: str = "",
+):
+    """
+    Creates messages for the chatbot.
+    """
+    system_prompt = system_prompt.format(db_type=db_type, date_today=date_today)
+    previous_messages = []
+    if previous_context and len(previous_context) > 0:
+        for question_answer in previous_context:
+            previous_messages.append(
+                {
+                    "role": "user",
+                    "content": (
+                        f"Create a SQL query for answering the following question: `{question_answer.question}`."
+                        "Note that subsequent questions are a follow-on question from one, and you should keep this in mind when creating the query for future questions."
+                    ),
+                }
+            )
+            previous_messages.append(
+                {
+                    "role": "assistant",
+                    "content": f"```sql\n{question_answer.answer};\n```",
+                }
+            )
+
+    user_prompt = user_prompt.format(
+        user_question=user_question,
+        table_metadata_ddl=table_metadata_ddl,
+        instructions=instructions,
+        golden_queries_prompt=golden_queries_prompt,
+    )
+
+    messages = (
+        [{"role": "system", "content": system_prompt}]
+        + previous_messages
+        + [{"role": "user", "content": user_prompt}]
+    )
+    for message in messages:
+        LOGGER.debug(f"{message['role']}: {message['content']}")
+    return messages
+
+
+def clean_generated_query(query: str):
+    """
+    Clean up the generated query by
+    - formatting the query using sqlparse
+    - fixing common problems in LLM-powered query generation with post-processing heuristics
+
+    KNOWN ISSUES: the division fix will only work with Postgres/Redshift/Snowflake/Databricks. It might not work with other databases.
+    """
+
+    query = sqlparse.format(query, reindent_aligned=True)
+
+    # if the string `< =` is present, replace it with `<=`. Similarly for `> =` and `>=`
+    query = query.replace("< =", "<=").replace("> =", ">=")
+
+    # if the string ` / NULLIF (` is present, replace it with `/ NULLIF ( 1.0 * `.
+    # This is a fix for ensuring that the denominator is always a float in division operations.
+    query = query.replace("/ NULLIF (", "/ NULLIF (1.0 * ")
+    return query
+
+
+async def generate_sql_query(
+    question: str, 
+    db_name: str = None, 
+    db_type: str = None, 
+    metadata: list[ColumnMetadata] = None,
+    instructions: str = None,
+    previous_context: list[QuestionAnswer] = None,
+    hard_filters: list[HardFilter] = None,
+    num_golden_queries: int = 4,
+    model_name: str = O3_MINI,
+):
+    """
+    Generate SQL query for a given question, using an LLM.
+    if db_type, metadata, and instructions are explicitly provided, they are used as is.
+    Else, we use the db_name to extract the db_type, metadata, and instructions.
+    Returns the generated SQL query and the error message if any.
+    """
+    t_start, timings = time.time(), []
+
+    if db_type is None:
+        db_type, _ = await get_db_type_creds(db_name)
+    t_start = save_timing(t_start, "Retrieved db type", timings)    
+    
+    if metadata is None or len(metadata) == 0:
+        metadata = await get_metadata(db_name)
+    t_start = save_timing(t_start, "Retrieved metadata", timings)
+    
+    if instructions is None:
+        instructions = await get_instructions(db_name)
+    t_start = save_timing(t_start, "Retrieved instructions", timings)
+    
+    if metadata is None or len(metadata) == 0:
+        return {"error": "metadata is required"}
+    
+    question_embedding = await get_embedding(question)
+    t_start = save_timing(t_start, "Embedded question", timings)
+    
+    golden_queries = await get_closest_golden_queries(
+        db_name=db_name,
+        question_embedding=question_embedding,
+        num_queries=num_golden_queries,
+    )
+    t_start = save_timing(t_start, "Retrieved golden queries", timings)
+
+    golden_queries_prompt = ""
+    for i, golden_query in enumerate(golden_queries):
+        golden_queries_prompt += f"Example question {i+1}: {golden_query.question}\nExample query {i+1}:\n```sql\n{golden_query.sql}\n```\n\n"
+    
+    if golden_queries_prompt != "":
+        golden_queries_prompt = "The following are some potentially relevant questions and their corresponding SQL queries:\n\n" + golden_queries_prompt
+    
+    messages = get_messages(
+        db_type=db_type,
+        date_today=datetime.now().strftime("%Y-%m-%d"),
+        instructions=instructions,
+        user_question=question,
+        table_metadata_ddl=mk_create_ddl(metadata),
+        system_prompt=GENERATE_SQL_SYSTEM_PROMPT,
+        user_prompt=GENERATE_SQL_USER_PROMPT,
+        previous_context=previous_context,
+        golden_queries_prompt=golden_queries_prompt,
+    )
+    
+    query = await chat_async(
+        model=model_name,
+        messages=messages,
+        # if model_name is a reasoning model, the temperature param will automatically be deleted in the request
+        # else, we want to use temperature=0
+        temperature=0.0,
+        # for reasoning models, we want to use low reasoning effort
+        # for non-reasoning models, this param will be ignored
+        reasoning_effort="low",
+    )
+
+    LOGGER.info("latency of query generation in seconds: " + "{:.2f}".format(query.time) + "s")
+    LOGGER.info(
+        "cost of query in cents: " + "{:.2f}".format(query.cost_in_cents) + "¢"
+    )
+
+    sql_generated = query.content
+    sql_generated = sql_generated.split("```sql", 1)[-1].split(";", 1)[0].replace("```", "").strip()
+    sql_generated = add_hard_filters(sql_generated, hard_filters)
+    sql_generated = clean_generated_query(sql_generated)
+
+    log_timings(timings)
+
+    if not safe_sql(sql_generated):
+        LOGGER.error("Unsafe SQL query")
+        LOGGER.info(sql_generated)
+        response = {"sql": None, "error": "Unsafe SQL query"}
+    else:
+        response = {"sql": sql_generated, "error": None}
+
+    return response
