@@ -13,6 +13,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from utils_logging import LOGGER
 
+
+################################################################################
+# All imports from db_config in this file are inside respective functions.
+# This is to prevent a race condition inside startup.py because this file is imported there.
+# Because of the auth_utils import in startup.py, and a top level db_config import in this file
+# There would be two simultaneous calls to `CREATE DATABASE` inside the `get_db_engine` function in `db_config.py`.
+# The two calls would cause a race condition in `get_db_engine` where the database would not be found in an `exists` check
+# but by the time the following statements were run, the _other_ call to CREATE DATABASE would have completed.
+# Causing a duplicate key error.
+# Also detailed here: https://github.com/defog-ai/defog-self-hosted/pull/385
+################################################################################
+
 SALT = os.getenv("SALT", "default_salt")
 if SALT == "default_salt":
     LOGGER.info(

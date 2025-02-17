@@ -51,6 +51,8 @@ async def init_db(engine: AsyncEngine, imported_tables_engine: Engine | None):
 async def create_admin_user():
     """Create admin user if it doesn't exist"""
     from db_config import engine
+
+    # auth_utils imported inside here to prevent a race condition because of multiple calls to get_db_engine
     from auth_utils import get_hashed_password, login_user
 
     admin_username = os.environ.get("ADMIN_USERNAME", "admin")
