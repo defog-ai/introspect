@@ -91,7 +91,7 @@ const DbCredentialsForm = ({
       db_creds,
       db_type: dbType,
       token: token,
-      key_name: apiKeyName,
+      db_name: apiKeyName,
     };
 
     setLoading(true);
