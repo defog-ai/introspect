@@ -1,14 +1,12 @@
 from auth_utils import validate_user_request
-from db_models import GoldenQueries
 from db_utils import engine
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from request_models import GoldenQueriesDeleteRequest, GoldenQueriesUpdateRequest, UserRequest
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
 import traceback
 from utils_logging import LOGGER
 from utils_embedding import get_embedding
+from utils_golden_queries import get_all_golden_queries, set_golden_query, delete_golden_query
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
@@ -19,16 +17,9 @@ router = APIRouter(
 @router.post("/integration/get_golden_queries")
 async def get_golden_queries_route(request: UserRequest):
     try:
-        async with AsyncSession(engine) as session:
-            async with session.begin():
-                stmt = await session.execute(
-                    select(GoldenQueries.question, GoldenQueries.sql).where(
-                        GoldenQueries.db_name == request.db_name
-                    )
-                )
-                result = stmt.all()
-                golden_queries = [{"question": r[0], "sql": r[1]} for r in result]
-                return {"golden_queries": golden_queries}
+        golden_queries = await get_all_golden_queries(request.db_name)
+        golden_queries = [{"question": r.question, "sql": r.sql} for r in golden_queries]
+        return {"golden_queries": golden_queries}
     except Exception as e:
         LOGGER.error(f"Error getting golden queries: {e}")
         LOGGER.error(traceback.format_exc())
@@ -49,31 +40,15 @@ async def update_golden_queries_route(request: GoldenQueriesUpdateRequest):
     and not deleting any.
     """
     try:
-        async with AsyncSession(engine) as session:
-            async with session.begin():
-                for golden_query in request.golden_queries:
-                    # check if golden query already exists under the same db_name
-                    current_golden_query = await session.execute(
-                        select(GoldenQueries).where(
-                            GoldenQueries.db_name == request.db_name,
-                            GoldenQueries.question == golden_query.question
-                        )
-                    )
-                    existing_golden_query = current_golden_query.scalar_one_or_none()
-                    if existing_golden_query:
-                        # update existing golden query
-                        existing_golden_query.sql = golden_query.sql
-                    else:
-                        embedding = await get_embedding(text = golden_query.question)
-                        session.add(
-                            GoldenQueries(
-                                db_name=request.db_name,
-                                question=golden_query.question,
-                                sql=golden_query.sql,
-                                embedding=embedding
-                            )
-                        )
-                return {"success": True}
+        for golden_query in request.golden_queries:
+            embedding = await get_embedding(text=golden_query.question)
+            await set_golden_query(
+                db_name=request.db_name,
+                question=golden_query.question,
+                sql=golden_query.sql,
+                question_embedding=embedding
+            )
+        return {"success": True}
     except Exception as e:
         LOGGER.error(f"Error updating golden queries: {e}")
         LOGGER.error(traceback.format_exc())
@@ -88,11 +63,9 @@ async def delete_golden_queries_route(request: GoldenQueriesDeleteRequest):
     Deletes a list of golden queries for a given db_name.
     """
     try:
-        async with AsyncSession(engine) as session:
-            async with session.begin():
-                for question in request.questions:
-                    await session.execute(delete(GoldenQueries).where(GoldenQueries.question == question))
-                return {"success": True}
+        for question in request.questions:
+            await delete_golden_query(db_name=request.db_name, question=question)
+        return {"success": True}
     except Exception as e:
         LOGGER.error(f"Error deleting golden queries: {e}")
         LOGGER.error(traceback.format_exc())

@@ -2,7 +2,7 @@
 ### Instructions Related Functions Below ###
 ########################################
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from db_models import GoldenQueries
 from db_config import engine
@@ -15,13 +15,17 @@ class GoldenQuery(BaseModel):
     sql: str = Field(..., description="The query itself")
 
 async def get_all_golden_queries(db_name: str) -> List[GoldenQuery]:
-    async with engine.begin() as conn:
-        result = await conn.execute(select(GoldenQueries).where(GoldenQueries.db_name == db_name))
-        return result.scalars().all()
+    async with engine.begin() as session:
+        result = await session.execute(
+            select(GoldenQueries.question, GoldenQueries.sql).where(
+                GoldenQueries.db_name == db_name
+            )
+        )
+        return result.fetchall()
 
 async def get_closest_golden_queries(db_name: str, question_embedding: List[float]) -> List[GoldenQuery]:
-    async with engine.begin() as conn:
-        result = await conn.execute(
+    async with engine.begin() as session:
+        result = await session.execute(
             select(GoldenQueries)
             .where(GoldenQueries.db_name == db_name)
             .order_by(
@@ -29,7 +33,7 @@ async def get_closest_golden_queries(db_name: str, question_embedding: List[floa
             )
             .limit(5)
         )
-        return result.scalars().all()
+        return result.fetchall()
 
 async def set_golden_query(
     db_name: str,
@@ -38,12 +42,13 @@ async def set_golden_query(
     question_embedding: List[float]
 ) -> None:
     async with AsyncSession(engine) as session:
-        async with engine.begin() as conn:
-            new_query = await conn.execute(
+        async with session.begin():
+            new_query = await session.execute(
                 select(GoldenQueries)
                 .where(GoldenQueries.db_name == db_name)
                 .where(GoldenQueries.question == question)
-            ).scalar_one_or_none()
+            )
+            new_query = new_query.scalar_one_or_none()
             
             if new_query is None:
                 # add new query to db
@@ -53,10 +58,18 @@ async def set_golden_query(
                     sql=sql,
                     embedding=question_embedding
                 )
-                conn.add(new_query)
-                await conn.commit()
-                await conn.refresh(new_query)
+                session.add(new_query)
             else:
                 new_query.sql = sql
                 new_query.embedding = question_embedding
             return
+
+async def delete_golden_query(db_name: str, question: str) -> None:
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            await session.execute(
+                delete(GoldenQueries)
+                .where(GoldenQueries.db_name == db_name)
+                .where(GoldenQueries.question == question)
+            )
+    return
