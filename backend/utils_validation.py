@@ -63,6 +63,7 @@ async def test_query(
         df_gen, sql_gen = await fetch_query_into_df(
             db_name=db_name,
             sql_query=sql_gen,
+            question=question,
         )
 
         result = await compare_query_results(

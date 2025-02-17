@@ -203,15 +203,12 @@ async def preview_table(request: Request):
     elif db_type == "bigquery":
         sql_query = f"SELECT * FROM `{table_name}` LIMIT 10"
 
-    print("Executing preview table query", flush=True)
-    print(sql_query, flush=True)
-
     try:
-        colnames, data, _ = await async_execute_query_once(
+        colnames, data = await async_execute_query_once(
             db_type, db_creds, sql_query
         )
-    except:
-        return {"error": "error executing query"}
+    except Exception as e:
+        return {"error": f"Error executing query: {str(e)}"}
 
     return {"data": data, "columns": colnames}
 

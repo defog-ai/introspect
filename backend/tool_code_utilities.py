@@ -6,40 +6,46 @@ from defog.query import async_execute_query_once
 import re
 import pandas as pd
 from db_utils import get_db_type_creds
-from utils_sql import safe_sql
+from utils_sql import safe_sql, retry_query_after_error
 from typing import Tuple
 
 async def fetch_query_into_df(
-    db_name: str, sql_query: str, temp: bool = False
+    db_name: str,
+    sql_query: str,
+    question: str = None,
 ) -> Tuple[pd.DataFrame, str]:
     """
     Runs a sql query and stores the results in a pandas dataframe.
     """
-
-    # important note: this is currently a blocking call
-    # TODO: add an option to the defog library to make this async
-    if not temp:
-        res = await get_db_type_creds(db_name)
-        db_type, db_creds = res
-    else:
-        db_type = "postgres"
-        db_creds = {
-            "host": "agents-postgres",
-            "port": 5432,
-            "database": "postgres",
-            "user": "postgres",
-            "password": "postgres",
-        }
+    db_type, db_creds = await get_db_type_creds(db_name)
 
     # make sure not unsafe
     if not safe_sql(sql_query):
         raise ValueError("Unsafe SQL Query")
+    
+    try:
+        colnames, data = await async_execute_query_once(
+            query=sql_query,
+            db_type=db_type,
+            db_creds=db_creds,
+        )
+    except Exception as e:
+        # retry exactly once
+        error_msg = str(e)
+        sql_query = (
+            await retry_query_after_error(
+                question=question,
+                sql=sql_query,
+                error=error_msg,
+                db_name=db_name,
+            )
+        )["sql"]
 
-    colnames, data = await async_execute_query_once(
-        query=sql_query,
-        db_type=db_type,
-        db_creds=db_creds,
-    )
+        colnames, data = await async_execute_query_once(
+            query=sql_query,
+            db_type=db_type,
+            db_creds=db_creds,
+        )
 
     df = pd.DataFrame(data, columns=colnames)
 

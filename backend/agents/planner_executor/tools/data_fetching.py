@@ -59,7 +59,9 @@ async def data_fetcher_and_aggregator(
 
     try:
         df, sql_query = await fetch_query_into_df(
-            db_name=db_name, sql_query=query
+            db_name=db_name,
+            sql_query=query,
+            question=question,
         )
     except Exception as e:
         print("Raising execution error", flush=True)

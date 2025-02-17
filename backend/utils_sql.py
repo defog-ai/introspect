@@ -71,7 +71,6 @@ async def execute_sql(
         return None, err_msg
 
     try:
-
         colnames, rows = await async_execute_query_once(db_type, db_creds, sql)
         data = [list(row) for row in rows]
         df = mk_df(data, colnames)

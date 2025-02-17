@@ -101,7 +101,7 @@ async def run_step(
                     output_df, final_sql_query = await fetch_query_into_df(
                         api_key=analysis_execution_cache["dfg_api_key"],
                         sql_query=step["sql"],
-                        temp=analysis_execution_cache["temp"],
+                        question=current_question,
                     )
                     results = {
                         "sql": final_sql_query,
