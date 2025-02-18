@@ -7,10 +7,12 @@ import instructions_routes
 import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, file_upload_routes, golden_queries_routes, \
     imported_tables_routes, integration_routes, metadata_routes, oracle_report_routes, oracle_routes, query_routes, \
     slack_routes, tools.tool_routes, user_history_routes, xdb_routes
-from db_analysis_utils import get_analysis_data, initialise_analysis
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from startup import lifespan
+from auth_utils import validate_user
+from agents.planner_executor.tool_helpers.core_functions import analyse_data_streaming
+
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger("server")
@@ -59,57 +61,6 @@ async def root():
     return {"message": "Hello World"}
 
 
-@app.post("/get_analysis")
-async def one_analysis(request: Request):
-    try:
-        params = await request.json()
-        analysis_id = params.get("analysis_id")
-
-        print("get_one_analysis", params)
-
-        err, analysis_data = await get_analysis_data(analysis_id)
-
-        if err is not None:
-            return {"success": False, "error_message": err}
-
-        return {"success": True, "analysis_data": analysis_data}
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        return {"success": False, "error_message": "Incorrect request"}
-
-
-@app.post("/create_analysis")
-async def create_analysis(request: Request):
-    try:
-        params = await request.json()
-        token = params.get("token")
-
-        db_name = params.get("db_name")
-        print("create_analysis", params)
-
-        err, analysis_data = await initialise_analysis(
-            user_question="",
-            token=token,
-            db_name=db_name,
-            custom_id=params.get("custom_id"),
-            other_initialisation_details=params.get(
-                "initialisation_details",
-                params.get(
-                    "other_data",
-                ),
-            ),
-        )
-
-        if err is not None:
-            return {"success": False, "error_message": err}
-
-        return {"success": True, "analysis_data": analysis_data}
-    except Exception as e:
-        print(e)
-        return {"success": False, "error_message": "Incorrect request"}
-
-
 @app.get("/")
 def read_root():
     return {"status": "ok"}
@@ -123,3 +74,34 @@ def health_check():
 @app.post("/get_db_names")
 async def get_db_names_endpoint(request: Request):
     return {"db_names": await get_db_names()}
+
+
+# setup an analysis data endpoint with streaming and websockets
+# moving this here since to avoid dependency injection in `agent_routes.py`
+@app.websocket("/analyse_data_streaming")
+async def analyse_data_streaming_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        data_in = await websocket.receive_json()
+        question = data_in.get("question")
+        data_csv = data_in.get("data_csv")
+        sql = data_in.get("sql")
+        auth_token = data_in.get("token")
+        validated = await validate_user(auth_token)
+        if validated:
+            async for token in analyse_data_streaming(
+                question=question, data_csv=data_csv, sql=sql
+            ):
+                await websocket.send_text(token)
+        else:
+            await websocket.send_text("Invalid authentication. Are you sure you are logged in?")
+
+        # Send a final message to indicate the end of the stream
+        await websocket.send_text("Defog data analysis has ended")
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        LOGGER.error("Error with websocket connection:" + str(e))
+        traceback.print_exc()
+    finally:
+        await websocket.close()

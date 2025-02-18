@@ -3,7 +3,7 @@ import re
 import traceback
 import logging
 from uuid import uuid4
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 from utils_clarification import generate_clarification, classify_question_type
 from utils_question_related import generate_follow_on_questions
@@ -14,19 +14,65 @@ from agents.planner_executor.planner_executor_agent import (
     rerun_step,
     run_step,
 )
-
-from agents.planner_executor.tool_helpers.core_functions import analyse_data_streaming
-
 from db_analysis_utils import (
     get_analysis_data,
     get_assignment_understanding,
+    initialise_analysis
 )
-from generic_utils import make_request
-from auth_utils import validate_user
+from auth_utils import validate_user_request
 from uuid import uuid4
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[Depends(validate_user_request)],
+    tags=["Agent"],
+)
 LOGGER = logging.getLogger("server")
+
+@router.post("/get_analysis")
+async def get_analysis_route(request: Request):
+    try:
+        params = await request.json()
+        analysis_id = params.get("analysis_id")
+
+        err, analysis_data = await get_analysis_data(analysis_id)
+
+        if err is not None:
+            return {"success": False, "error_message": err}
+
+        return {"success": True, "analysis_data": analysis_data}
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        return {"success": False, "error_message": "Incorrect request"}
+
+
+@router.post("/create_analysis")
+async def create_analysis_route(request: Request):
+    try:
+        params = await request.json()
+        token = params.get("token")
+        db_name = params.get("db_name")
+        
+        err, analysis_data = await initialise_analysis(
+            user_question="",
+            token=token,
+            db_name=db_name,
+            custom_id=params.get("custom_id"),
+            other_initialisation_details=params.get(
+                "initialisation_details",
+                params.get(
+                    "other_data",
+                ),
+            ),
+        )
+
+        if err is not None:
+            return {"success": False, "error_message": err}
+
+        return {"success": True, "analysis_data": analysis_data}
+    except Exception as e:
+        print(e)
+        return {"success": False, "error_message": "Incorrect request"}
 
 
 @router.post("/generate_step")
@@ -371,46 +417,10 @@ async def edit_chart_route(request: Request):
         return {"success": False, "error_message": str(e)[:300]}
 
 
-# setup an analysis data endpoint with streaming and websockets
-@router.websocket("/analyse_data_streaming")
-async def analyse_data_streaming_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        data_in = await websocket.receive_json()
-        question = data_in.get("question")
-        data_csv = data_in.get("data_csv")
-        sql = data_in.get("sql")
-        async for token in analyse_data_streaming(
-            question=question, data_csv=data_csv, sql=sql
-        ):
-            await websocket.send_text(token)
-
-        # Send a final message to indicate the end of the stream
-        await websocket.send_text("Defog data analysis has ended")
-    except WebSocketDisconnect:
-        pass
-    except Exception as e:
-        LOGGER.error("Error with websocket connection:" + str(e))
-        traceback.print_exc()
-    finally:
-        await websocket.close()
-
-
 @router.post("/get_question_type")
-async def get_question_type(request: Request):
+async def get_question_type_route(request: Request):
     params = await request.json()
     question = params.get("question")
-    token = params.get("token")
-    username = await validate_user(token)
-    if not username:
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
     res = await classify_question_type(question)
 
     return JSONResponse(
