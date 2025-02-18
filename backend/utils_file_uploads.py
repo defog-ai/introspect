@@ -1,7 +1,8 @@
 import re
 from uuid import uuid4
 import pandas as pd
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 from dateutil import parser
 
 POSTGRES_RESERVED_WORDS = {
@@ -203,13 +204,18 @@ def convert_values_to_postgres_type(value: str, target_type: str):
         return val_str
 
 
-async def import_csv_to_postgres(df, table_name, db_connection_string, chunksize=5000):
+async def import_csv_to_postgres(df: pd.DataFrame, table_name: str, db_connection_string: str, chunksize: int=5000):
     """
     1. Reads CSV into a pandas DataFrame (as strings).
     2. Infers column types for Postgres.
     3. Creates table in Postgres.
     4. Inserts data chunk by chunk.
     """
+    # Insert data chunk-by-chunk to handle large CSVs
+    col_list = list(df.columns)
+    safe_col_list = [sanitize_column_name(c) for c in col_list]  # safe col names
+    df.columns = safe_col_list
+
     # Create a SQLAlchemy engine
     engine = create_async_engine(db_connection_string)
     
@@ -226,26 +232,27 @@ async def import_csv_to_postgres(df, table_name, db_connection_string, chunksize
     create_stmt = create_table_sql(table_name, inferred_types)
     async with engine.begin() as conn:
         # Drop table if it already exists (optional)
-        await conn.execute(f'DROP TABLE IF EXISTS "{table_name}";')
-        await conn.execute(create_stmt)
-
-    # Insert data chunk-by-chunk to handle large CSVs
-    col_list = list(df.columns)
-    safe_col_list = [re.sub(r'\W+', '_', c).lower() for c in col_list]  # safe col names
+        await conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}";'))
+        await conn.execute(text(create_stmt))
+    
     insert_cols = ", ".join(f'"{c}"' for c in safe_col_list)
-    placeholders = ", ".join(["%s"] * len(col_list))
+    
+    # this `:colname` placeholder is asyncpg specific
+    # psycopg2 uses %s, non-postgres things have different placeholders
+    # TODO: make this more modular
+    placeholders = ", ".join([f":{c}" for c in safe_col_list])
     insert_sql = f'INSERT INTO "{table_name}" ({insert_cols}) VALUES ({placeholders})'
 
     # psycopg2 / sqlalchemy "raw" execution
     async with engine.begin() as conn:
         # We'll insert in batches
         rows_to_insert = []
-        for idx, row in df.iterrows():
+        for idx, row in enumerate(df.to_dict("records")):
             rows_to_insert.append(row)
 
             # If we reached the chunk size or the end, do a batch insert
             if len(rows_to_insert) == chunksize or idx == len(df) - 1:
-                await conn.execute(insert_sql, rows_to_insert)
+                await conn.execute(text(insert_sql), rows_to_insert)
                 rows_to_insert = []
     
     print(f"Successfully imported {len(df)} rows into table '{table_name}'.")

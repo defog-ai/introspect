@@ -51,7 +51,7 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
     # create the database
     # NOTE: It seems like we cannot use asyncpg in the database_exists and create_database functions, so we are using sync
     # connection uri
-    connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{cleaned_db_name}"
+    connection_uri = f"postgresql://{INTERNAL_DB_CREDS['user']}:{INTERNAL_DB_CREDS['password']}@{INTERNAL_DB_CREDS['host']}:{INTERNAL_DB_CREDS['port']}/{cleaned_db_name}"
     if database_exists(connection_uri):
         LOGGER.info(f"Database already exists: {cleaned_db_name}, but is not added to db creds. Dropping it.")
         drop_database(connection_uri)
@@ -77,8 +77,8 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
             # store all values as strings to preserve dirty data
             dtype=str,
         )
-        inferred_dtypes = await import_csv_to_postgres(df, cleaned_table_name, connection_uri, chunksize=5000)
-        for col, dtype in inferred_dtypes.items():
+        inferred_types = (await import_csv_to_postgres(df, cleaned_table_name, connection_uri, chunksize=5000))["inferred_types"]
+        for col, dtype in inferred_types.items():
             db_metadata.append({
                 "db_name": cleaned_db_name,
                 "table_name": cleaned_table_name,
