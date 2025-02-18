@@ -11,7 +11,6 @@ from db_analysis_utils import get_analysis_data, initialise_analysis
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from startup import lifespan
-from db_config import engine
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger("server")
