@@ -1,122 +1,6 @@
 import base64
 import inspect
-import re
-import json
-import traceback
-from typing import Optional
-from uuid import uuid4
-from colorama import Fore, Style
-
 import pandas as pd
-import logging
-
-logging.basicConfig(level=logging.INFO)
-
-
-def replace_whitespace(s):
-    pattern = re.compile(r'",\s*"')
-    return re.sub(pattern, '", "', s)
-
-
-def clean_table_value(value):
-    """
-    Cleans a table value by escaping special characters for inserting into a postgres table.
-    """
-    # if type of value is not string, return as is
-    if not isinstance(value, str):
-        return value
-
-    cleaned = str(value).replace("'", "''")
-    return cleaned
-
-
-def clean_table_name(table_name):
-    """
-    Cleans a table name by snake casing it and making it lower case.
-    If the table name is not a string, raises a ValueError.
-    If the table name is empty, adds a random string.
-    If the table name has special characters, quotes it.
-    """
-    validated = str(table_name).strip().lower()
-    validated = re.sub(r"[^a-zA-Z0-9_]", "_", validated)
-
-    if not isinstance(table_name, str):
-        raise ValueError("Table name must be a string.")
-    if not validated:
-        validated = f"table_{uuid4().hex[:7]}"
-
-    return validated
-
-
-def fix_JSON(json_message=None):
-    result = json_message
-    json_message = replace_whitespace(json_message)
-    try:
-        # First, try to load the JSON string as is
-        result = json.loads(json_message)
-    except json.JSONDecodeError as e:
-        try:
-            # If the JSON string can't be loaded, it means there are unescaped characters
-            # Use Python's string escape to escape the string
-            escaped_message = json_message.encode("unicode_escape").decode("utf-8")
-            # Try loading the JSON string again
-            result = json.loads(escaped_message)
-        except Exception as e_inner:
-            # If it still fails, print the error
-            print("Error while trying to fix JSON string: ", str(e_inner))
-            return None
-    except Exception as e:
-        print("Unexpected error: ", str(e))
-        return None
-    return result
-
-
-def api_response(ran_successfully=False, **extra):
-    """Returns a JSON object with the ran_successfully key and any extra keys passed in."""
-    return {"ran_successfully": ran_successfully, **extra}
-
-
-def missing_param_error(param_name):
-    """Returns a JSON object with the error_message key and a message saying that the param_name is missing."""
-    return api_response(
-        error_message=f"Missing parameter in request: {param_name}. Request must contain question, agent, and/or generate_report/get_report params."
-    )
-
-
-def success_str(msg=""):
-    return f"{Fore.GREEN}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
-
-
-def error_str(msg=""):
-    return f"{Fore.RED}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
-
-
-def log_str(msg=""):
-    return f"{Fore.BLUE}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
-
-
-def warn_str(msg=""):
-    return f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
-
-
-def log_success(msg=""):
-    logging.info(f"{Fore.GREEN}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
-
-
-def log_error(msg=""):
-    logging.error(f"{Fore.RED}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
-
-
-def log_msg(msg=""):
-    logging.info(f"{Fore.BLUE}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
-
-
-def log_warn(msg=""):
-    logging.warning(f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
-
-
-def snake_case(s):
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", s).lower()
 
 
 class SqlExecutionError(Exception):
@@ -159,10 +43,6 @@ def wrap_in_async(fn):
         wrapped_fn = async_fn
 
     return wrapped_fn
-
-
-def add_indent(level=1):
-    return "...." * level
 
 
 def encode_image(image_path):
