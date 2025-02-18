@@ -1,16 +1,17 @@
 import logging
 import os
 import traceback
+import random
 
 from fastapi.responses import JSONResponse
 from sqlalchemy import insert, text, select
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
 from utils_md import set_metadata
 from db_models import DbCreds
-from db_utils import get_db_names, get_db_type_creds
+from db_utils import get_db_names, get_db_type_creds, update_db_type_creds
 from utils import clean_table_name, clean_table_value
 from request_models import UploadFileAsDBRequest
 import instructions_routes
@@ -174,8 +175,6 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
 
     if exists:
         # add a random 3 digit integer to the end of the file name
-        import random
-
         cleaned_db_name = f"{cleaned_db_name}_{random.randint(100, 999)}"
 
     # create the database
@@ -197,92 +196,87 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
 
     user_db_engine = create_async_engine(connection_uri)
 
-    async with user_db_engine.begin() as conn:
-        db_metadata = []
-        # create the tables in the database
-        for table_name, table_data in tables.items():
-            rows = table_data.rows
-            columns = table_data.columns
-            cleaned_table_name = clean_table_name(table_name)
-            # guess the postgrescolumn types of this table from the first non null entry
-            # default to string
-            column_types = {}
-            for column in columns:
-                column_name = column.title
-                column_types[column_name] = "string"
+    async with AsyncSession(user_db_engine) as session:
+        async with session.begin():
+            db_metadata = []
+            # create the tables in the database
+            for table_name, table_data in tables.items():
+                rows = table_data.rows
+                columns = table_data.columns
+                cleaned_table_name = clean_table_name(table_name)
+                # guess the postgrescolumn types of this table from the first non null entry
+                # default to string
+                column_types = {}
+                for column in columns:
+                    column_name = column.title
+                    column_types[column_name] = "string"
 
-                for row in rows:
-                    if row[column_name] is not None:
-                        if column_types[column_name] == "datetime":
-                            column_types[column_name] = "timestamp"
-                        if column_types[column_name] == "int":
-                            column_types[column_name] = "integer"
-                        if column_types[column_name] == "float":
-                            column_types[column_name] = "double precision"
-                        if column_types[column_name] == "bool":
-                            column_types[column_name] = "boolean"
-                        if column_types[column_name] == "string":
-                            column_types[column_name] = "varchar"
-                        
-                        break
+                    for row in rows:
+                        if row[column_name] is not None:
+                            if column_types[column_name] == "datetime":
+                                column_types[column_name] = "timestamp"
+                            if column_types[column_name] == "int":
+                                column_types[column_name] = "integer"
+                            if column_types[column_name] == "float":
+                                column_types[column_name] = "double precision"
+                            if column_types[column_name] == "bool":
+                                column_types[column_name] = "boolean"
+                            if column_types[column_name] == "string":
+                                column_types[column_name] = "varchar"
+                            
+                            break
 
-                # add metadata for this table and column
-                db_metadata.append({
-                    "db_name": cleaned_db_name,
-                    "table_name": cleaned_table_name,
-                    "column_name": column_name,
-                    "data_type": column_types[column_name]
-                })
+                    # add metadata for this table and column
+                    db_metadata.append({
+                        "db_name": cleaned_db_name,
+                        "table_name": cleaned_table_name,
+                        "column_name": column_name,
+                        "data_type": column_types[column_name]
+                    })
 
-            # create the table in the database
-            # create a table in this database
-            LOGGER.info(f"Creating table: {cleaned_table_name} with columns: {columns}")
-            
-            stmt = f"CREATE TABLE IF NOT EXISTS {cleaned_table_name} ("
+                # create the table in the database
+                # create a table in this database
+                LOGGER.info(f"Creating table: {cleaned_table_name} with columns: {columns}")
+                
+                stmt = f"CREATE TABLE IF NOT EXISTS {cleaned_table_name} ("
 
-            stmt += f"{', '.join([f'{col.title} {column_types[col.title]}' for col in columns])}"
+                stmt += f"{', '.join([f'{col.title} {column_types[col.title]}' for col in columns])}"
 
-            stmt += ");"
+                stmt += ");"
 
-            LOGGER.info(stmt)
-            await conn.execute(
-                text(stmt),
-            )
+                LOGGER.info(stmt)
+                await session.execute(
+                    text(stmt),
+                )
 
-            LOGGER.info(f"Inserting rows into table: {cleaned_table_name}")
-            stmt = f"INSERT INTO {cleaned_table_name} ({', '.join([x.title for x in columns])}) VALUES \n"
-            
-            for idx, row in enumerate(rows):
-                stmt += "("
-                stmt += ", ".join([f"'{clean_table_value(row.get(column.title, "null"))}'" for column in columns])
-                stmt += ")"
-                if idx < len(rows) - 1:
-                    stmt += ",\n"
-                else:
-                    stmt += ";"
+                LOGGER.info(f"Inserting rows into table: {cleaned_table_name}")
+                stmt = f"INSERT INTO {cleaned_table_name} ({', '.join([x.title for x in columns])}) VALUES \n"
+                
+                for idx, row in enumerate(rows):
+                    stmt += "("
+                    stmt += ", ".join([f"'{clean_table_value(row.get(column.title, "null"))}'" for column in columns])
+                    stmt += ")"
+                    if idx < len(rows) - 1:
+                        stmt += ",\n"
+                    else:
+                        stmt += ";"
 
-            LOGGER.info(stmt)
-            await conn.execute(
-                text(stmt),
-            )
-        
-    # add the metadata for this new user db
+                LOGGER.info(stmt)
+                await session.execute(
+                    text(stmt),
+                )
+
+    LOGGER.info(f"Adding metadata for {cleaned_db_name}")
     await set_metadata(cleaned_db_name, db_metadata)
 
-    async with engine.begin() as conn:
-        LOGGER.info(f"Creating DbCreds entry for {cleaned_db_name}")
-        user_db_creds = {
-            "user": db_creds["user"],
-            "password": db_creds["password"],
-            "host": db_creds["host"],
-            "port": db_creds["port"],
-            "database": cleaned_db_name
-        }
-        # finally, if all succeeds, add the credentials to db creds
-        await conn.execute(
-            insert(DbCreds).values(
-            db_name=cleaned_db_name, db_type="postgres", db_creds=user_db_creds
-            )
-        )
+    user_db_creds = {
+        "user": db_creds["user"],
+        "password": db_creds["password"],
+        "host": db_creds["host"],
+        "port": db_creds["port"],
+        "database": cleaned_db_name
+    }
+    LOGGER.info(f"Creating DbCreds entry for {cleaned_db_name}")
+    await update_db_type_creds(cleaned_db_name, "postgres", user_db_creds)
 
     return JSONResponse(content={"db_name": cleaned_db_name})
