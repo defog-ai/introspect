@@ -17,7 +17,6 @@ if not DEFOG_API_KEYS:
     LOGGER.warning(
         f"DEFOG_API_KEYS not set. Defaulting to DEFOG_API_KEY: {DEFOG_API_KEYS}"
     )
-DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
 
 
 async def make_request(url, data, timeout=180, log_time=False):

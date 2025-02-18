@@ -40,7 +40,7 @@ async def generate_step(request: Request):
 
     Rendered by lib/components/agent/analysis/step-results/StepResults.jsx
 
-    The mandatory inputs are analysis_id, a valid key_name and question.
+    The mandatory inputs are analysis_id, a valid db_name and question.
 
     Note on previous_context:
     It is an array of objects. Each object references a "parent" analysis.
@@ -167,7 +167,7 @@ async def generate_follow_on_questions_route(request: Request):
 
     Rendered by lib/components/agent/analysis/analysisManager.js
 
-    The mandatory inputs are a valid key_name and question.
+    The mandatory inputs are a valid db_name and question.
     """
     try:
         LOGGER.info("Generating follow on questions")
@@ -208,7 +208,7 @@ async def clarify(request: Request):
 
     Rendered by lib/components/agent/analysis/Clarify.jsx
 
-    The mandatory inputs are a valid key_name and question.
+    The mandatory inputs are a valid db_name and question.
     """
     try:
         LOGGER.info("Generating clarification questions")

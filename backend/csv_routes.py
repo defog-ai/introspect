@@ -82,7 +82,6 @@ async def retry_query_csv_route(request: Request):
     This is done by sending a POST request to the /generate_query_csv endpoint
     """
     params = await request.json()
-    key_name = params.get("key_name", None)
     question = params.get("question", None)
     metadata = params.get(
         "metadata", None
@@ -99,8 +98,6 @@ async def retry_query_csv_route(request: Request):
             },
         )
 
-    if not key_name:
-        return JSONResponse(content={"error": "no key name provided"}, status_code=400)
     if not question:
         return JSONResponse(content={"error": "no question provided"}, status_code=400)
     if not metadata:
