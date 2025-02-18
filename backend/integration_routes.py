@@ -157,7 +157,7 @@ async def preview_table(request: Request):
         )
 
     key_name = params.get("db_name")
-    api_key = get_api_key_from_key_name(key_name)
+    api_key = await get_api_key_from_key_name(key_name)
     temp = params.get("temp", False)
     if temp:
         db_type = "postgres"
