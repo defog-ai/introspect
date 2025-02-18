@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
+from backend.utils_md import set_metadata
 from db_models import DbCreds
 from db_utils import get_db_names, get_db_type_creds
 from utils import clean_table_name
@@ -178,7 +179,7 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
         cleaned_file_name = f"{cleaned_file_name}_{random.randint(100, 999)}"
 
     # create the database
-    # NOTE: It seems like we cannot use asyncpg in the database_exists and create_database functions, so we are using normal
+    # NOTE: It seems like we cannot use asyncpg in the database_exists and create_database functions, so we are using sync
     # connection uri
     connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{cleaned_file_name}"
     if database_exists(connection_uri):
@@ -197,6 +198,7 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
     user_db_engine = create_async_engine(connection_uri)
 
     async with user_db_engine.begin() as conn:
+        db_metadata = []
         # create the tables in the database
         for table_name, table_data in tables.items():
             rows = table_data.rows
@@ -222,6 +224,14 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
                             column_types[column_name] = "varchar"
                         
                         break
+
+                # add metadata for this table and column
+                db_metadata.append({
+                    "db_name": cleaned_file_name,
+                    "table_name": table_name,
+                    "column_name": column_name,
+                    "data_type": column_types[column_name]
+                })
 
             # create the table in the database
             # create a table in this database
@@ -254,6 +264,9 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
             await conn.execute(
                 text(stmt),
             )
+        
+    # add the metadata for this new user db
+    await set_metadata(cleaned_file_name, db_metadata)
 
     async with engine.begin() as conn:
         LOGGER.info(f"Creating DbCreds entry for {cleaned_file_name}")

@@ -1,9 +1,5 @@
 from typing import Any, Literal, Optional
-<<<<<<< HEAD
-from pydantic import BaseModel
-=======
 from pydantic import BaseModel, ConfigDict
->>>>>>> d8358cd (1. make get_api_key_names just fetch db names from the dbcreds table.)
 
 
 class UserRequest(BaseModel):
@@ -186,6 +182,8 @@ class GenerateSQLQueryRequest(UserRequest):
             ]
         }
     }
+
+
 UserTableRow = dict[str, Any]
 
 

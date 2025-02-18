@@ -14,12 +14,12 @@ router = APIRouter(
     tags=["Query Generation"],
 )
 
+
 @router.post("/generate_sql_query")
 async def generate_sql_query_route(request: GenerateSQLQueryRequest):
     """
     Generate a chat response based on a query.
     """
-<<<<<<< HEAD
     try:
         resp = await generate_sql_query(
             question=request.question,
@@ -33,7 +33,9 @@ async def generate_sql_query_route(request: GenerateSQLQueryRequest):
             model_name=request.model_name or O3_MINI,
         )
         if resp is None:
-            return JSONResponse(status_code=500, content={"error": "Error generating SQL query"})
+            return JSONResponse(
+                status_code=500, content={"error": "Error generating SQL query"}
+            )
         sql = resp["sql"]
         error = resp.get("error", None)
         return {
@@ -44,17 +46,3 @@ async def generate_sql_query_route(request: GenerateSQLQueryRequest):
         LOGGER.error(f"[generate_sql_query] ERROR: {e}")
         LOGGER.error(traceback.format_exc())
         return JSONResponse(status_code=500, content={"error": str(e)})
-=======
-    LOGGER.info("CALLED GET CHART TYPES")
-    body = await request.json()
-    columns = body.get("columns")
-    question = body.get("question")
-    key_name = body.get("key_name")
-    api_key = await get_api_key_from_key_name(key_name)
-
-    res = await make_request(
-        os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai") + "/get_chart_type",
-        data={"api_key": api_key, "columns": columns, "question": question},
-    )
-    return res
->>>>>>> d8358cd (1. make get_api_key_names just fetch db names from the dbcreds table.)
