@@ -537,11 +537,9 @@ async def generate_sql_query(
         db_type, _ = await get_db_type_creds(db_name)
     t_start = save_timing(t_start, "Retrieved db type", timings)
 
-    LOGGER.info(f"using_db_metadata: {using_db_metadata}")
     if using_db_metadata:
         metadata = await get_metadata(db_name)
 
-    LOGGER.info(f"metadata: {metadata}")
     t_start = save_timing(t_start, "Retrieved metadata", timings)
 
     if metadata is None or len(metadata) == 0:

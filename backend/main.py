@@ -11,7 +11,7 @@ from sqlalchemy_utils import create_database, database_exists, drop_database
 from utils_md import set_metadata
 from db_models import DbCreds
 from db_utils import get_db_names, get_db_type_creds
-from utils import clean_table_name
+from utils import clean_table_name, clean_table_value
 from request_models import UploadFileAsDBRequest
 import instructions_routes
 import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, golden_queries_routes, imported_tables_routes, integration_routes, metadata_routes, oracle_report_routes, oracle_routes, query_routes, slack_routes, tools.tool_routes, user_history_routes, xdb_routes
@@ -168,32 +168,32 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
     LOGGER.info(f"file_name: {file_name}")
     LOGGER.info(f"tables: {tables}")
 
-    cleaned_file_name = clean_table_name(file_name)
+    cleaned_db_name = clean_table_name(file_name)
 
-    exists = await get_db_type_creds(cleaned_file_name)
+    exists = await get_db_type_creds(cleaned_db_name)
 
     if exists:
         # add a random 3 digit integer to the end of the file name
         import random
 
-        cleaned_file_name = f"{cleaned_file_name}_{random.randint(100, 999)}"
+        cleaned_db_name = f"{cleaned_db_name}_{random.randint(100, 999)}"
 
     # create the database
     # NOTE: It seems like we cannot use asyncpg in the database_exists and create_database functions, so we are using sync
     # connection uri
-    connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{cleaned_file_name}"
+    connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{cleaned_db_name}"
     if database_exists(connection_uri):
-        LOGGER.info(f"Database already exists: {cleaned_file_name}, but is not added to db creds. Dropping it.")
+        LOGGER.info(f"Database already exists: {cleaned_db_name}, but is not added to db creds. Dropping it.")
         drop_database(connection_uri)
-        LOGGER.info(f"Database dropped: {cleaned_file_name}")
+        LOGGER.info(f"Database dropped: {cleaned_db_name}")
 
 
-    LOGGER.info(f"Creating database: {cleaned_file_name}")
+    LOGGER.info(f"Creating database: {cleaned_db_name}")
     create_database(connection_uri)
-    LOGGER.info(f"Database created: {cleaned_file_name}")
+    LOGGER.info(f"Database created: {cleaned_db_name}")
 
     # going forward, we will use the asyncpg version
-    connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{cleaned_file_name}"
+    connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{cleaned_db_name}"
 
     user_db_engine = create_async_engine(connection_uri)
 
@@ -203,6 +203,7 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
         for table_name, table_data in tables.items():
             rows = table_data.rows
             columns = table_data.columns
+            cleaned_table_name = clean_table_name(table_name)
             # guess the postgrescolumn types of this table from the first non null entry
             # default to string
             column_types = {}
@@ -227,17 +228,17 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
 
                 # add metadata for this table and column
                 db_metadata.append({
-                    "db_name": cleaned_file_name,
-                    "table_name": table_name,
+                    "db_name": cleaned_db_name,
+                    "table_name": cleaned_table_name,
                     "column_name": column_name,
                     "data_type": column_types[column_name]
                 })
 
             # create the table in the database
             # create a table in this database
-            LOGGER.info(f"Creating table: {table_name} with columns: {columns}")
+            LOGGER.info(f"Creating table: {cleaned_table_name} with columns: {columns}")
             
-            stmt = f"CREATE TABLE IF NOT EXISTS {table_name} ("
+            stmt = f"CREATE TABLE IF NOT EXISTS {cleaned_table_name} ("
 
             stmt += f"{', '.join([f'{col.title} {column_types[col.title]}' for col in columns])}"
 
@@ -248,12 +249,12 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
                 text(stmt),
             )
 
-            LOGGER.info(f"Inserting rows into table: {table_name}")
-            stmt = f"INSERT INTO {table_name} ({', '.join([x.title for x in columns])}) VALUES \n"
+            LOGGER.info(f"Inserting rows into table: {cleaned_table_name}")
+            stmt = f"INSERT INTO {cleaned_table_name} ({', '.join([x.title for x in columns])}) VALUES \n"
             
             for idx, row in enumerate(rows):
                 stmt += "("
-                stmt += ", ".join([f"'{row.get(column.title, "null")}'" for column in columns])
+                stmt += ", ".join([f"'{clean_table_value(row.get(column.title, "null"))}'" for column in columns])
                 stmt += ")"
                 if idx < len(rows) - 1:
                     stmt += ",\n"
@@ -266,22 +267,22 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
             )
         
     # add the metadata for this new user db
-    await set_metadata(cleaned_file_name, db_metadata)
+    await set_metadata(cleaned_db_name, db_metadata)
 
     async with engine.begin() as conn:
-        LOGGER.info(f"Creating DbCreds entry for {cleaned_file_name}")
+        LOGGER.info(f"Creating DbCreds entry for {cleaned_db_name}")
         user_db_creds = {
             "user": db_creds["user"],
             "password": db_creds["password"],
             "host": db_creds["host"],
             "port": db_creds["port"],
-            "database": cleaned_file_name
+            "database": cleaned_db_name
         }
         # finally, if all succeeds, add the credentials to db creds
         await conn.execute(
             insert(DbCreds).values(
-            db_name=cleaned_file_name, db_type="postgres", db_creds=user_db_creds
+            db_name=cleaned_db_name, db_type="postgres", db_creds=user_db_creds
             )
         )
 
-    return JSONResponse(content={"db_name": cleaned_file_name})
+    return JSONResponse(content={"db_name": cleaned_db_name})

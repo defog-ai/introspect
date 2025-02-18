@@ -18,6 +18,18 @@ def replace_whitespace(s):
     return re.sub(pattern, '", "', s)
 
 
+def clean_table_value(value):
+    """
+    Cleans a table value by escaping special characters for inserting into a postgres table.
+    """
+    # if type of value is not string, return as is
+    if not isinstance(value, str):
+        return value
+
+    cleaned = str(value).replace("'", "''")
+    return cleaned
+
+
 def clean_table_name(table_name):
     """
     Cleans a table name by snake casing it and making it lower case.
@@ -26,7 +38,7 @@ def clean_table_name(table_name):
     If the table name has special characters, quotes it.
     """
     validated = str(table_name).strip().lower()
-    validated = re.sub(r"[^a-zA-Z0-9_ ]", "_", validated)
+    validated = re.sub(r"[^a-zA-Z0-9_]", "_", validated)
 
     if not isinstance(table_name, str):
         raise ValueError("Table name must be a string.")
