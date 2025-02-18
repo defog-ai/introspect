@@ -14,7 +14,7 @@ export default function OracleDashboard() {
   const getApiKeyNames = async () => {
     const token = localStorage.getItem("defogToken");
     const res = await fetch(
-      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_db_names",
       {
         method: "POST",
         headers: {
@@ -31,7 +31,7 @@ export default function OracleDashboard() {
       );
     }
     const data = await res.json();
-    setDbNames(data.api_key_names);
+    setDbNames(data.db_names);
   };
 
   useEffect(() => {

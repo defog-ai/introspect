@@ -87,7 +87,7 @@ export default function TestRegressionPage() {
 
   const getApiKeyNames = async (token) => {
     const res = await fetch(
-      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_db_names",
       {
         method: "POST",
         headers: {
@@ -104,7 +104,7 @@ export default function TestRegressionPage() {
       );
     }
     const data = await res.json();
-    setApiKeyNames(data.api_key_names);
+    setApiKeyNames(data.db_names);
   };
 
   const [token, setToken] = useState(null);

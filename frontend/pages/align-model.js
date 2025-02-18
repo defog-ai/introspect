@@ -28,7 +28,7 @@ const AlignModel = () => {
 
   const getApiKeyNames = async (token) => {
     const res = await fetch(
-      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_db_names",
       {
         method: "POST",
         headers: {
@@ -45,8 +45,8 @@ const AlignModel = () => {
       );
     }
     const data = await res.json();
-    setApiKeyNames(data.api_key_names);
-    setApiKeyName(data.api_key_names[0]);
+    setApiKeyNames(data.db_names);
+    setApiKeyName(data.db_names[0]);
   };
   const [apiKeyName, setApiKeyName] = useState(null);
 
