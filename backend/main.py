@@ -2,12 +2,7 @@ import logging
 import os
 import traceback
 import random
-
 from fastapi.responses import JSONResponse
-from sqlalchemy import insert, text, select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import declarative_base
-from sqlalchemy_utils import create_database, database_exists, drop_database
 
 from utils_md import set_metadata
 from db_models import DbCreds
@@ -61,15 +56,6 @@ app.add_middleware(
 
 request_types = ["clarify", "understand", "gen_steps", "gen_analysis"]
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
-
-# DB creds for the postgres in this docker container
-db_creds = {
-    "user": os.environ.get("DBUSER", "postgres"),
-    "password": os.environ.get("DBPASSWORD", "postgres"),
-    "host": os.environ.get("DBHOST", "agents-postgres"),
-    "port": os.environ.get("DBPORT", "5432"),
-    "database": os.environ.get("DATABASE", "postgres"),
-}
 
 
 @app.get("/ping")
@@ -149,134 +135,4 @@ def health_check():
 
 @app.post("/get_db_names")
 async def get_db_names_endpoint(request: Request):
-    # DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
-    # db_names = DEFOG_API_KEY_NAMES.split(",")
-
     return {"db_names": await get_db_names()}
-
-
-@app.post("/upload_file_as_db")
-async def upload_file_as_db(request: UploadFileAsDBRequest):
-    """
-    Takes in a file name, and the contents of the file as a dict which maps the tables in the file to their contents.
-
-    We do some checks to make sure the file name is valid and a db with that file name doesn't already exist, and construct a db_name from the file name if necessary.
-
-    Returns the db_name that is used to store this file.
-    """
-    file_name = request.file_name
-    tables = request.tables
-    LOGGER.info(f"file_name: {file_name}")
-    LOGGER.info(f"tables: {tables}")
-
-    cleaned_db_name = clean_table_name(file_name)
-
-    exists = await get_db_type_creds(cleaned_db_name)
-
-    if exists:
-        # add a random 3 digit integer to the end of the file name
-        cleaned_db_name = f"{cleaned_db_name}_{random.randint(100, 999)}"
-
-    # create the database
-    # NOTE: It seems like we cannot use asyncpg in the database_exists and create_database functions, so we are using sync
-    # connection uri
-    connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{cleaned_db_name}"
-    if database_exists(connection_uri):
-        LOGGER.info(f"Database already exists: {cleaned_db_name}, but is not added to db creds. Dropping it.")
-        drop_database(connection_uri)
-        LOGGER.info(f"Database dropped: {cleaned_db_name}")
-
-
-    LOGGER.info(f"Creating database: {cleaned_db_name}")
-    create_database(connection_uri)
-    LOGGER.info(f"Database created: {cleaned_db_name}")
-
-    # going forward, we will use the asyncpg version
-    connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{cleaned_db_name}"
-
-    user_db_engine = create_async_engine(connection_uri)
-
-    async with AsyncSession(user_db_engine) as session:
-        async with session.begin():
-            db_metadata = []
-            # create the tables in the database
-            for table_name, table_data in tables.items():
-                rows = table_data.rows
-                columns = table_data.columns
-                cleaned_table_name = clean_table_name(table_name)
-                # guess the postgrescolumn types of this table from the first non null entry
-                # default to string
-                column_types = {}
-                for column in columns:
-                    column_name = column.title
-                    column_types[column_name] = "string"
-
-                    for row in rows:
-                        if row[column_name] is not None:
-                            if column_types[column_name] == "datetime":
-                                column_types[column_name] = "timestamp"
-                            if column_types[column_name] == "int":
-                                column_types[column_name] = "integer"
-                            if column_types[column_name] == "float":
-                                column_types[column_name] = "double precision"
-                            if column_types[column_name] == "bool":
-                                column_types[column_name] = "boolean"
-                            if column_types[column_name] == "string":
-                                column_types[column_name] = "varchar"
-                            
-                            break
-
-                    # add metadata for this table and column
-                    db_metadata.append({
-                        "db_name": cleaned_db_name,
-                        "table_name": cleaned_table_name,
-                        "column_name": column_name,
-                        "data_type": column_types[column_name]
-                    })
-
-                # create the table in the database
-                # create a table in this database
-                LOGGER.info(f"Creating table: {cleaned_table_name} with columns: {columns}")
-                
-                stmt = f"CREATE TABLE IF NOT EXISTS {cleaned_table_name} ("
-
-                stmt += f"{', '.join([f'{col.title} {column_types[col.title]}' for col in columns])}"
-
-                stmt += ");"
-
-                LOGGER.info(stmt)
-                await session.execute(
-                    text(stmt),
-                )
-
-                LOGGER.info(f"Inserting rows into table: {cleaned_table_name}")
-                stmt = f"INSERT INTO {cleaned_table_name} ({', '.join([x.title for x in columns])}) VALUES \n"
-                
-                for idx, row in enumerate(rows):
-                    stmt += "("
-                    stmt += ", ".join([f"'{clean_table_value(row.get(column.title, "null"))}'" for column in columns])
-                    stmt += ")"
-                    if idx < len(rows) - 1:
-                        stmt += ",\n"
-                    else:
-                        stmt += ";"
-
-                LOGGER.info(stmt)
-                await session.execute(
-                    text(stmt),
-                )
-
-    LOGGER.info(f"Adding metadata for {cleaned_db_name}")
-    await set_metadata(cleaned_db_name, db_metadata)
-
-    user_db_creds = {
-        "user": db_creds["user"],
-        "password": db_creds["password"],
-        "host": db_creds["host"],
-        "port": db_creds["port"],
-        "database": cleaned_db_name
-    }
-    LOGGER.info(f"Creating DbCreds entry for {cleaned_db_name}")
-    await update_db_type_creds(cleaned_db_name, "postgres", user_db_creds)
-
-    return JSONResponse(content={"db_name": cleaned_db_name})
