@@ -13,7 +13,7 @@
   "dependencies": {
     "@ant-design/icons": "^5.5.2",
     "@codemirror/lang-sql": "^6.7.0",
-    "@defogdotai/agents-ui-components": "^1.1.49",
+    "@defogdotai/agents-ui-components": "^v1.1.50",
     "@react-oauth/google": "^0.12.1",
     "@types/react-dom": "19.0.0",
     "@uiw/react-codemirror": "^4.23.7",

@@ -47,8 +47,7 @@ export default function OracleDashboard() {
 
   return (
     token &&
-    userType &&
-    user && (
+    dbNames.length > 0 && (
       <div className="h-screen">
         <Meta />
         <Scaffolding
@@ -60,7 +59,7 @@ export default function OracleDashboard() {
           <OracleEmbed
             apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
             token={token}
-            keyNames={dbNames}
+            initialKeyNames={dbNames}
           />
         </Scaffolding>
       </div>
