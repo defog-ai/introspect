@@ -20,7 +20,7 @@ from db_oracle_utils import (
     update_summary_dict,
     get_multiple_analyses,
 )
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 from generic_utils import get_api_key_from_key_name, make_request
 from oracle.constants import TaskStage, TaskType
@@ -60,36 +60,18 @@ class GuidelineType(Enum):
 class SetGuidelinesRequest(BaseModel):
     guideline_type: GuidelineType
     guidelines: str
-    api_key: Optional[str] = None
-    token: Optional[str] = None
-    key_name: Optional[str] = None
+    token: str
+    db_name: Optional[str] = None
 
 
-@router.post("/oracle/set_guidelines")
+@router.post("/oracle/set_guidelines", dependencies=[Depends(validate_user)])
 async def set_guidelines(req: SetGuidelinesRequest):
-    if req.api_key is None and req.key_name is None:
+    db_name = req.db_name
+    if not db_name:
         return JSONResponse(
             status_code=400,
-            content={
-                "error": "Bad Request",
-                "message": "Either api_key or key_name is required",
-            },
+            content={"error": "db_name not provided"},
         )
-
-    if not req.api_key:
-        # validate user
-        user = await validate_user(req.token)
-        if not user:
-            return JSONResponse(
-                status_code=401,
-                content={
-                    "error": "unauthorized",
-                    "message": "Invalid username or password",
-                },
-            )
-        db_name = await get_api_key_from_key_name(req.key_name)
-    else:
-        db_name = req.api_key
 
     await set_oracle_guidelines(
         db_name=db_name,
@@ -102,36 +84,13 @@ async def set_guidelines(req: SetGuidelinesRequest):
 
 class GetGuidelinesRequest(BaseModel):
     guideline_type: GuidelineType
-    key_name: Optional[str] = None
     token: Optional[str] = None
-    api_key: Optional[str] = None
+    db_name: Optional[str] = None
 
 
-@router.post("/oracle/get_guidelines")
+@router.post("/oracle/get_guidelines", dependencies=[Depends(validate_user)])
 async def get_guidelines(req: GetGuidelinesRequest):
-    if not req.api_key and not req.key_name:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "Bad Request",
-                "message": "Either api_key or key_name is required",
-            },
-        )
-
-    if not req.api_key:
-        # validate user
-        user = await validate_user(req.token)
-        if not user:
-            return JSONResponse(
-                status_code=401,
-                content={
-                    "error": "unauthorized",
-                    "message": "Invalid username or password",
-                },
-            )
-        db_name = await get_api_key_from_key_name(req.key_name)
-    else:
-        db_name = req.api_key
+    db_name = req.db_name
 
     stmt = select(OracleGuidelines).where(OracleGuidelines.db_name == db_name)
     async with AsyncSession(engine) as session:
@@ -168,7 +127,7 @@ class ClarifyQuestionRequest(BaseModel):
     }
 
 
-@router.post("/oracle/clarify_question")
+@router.post("/oracle/clarify_question", dependencies=[Depends(validate_user)])
 async def clarify_question_endpoint(req: ClarifyQuestionRequest):
     """
     Given the question provided by the user, an optionally a list of answered
@@ -185,29 +144,20 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
         task_type: str
     """
     ts, timings = time.time(), []
-    user = await validate_user(req.token)
-    if not user:
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-    api_key = await get_api_key_from_key_name(req.db_name)
+    db_name = req.db_name
     ts = save_timing(ts, "validate_user", timings)
     guidelines = ""
 
     if req.clarification_guidelines:
         guidelines = req.clarification_guidelines
         await set_oracle_guidelines(
-            db_name=api_key,
+            db_name=db_name,
             guideline_type="clarification",
             guidelines=guidelines,
         )
     else:
         LOGGER.debug("No clarification guidelines provided, retrieving from DB")
-        guidelines = await get_oracle_guidelines(api_key)
+        guidelines = await get_oracle_guidelines(db_name)
         if not guidelines:
             LOGGER.warning("No clarification guidelines found in DB")
         else:
@@ -216,7 +166,7 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
     try:
         clarify_response = await clarify_question(
             user_question=req.user_question,
-            db_name=api_key,
+            db_name=db_name,
             oracle_guidelines=guidelines,
         )
 
