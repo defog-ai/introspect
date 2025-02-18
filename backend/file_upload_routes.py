@@ -8,7 +8,7 @@ from db_utils import get_db_type_creds
 import random
 import os
 import pandas as pd
-from utils_file_uploads import import_csv_to_postgres, clean_table_name
+from utils_file_uploads import export_df_to_postgres, clean_table_name
 from utils_md import set_metadata
 from db_utils import update_db_type_creds
 from sqlalchemy_utils import database_exists, create_database, drop_database
@@ -77,7 +77,7 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
             # store all values as strings to preserve dirty data
             dtype=str,
         )
-        inferred_types = (await import_csv_to_postgres(df, cleaned_table_name, connection_uri, chunksize=5000))["inferred_types"]
+        inferred_types = (await export_df_to_postgres(df, cleaned_table_name, connection_uri, chunksize=5000))["inferred_types"]
         for col, dtype in inferred_types.items():
             db_metadata.append({
                 "db_name": cleaned_db_name,

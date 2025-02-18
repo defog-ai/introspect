@@ -36,12 +36,43 @@ def clean_table_name(table_name: str):
 
 def can_parse_date(val):
     """
-    Helper function: check if something can be a date
+    Return True if `val` looks like a date.
+    
+    For non-string inputs, we convert to string. If the string is 
+    purely numeric, we only allow four digits (a year) or eight digits 
+    (a compact date like YYYYMMDD). Otherwise, we require the presence 
+    of a typical date separator.
     """
+    if not isinstance(val, str):
+        val = str(val)
+    
+    # Trim whitespace
+    val = val.strip()
+    
+    # If the string is empty, it’s not a date.
+    if not val:
+        return False
+
+    # If the string is all digits, only allow if length is 4 or 8.
+    if re.fullmatch(r'\d+', val):
+        if len(val) in (4, 8):
+            try:
+                parser.parse(val)
+                return True
+            except Exception:
+                return False
+        else:
+            return False
+
+    # For strings that are not all digits, require at least one common date separator.
+    if not re.search(r'[\s/\-:]', val):
+        return False
+
+    # Finally, try to parse it with dateutil.
     try:
         parser.parse(val, fuzzy=True)
         return True
-    except:
+    except Exception:
         return False
 
 
@@ -84,18 +115,12 @@ def guess_column_type(series, sample_size=50):
     numeric_ratio = numeric_count / len(sampled_values)
 
     # Decide on type
-    # Priority: If enough are date -> DATE or TIMESTAMP
-    #           Else if enough are numeric, check int vs float
+    # Priority: If enough are numeric -> check int vs float
+    #           Else if enough are date, check TIMESTAMP
     #           Else TEXT
     # We can tweak the thresholds to handle partial columns better
 
-    # 1) Check date
-    # If a large majority (>80% for instance) is parseable as date, pick a date/timestamp
-    if date_ratio > 0.8:
-        # We can further refine if we want DATE vs. TIMESTAMP. We'll assume TIMESTAMP for broad coverage.
-        return 'TIMESTAMP'
-
-    # 2) Check numeric
+    # 1) Check numeric
     # If a large majority (>80%) is parseable as numeric, figure out if integer or decimal
     if numeric_ratio > 0.8:
         # Check if everything is "integer-like" (no decimal part) among the valid portion
@@ -112,6 +137,12 @@ def guess_column_type(series, sample_size=50):
             # Use DOUBLE PRECISION or NUMERIC
             # We'll choose DOUBLE PRECISION for simplicity
             return 'DOUBLE PRECISION'
+    
+    # 2) Check date
+    # If a large majority (>80% for instance) is parseable as date, pick a date/timestamp
+    if date_ratio > 0.8:
+        # We can further refine if we want DATE vs. TIMESTAMP. We'll assume TIMESTAMP for broad coverage.
+        return 'TIMESTAMP'
 
     # 3) Default
     return 'TEXT'
@@ -204,7 +235,7 @@ def convert_values_to_postgres_type(value: str, target_type: str):
         return val_str
 
 
-async def import_csv_to_postgres(df: pd.DataFrame, table_name: str, db_connection_string: str, chunksize: int=5000):
+async def export_df_to_postgres(df: pd.DataFrame, table_name: str, db_connection_string: str, chunksize: int=5000):
     """
     1. Reads CSV into a pandas DataFrame (as strings).
     2. Infers column types for Postgres.
