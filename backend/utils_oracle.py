@@ -8,6 +8,7 @@ from oracle.constants import TaskType
 from defog.llm.utils import chat_async
 from llm_api import O3_MINI
 from utils_logging import LOGGER
+from typing import Literal
 
 # read in prompts
 with open("./prompts/oracle/clarification/sys.txt", "r") as f:
@@ -63,29 +64,39 @@ async def clarify_question(
     return clarification_output.model_dump()
 
 
-async def set_oracle_guidelines(db_name: str, guidelines: str) -> str:
+async def set_oracle_guidelines(
+    db_name: str,
+    guideline_type: Literal["clarification", "generate_questions", "generate_questions_deeper", "generate_report"],
+    guidelines: str
+) -> str:
+    # get the name of the relevant column in the database
+    column_name = guideline_type + "_guidelines"
+
     # save to oracle_guidelines table, overwriting if already exists
     async with AsyncSession(engine) as session:
         async with session.begin():
-            # check if the db_name already exists
-            result = await session.execute(
+            stmt = await session.execute(
                 select(OracleGuidelines).where(OracleGuidelines.db_name == db_name)
             )
-            if result.scalar_one_or_none():
-                await session.execute(
-                    update(OracleGuidelines).values(
-                        db_name=db_name,
-                        clarification_guidelines=guidelines,
-                    )
-                )
-            else:
+            result = stmt.scalar_one_or_none()
+
+            if not result:
+                # Add new row with the specified guideline
                 await session.execute(
                     insert(OracleGuidelines).values(
                         db_name=db_name,
-                        clarification_guidelines=guidelines,
+                        # this looks hacky, but is a great way to
+                        # get the column name neatly into the query
+                        # w/o re-writing a lot of boilerplate
+                        **{column_name: guidelines},
                     )
                 )
-            LOGGER.debug(f"Saved clarification guidelines to DB for API key {db_name}")
+            else:
+                # Update existing row
+                setattr(result, column_name, guidelines)
+                LOGGER.debug(f"Updated {guideline_type} guidelines for API key {db_name}")
+
+    return True
 
 
 async def get_oracle_guidelines(db_name: str) -> str:

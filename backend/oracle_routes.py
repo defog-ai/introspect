@@ -65,15 +65,6 @@ class SetGuidelinesRequest(BaseModel):
     key_name: Optional[str] = None
 
 
-# Mapping from guideline types to their database column names
-GUIDELINE_TYPE_MAPPING = {
-    GuidelineType.clarification: "clarification_guidelines",
-    GuidelineType.generate_questions: "generate_questions_guidelines",
-    GuidelineType.generate_questions_deeper: "generate_questions_deeper_guidelines",
-    GuidelineType.generate_report: "generate_report_guidelines",
-}
-
-
 @router.post("/oracle/set_guidelines")
 async def set_guidelines(req: SetGuidelinesRequest):
     if req.api_key is None and req.key_name is None:
@@ -100,29 +91,11 @@ async def set_guidelines(req: SetGuidelinesRequest):
     else:
         db_name = req.api_key
 
-    column_name = GUIDELINE_TYPE_MAPPING[req.guideline_type]
-
-    async with AsyncSession(engine) as session:
-        async with session.begin():
-            stmt = await session.execute(
-                select(OracleGuidelines).where(OracleGuidelines.db_name == db_name)
-            )
-            result = stmt.scalar_one_or_none()
-
-            if not result:
-                # Add new row with the specified guideline
-                await session.execute(
-                    insert(OracleGuidelines).values(
-                        db_name=db_name,
-                        # this looks hacky, but is a great way to
-                        # get the column name neatly into the query
-                        # w/o re-writing a lot of boilerplate
-                        **{column_name: req.guidelines},
-                    )
-                )
-            else:
-                # Update existing row
-                setattr(result, column_name, req.guidelines)
+    await set_oracle_guidelines(
+        db_name=db_name,
+        guideline_type=req.guideline_type,
+        guidelines=req.guidelines,
+    )
 
     return JSONResponse(status_code=200, content={"message": "Success"})
 
@@ -227,7 +200,11 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
 
     if req.clarification_guidelines:
         guidelines = req.clarification_guidelines
-        await set_oracle_guidelines(api_key, guidelines)
+        await set_oracle_guidelines(
+            db_name=api_key,
+            guideline_type="clarification",
+            guidelines=guidelines,
+        )
     else:
         LOGGER.debug("No clarification guidelines provided, retrieving from DB")
         guidelines = await get_oracle_guidelines(api_key)
