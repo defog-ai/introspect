@@ -198,11 +198,9 @@ class UserTable(BaseModel):
     columns: list[UserTableColumn]
 
 
-class UploadFileAsDBRequest(BaseModel):
+class UploadFileAsDBRequest(UserRequest):
     """
     Request model for uploading a file as a database.
     """
-
-    token: str
     file_name: str
     tables: dict[str, UserTable]
