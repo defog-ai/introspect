@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Modal, Input, Spin } from "antd";
 import { StarFilled } from "@ant-design/icons";
 import LineBlock from "$components/layout/LineBlock";
-import DisplayData from "$components/view-feedback/DisplayDataFrame";
 
 const AddQueryModal = ({
   handleOk,
@@ -11,8 +10,6 @@ const AddQueryModal = ({
   setNewQuestion,
   newSql,
   setNewSql,
-  newColumns,
-  newData,
   generateSqlQuery,
 }) => {
   const [loading, setLoading] = useState(false);
@@ -73,13 +70,6 @@ const AddQueryModal = ({
           className="min-h-52 font-mono text-sm p-2 bg-gray-50 dark:bg-dark-bg-secondary border border-gray-300 dark:border-dark-border dark:text-dark-text-primary"
         />
       </Spin>
-
-      {/* display results of the query*/}
-      {newSql && newSql !== "Generating SQL..." && (
-        <div className="mt-5 ">
-          <DisplayData columns={newColumns} data={newData} />
-        </div>
-      )}
     </Modal>
   );
 };
