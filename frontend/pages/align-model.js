@@ -9,7 +9,6 @@ import { SettingOutlined } from "@ant-design/icons";
 import { MessageManagerContext, SingleSelect as Select, Tabs } from "@defogdotai/agents-ui-components/core-ui";
 
 const AlignModel = () => {
-  const [devMode, setDevMode] = useState(false);
   const [instructions, setInstructions] = useState("");
   const [goldenQueries, setGoldenQueries] = useState([]); // [ { question: "", sql: "" }, ... ]
   const [token, setToken] = useState("");
@@ -19,11 +18,6 @@ const AlignModel = () => {
   const [isUpdatingInstructions, setIsUpdatingInstructions] = useState(false);
   const [isUpdatingGoldenQueries, setIsUpdatingGoldenQueries] = useState(false);
   const message = useContext(MessageManagerContext);
-
-  // state that triggers an update in the golden queries
-  const [updatedGoldenQueriesToggle, setUpdatedGoldenQueriesToggle] =
-    useState(false);
-
   const [apiKeyNames, setApiKeyNames] = useState([]);
 
   const getApiKeyNames = async (token) => {
@@ -62,13 +56,12 @@ const AlignModel = () => {
 
     // after 100ms, get the glossary and golden queries
     if (!apiKeyName) return;
-    getGlossaryGoldenQueries(devMode);
-  }, [devMode, apiKeyName]);
+    getGlossaryGoldenQueries();
+  }, [apiKeyName]);
 
-  const getGlossaryGoldenQueries = async (dev) => {
+  const getGlossaryGoldenQueries = async () => {
     setIsLoading(true);
     const token = localStorage.getItem("defogToken");
-    console.log("Right now, devMode is", dev);
     try {
       // get instructions
       const instructionsRes = await fetch(
