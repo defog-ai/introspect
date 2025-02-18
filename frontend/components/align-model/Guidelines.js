@@ -22,7 +22,7 @@ const Guidelines = ({
         },
         body: JSON.stringify({
           token,
-          key_name: apiKeyName,
+          db_name: apiKeyName,
           guideline_type: guidelineType,
         }),
       }
@@ -44,7 +44,7 @@ const Guidelines = ({
         },
         body: JSON.stringify({
           token,
-          key_name: apiKeyName,
+          db_name: apiKeyName,
           guideline_type: guidelineType,
           guidelines,
         }),
