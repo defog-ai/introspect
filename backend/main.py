@@ -1,16 +1,12 @@
 import logging
 import os
 import traceback
-import random
-from fastapi.responses import JSONResponse
 
-from utils_md import set_metadata
-from db_models import DbCreds
-from db_utils import get_db_names, get_db_type_creds, update_db_type_creds
-from utils import clean_table_name, clean_table_value
-from request_models import UploadFileAsDBRequest
+from db_utils import get_db_names
 import instructions_routes
-import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, golden_queries_routes, imported_tables_routes, integration_routes, metadata_routes, oracle_report_routes, oracle_routes, query_routes, slack_routes, tools.tool_routes, user_history_routes, xdb_routes
+import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, file_upload_routes, golden_queries_routes, \
+    imported_tables_routes, integration_routes, metadata_routes, oracle_report_routes, oracle_routes, query_routes, \
+    slack_routes, tools.tool_routes, user_history_routes, xdb_routes
 from db_analysis_utils import get_analysis_data, initialise_analysis
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,6 +23,7 @@ app.include_router(agent_routes.router)
 app.include_router(auth_routes.router)
 app.include_router(csv_routes.router)
 app.include_router(doc_endpoints.router)
+app.include_router(file_upload_routes.router)
 app.include_router(golden_queries_routes.router)
 app.include_router(imported_tables_routes.router)
 app.include_router(instructions_routes.router)
@@ -61,15 +58,6 @@ llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endp
 @app.get("/ping")
 async def root():
     return {"message": "Hello World"}
-
-
-edit_request_types_and_prop_names = {
-    "edit_analysis_md": {
-        "table_column": "gen_analysis",
-        "prop_name": "analysis_sections",
-    },
-    "edit_approaches": {"table_column": "gen_approaches", "prop_name": "approaches"},
-}
 
 
 @app.post("/get_analysis")
