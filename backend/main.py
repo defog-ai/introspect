@@ -3,8 +3,7 @@ import os
 import traceback
 
 import instructions_routes
-import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, golden_queries_routes, integration_routes, metadata_routes, oracle_report_routes, query_routes, slack_routes, user_history_routes, imported_tables_routes, oracle_report_routes, oracle_routes, xdb_routes, tools.tool_routes
-
+import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, golden_queries_routes, imported_tables_routes, integration_routes, metadata_routes, oracle_report_routes, oracle_routes, query_routes, slack_routes, tools.tool_routes, user_history_routes, xdb_routes
 from db_analysis_utils import get_analysis_data, initialise_analysis
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +20,7 @@ app.include_router(csv_routes.router)
 app.include_router(doc_endpoints.router)
 app.include_router(golden_queries_routes.router)
 app.include_router(imported_tables_routes.router)
+app.include_router(instructions_routes.router)
 app.include_router(integration_routes.router)
 app.include_router(metadata_routes.router)
 app.include_router(oracle_report_routes.router)
@@ -30,7 +30,6 @@ app.include_router(slack_routes.router)
 app.include_router(tools.tool_routes.router)
 app.include_router(user_history_routes.router)
 app.include_router(xdb_routes.router)
-app.include_router(instructions_routes.router)
 from oracle.setup import setup_dir
 
 # check if the oracle directory structure exists and create if not
