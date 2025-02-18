@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines
 from db_models import OracleGuidelines, OracleReports
 from db_config import engine
-from auth_utils import validate_user
+from auth_utils import validate_user, validate_user_request
 from db_oracle_utils import (
     add_or_update_analysis,
     delete_analysis,
@@ -64,7 +64,7 @@ class SetGuidelinesRequest(BaseModel):
     db_name: Optional[str] = None
 
 
-@router.post("/oracle/set_guidelines", dependencies=[Depends(validate_user)])
+@router.post("/oracle/set_guidelines", dependencies=[Depends(validate_user_request)])
 async def set_guidelines(req: SetGuidelinesRequest):
     db_name = req.db_name
     if not db_name:
@@ -75,7 +75,7 @@ async def set_guidelines(req: SetGuidelinesRequest):
 
     await set_oracle_guidelines(
         db_name=db_name,
-        guideline_type=req.guideline_type,
+        guideline_type=req.guideline_type.value,
         guidelines=req.guidelines,
     )
 
@@ -88,7 +88,7 @@ class GetGuidelinesRequest(BaseModel):
     db_name: Optional[str] = None
 
 
-@router.post("/oracle/get_guidelines", dependencies=[Depends(validate_user)])
+@router.post("/oracle/get_guidelines", dependencies=[Depends(validate_user_request)])
 async def get_guidelines(req: GetGuidelinesRequest):
     db_name = req.db_name
 
@@ -99,7 +99,7 @@ async def get_guidelines(req: GetGuidelinesRequest):
         if not result:
             return {"guidelines": ""}
 
-        column_name = GUIDELINE_TYPE_MAPPING[req.guideline_type]
+        column_name = req.guideline_type.value + "_guidelines"
         return JSONResponse(content={"guidelines": getattr(result, column_name)})
 
 
@@ -127,7 +127,7 @@ class ClarifyQuestionRequest(BaseModel):
     }
 
 
-@router.post("/oracle/clarify_question", dependencies=[Depends(validate_user)])
+@router.post("/oracle/clarify_question", dependencies=[Depends(validate_user_request)])
 async def clarify_question_endpoint(req: ClarifyQuestionRequest):
     """
     Given the question provided by the user, an optionally a list of answered
