@@ -35,9 +35,9 @@ with open("./prompts/fix_sql/user.md", "r") as f:
     FIX_SQL_USER_PROMPT = f.read()
 
 
-UNSAFE_KEYWORDS = ['CREATE', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'INSERT']
+UNSAFE_KEYWORDS = ["CREATE", "UPDATE", "DELETE", "DROP", "ALTER", "INSERT"]
 # Combine keywords into one regex pattern for efficiency
-UNSAFE_REGEX = re.compile(r'\b(?:' + '|'.join(UNSAFE_KEYWORDS) + r')\b', re.IGNORECASE)
+UNSAFE_REGEX = re.compile(r"\b(?:" + "|".join(UNSAFE_KEYWORDS) + r")\b", re.IGNORECASE)
 
 
 # make sure the query does not contain any malicious commands like drop, delete, etc.
@@ -65,7 +65,7 @@ async def execute_sql(
     if is_sorry(sql):
         err_msg = "Obtained Sorry SQL query"
         return None, err_msg
-    
+
     if not safe_sql(sql):
         err_msg = "Unsafe SQL query"
         return None, err_msg
@@ -329,7 +329,7 @@ def add_hard_filters(sql: str, hard_filters: list[HardFilter]) -> str:
     """
     if not hard_filters or len(hard_filters) == 0:
         return sql
-    
+
     # Parse into sqlglot Expression Tree
     parsed = parse_one(sql, read="postgres")
 
@@ -348,8 +348,10 @@ def add_hard_filters(sql: str, hard_filters: list[HardFilter]) -> str:
             table_name = node.name  # e.g. 'my_table'
             alias = node.alias or table_name
             if current_select:
-                select_table_aliases[current_select].setdefault(table_name, set()).add(alias)
-        
+                select_table_aliases[current_select].setdefault(table_name, set()).add(
+                    alias
+                )
+
         # Recurse into children
         for value in node.args.values():
             if isinstance(value, exp.Expression):
@@ -371,11 +373,11 @@ def add_hard_filters(sql: str, hard_filters: list[HardFilter]) -> str:
         )
         val = exp.Literal.string(hf.value)
         op_map = {
-            "=":  exp.EQ,
+            "=": exp.EQ,
             "!=": exp.NEQ,
-            ">":  exp.GT,
+            ">": exp.GT,
             ">=": exp.GTE,
-            "<":  exp.LT,
+            "<": exp.LT,
             "<=": exp.LTE,
         }
         op_class = op_map.get(hf.operator, exp.EQ)
@@ -511,9 +513,9 @@ def clean_generated_query(query: str):
 
 
 async def generate_sql_query(
-    question: str, 
-    db_name: str = None, 
-    db_type: str = None, 
+    question: str,
+    db_name: str = None,
+    db_type: str = None,
     metadata: list[ColumnMetadata] = None,
     instructions: str = None,
     previous_context: list[Dict[str, str]] = None,
@@ -533,22 +535,25 @@ async def generate_sql_query(
 
     if db_type is None:
         db_type, _ = await get_db_type_creds(db_name)
-    t_start = save_timing(t_start, "Retrieved db type", timings)    
-    
+    t_start = save_timing(t_start, "Retrieved db type", timings)
+
+    LOGGER.info(f"using_db_metadata: {using_db_metadata}")
     if using_db_metadata:
         metadata = await get_metadata(db_name)
+
+    LOGGER.info(f"metadata: {metadata}")
     t_start = save_timing(t_start, "Retrieved metadata", timings)
 
     if metadata is None or len(metadata) == 0:
         return {"error": "metadata is required"}
-    
+
     if instructions is None:
         if using_db_metadata:
             instructions = await get_instructions(db_name)
     t_start = save_timing(t_start, "Retrieved instructions", timings)
-    
+
     golden_queries_prompt = ""
-    
+
     if using_db_metadata:
         question_embedding = await get_embedding(question)
         t_start = save_timing(t_start, "Embedded question", timings)
@@ -562,10 +567,13 @@ async def generate_sql_query(
 
         for i, golden_query in enumerate(golden_queries):
             golden_queries_prompt += f"Example question {i+1}: {golden_query.question}\nExample query {i+1}:\n```sql\n{golden_query.sql}\n```\n\n"
-        
+
         if golden_queries_prompt != "":
-            golden_queries_prompt = "The following are some potentially relevant questions and their corresponding SQL queries:\n\n" + golden_queries_prompt
-    
+            golden_queries_prompt = (
+                "The following are some potentially relevant questions and their corresponding SQL queries:\n\n"
+                + golden_queries_prompt
+            )
+
     messages = get_messages(
         db_type=db_type,
         date_today=datetime.now().strftime("%Y-%m-%d"),
@@ -589,16 +597,18 @@ async def generate_sql_query(
         reasoning_effort="low",
     )
 
-    LOGGER.info("latency of query generation in seconds: " + "{:.2f}".format(query.time) + "s")
     LOGGER.info(
-        "cost of query in cents: " + "{:.2f}".format(query.cost_in_cents) + "¢"
+        "latency of query generation in seconds: " + "{:.2f}".format(query.time) + "s"
     )
+    LOGGER.info("cost of query in cents: " + "{:.2f}".format(query.cost_in_cents) + "¢")
 
     sql_generated = query.content
-    sql_generated = sql_generated.split("```sql", 1)[-1].split(";", 1)[0].replace("```", "").strip()
+    sql_generated = (
+        sql_generated.split("```sql", 1)[-1].split(";", 1)[0].replace("```", "").strip()
+    )
     sql_generated = add_hard_filters(sql_generated, hard_filters)
     sql_generated = clean_generated_query(sql_generated)
-    
+
     log_timings(timings)
 
     if not safe_sql(sql_generated):
@@ -624,11 +634,11 @@ async def retry_query_after_error(
     Returns the fixed sql query if successful, else None.
     """
     if not db_type:
-        db_type = await get_db_type(db_name)
-    
+        db_type, _ = await get_db_type_creds(db_name)
+
     if not metadata or len(metadata) == 0:
         metadata = await get_metadata(db_name)
-    
+
     if not metadata or len(metadata) == 0:
         LOGGER.error("No metadata found while fixing SQL query")
         return {
@@ -657,15 +667,21 @@ async def retry_query_after_error(
         prediction={
             "type": "content",
             "content": sql,
-        }
+        },
     )
-    LOGGER.info("Latency of query correction in seconds: " + "{:.2f}".format(query.time) + "s")
     LOGGER.info(
-        "Cost of query correction in cents: " + "{:.2f}".format(query.cost_in_cents) + "¢"
+        "Latency of query correction in seconds: " + "{:.2f}".format(query.time) + "s"
     )
-    
+    LOGGER.info(
+        "Cost of query correction in cents: "
+        + "{:.2f}".format(query.cost_in_cents)
+        + "¢"
+    )
+
     sql_generated = query.content
-    sql_generated = sql_generated.split("```sql", 1)[-1].split(";", 1)[0].replace("```", "").strip()
+    sql_generated = (
+        sql_generated.split("```sql", 1)[-1].split(";", 1)[0].replace("```", "").strip()
+    )
     sql_generated = clean_generated_query(sql_generated)
 
     if not safe_sql(sql_generated):

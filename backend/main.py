@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy_utils import create_database, database_exists, drop_database
 
-from backend.utils_md import set_metadata
+from utils_md import set_metadata
 from db_models import DbCreds
 from db_utils import get_db_names, get_db_type_creds
 from utils import clean_table_name
@@ -146,12 +146,12 @@ def health_check():
     return {"status": "ok"}
 
 
-@app.post("/get_api_key_names")
-async def get_api_key_names(request: Request):
+@app.post("/get_db_names")
+async def get_db_names_endpoint(request: Request):
     # DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
     # db_names = DEFOG_API_KEY_NAMES.split(",")
 
-    return {"api_key_names": await get_db_names()}
+    return {"db_names": await get_db_names()}
 
 
 @app.post("/upload_file_as_db")
@@ -270,10 +270,17 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
 
     async with engine.begin() as conn:
         LOGGER.info(f"Creating DbCreds entry for {cleaned_file_name}")
+        user_db_creds = {
+            "user": db_creds["user"],
+            "password": db_creds["password"],
+            "host": db_creds["host"],
+            "port": db_creds["port"],
+            "database": cleaned_file_name
+        }
         # finally, if all succeeds, add the credentials to db creds
         await conn.execute(
             insert(DbCreds).values(
-            db_name=cleaned_file_name, db_type="postgres", db_creds=db_creds
+            db_name=cleaned_file_name, db_type="postgres", db_creds=user_db_creds
             )
         )
 
