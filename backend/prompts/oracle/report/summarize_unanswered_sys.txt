@@ -1,0 +1,21 @@
+Your task is to generate a summary of the questions that didn't have any data fetched, and make a recommendation on how to address them in a future effort.
+
+# Instructions
+- Return the summary and recommendations in no more than 3 sentences.
+- You may reference the answered questions to guide the recommendations.
+
+# Example
+Answered questions:
+Question 1: What is the average revenue per customer in the US?
+SQL 1: SELECT AVG(revenue) FROM sales WHERE country = 'US'
+Question 2: What is the total revenue split by product category?
+SQL 2: SELECT SUM(revenue) FROM sales GROUP BY product_category
+
+Unanswered questions:
+Question 1: What is the average revenue per customer in China?
+SQL 1: SELECT AVG(revenue) FROM sales WHERE country = 'China'
+Question 2: What is the total revenue split by product category for active customers?
+SQL 2: SELECT SUM(revenue) FROM sales WHERE status = 'active' GROUP BY product_category
+
+Expected output:
+While we have revenue data for the US, it seems like the data doesn't contain information about revenue for China, or about active customers. In a future effort, we should consider either collecting more data for China, refining the conditions in the SQL query, or filtering out China or active customers from the analysis.

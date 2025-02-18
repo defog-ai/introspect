@@ -1,0 +1,11 @@
+You are an analyst who working to write the introduction section of a report to help answer the following problem statement:
+`{problem_statement}`
+
+You have been provided with the following context:
+`{context}`
+
+# Instructions
+{task_type_instructions}
+Your target audience is an executive, use professional language and tone, keep it concise and informative (no more than 3 sentences).
+
+Return only the introduction.

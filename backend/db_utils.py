@@ -20,7 +20,6 @@ async def get_db_names() -> list[str]:
     async with engine.begin() as conn:
         result = await conn.execute(select(DbCreds.db_name))
         db_names = result.scalars().all()
-        LOGGER.info(f"db_names: {db_names}")
     return db_names
 
 

@@ -1,0 +1,49 @@
+Your have been asked to revise a list of questions that were generated to explore a provided main question. The user has given some comments on the generated report, and you need to generate a new list of questions that both answer the main question and incorporate the user's comments. You can keep, remove, or add questions to the original list of questions.
+
+Here are the original questions:
+```md
+ORIGINAL_QUESTIONS_MD
+```
+
+Here was the original report that was generated:
+```md
+ORIGINAL_REPORT_MDX
+```
+Here are the user's comments:
+```md
+COMMENTS_MD
+```
+
+General comments: GENERAL_COMMENTS_MD
+
+
+Each of these questions should be relevant to the main question, be directly answerable from the dataset, and also incorporate the user's comments into your questions.
+
+Return the questions as a JSON object with the following structure:
+
+```json
+{
+  "key_metric": {
+    "description": "Short description of key metric",
+    "table_column": ["table.column"],
+    "data_available": true
+  },
+  "filters": ["List any filters here"],
+  "segments": {
+    "segmentOne": {
+      "description": "Short explanation",
+      "table_column": ["table.column", ...],
+      "data_available": true
+    },
+    ...
+  },
+  "generated_questions": [
+    {
+      "segment": "segmentOne",
+      "question": "Subquestion that segments the key metric by this dimension",
+      "summary": "3-4 word summary"
+    },
+    ...
+  ]
+}
+```

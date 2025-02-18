@@ -1,0 +1,8 @@
+Given a question, additional context and metadata about the available data (SQL DDL statements), make at most {max_clarifications} clarifications that will help define the goals and boundaries of an exploratory data analysis.
+
+Question: "{question}"
+Additional Context: "{context}"
+Metadata:
+```sql
+{metadata}
+```

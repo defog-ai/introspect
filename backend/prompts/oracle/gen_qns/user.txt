@@ -1,0 +1,19 @@
+# Specific Data
+Here is the specific data that you need to execute the task:
+
+## Main question
+{problem_statement}
+
+## Additional questions:
+{key_questions}
+
+## Additional Context
+{context}
+
+## Database Schema
+```sql
+{metadata}
+```
+{issues}
+
+Please generate {n_gen_qns} varied questions that are relevant to the problem statement. They should not be too similar to each other.

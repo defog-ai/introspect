@@ -8,6 +8,7 @@ from uuid import uuid4
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines
 from db_models import OracleGuidelines, OracleReports
 from db_config import engine
 from auth_utils import validate_user
@@ -171,7 +172,7 @@ async def get_guidelines(req: GetGuidelinesRequest):
 
 
 class ClarifyQuestionRequest(BaseModel):
-    key_name: str
+    db_name: str
     token: str
     user_question: str
     task_type: Optional[TaskType] = None
@@ -195,7 +196,7 @@ class ClarifyQuestionRequest(BaseModel):
 
 
 @router.post("/oracle/clarify_question")
-async def clarify_question(req: ClarifyQuestionRequest):
+async def clarify_question_endpoint(req: ClarifyQuestionRequest):
     """
     Given the question provided by the user, an optionally a list of answered
     clarifications, this endpoint will return a list of clarifications that still
@@ -220,62 +221,30 @@ async def clarify_question(req: ClarifyQuestionRequest):
                 "message": "Invalid username or password",
             },
         )
-    api_key = await get_api_key_from_key_name(req.key_name)
+    api_key = await get_api_key_from_key_name(req.db_name)
     ts = save_timing(ts, "validate_user", timings)
+    guidelines = ""
 
-    clarify_request = {
-        "api_key": api_key,
-        "user_question": req.user_question,
-        "task_type": "exploration",
-        "answered_clarifications": req.answered_clarifications,
-    }
     if req.clarification_guidelines:
-        clarify_request["clarification_guidelines"] = req.clarification_guidelines
-        # save to oracle_guidelines table, overwriting if already exists
-        async with AsyncSession(engine) as session:
-            async with session.begin():
-                # check if the api_key already exists
-                result = await session.execute(
-                    select(OracleGuidelines).where(OracleGuidelines.db_name == api_key)
-                )
-                if result.scalar_one_or_none():
-                    await session.execute(
-                        update(OracleGuidelines).values(
-                            db_name=api_key,
-                            clarification_guidelines=req.clarification_guidelines,
-                        )
-                    )
-                else:
-                    await session.execute(
-                        insert(OracleGuidelines).values(
-                            db_name=api_key,
-                            clarification_guidelines=req.clarification_guidelines,
-                        )
-                    )
-                LOGGER.debug(
-                    f"Saved clarification guidelines to DB for API key {api_key}"
-                )
+        guidelines = req.clarification_guidelines
+        await set_oracle_guidelines(api_key, guidelines)
     else:
         LOGGER.debug("No clarification guidelines provided, retrieving from DB")
-        async with AsyncSession(engine) as session:
-            async with session.begin():
-                result = await session.execute(
-                    select(OracleGuidelines.clarification_guidelines).where(
-                        OracleGuidelines.db_name == api_key
-                    )
-                )
-                guidelines = result.scalar_one_or_none()
-                if not guidelines:
-                    LOGGER.warning("No clarification guidelines found in DB")
-                else:
-                    LOGGER.debug(
-                        f"Retrieved clarification guidelines from DB: {guidelines}"
-                    )
-                    clarify_request["clarification_guidelines"] = guidelines
+        guidelines = await get_oracle_guidelines(api_key)
+        if not guidelines:
+            LOGGER.warning("No clarification guidelines found in DB")
+        else:
+            LOGGER.debug(f"Retrieved clarification guidelines from DB: {guidelines}")
+
     try:
-        clarify_response = await make_request(
-            DEFOG_BASE_URL + "/oracle/clarify", clarify_request
+        clarify_response = await clarify_question(
+            user_question=req.user_question,
+            db_name=api_key,
+            oracle_guidelines=guidelines,
         )
+
+        LOGGER.info(f"Clarify response: {clarify_response}")
+
         for clarification in clarify_response["clarifications"]:
             if (
                 "clarification" not in clarification

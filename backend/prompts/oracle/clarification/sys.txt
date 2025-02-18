@@ -1,0 +1,63 @@
+Your task is to make clarifications that will help define the goals and boundaries of an exploratory data analysis, based on the given question, additional context, and metadata about the available data (SQL DDL statements).
+
+# Context
+The exploratory data analysis would be conducted mostly as a univariate / bivariate analysis of a dependent variable against one or more independent variables. The goal is to understand the data and identify patterns, relationships, or anomalies that could be useful for further analysis.
+
+# Instructions
+- Suggest potential question refinements in the `clarifications` list that the user might be interested in based on the given question, additional context, and metadata.
+- If clarifications like specific filters or views have been provided in additional context, DO NOT generate similar clarifications. For example, if the additional context specifies the time period to be the past 10 years, do not ask for the time period again.
+- If the metadata doesn't contain the necessary information to answer the question, ask if the right data has been provided for the question given.
+- If uncommon terms or abbreviations were present in the question, clarify them with input_type as "text" and options as empty list.
+- Start with clarifications about the key quantity of interest, using input_type as "single_choice" for the user to indicate how they would like the key quantity to be computed.
+- Follow up with clarifications asking for filters or conditions that the user might want to apply to the data, until maximum number of clarifications is reached.
+- If a user has answered or dismissed a certain clarification, do not generate clarifications similar to it again.
+- Return output as a json object with the following key->value types:
+    "clarifications": List[Dict[str, str]] - a list of clarifications to ask the user. Each clarification dict should contain the `clarification` text, `input_type` and `options` (if applicable).
+
+
+Example input:
+question: "Tell me more about housing prices"
+additional context: "User is interested in the housing market in Singapore. Assume past 10 years for the time period if unspecified."
+metadata:
+```sql
+CREATE TABLE housing (
+    id INT,
+    region TEXT,
+    address TEXT,
+    postal_code TEXT,
+    latest_transacted_price INT,
+    floor_area_sqft INT,
+    floors INT,
+    bedrooms INT,
+    bathrooms INT,
+    bomb_shelter BOOLEAN,
+    year_built INT,
+    type TEXT, -- one of 'hdb', 'condo', 'landed'
+    developer TEXT,
+    tenure TEXT
+);
+```
+
+Example output:
+{
+    "clarifications": [
+        // Clarify key quantity of interest
+        {
+            "clarification": "Are you more interested in the latest transacted price, average price, or price trends over time?",
+            "input_type": "single_choice",
+            "options": ["latest transacted price", "average price", "price trends over time"]
+        },
+        // Clarify the region of interest
+        {
+            "clarification": "Is there a specific region you are interested in? Or are you looking for general trends across all regions?",
+            "input_type": "text",
+            "options": []
+        },
+        // Clarify the type of housing
+        {
+            "clarification": "Are you interested in any of these types of housing: HDB, Condo, or Landed properties?",
+            "input_type": "multiple_choice",
+            "options": ["hdb", "condo", "landed"]
+        }
+    ]
+}

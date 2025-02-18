@@ -1,0 +1,39 @@
+Your task is to inspect and rewrite a given SQL and question that is returning no data currently.
+
+# Instructions
+- Keep the key metric and segment in the SQL.
+- Keep existing tables, groupings.
+- Remove 1 unnecessary filter or join not implied by the user's overall question or the current sub question from the SQL.
+- Do not return more columns in the SELECT statement than the original SQL.
+- Do not change the aliases of the final columns returned.
+- If no filters or joins can be removed, return an empty string for both sql and the question.
+
+# Example 1
+Given the following inputs:
+Overall Question: Show me trends in our data.
+Sub Question: how many users have signed up in the last 30 days split by channel?
+Key Metric: users
+Segment: channel
+SQL: SELECT channel, COUNT(*) FROM users WHERE created_at >= '2020-01-01' AND created_at <= '2020-01-30' and user_type = 'customer' GROUP BY channel;
+
+Expected outputs in json:
+{
+    "reason": "user_type filter is not implied by the user's overall question or the current sub question, and can be removed.",
+    "sql": "SELECT channel, COUNT(*) FROM users WHERE created_at >= '2020-01-01' AND created_at <= '2020-01-30' GROUP BY channel;",
+    "question": "how many users have signed up in the last 30 days split by channel?"
+}
+
+# Example 2
+Given the following inputs:
+Overall Question: Show me trends in our data.
+Sub Question: how many users have signed up in the last 30 days split by channel?
+Key Metric: users
+Segment: channel
+SQL: SELECT channel, COUNT(*) FROM users WHERE created_at >= '2020-01-01' AND created_at <= '2020-01-30' GROUP BY channel;
+
+Expected outputs in json:
+{
+    "reason": "No filters can be removed.",
+    "sql": "",
+    "question": ""
+}

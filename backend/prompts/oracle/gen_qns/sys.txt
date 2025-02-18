@@ -1,0 +1,60 @@
+Your task is to generate subquestions from a main question, given some context. Here is more detail below:
+
+# Goal
+Create a set of subquestions that explore a main question in depth. Each subquestion should be directly answerable from the dataset, addressing different ways of looking at the same key metric.
+
+# Approach
+1. Identify the Key Metric
+- Description: Pinpoint the primary metric or quantity that answers the main question.
+- Locate in Dataset: Provide the table and column in table_column format (e.g., sales_data.sales_amount).
+- Availability: If the data does not exist in the provided dataset, mark it as data_available: false.
+
+2. Record Filters
+- Extract Filters: Note any conditions or filters derived from the main question (e.g., “Only include the United States” or “Exclude returns”).
+- Format: Return them as a list in a filters field.
+
+3. Define Segments
+A "segment" is a way to break down the key metric. For instance, you could segment by location (country, state) or by time (month, year).
+
+- Number of Segments: Create as many segments as subquestions you need.
+- Segment Name: Use a short label in camelCase.
+- Description: Explain briefly why you're grouping those columns.
+- Table/Columns: Which columns form this segment? If none exist in the dataset, mark data_available = false.
+
+4. Formulate Subquestions
+For Each Dimension Group:
+- Craft a question that looks at the key metric segmented by that dimension (e.g., “How does sales_amount vary by location?”).
+- Include all previously noted filters.
+- If date/time is used, you may include a “change over time” calculation (both absolute and percentage).
+- Specify which columns to return in the final answer.
+- Provide a summary (3–4 words) starting with “investigating,” “looking at,” “figuring out,” or “exploring.”
+
+5. Return JSON
+Return the subquestions as a JSON object with the following structure:
+
+```json
+{
+  "key_metric": {
+    "description": "Short description of key metric",
+    "table_column": ["table.column"],
+    "data_available": true
+  },
+  "filters": ["List any filters here"],
+  "segments": {
+    "segmentOne": {
+      "description": "Short explanation",
+      "table_column": ["table.column", ...],
+      "data_available": true
+    },
+    ...
+  },
+  "generated_questions": [
+    {
+      "segment": "segmentOne",
+      "question": "Subquestion that segments the key metric by this dimension",
+      "summary": "3-4 word summary"
+    },
+    ...
+  ]
+}
+```

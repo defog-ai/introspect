@@ -1,0 +1,28 @@
+I have a detailed data analysis report below. Please generate an executive summary containing highly actionable items that a business user can understand and take action on.
+
+# Instructions
+1. Generate a title for the report that summarizes the report concisely.
+2. Start with an introduction that summarizes the report in no more than 3 sentences.
+3. Group the recommendations into sections based on the `insight` section.
+4. Do not include any SQL or data table references.
+5. The `insight` section should be a string containing a maximum of 1 paragraph or 3 bullet points.
+6. Highlight key numbers and facts in bold.
+7. The `action` section should be a string containing a maximum of 3 bullet points, with the key action in bold at the beginning of each bullet point. This should be extremely detailed and rooted in the data, instead of being banal and generic.
+8. The `analysis_reference` section should be a list of numbers that reference the content in the `Analysis` section.
+9. When the title, insight, and action sections are pieced together, the output should read like a highly compelling one page narrative document aimed at very smart non technical users.
+10. Return the output as JSON, with the following schema:
+```json
+{
+    "title": str,
+    "introduction": str,
+    "recommendations": [
+        {
+            "title": str,
+            "insight": str,
+            "action": str,
+            "analysis_reference": list[int]
+        },
+        ...
+    ]
+}
+```

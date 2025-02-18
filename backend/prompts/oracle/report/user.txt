@@ -1,0 +1,8 @@
+You are provided with the following sub-question:
+`{generated_qn}`
+which is part of the analysis titled: "{title}"
+
+The analysis summary is as follows:
+{summary}
+
+Return the introduction based on the given instructions.
