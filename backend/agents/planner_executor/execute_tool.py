@@ -3,9 +3,9 @@ import traceback
 from agents.planner_executor.tools.all_tools import tools
 from utils import (
     SqlExecutionError,
-    error_str,
     wrap_in_async,
 )
+from utils_logging import LOGGER
 
 import asyncio
 
@@ -36,7 +36,7 @@ async def execute_tool(function_name, tool_function_inputs):
                 # if it takes more than 120 seconds, then timeout
                 result = await asyncio.wait_for(task, timeout=300)
             except asyncio.TimeoutError:
-                print(error_str(f"Error for tool {function_name}: TimeoutError"))
+                LOGGER.error(f"Error for tool {function_name}: TimeoutError")
                 result = {
                     "error_message": f"Tool {tool} was taking more 2 mins to run and was stopped. This might be due to a long running SQL query, or creating a very complex plot. Please try filtering your data for a faster execution"
                 }
@@ -50,17 +50,13 @@ async def execute_tool(function_name, tool_function_inputs):
 
             # if keyerror, then error string will not have "key error" in it but just the name of the key
             except KeyError as e:
-                print(
-                    error_str(
-                        f"Error for tool {function_name}: KeyError, key not found {e}"
-                    )
-                )
+                LOGGER.error(f"Error for tool {function_name}: KeyError, key not found {e}")
                 traceback.print_exc()
                 result = {
                     "error_message": f"KeyError: key not found {e}. This might be due to missing columns in the generated data from earlier. You might need to run data fetcher again to make sure the required columns is in the data."
                 }
             except IndexError as e:
-                print(error_str(f"Error for tool {function_name}: IndexError: {e}"))
+                LOGGER.error(f"Error for tool {function_name}: IndexError: {e}")
                 traceback.print_exc()
                 result = {
                     "error_message": f"IndexError: index not found {e}. This might be due to empty dataframes from columns in the generated data from earlier. You might need to run data fetcher again to make sure the query is correct."
@@ -69,7 +65,7 @@ async def execute_tool(function_name, tool_function_inputs):
                 print("\n\nHAD SQL ERROR\n", str(e), flush=True)
                 result = {"sql": e.sql, "error_message": str(e)}
             except Exception as e:
-                print(error_str(f"Error for tool {function_name}: {e}"))
+                LOGGER.error(f"Error for tool {function_name}: {e}")
                 traceback.print_exc()
                 result = {"error_message": str(e)[:300]}
             finally:
