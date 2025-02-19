@@ -1,8 +1,7 @@
-import { Card, Row, Col } from "antd";
+import { SpinningLoader } from "@defogdotai/agents-ui-components/core-ui";
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
-  LoadingOutlined,
 } from "@ant-design/icons";
 import { useRouter } from "next/router";
 
@@ -19,18 +18,18 @@ const SetupStatus = ({
       key: "1",
       title: "Database Setup",
       description: loading ? (
-        <LoadingOutlined className="dark:text-dark-text-primary" />
+        <SpinningLoader classNames="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
       ) : isDatabaseSetupWell ? (
         "We can verify that your database details are correct and a connection is successfully established"
       ) : (
         "Please fill in your correct database details to get started querying"
       ),
       status: loading ? (
-        <LoadingOutlined className="dark:text-dark-text-primary" />
+        <SpinningLoader classNames="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
       ) : isDatabaseSetupWell ? (
-        <CheckCircleOutlined style={{ color: "#96c880" }} />
+        <CheckCircleOutlined className="text-[#96c880] text-xl" />
       ) : (
-        <CloseCircleOutlined style={{ color: "#fc8e8e" }} />
+        <CloseCircleOutlined className="text-[#fc8e8e] text-xl" />
       ),
       onClick: () => router.push("/extract-metadata"),
     },
@@ -38,70 +37,71 @@ const SetupStatus = ({
       key: "2",
       title: "Metadata Setup",
       description: loading ? (
-        <LoadingOutlined className="dark:text-dark-text-primary" />
+        <SpinningLoader classNames="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
       ) : isTablesIndexed ? (
         "We can verify that at least one table from your database was indexed for defog to generate queries."
       ) : (
         "We did not find any tables indexed for defog to work on. Please index tables to get started."
       ),
       status: loading ? (
-        <LoadingOutlined className="dark:text-dark-text-primary" />
+        <SpinningLoader classNames="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
       ) : isTablesIndexed ? (
-        <CheckCircleOutlined style={{ color: "#96c880" }} />
+        <CheckCircleOutlined className="text-[#96c880] text-xl" />
       ) : (
-        <CloseCircleOutlined style={{ color: "#fc8e8e" }} />
+        <CloseCircleOutlined className="text-[#fc8e8e] text-xl" />
       ),
       onClick: () => router.push("/extract-metadata"),
-      blur: !isDatabaseSetupWell, // Add blur property
+      blur: !isDatabaseSetupWell,
     },
     {
       key: "3",
       title: "Column Descriptions",
       description: loading ? (
-        <LoadingOutlined className="dark:text-dark-text-primary" />
+        <SpinningLoader classNames="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
       ) : hasNonEmptyDescription ? (
         "We found at least one column with a description. You can view and update metadata."
       ) : (
         "We did not find any column descriptions. Please add descriptions to columns to give defog better context of your data."
       ),
       status: loading ? (
-        <LoadingOutlined className="dark:text-dark-text-primary" />
+        <SpinningLoader classNames="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
       ) : hasNonEmptyDescription ? (
-        <CheckCircleOutlined style={{ color: "#96c880" }} />
+        <CheckCircleOutlined className="text-[#96c880] text-xl" />
       ) : (
-        <CloseCircleOutlined style={{ color: "#fc8e8e" }} />
+        <CloseCircleOutlined className="text-[#fc8e8e] text-xl" />
       ),
       onClick: () => router.push("/extract-metadata"),
-      blur: !isDatabaseSetupWell, // Add blur property
+      blur: !isDatabaseSetupWell,
     },
   ];
 
   return (
     <div className="py-4">
-      <Row gutter={[16, 16]} className="mt-4">
+      <div className="mt-4 flex flex-row gap-4">
         {statusItems.map((item) => (
-          <Col key={item.key} xs={24} sm={24} md={8}>
+          <div
+            key={item.key}
+            className={`w-1/3 ${
+              item.blur ? "filter blur-sm pointer-events-none opacity-60" : ""
+            }`}
+          >
             <div
-              className={`${
-                item.blur ? "filter blur-sm pointer-events-none opacity-60" : ""
-              }`}
+              className="h-full bg-white dark:bg-dark-bg-secondary border border-gray-200 dark:border-dark-border rounded-lg shadow hover:shadow-md transition-shadow duration-200 cursor-pointer"
+              onClick={item.blur ? null : item.onClick}
             >
-              <Card
-                title={
-                  <div className="flex items-center justify-between dark:text-dark-text-primary">
-                    <span>{item.title}</span>
-                    <span>{item.status}</span>
-                  </div>
-                }
-                className="h-full cursor-pointer hover:shadow-lg transition-shadow duration-200 dark:bg-dark-bg-secondary dark:border-dark-border"
-                onClick={item.blur ? null : item.onClick}
-              >
-                <p className="dark:text-dark-text-secondary">{item.description}</p>
-              </Card>
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-border">
+                <div className="flex items-center justify-between dark:text-dark-text-primary">
+                  <span className="text-base font-medium">{item.title}</span>
+                  <span>{item.status}</span>
+                </div>
+              </div>
+              <div className="px-6 py-4">
+                <p className="text-gray-600 dark:text-dark-text-secondary text-sm">{item.description}</p>
+              </div>
             </div>
-          </Col>
+          </div>
         ))}
-      </Row>
+      </div>
     </div>
   );
 };
