@@ -3,10 +3,12 @@ import Scaffolding from "$components/layout/Scaffolding";
 import Source from "$components/manage-sources/Source";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { useCallback, useContext, useEffect, useState } from "react";
-import { Col, Input, Row, Select, Spin } from "antd";
 import { BookOutlined } from "@ant-design/icons";
 import {
   Button,
+  Input as DefogInput,
+  SingleSelect,
+  SpinningLoader,
   MessageManagerContext,
 } from "@defogdotai/agents-ui-components/core-ui";
 
@@ -19,26 +21,25 @@ const ManageSources = () => {
   const message = useContext(MessageManagerContext);
 
   const getApiKeyNames = async (token) => {
-    const res = await fetch(
-      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_db_names",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token,
-        }),
-      }
-    );
-    if (!res.ok) {
-      throw new Error(
-        "Failed to get api key names - are you sure your network is working?"
+    try {
+      const res = await fetch(
+        (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_db_names",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        }
       );
+      if (!res.ok) {
+        throw new Error("Failed to get api key names. Check your network?");
+      }
+      const data = await res.json();
+      setApiKeyNames(data.db_names || []);
+      setApiKeyName(data.db_names?.[0] || null);
+    } catch (e) {
+      message.error(e.message);
+      console.error(e);
     }
-    const data = await res.json();
-    setApiKeyNames(data.db_names);
-    setApiKeyName(data.db_names[0]);
   };
 
   useEffect(() => {
@@ -47,132 +48,137 @@ const ManageSources = () => {
   }, []);
 
   const getSources = useCallback(async () => {
+    if (!apiKeyName) return;
     try {
       const token = localStorage.getItem("defogToken");
       const response = await fetch(setupBaseUrl("http", `sources/list`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: token,
-          key_name: apiKeyName,
-        }),
+        body: JSON.stringify({ token, key_name: apiKeyName }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setImportedSources(data);
-      } else {
+      if (!response.ok) {
         message.error("Failed to get sources");
+        return;
       }
+      const data = await response.json();
+      setImportedSources(data);
     } catch (e) {
       message.error(e.message);
       console.error(e);
     }
-  }, [apiKeyName, setImportedSources]);
+  }, [apiKeyName, message]);
+
+  useEffect(() => {
+    getSources();
+  }, [apiKeyName, getSources]);
 
   const addSource = useCallback(async () => {
     try {
       const token = localStorage.getItem("defogToken");
-      // make a request to /sources/import with token, key_name, and source
       setWaitImport(true);
+
       const response = await fetch(setupBaseUrl("http", `sources/import`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token: token,
+          token,
           key_name: apiKeyName,
           links: [inputLink],
         }),
       });
 
-      if (response.ok) {
-        message.info("Source added successfully");
-        setInputLink("");
-        getSources();
-      } else {
+      if (!response.ok) {
         message.error("Failed to add source");
+        return;
       }
+      message.info("Source added successfully");
+      setInputLink("");
+      getSources();
     } catch (e) {
       message.error("Failed to add source");
       console.error(e);
     } finally {
       setWaitImport(false);
     }
-  }, [apiKeyName, inputLink, setInputLink, getSources]);
+  }, [apiKeyName, inputLink, getSources, message]);
 
   const deleteSource = useCallback(
     async (link) => {
-      const token = localStorage.getItem("defogToken");
-      const response = await fetch(setupBaseUrl("http", `sources/delete`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: token,
-          key_name: apiKeyName,
-          link: link,
-        }),
-      });
-      if (response.ok) {
+      try {
+        const token = localStorage.getItem("defogToken");
+        const response = await fetch(setupBaseUrl("http", `sources/delete`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, key_name: apiKeyName, link }),
+        });
+        if (!response.ok) {
+          message.error("Failed to delete source");
+          return;
+        }
         message.info("Source deleted successfully");
         getSources();
+      } catch (e) {
+        message.error("Error deleting source");
+        console.error(e);
       }
     },
-    [apiKeyName, getSources]
+    [apiKeyName, getSources, message]
   );
-
-  useEffect(() => {
-    if (apiKeyName) {
-      getSources();
-    }
-  }, [apiKeyName]);
 
   return (
     <>
       <Meta />
-      <Scaffolding id={"manage-users"} userType={"admin"}>
-        {apiKeyNames.length > 1 ? (
-          <Row type={"flex"} height={"100vh"}>
-            <Col span={24} style={{ paddingBottom: "1em" }}>
-              <Select
-                style={{ width: "100%" }}
-                onChange={(e) => {
-                  setApiKeyName(e);
-                }}
-                options={apiKeyNames.map((item) => {
-                  return { value: item, key: item, label: item };
-                })}
-                value={apiKeyName}
-              />
-            </Col>
-          </Row>
-        ) : null}
-        <div className="flex justify-center items-center flex-col p-1 mt-5">
+      <Scaffolding id="manage-users" userType="admin">
+        {apiKeyNames.length > 1 && (
+          <div className="w-full mb-4">
+            <SingleSelect
+              options={apiKeyNames.map((item) => ({
+                value: item,
+                label: item,
+              }))}
+              value={apiKeyName}
+              onChange={(val) => setApiKeyName(val)}
+              placeholder="Select an API key"
+              rootClassNames="w-full"
+            />
+          </div>
+        )}
+
+        <div className="flex flex-col items-center justify-center p-1 mt-5">
           <h1>
-            <BookOutlined style={{ fontSize: "3.5em", color: "#1890ff" }} />{" "}
+            <BookOutlined style={{ fontSize: "3.5em", color: "#1890ff" }} />
           </h1>
           <h1 className="text-3xl mt-4">Manage Sources</h1>
         </div>
-        <div className="flex justify-center items-center flex-col p-1">
+
+        <div className="flex flex-col items-center p-1 mt-4 w-full">
           <div className="flex items-center w-full px-4 my-2">
-            <Input
+            <DefogInput
               value={inputLink}
-              className="flex-grow p-3 border rounded-lg text-gray-700 focus:outline-none"
               onChange={(e) => setInputLink(e.target.value)}
               placeholder="Enter source link here"
+              /** 
+               * Provide custom classes to enlarge the input:
+               */
+              size="default"
+              rootClassNames="flex-grow w-full"
+              inputClassNames="p-3 border border-gray-300 rounded-lg text-gray-700 focus:outline-none w-full"
             />
             <div className="ml-4">
               {waitImport ? (
-                <Spin />
+                <SpinningLoader classNames="text-blue-600 w-6 h-6" />
               ) : (
-                <Button type="primary" className="" onClick={addSource}>
+                <Button variant="primary" onClick={addSource}>
                   Add Source
                 </Button>
               )}
             </div>
           </div>
         </div>
+
         <div className="flex flex-col p-1 mt-2">
-          {Object.entries(importedSources).map(([link, source], i) => (
+          {Object.entries(importedSources).map(([link, source]) => (
             <Source
               key={link}
               link={link}
