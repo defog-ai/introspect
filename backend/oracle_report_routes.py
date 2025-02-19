@@ -15,7 +15,6 @@ from db_config import engine
 from auth_utils import validate_user
 from generic_utils import get_api_key_from_key_name
 from oracle.constants import TaskStage
-from utils_logging import LOGGER
 
 router = APIRouter()
 
