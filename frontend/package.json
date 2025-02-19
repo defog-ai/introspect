@@ -11,13 +11,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@ant-design/icons": "^5.5.2",
     "@codemirror/lang-sql": "^6.7.0",
     "@defogdotai/agents-ui-components": "^v1.1.51",
     "@react-oauth/google": "^0.12.1",
     "@types/react-dom": "19.0.0",
     "@uiw/react-codemirror": "^4.23.7",
-    "antd": "^5.22.5",
     "lucide-react": "^0.469.0",
     "next": "15.1.1",
     "next-remove-imports": "^1.0.12",
