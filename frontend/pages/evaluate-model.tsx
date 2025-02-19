@@ -229,9 +229,12 @@ export default function TestRegressionPage() {
                 onChange={(e) => handleFilesDropped(e.target.files)}
               />
               <DropFiles
-                multiple={false}
-                accept=".json"
-                onFilesDropped={handleFilesDropped}
+                allowMultiple={false}
+                acceptedFileTypes={[".json"]}
+                onDrop={(e) => {
+                  const files = e.dataTransfer.files;
+                  handleFilesDropped(files);
+                }}
               >
                 <label
                   htmlFor="file-upload"
@@ -305,8 +308,8 @@ export default function TestRegressionPage() {
                         value={inputVal}
                         onChange={(e) => setInputVal(e.target.value)}
                         inputClassNames="rounded-md p-1 px-2 border-gray-300"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && inputVal) {
+                        onPressEnter={(e) => {
+                          if (inputVal) {
                             setQuestionToBeAdded((prev) => ({
                               ...prev,
                               questions: [...prev.questions, inputVal],
