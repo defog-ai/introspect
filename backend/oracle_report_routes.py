@@ -2,10 +2,9 @@ import os
 from typing import Optional
 
 from fastapi import APIRouter
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql import select
 from oracle.utils_report import summary_dict_to_markdown
 from db_models import (
@@ -13,7 +12,6 @@ from db_models import (
     OracleReports,
 )
 from db_config import engine
-from db_oracle_utils import get_report_data
 from auth_utils import validate_user
 from generic_utils import get_api_key_from_key_name
 from oracle.constants import TaskStage
@@ -47,26 +45,6 @@ class ReportRequest(BasicRequest):
 
     model_config = {
         "json_schema_extra": {"examples": [{"key_name": "my_api_key", "report_id": 1}]}
-    }
-
-
-class GetReportImageRequest(ReportRequest):
-    """
-    Request model for accessing an image file within a report.
-    """
-
-    image_file_name: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "key_name": "my_api_key",
-                    "report_id": 1,
-                    "image_file_name": "chart.png",
-                }
-            ]
-        }
     }
 
 
@@ -134,24 +112,6 @@ async def reports_list(req: BasicRequest):
         )
 
     return JSONResponse(status_code=200, content={"reports": reports_list})
-
-
-@router.post("/oracle/download_report")
-async def download_report(req: ReportRequest):
-    """
-    Given a report_id, this endpoint will return the report pdf file to the user.
-    """
-    if not (await validate_user(req.token)):
-        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = await get_api_key_from_key_name(req.key_name)
-    if "report_id" not in req:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Bad Request", "message": "Missing 'report_id' field"},
-        )
-    report_id = req.report_id
-    report_path = get_report_file_path(api_key, report_id)
-    return FileResponse(report_path, media_type="application/pdf", filename=report_path)
 
 
 @router.post("/oracle/delete_report")
@@ -264,65 +224,6 @@ class UpdateReportMDXRequest(ReportRequest):
             ]
         }
     }
-
-
-@router.post("/oracle/update_report_mdx")
-async def update_report_mdx(req: UpdateReportMDXRequest):
-    """
-    Given a report_id, this endpoint will update the MDX string for the report.
-    """
-    if not (await validate_user(req.token)):
-        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = await get_api_key_from_key_name(req.key_name)
-
-    if req.mdx is None and req.tiptap_mdx is None:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "Bad Request",
-                "message": "Missing 'mdx' or 'tiptap_mdx' field",
-            },
-        )
-
-    async with AsyncSession(engine) as session:
-        async with session.begin():
-            stmt = select(OracleReports).where(
-                OracleReports.db_name == api_key,
-                OracleReports.report_id == req.report_id,
-            )
-            result = await session.execute(stmt)
-            report = result.scalar_one_or_none()
-            if report:
-                if req.tiptap_mdx is not None:
-                    report.outputs[TaskStage.EXPORT.value][
-                        "tiptap_mdx"
-                    ] = req.tiptap_mdx
-                if req.mdx is not None:
-                    report.outputs[TaskStage.EXPORT.value]["mdx"] = req.mdx
-                flag_modified(report, "outputs")
-                return JSONResponse(status_code=200, content={"message": "MDX updated"})
-            else:
-                return JSONResponse(
-                    status_code=404,
-                    content={"error": "Report not found"},
-                )
-
-
-@router.post("/oracle/get_report_data")
-async def get_report_data_endpoint(req: ReportRequest):
-    """
-    Given a report_id, this endpoint will returns all the data for this report. Returns the full row stored in the db.
-    """
-    if not (await validate_user(req.token)):
-        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = await get_api_key_from_key_name(req.key_name)
-
-    report_data = await get_report_data(req.report_id, api_key)
-
-    if "error" in report_data:
-        return JSONResponse(status_code=404, content=report_data)
-    else:
-        return JSONResponse(status_code=200, content=report_data)
 
 
 @router.post("/oracle/get_report_image")
@@ -531,27 +432,3 @@ async def update_report_comments(req: UpdateReportCommentsRequest):
                     status_code=404,
                     content={"error": "Report not found"},
                 )
-
-
-### HELPER FUNCTIONS ###
-
-
-def get_report_image_path(api_key: str, report_id: str, image_file_name: str) -> str:
-    """
-    Helper function for getting the report image path based on the api_key, report_id and image file name.
-    """
-    return f"oracle/reports/{api_key}/report_{report_id}/{image_file_name}"
-
-
-def get_report_file_path(api_key: str, report_id: str) -> str:
-    """
-    Helper function for getting the report file path based on the api_key and report_id.
-    Reports are organized in the following directory structure:
-    oracle/reports/{api_key}/report_{report_id}.pdf
-    """
-    report_dir = f"oracle/reports/{api_key}"
-    if not os.path.exists(report_dir):
-        os.makedirs(report_dir, exist_ok=True)
-        LOGGER.debug(f"Created directory {report_dir}")
-    report_file_path = f"{report_dir}/report_{report_id}.pdf"
-    return report_file_path
