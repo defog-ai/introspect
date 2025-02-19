@@ -267,7 +267,6 @@ const MetadataTable = ({
     },
   ];
 
-  // Replacing antd's dataSource
   const tableData = filteredMetadata.map((item) => ({
     key: `${item.table_name}_${item.column_name}`,
     ...item,

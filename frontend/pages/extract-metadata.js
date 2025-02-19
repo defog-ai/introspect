@@ -204,7 +204,6 @@ const ExtractMetadata = () => {
       <Meta />
       <Scaffolding id="manage-database" userType="admin">
         <div className="w-full dark:bg-dark-bg-primary">
-          {/* Instead of antd Row/Col + Select, just use SingleSelect or tailwind */}
           {apiKeyNames.length > 1 && (
             <div className="mb-4 w-full">
               <SingleSelect

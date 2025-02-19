@@ -94,7 +94,6 @@ const Source: React.FC<SourceProps> = ({ link, source, deleteSource }) => {
         <Tabs size="small" tabs={tabs} defaultSelected={source.tables[0].name} />
       )}
 
-      {/* Replacement for <Divider /> from antd */}
       <hr className="my-4 border-gray-300 dark:border-gray-700" />
     </div>
   );
