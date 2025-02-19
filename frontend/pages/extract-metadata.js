@@ -56,24 +56,34 @@ const ExtractMetadata = () => {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      const localUser = localStorage.getItem("defogUser");
-      const localUserType = localStorage.getItem("defogUserType");
-      const localToken = localStorage.getItem("defogToken");
-      setUser(localUser);
-      setUserType(localUserType);
-      setToken(localToken);
+      const user = localStorage.getItem("defogUser");
+      const userType = localStorage.getItem("defogUserType");
+      const token = localStorage.getItem("defogToken");
 
-      // Wait for the first effect to set apiKeyName from getApiKeyNames
-      if (localUser && localToken && localUserType && apiKeyName) {
-        await getTablesAndDbCreds(localToken, apiKeyName);
-        await fetchMetadata(localToken, apiKeyName);
-      } else if (!localUser || !localToken || !localUserType) {
+      setUser(user);
+      setUserType(userType);
+      setToken(token);
+
+      if (user && token && userType) {
+        if (!apiKeyName) return
+          /**
+           * This is because there are 2 triggers during page load
+           * 1. The page loads and apiKeyName is null
+           * 2. getApiKeyNames finishes and apiKeyName is set
+           *
+           * If we don't check for apiKeyName, we will make requests where
+           * apiKeyName is null and the request will fail
+           */
+          await getTablesAndDbCreds(token, apiKeyName);
+          await fetchMetadata(token, apiKeyName);
+      } else {
         router.push("/log-in");
       }
     };
+
     fetchUserData();
   }, [apiKeyName, dbCredsUpdatedToggle]);
-
+  
   const getTablesAndDbCreds = async (token, keyName) => {
     setLoading(true);
     const res = await fetch(

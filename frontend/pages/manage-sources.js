@@ -76,6 +76,7 @@ const ManageSources = () => {
   const addSource = useCallback(async () => {
     try {
       const token = localStorage.getItem("defogToken");
+      // make a request to /sources/import with token, key_name, and source
       setWaitImport(true);
 
       const response = await fetch(setupBaseUrl("http", `sources/import`), {
@@ -158,9 +159,6 @@ const ManageSources = () => {
               value={inputLink}
               onChange={(e) => setInputLink(e.target.value)}
               placeholder="Enter source link here"
-              /** 
-               * Provide custom classes to enlarge the input:
-               */
               size="default"
               rootClassNames="flex-grow w-full"
               inputClassNames="p-3 border border-gray-300 rounded-lg text-gray-700 focus:outline-none w-full"
