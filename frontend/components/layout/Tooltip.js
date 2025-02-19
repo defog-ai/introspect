@@ -1,11 +1,16 @@
 import React from "react";
-import { Tooltip } from "antd";
+import { Popover } from "@defogdotai/agents-ui-components/core-ui";
 
 const CustomTooltip = ({ tooltipText, mainText }) => {
   return (
-    <Tooltip title={tooltipText}>
-      <span>{mainText}</span>
-    </Tooltip>
+    <Popover
+      content={tooltipText}
+      placement="top"
+      trigger="hover"
+      className="inline-block"
+    >
+      <span className="cursor-help">{mainText}</span>
+    </Popover>
   );
 };
 
