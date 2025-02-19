@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from "react";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { DatabaseOutlined } from "@ant-design/icons";
+import { Database } from "lucide-react";
 import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const dbCredOptions = {
@@ -141,7 +141,7 @@ const DbCredentialsForm = ({
   return (
     <div className="space-y-4 dark:bg-dark-bg-primary">
       <div className="flex flex-col items-center text-2xl mb-10">
-        <DatabaseOutlined className="text-4xl mb-2 dark:text-dark-text-primary" />
+        <Database className="mb-2 dark:text-dark-text-primary" size={36} />
         <span className="dark:text-dark-text-primary">
           Update Database Credentials
         </span>

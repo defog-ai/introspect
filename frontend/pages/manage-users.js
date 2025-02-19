@@ -7,7 +7,7 @@ import setupBaseUrl from "$utils/setupBaseUrl";
 import AddUsersViaFile from "$components/manage-users/AddUsersViaFile";
 import AddUsersViaForm from "$components/manage-users/AddUsersViaForm";
 import UsersTable from "$components/manage-users/UsersTable";
-import { TeamOutlined } from "@ant-design/icons";
+import { Users } from "lucide-react";
 import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
 const ManageUsers = () => {
@@ -69,7 +69,7 @@ const ManageUsers = () => {
       <Scaffolding id={"manage-users"} userType={"admin"}>
         <div className="flex justify-center items-center flex-col p-1 mt-5">
           <h1>
-            <TeamOutlined style={{ fontSize: "3.5em", color: "#1890ff" }} />{" "}
+            <Users size={48} color="#1890ff" />{" "}
           </h1>
           <h1 className="text-3xl mt-4">Manage Users</h1>
         </div>

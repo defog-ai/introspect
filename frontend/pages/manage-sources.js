@@ -3,7 +3,7 @@ import Scaffolding from "$components/layout/Scaffolding";
 import Source from "$components/manage-sources/Source";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { useCallback, useContext, useEffect, useState } from "react";
-import { BookOutlined } from "@ant-design/icons";
+import { Book } from "lucide-react";
 import {
   Button,
   Input as DefogInput,
@@ -147,7 +147,7 @@ const ManageSources = () => {
 
         <div className="flex flex-col items-center justify-center p-1 mt-5">
           <h1>
-            <BookOutlined style={{ fontSize: "3.5em", color: "#1890ff" }} />
+            <Book size={48} color="#1890ff" />
           </h1>
           <h1 className="text-3xl mt-4">Manage Sources</h1>
         </div>

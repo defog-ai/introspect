@@ -5,7 +5,7 @@ import {
   SpinningLoader,
   Table
 } from "@defogdotai/agents-ui-components/core-ui";
-import { EditOutlined, DeleteOutlined, SaveOutlined } from "@ant-design/icons";
+import { Edit, Trash2, Save } from "lucide-react";
 import LineBlock from "../layout/LineBlock";
 import AddQueryModal from "./AddQueryModal";
 
@@ -135,7 +135,7 @@ const GoldenQueries = ({
           <div className="flex items-center gap-2 justify-center">
             <Button
               variant={isEditing ? "primary" : "normal"}
-              icon={isEditing ? <SaveOutlined /> : <EditOutlined />}
+              icon={isEditing ? <Save /> : <Edit />}
               onClick={() => {
                 if (isEditing) {
                   // When saving, call your update API
@@ -147,7 +147,7 @@ const GoldenQueries = ({
             />
             <Button
               variant="danger"
-              icon={<DeleteOutlined />}
+              icon={<Trash2 />}
               onClick={() => {
                 deleteGoldenQueries(record.question);
               }}

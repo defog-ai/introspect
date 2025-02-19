@@ -1,11 +1,11 @@
 import { useState, useEffect, useContext } from "react";
 import {
   // Remove Alert, Table, Spin
-  EditOutlined,
-  SaveOutlined,
-  DownloadOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
+  Edit,
+  Save,
+  Upload,
+  Download,
+} from "lucide-react";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import {
   MessageManagerContext,
@@ -259,9 +259,9 @@ const MetadataTable = ({
       render: (text, record) => {
         const key = `${record.table_name}_${record.column_name}`;
         return editingKeys[key] ? (
-          <SaveOutlined onClick={() => toggleEdit(key)} />
+          <Save onClick={() => toggleEdit(key)} />
         ) : (
-          <EditOutlined onClick={() => toggleEdit(key)} />
+          <Edit onClick={() => toggleEdit(key)} />
         );
       },
     },
@@ -360,7 +360,7 @@ const MetadataTable = ({
     </div>
   );
 
-  // We'll replicate "Spin" by showing an overlay with SpinningLoader if loading
+
   if (loading) {
     return (
       <div className="relative dark:bg-dark-bg-primary space-y-4">
@@ -374,7 +374,7 @@ const MetadataTable = ({
         <div className="pointer-events-none">
           {/* Below is your normal layout behind the overlay */}
           <div className="space-y-2 p-4">
-            <div className="text-lg font-medium dark:text-dark-text-primary">
+            <div className="text-lg font-medium text-center dark:text-dark-text-primary">
               View and Update Metadata
             </div>
           </div>
@@ -386,7 +386,7 @@ const MetadataTable = ({
   return (
     <div className="space-y-4 dark:bg-dark-bg-primary">
       <div className="space-y-2">
-        <div className="text-lg font-medium dark:text-dark-text-primary">
+        <div className="text-xl font-medium text-center dark:text-dark-text-primary mt-2">
           View and Update Metadata
         </div>
         
@@ -441,19 +441,19 @@ const MetadataTable = ({
         </button>
 
         <button
-          className="rounded px-4 py-2 text-sm font-semibold text-black shadow-sm hover:bg-blue-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:border-dark-border dark:hover:bg-dark-hover disabled:opacity-50"
+          className="bg-white text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded shadow-sm hover:bg-gray-50 mr-2 flex items-center gap-2"
           disabled={loading}
           onClick={downloadMetadata}
         >
-          Download <DownloadOutlined />
+          <span>Download</span> <Download className="h-4 w-4" />
         </button>
 
         <button
-          className="rounded px-4 py-2 text-sm font-semibold text-black shadow-sm hover:bg-blue-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:border-dark-border dark:hover:bg-dark-hover disabled:opacity-50"
+          className="bg-white text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded shadow-sm hover:bg-gray-50 flex items-center gap-2"
           disabled={loading}
           onClick={uploadMetadata}
         >
-          Upload <UploadOutlined />
+          <span>Upload</span> <Upload className="h-4 w-4" />
         </button>
       </div>
 

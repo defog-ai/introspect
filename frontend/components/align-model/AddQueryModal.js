@@ -5,7 +5,7 @@ import {
   SpinningLoader,
   Button,
 } from "@defogdotai/agents-ui-components/core-ui";
-import { StarFilled } from "@ant-design/icons";
+import { Star } from "lucide-react";
 import LineBlock from "$components/layout/LineBlock";
 
 const AddQueryModal = ({
@@ -64,7 +64,7 @@ const AddQueryModal = ({
       }
       title={
         <div className="flex flex-col justify-center items-center text-xl mb-4 dark:text-dark-text-primary">
-          <StarFilled
+          <Star
             className="text-yellow-500 mb-4 font-bold"
             style={{ fontSize: "3em" }}
           />

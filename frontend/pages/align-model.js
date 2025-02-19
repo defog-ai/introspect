@@ -5,7 +5,7 @@ import setupBaseUrl from "$utils/setupBaseUrl";
 import Instructions from "../components/align-model/Instructions";
 import GoldenQueries from "../components/align-model/GoldenQueries";
 import Guidelines from "../components/align-model/Guidelines";
-import { SettingOutlined } from "@ant-design/icons";
+import { Settings } from "lucide-react";
 import { MessageManagerContext, SingleSelect as Select, Tabs } from "@defogdotai/agents-ui-components/core-ui";
 
 const AlignModel = () => {
@@ -295,7 +295,7 @@ const AlignModel = () => {
         ) : null}
         <div className="flex justify-center items-center flex-col p-1 mt-1">
           <h1>
-            <SettingOutlined style={{ fontSize: "3em", color: "#1890ff" }} />{" "}
+            <Settings size={48} color="#1890ff" />{" "}
           </h1>
           <h1 className="text-3xl mt-4">Align Model</h1>
           <p className="m-4">

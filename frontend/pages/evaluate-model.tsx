@@ -1,11 +1,7 @@
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  InboxOutlined,
-} from "@ant-design/icons";
+import { CheckCircle, XCircle } from "lucide-react";
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { sql as codemirrorSql } from "@codemirror/lang-sql";
 import setupBaseUrl from "$utils/setupBaseUrl";
@@ -242,7 +238,7 @@ export default function TestRegressionPage() {
                   className="w-full cursor-pointer"
                 >
                   <div className="flex flex-col items-center justify-center p-6 text-center border border-dashed border-gray-300 rounded-md hover:bg-gray-100 transition-colors">
-                    <InboxOutlined className="text-4xl mb-2" />
+                    <div className="text-4xl mb-2">🗂️</div>
                     <h1 className="font-bold text-sm mb-2">Upload a JSON file</h1>
                     <p>Click or drag files to this area to upload</p>
                   </div>
@@ -496,12 +492,12 @@ export default function TestRegressionPage() {
                               item.validationResult &&
                               (item.validationResult.correct ? (
                                 <div className="text-green-600 font-semibold mb-2">
-                                  <CheckCircleOutlined className="mr-2" />
+                                  <CheckCircle className="mr-2" />
                                   Correct!
                                 </div>
                               ) : (
                                 <div className="text-red-600 font-semibold mb-2">
-                                  <CloseCircleOutlined className="mr-2" />
+                                  <XCircle className="mr-2" />
                                   Incorrect!
                                 </div>
                               ))}

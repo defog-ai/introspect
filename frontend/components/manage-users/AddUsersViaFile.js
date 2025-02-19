@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { FileAddOutlined, UploadOutlined } from "@ant-design/icons";
+import { FileUp, Upload } from "lucide-react";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Papa from "papaparse";
 import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
@@ -99,8 +99,8 @@ const AddUsersViaFile = ({ loading, getUserDets }) => {
 
   return (
     <div className="w-3/4 p-6 border border-gray-200 rounded-lg shadow-lg">
-      <h1 className="text-center text-2xl mb-8">
-        <FileAddOutlined className="mr-2" />
+      <h1 className="flex items-center justify-center text-2xl mb-8">
+        <FileUp size={24} className="mr-2" />
         Add Users via File
       </h1>
 
@@ -127,7 +127,7 @@ const AddUsersViaFile = ({ loading, getUserDets }) => {
               disabled={isFileUploaded || loading}
               className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <UploadOutlined className="mr-2" />
+              <Upload size={20} className="mr-2" />
               {isFileUploaded ? "Uploaded" : "Upload CSV"}
             </button>
           </div>

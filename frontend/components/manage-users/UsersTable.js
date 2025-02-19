@@ -1,5 +1,5 @@
 import { Button, SpinningLoader, Table, MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
-import { DeleteOutlined } from "@ant-design/icons";
+import { Trash2 } from "lucide-react";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { useContext } from "react";
 
@@ -54,7 +54,7 @@ const UsersTable = ({ userDets, getUserDets, loading, setLoading }) => {
       render: (_, row) => (
         <Button
           variant="normal"
-          icon={<DeleteOutlined />}
+          icon={<Trash2 />}
           onClick={() => showDeleteConfirm(row.username)}
           className="hover:bg-gray-100 dark:hover:bg-gray-700"
         />

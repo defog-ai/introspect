@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import { IdcardOutlined } from "@ant-design/icons";
+import { UserPlus } from "lucide-react";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
 
@@ -76,8 +76,8 @@ const AddUsersViaForm = ({ loading, getUserDets }) => {
 
   return (
     <div className="w-3/4 p-6 border border-gray-200 rounded-lg shadow-lg">
-      <h1 className="text-center text-2xl mb-8">
-        <IdcardOutlined className="mr-2" />
+      <h1 className="flex items-center justify-center text-2xl mb-8">
+        <UserPlus size={24} className="mr-2" />
         Add Users Manually
       </h1>
 

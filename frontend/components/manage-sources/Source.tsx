@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { DeleteOutlined } from "@ant-design/icons";
+import { Trash2 } from "lucide-react";
 import { Table, Tabs } from "@defogdotai/agents-ui-components/core-ui";
 
 interface SourceProps {
@@ -76,7 +76,7 @@ const Source: React.FC<SourceProps> = ({ link, source, deleteSource }) => {
         >
           {source.source_title ? source.source_title : link}
         </a>
-        <DeleteOutlined
+        <Trash2
           className="ml-auto cursor-pointer"
           onClick={() => deleteSource(link)}
         />

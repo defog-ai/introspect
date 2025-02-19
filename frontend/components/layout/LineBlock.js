@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Input } from "@defogdotai/agents-ui-components/core-ui";
-import { EditOutlined } from "@ant-design/icons";
+import { Edit } from "lucide-react";
 
 const LineBlock = ({ helperText, mainText, onUpdate, isEditable, inputModeOn = false }) => {
   const [editableText, setEditableText] = useState(mainText);
@@ -31,7 +31,7 @@ const LineBlock = ({ helperText, mainText, onUpdate, isEditable, inputModeOn = f
         )}
       </div>
       {isEditable && (
-        <EditOutlined
+        <Edit
           onClick={toggleEdit}
           className="cursor-pointer text-[#FFA500] ml-2.5 hover:opacity-80 shrink-0"
         />

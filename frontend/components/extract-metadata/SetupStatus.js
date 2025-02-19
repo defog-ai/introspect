@@ -1,8 +1,10 @@
 import { SpinningLoader } from "@defogdotai/agents-ui-components/core-ui";
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-} from "@ant-design/icons";
+import { 
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Loader
+} from "lucide-react";
 import { useRouter } from "next/router";
 
 const SetupStatus = ({
@@ -18,18 +20,18 @@ const SetupStatus = ({
       key: "1",
       title: "Database Setup",
       description: loading ? (
-        <SpinningLoader classNames="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
+        <Loader className="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
       ) : isDatabaseSetupWell ? (
         "We can verify that your database details are correct and a connection is successfully established"
       ) : (
         "Please fill in your correct database details to get started querying"
       ),
       status: loading ? (
-        <SpinningLoader classNames="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
+        <Loader className="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
       ) : isDatabaseSetupWell ? (
-        <CheckCircleOutlined className="text-[#96c880] text-xl" />
+        <CheckCircle className="text-[#96c880] h-5 w-5" />
       ) : (
-        <CloseCircleOutlined className="text-[#fc8e8e] text-xl" />
+        <XCircle className="text-[#fc8e8e] h-5 w-5" />
       ),
       onClick: () => router.push("/extract-metadata"),
     },
@@ -37,18 +39,18 @@ const SetupStatus = ({
       key: "2",
       title: "Metadata Setup",
       description: loading ? (
-        <SpinningLoader classNames="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
+        <Loader className="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
       ) : isTablesIndexed ? (
         "We can verify that at least one table from your database was indexed for defog to generate queries."
       ) : (
         "We did not find any tables indexed for defog to work on. Please index tables to get started."
       ),
       status: loading ? (
-        <SpinningLoader classNames="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
+        <Loader className="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
       ) : isTablesIndexed ? (
-        <CheckCircleOutlined className="text-[#96c880] text-xl" />
+        <CheckCircle className="text-[#96c880] h-5 w-5" />
       ) : (
-        <CloseCircleOutlined className="text-[#fc8e8e] text-xl" />
+        <AlertCircle className="text-yellow-500 h-5 w-5" />
       ),
       onClick: () => router.push("/extract-metadata"),
       blur: !isDatabaseSetupWell,
@@ -57,18 +59,18 @@ const SetupStatus = ({
       key: "3",
       title: "Column Descriptions",
       description: loading ? (
-        <SpinningLoader classNames="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
+        <Loader className="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
       ) : hasNonEmptyDescription ? (
         "We found at least one column with a description. You can view and update metadata."
       ) : (
         "We did not find any column descriptions. Please add descriptions to columns to give defog better context of your data."
       ),
       status: loading ? (
-        <SpinningLoader classNames="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
+        <Loader className="text-gray-500 dark:text-dark-text-primary h-5 w-5" />
       ) : hasNonEmptyDescription ? (
-        <CheckCircleOutlined className="text-[#96c880] text-xl" />
+        <CheckCircle className="text-[#96c880] h-5 w-5" />
       ) : (
-        <CloseCircleOutlined className="text-[#fc8e8e] text-xl" />
+        <AlertCircle className="text-yellow-500 h-5 w-5" />
       ),
       onClick: () => router.push("/extract-metadata"),
       blur: !isDatabaseSetupWell,
