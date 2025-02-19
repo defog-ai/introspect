@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Input } from "antd";
+import { Input } from "@defogdotai/agents-ui-components/core-ui";
 import { EditOutlined } from "@ant-design/icons";
 
 const LineBlock = ({ helperText, mainText, onUpdate, isEditable, inputModeOn = false }) => {
@@ -7,43 +7,33 @@ const LineBlock = ({ helperText, mainText, onUpdate, isEditable, inputModeOn = f
   const [editMode, setEditMode] = useState(inputModeOn);
 
   const handleUpdate = () => {
-    onUpdate(editableText); // Update the parent state with new text
-    setEditMode(false); // Exit edit mode
+    onUpdate(editableText);
+    setEditMode(false);
   };
 
   const toggleEdit = () => setEditMode(!editMode);
 
   return (
-    <div
-      style={{
-        backgroundColor: "#FFFAF0", // Light orange background
-        borderLeft: "5px solid #FFA500", // Orange left border for emphasis
-        padding: "10px",
-        margin: "10px 0",
-        fontFamily: "Monospace", // Font style similar to code
-        color: "#333",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}
-    >
-      <span>{helperText}&nbsp;</span>
-      {editMode ? (
-        <Input
-          value={editableText}
-          onChange={(e) => setEditableText(e.target.value)}
-          onPressEnter={handleUpdate}
-          onBlur={handleUpdate}
-          autoFocus
-          style={{ flex: 1 }}
-        />
-      ) : (
-        <span style={{ flex: 1 }}>{editableText}</span>
-      )}
+    <div className="bg-[#FFFAF0] border-l-4 border-[#FFA500] p-2.5 my-2.5 font-mono text-gray-700 flex justify-between items-center">
+      <span className="shrink-0">{helperText}&nbsp;</span>
+      <div className="flex-1 min-w-0">
+        {editMode ? (
+          <Input
+            value={editableText}
+            onChange={(e) => setEditableText(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleUpdate()}
+            onBlur={handleUpdate}
+            autoFocus
+            inputClassNames="w-full bg-white dark:bg-dark-bg-secondary border border-gray-300 dark:border-dark-border dark:text-dark-text-primary"
+          />
+        ) : (
+          <span>{editableText}</span>
+        )}
+      </div>
       {isEditable && (
         <EditOutlined
           onClick={toggleEdit}
-          style={{ cursor: "pointer", color: "#FFA500", marginLeft: "10px" }}
+          className="cursor-pointer text-[#FFA500] ml-2.5 hover:opacity-80 shrink-0"
         />
       )}
     </div>
