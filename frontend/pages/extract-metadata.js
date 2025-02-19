@@ -3,13 +3,13 @@ import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import DbCredentialsForm from "../components/extract-metadata/DBCredentialsForm";
 import MetadataTable from "../components/extract-metadata/MetadataTable";
-import SetupStatus from "../components/extract-metadata/SetupStatus"; // Adjust the import path as needed
+import SetupStatus from "../components/extract-metadata/SetupStatus";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { Select, Row, Col } from "antd";
 import Scaffolding from "$components/layout/Scaffolding";
 import {
   MessageManagerContext,
   Tabs,
+  SingleSelect,
 } from "@defogdotai/agents-ui-components/core-ui";
 
 const ExtractMetadata = () => {
@@ -22,12 +22,8 @@ const ExtractMetadata = () => {
       (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_db_names",
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
       }
     );
     if (!res.ok) {
@@ -44,101 +40,76 @@ const ExtractMetadata = () => {
     const token = localStorage.getItem("defogToken");
     getApiKeyNames(token);
   }, []);
+
   const [token, setToken] = useState("");
   const [user, setUser] = useState("");
   const [userType, setUserType] = useState("");
-
-  const [dbData, setDbData] = useState({}); // db_type and db_creds
-  const [tablesData, setTablesData] = useState({}); // tables and indexed_tables
-  const [metadata, setMetadata] = useState([]); // metadata of the tables
-
+  const [dbData, setDbData] = useState({});
+  const [tablesData, setTablesData] = useState({});
+  const [metadata, setMetadata] = useState([]);
   const [dbConnectionstatus, setDbConnectionStatus] = useState(false);
-  const [dbCredsUpdatedToggle, setDbCredsUpdatedToggle] = useState(false); // to trigger re render after db creds are updated
-
+  const [dbCredsUpdatedToggle, setDbCredsUpdatedToggle] = useState(false);
   const [columnDescriptionCheck, setColumnDescriptionCheck] = useState(true);
-
   const [loading, setLoading] = useState(false);
+
   const message = useContext(MessageManagerContext);
 
   useEffect(() => {
     const fetchUserData = async () => {
-      const user = localStorage.getItem("defogUser");
-      const userType = localStorage.getItem("defogUserType");
-      const token = localStorage.getItem("defogToken");
+      const localUser = localStorage.getItem("defogUser");
+      const localUserType = localStorage.getItem("defogUserType");
+      const localToken = localStorage.getItem("defogToken");
+      setUser(localUser);
+      setUserType(localUserType);
+      setToken(localToken);
 
-      setUser(user);
-      setUserType(userType);
-      setToken(token);
-
-      if (user && token && userType) {
-        if (!apiKeyName) return
-          /**
-           * This is because there are 2 triggers during page load
-           * 1. The page loads and apiKeyName is null
-           * 2. getApiKeyNames finishes and apiKeyName is set
-           *
-           * If we don't check for apiKeyName, we will make requests where
-           * apiKeyName is null and the request will fail
-           */
-          await getTablesAndDbCreds(token, apiKeyName);
-          await fetchMetadata(token, apiKeyName);
-      } else {
+      // Wait for the first effect to set apiKeyName from getApiKeyNames
+      if (localUser && localToken && localUserType && apiKeyName) {
+        await getTablesAndDbCreds(localToken, apiKeyName);
+        await fetchMetadata(localToken, apiKeyName);
+      } else if (!localUser || !localToken || !localUserType) {
         router.push("/log-in");
       }
     };
-
     fetchUserData();
   }, [apiKeyName, dbCredsUpdatedToggle]);
 
-  const getTablesAndDbCreds = async (token, apiKeyName) => {
+  const getTablesAndDbCreds = async (token, keyName) => {
     setLoading(true);
     const res = await fetch(
       setupBaseUrl("http", `integration/get_tables_db_creds`),
       {
         method: "POST",
-        body: JSON.stringify({
-          token,
-          db_name: apiKeyName,
-        }),
-        headers: {
-          "Content-Type": "application/json",
-        },
+        body: JSON.stringify({ token, db_name: keyName }),
+        headers: { "Content-Type": "application/json" },
       }
     );
-    // check if the response has status 200
     if (res.status === 401) {
       message.error("Your credentials are incorrect. Please log in again.");
+      setLoading(false);
       return;
     }
-
     const data = await res.json();
     if (!data.error) {
       setTablesData({
         tables: data["tables"],
         indexed_tables: data["selected_tables"],
       });
-      console.log("tablesData", data["tables"]);
-      console.log("db_tables", data["selected_tables"]);
       setDbData({ db_type: data["db_type"], db_creds: data["db_creds"] });
     }
     setLoading(false);
   };
 
-  const fetchMetadata = async (token, apiKeyName) => {
+  const fetchMetadata = async (token, keyName) => {
     setLoading(true);
     const res = await fetch(setupBaseUrl("http", `integration/get_metadata`), {
       method: "POST",
-      body: JSON.stringify({
-        token,
-        db_name: apiKeyName,
-      }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      body: JSON.stringify({ token, db_name: keyName }),
+      headers: { "Content-Type": "application/json" },
     });
-    // check if the response has status 200
     if (res.status === 401) {
       message.error("Your credentials are incorrect. Please log in again.");
+      setLoading(false);
       return;
     }
     const data = await res.json();
@@ -175,13 +146,13 @@ const ExtractMetadata = () => {
     }
   };
 
-  // Check if at least one table is indexed for defog
+  // Are any tables indexed?
   const isTablesIndexed =
     tablesData &&
     tablesData.indexed_tables &&
     tablesData.indexed_tables.length > 0;
 
-  // Check if at least one column has a non-empty description
+  // If at least one column has a non-empty description
   const hasNonEmptyDescription = metadata.some(
     (item) => item.column_description && item.column_description.trim() !== ""
   );
@@ -209,7 +180,7 @@ const ExtractMetadata = () => {
             token={token}
             apiKeyName={apiKeyName}
             tablesData={tablesData}
-            initialMetadata={metadata} // Pass metadata as
+            initialMetadata={metadata}
             setColumnDescriptionCheck={setColumnDescriptionCheck}
           />
         ),
@@ -231,25 +202,24 @@ const ExtractMetadata = () => {
   return (
     <>
       <Meta />
-      <Scaffolding id={"manage-database"} userType={"admin"}>
+      <Scaffolding id="manage-database" userType="admin">
         <div className="w-full dark:bg-dark-bg-primary">
-          {apiKeyNames.length > 1 ? (
-            <Row type={"flex"} height={"100vh"}>
-              <Col span={24} style={{ paddingBottom: "1em" }}>
-                <Select
-                  style={{ width: "100%" }}
-                  onChange={(e) => {
-                    setApiKeyName(e);
-                  }}
-                  options={apiKeyNames.map((item) => {
-                    return { value: item, key: item, label: item };
-                  })}
-                  value={apiKeyName}
-                  className="dark:bg-dark-bg-secondary dark:border-dark-border"
-                />
-              </Col>
-            </Row>
-          ) : null}
+          {/* Instead of antd Row/Col + Select, just use SingleSelect or tailwind */}
+          {apiKeyNames.length > 1 && (
+            <div className="mb-4 w-full">
+              <SingleSelect
+                options={apiKeyNames.map((db) => ({
+                  value: db,
+                  label: db,
+                }))}
+                value={apiKeyName || undefined}
+                onChange={(val) => setApiKeyName(val)}
+                placeholder="Select your DB name"
+                rootClassNames="w-full"
+              />
+            </div>
+          )}
+
           <div className="mt-4">
             <SetupStatus
               loading={loading}
@@ -261,9 +231,9 @@ const ExtractMetadata = () => {
             />
           </div>
 
-          <div className="dark:bg-dark-bg-primary">
+          <div className="dark:bg-dark-bg-primary mt-4">
             <Tabs
-              rootClassNames="w-full mt-4 dark:bg-dark-bg-primary"
+              rootClassNames="w-full dark:bg-dark-bg-primary"
               tabs={tabs.map((tab) => ({
                 ...tab,
                 className:
