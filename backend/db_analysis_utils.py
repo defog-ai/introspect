@@ -27,73 +27,73 @@ async def initialise_analysis(
 
     try:
         """Create a new analyis in the analyses table"""
-        async with engine.begin() as conn:
-            if not custom_id or custom_id == "":
-                analysis_id = str(uuid.uuid4())
-            else:
-                analysis_id = custom_id
-            LOGGER.info("Creating new analyis with uuid: {analysis_id}")
+        async with AsyncSession(engine) as session:
+            async with session.begin():
+                if not custom_id or custom_id == "":
+                    analysis_id = str(uuid.uuid4())
+                else:
+                    analysis_id = custom_id
+                LOGGER.info("Creating new analyis with uuid: {analysis_id}")
 
-            new_analysis = {
-                "analysis_id": analysis_id,
-                "timestamp": timestamp,
-                "db_name": db_name,
-                "data": {},
-            }
+                new_analysis = {
+                    "analysis_id": analysis_id,
+                    "timestamp": timestamp,
+                    "db_name": db_name,
+                    "data": {},
+                }
 
-            data: AnalysisData = AnalysisData(
-                analysis_id=analysis_id,
-                db_name=db_name,
-                user_question=user_question,
-            )
+                data: AnalysisData = AnalysisData(
+                    analysis_id=analysis_id,
+                    db_name=db_name,
+                    user_question=user_question,
+                )
 
-            new_analysis["data"] = data.model_dump()
+                new_analysis["data"] = data.model_dump()
 
-            print(other_initialisation_details)
-
-            if (
-                other_initialisation_details is not None
-                and type(other_initialisation_details) is dict
-            ):
-                new_analysis.update(other_initialisation_details)
-
-            await conn.execute(insert(Analyses).values(new_analysis))
-            # if other data has parent_analyses, insert analysis_id into the follow_up_analyses column, which is an array, of all the parent analyses
-            if (
-                other_initialisation_details is not None
-                and type(other_initialisation_details) is dict
-                and other_initialisation_details.get("parent_analyses") is not None
-            ):
-                for parent_analysis_id in other_initialisation_details.get(
-                    "parent_analyses"
+                if (
+                    other_initialisation_details is not None
+                    and type(other_initialisation_details) is dict
                 ):
-                    # get the parent analysis
-                    parent_analysis = await conn.execute(
-                        select(Analyses).where(
-                            Analyses.analysis_id == parent_analysis_id
-                        )
-                    )
+                    new_analysis.update(other_initialisation_details)
 
-                    parent_analysis = parent_analysis.fetchone()
-                    if parent_analysis is not None:
-                        parent_analysis = parent_analysis._mapping
-                        # get the follow_up_analyses array
-                        follow_up_analyses = (
-                            parent_analysis.get("follow_up_analyses") or []
+                await session.execute(insert(Analyses).values(new_analysis))
+
+                # if other data has parent_analyses, insert analysis_id into the follow_up_analyses column, which is an array, of all the parent analyses
+                if (
+                    other_initialisation_details is not None
+                    and type(other_initialisation_details) is dict
+                    and other_initialisation_details.get("parent_analyses") is not None
+                ):
+                    for parent_analysis_id in other_initialisation_details.get(
+                        "parent_analyses"
+                    ):
+                        # get the parent analysis
+                        parent_analysis = await session.execute(
+                            select(Analyses).where(
+                                Analyses.analysis_id == parent_analysis_id
+                            )
                         )
-                        # add the analysis_id to the array
-                        follow_up_analyses.append(analysis_id)
-                        # update the row
-                        await conn.execute(
-                            update(Analyses)
-                            .where(Analyses.analysis_id == parent_analysis_id)
-                            .values(follow_up_analyses=follow_up_analyses)
-                        )
-                    else:
-                        print(
-                            "Could not find parent analysis with id: ",
-                            parent_analysis_id,
-                        )
+
+                        parent_analysis = parent_analysis.fetchone()
+                        if parent_analysis is not None:
+                            parent_analysis = parent_analysis._mapping
+                            # get the follow_up_analyses array
+                            follow_up_analyses = (
+                                parent_analysis.get("follow_up_analyses") or []
+                            )
+                            # add the analysis_id to the array
+                            follow_up_analyses.append(analysis_id)
+                            # update the row
+                            await session.execute(
+                                update(Analyses)
+                                .where(Analyses.analysis_id == parent_analysis_id)
+                                .values(follow_up_analyses=follow_up_analyses)
+                            )
+                        else:
+                            print(
+                                "Could not find parent analysis with id: ",
+                                parent_analysis_id,
+                            )
 
     except Exception as e:
         traceback.print_exc()
@@ -101,7 +101,7 @@ async def initialise_analysis(
         err = "Could not create a new analysis."
         new_analysis = None
     finally:
-        return err, new_analysis
+        return err, analysis_dict_from_row(new_analysis)
 
 
 async def get_analysis(analysis_id: str) -> Tuple[str, Dict]:
@@ -182,24 +182,24 @@ async def update_analysis_data(
                 if not row:
                     raise Exception("Analysis not found")
 
-                return None, analysis_data_from_row(row)
+                return None, analysis_dict_from_row(row)
 
             except Exception as e:
                 LOGGER.error(f"Error updating analysis data: {e}")
                 return str(e), None
 
 
-def analysis_data_from_row(row: Analyses):
-    analysis_id = row.analysis_id
-    user_question = row.user_question
-    timestamp = row.timestamp
-    data = row.data
-    db_name = row.db_name
-    follow_up_analyses = row.follow_up_analyses
-    parent_analyses = row.parent_analyses
-    is_root_analysis = row.is_root_analysis
-    root_analysis_id = row.root_analysis_id
-    direct_parent_id = row.direct_parent_id
+def analysis_dict_from_row(row: Analyses):
+    analysis_id = row.get("analysis_id", None)
+    user_question = row.get("user_question", None)
+    timestamp = row.get("timestamp", None)
+    data = row.get("data", None)
+    db_name = row.get("db_name", None)
+    follow_up_analyses = row.get("follow_up_analyses", None)
+    parent_analyses = row.get("parent_analyses", None)
+    is_root_analysis = row.get("is_root_analysis", None)
+    root_analysis_id = row.get("root_analysis_id", None)
+    direct_parent_id = row.get("direct_parent_id", None)
 
     return {
         "analysis_id": analysis_id,

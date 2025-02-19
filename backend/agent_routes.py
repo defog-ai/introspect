@@ -42,13 +42,13 @@ async def get_analysis_route(request: Request):
         err, analysis_data = await get_analysis(analysis_id)
 
         if err is not None:
-            return {"success": False, "error_message": err}
+            raise Exception(err)
 
-        return {"success": True, "analysis_data": analysis_data}
+        return JSONResponse(content=analysis_data)
     except Exception as e:
         print(e)
         traceback.print_exc()
-        return {"success": False, "error_message": "Incorrect request"}
+        return JSONResponse(status_code=500, content=str(e))
 
 
 @router.post("/query-data/create_analysis")
@@ -72,12 +72,13 @@ async def create_analysis_route(request: Request):
         )
 
         if err is not None:
-            return {"success": False, "error_message": err}
+            raise Exception(err)
 
-        return {"success": True, "analysis_data": analysis_data}
+        return JSONResponse(content=analysis_data)
     except Exception as e:
         print(e)
-        return {"success": False, "error_message": "Incorrect request"}
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content=str(e))
 
 
 @router.post("/query-data/generate_analysis")
@@ -163,12 +164,10 @@ async def generate_analysis(request: Request):
             "db_name": db_name,
             "initial_question": user_question,
             "tool_name": "data_fetcher_and_aggregator",
-            "last_inputs": inputs,
             "inputs": inputs,
             "clarification_questions": clarification_questions,
             "assignment_understanding": assignment_understanding,
             "previous_context": previous_context,
-            "input_metadata": tools["data_fetcher_and_aggregator"]["input_metadata"],
         }
 
         err, df, sql_query = await data_fetcher_and_aggregator(**inputs)

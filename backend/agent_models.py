@@ -24,12 +24,10 @@ class AnalysisData(BaseModel):
     db_name: str
     initial_question: Optional[str] = None
     tool_name: Optional[str] = None
-    last_inputs: Optional[Inputs] = None
     inputs: Optional[Inputs] = None
     clarification_questions: Optional[list[Clarification]] = None
     assignment_understanding: Optional[str] = None
     previous_context: Optional[list[PreviousContextItem]] = None
-    input_metadata: Optional[dict[str, dict]] = None
     sql: Optional[str] = None
     output: Optional[str] = None
     error: Optional[str] = None
