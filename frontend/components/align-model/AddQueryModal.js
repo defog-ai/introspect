@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { Modal, Input, Spin } from "antd";
+import {
+  Modal,
+  Input,
+  SpinningLoader,
+  Button,
+} from "@defogdotai/agents-ui-components/core-ui";
 import { StarFilled } from "@ant-design/icons";
 import LineBlock from "$components/layout/LineBlock";
 
@@ -18,41 +23,55 @@ const AddQueryModal = ({
   const [shouldGenerateSQL, setShouldGenerateSQL] = useState(false);
 
   // Handle question updates
-  const onUpdate = (newQuestion) => {
-    setNewQuestion(newQuestion);
+  const onUpdate = (questionValue) => {
+    setNewQuestion(questionValue);
     setShouldGenerateSQL(true);
   };
 
-  // Generate SQL when question changes
+  // Generate SQL whenever question changes
   useEffect(() => {
     if (shouldGenerateSQL && newQuestion) {
-      const generateSQL = async () => {
+      const fetchSQL = async () => {
         setLoading(true);
         setNewSql("Generating SQL...");
-        const query = await generateSqlQuery(newQuestion);
-        setNewSql(query);
-        setLoading(false);
-        setShouldGenerateSQL(false);
+        try {
+          const query = await generateSqlQuery(newQuestion);
+          setNewSql(query);
+        } catch (err) {
+          setNewSql("// Error generating SQL");
+        } finally {
+          setLoading(false);
+          setShouldGenerateSQL(false);
+        }
       };
-      generateSQL();
+      fetchSQL();
     }
-  }, [shouldGenerateSQL, newQuestion, generateSqlQuery]);
+  }, [shouldGenerateSQL, newQuestion, generateSqlQuery, setNewSql]);
 
   return (
     <Modal
+      open={true}
+      onCancel={handleCancel}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={handleCancel}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleOk}>
+            Ok
+          </Button>
+        </div>
+      }
       title={
         <div className="flex flex-col justify-center items-center text-xl mb-4 dark:text-dark-text-primary">
           <StarFilled
             className="text-yellow-500 mb-4 font-bold"
             style={{ fontSize: "3em" }}
           />
-          <h1> Add Golden Query </h1>
+          <h1>Add Golden Query</h1>
         </div>
       }
-      onOk={handleOk}
-      onCancel={handleCancel}
-      open={true}
-      className="w-3/4"
+      contentClassNames="w-full max-w-3xl"
     >
       <LineBlock
         helperText="Question: "
@@ -61,15 +80,27 @@ const AddQueryModal = ({
         isEditable={true}
         inputModeOn={true}
       />
-      <Spin spinning={loading} tip="Give us a few seconds..">
-        <Input.TextArea
+
+
+      <div className="relative mt-4">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 z-10">
+            <SpinningLoader classNames="text-blue-500 h-6 w-6" />
+            <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">
+              Give us a few seconds...
+            </span>
+          </div>
+        )}
+
+        <Input
+          textArea
           placeholder="SQL Query"
           value={newSql}
           onChange={(e) => setNewSql(e.target.value)}
-          rows={4}
-          className="min-h-52 font-mono text-sm p-2 bg-gray-50 dark:bg-dark-bg-secondary border border-gray-300 dark:border-dark-border dark:text-dark-text-primary"
+          inputClassNames="font-mono text-sm p-2 bg-gray-50 dark:bg-dark-bg-secondary border border-gray-300 dark:border-dark-border dark:text-dark-text-primary min-h-[8rem] w-full"
+          disabled={loading}
         />
-      </Spin>
+      </div>
     </Modal>
   );
 };
