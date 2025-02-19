@@ -15,7 +15,6 @@ from db_config import engine
 from auth_utils import validate_user
 from generic_utils import get_api_key_from_key_name
 from oracle.constants import TaskStage
-from utils import encode_image
 from utils_logging import LOGGER
 
 router = APIRouter()
@@ -224,25 +223,6 @@ class UpdateReportMDXRequest(ReportRequest):
             ]
         }
     }
-
-
-@router.post("/oracle/get_report_image")
-async def get_report_image(req: GetReportImageRequest):
-    """
-    Given a report_id, this endpoint will return the image file as base 64 string.
-    """
-    if not (await validate_user(req.token)):
-        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = await get_api_key_from_key_name(req.key_name)
-
-    # construct the image path
-    image_path = get_report_image_path(api_key, req.report_id, req.image_file_name)
-
-    # load the image_path and convert to base64
-    return JSONResponse(
-        status_code=200,
-        content={"encoded": encode_image(image_path)},
-    )
 
 
 @router.post("/oracle/get_report_analysis_ids")
