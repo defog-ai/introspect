@@ -1,13 +1,11 @@
 # the executor converts the user's task to steps and maps those steps to tools.
 # also runs those steps
-
-from agents.planner_executor.execute_tool import execute_tool
 from agents.planner_executor.tools.all_tools import tools
 from agents.planner_executor.tools.data_fetching import data_fetcher_and_aggregator
 from utils_clarification import turn_clarifications_into_statement
 from tool_code_utilities import fetch_query_into_df
 from db_analysis_utils import (
-    get_analysis_data,
+    get_analysis,
     get_assignment_understanding,
     update_analysis_data,
     update_assignment_understanding,
@@ -137,12 +135,10 @@ async def run_step(
             LOGGER.info(f"Stored output: {output_name}")
 
     # update the analysis data in the db
-    if analysis_id:
-        await update_analysis_data(
-            analysis_id=analysis_id,
-            request_type="gen_steps",
-            new_data=[step],
-        )
+    # await update_analysis_data(
+    #     analysis_id=analysis_id,
+    #     new_data=[step],
+    # )
 
 
 async def generate_assignment_understanding(
@@ -154,7 +150,6 @@ async def generate_assignment_understanding(
     And stores in the analyses table.
     """
     # get the assignment understanding aka answers to clarification questions
-    err = None
     assignment_understanding = None
 
     LOGGER.info(f"Clarification questions: {clarification_questions}")
@@ -164,16 +159,13 @@ async def generate_assignment_understanding(
             assignment_understanding = await turn_clarifications_into_statement(
                 clarification_questions, db_name
             )
-            err = await update_assignment_understanding(
-                analysis_id=analysis_id, understanding=assignment_understanding
-            )
         except Exception as e:
             LOGGER.error(e)
             assignment_understanding = None
 
     LOGGER.info(f"Assignment understanding: {assignment_understanding}")
 
-    return err, assignment_understanding
+    return assignment_understanding
 
 
 async def prepare_cache(
@@ -245,7 +237,7 @@ async def rerun_step(
     )
 
     # now after we've rerun everything, get the latest analysis data from the db and return those steps
-    err, analysis_data = await get_analysis_data(analysis_id)
+    err, analysis_data = await get_analysis(analysis_id)
     if err:
         # can't do much about not being able to fetch data. fail.
         raise Exception(err)

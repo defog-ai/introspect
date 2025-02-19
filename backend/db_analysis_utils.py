@@ -1,9 +1,12 @@
 import traceback
 import uuid
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Tuple
+
+from sqlalchemy.orm.attributes import flag_modified
 
 from auth_utils import validate_user
+from agent_models import AnalysisData
 from db_config import engine
 from db_models import Analyses
 from sqlalchemy import insert, select, update
@@ -18,11 +21,9 @@ async def initialise_analysis(
     if not user:
         return "Invalid token.", None
 
-    username = user.username
-
     err = None
     timestamp = datetime.now()
-    new_analysis_data = None
+    new_analysis = None
 
     try:
         """Create a new analyis in the analyses table"""
@@ -32,20 +33,31 @@ async def initialise_analysis(
             else:
                 analysis_id = custom_id
             LOGGER.info("Creating new analyis with uuid: {analysis_id}")
-            new_analysis_data = {
-                "user_question": user_question,
-                "timestamp": timestamp,
+
+            new_analysis = {
                 "analysis_id": analysis_id,
+                "timestamp": timestamp,
                 "db_name": db_name,
-                "username": username,
+                "data": {},
             }
+
+            data: AnalysisData = AnalysisData(
+                analysis_id=analysis_id,
+                db_name=db_name,
+                user_question=user_question,
+            )
+
+            new_analysis["data"] = data.model_dump()
+
+            print(other_initialisation_details)
+
             if (
                 other_initialisation_details is not None
                 and type(other_initialisation_details) is dict
             ):
-                new_analysis_data.update(other_initialisation_details)
+                new_analysis.update(other_initialisation_details)
 
-            await conn.execute(insert(Analyses).values(new_analysis_data))
+            await conn.execute(insert(Analyses).values(new_analysis))
             # if other data has parent_analyses, insert analysis_id into the follow_up_analyses column, which is an array, of all the parent analyses
             if (
                 other_initialisation_details is not None
@@ -87,29 +99,29 @@ async def initialise_analysis(
         traceback.print_exc()
         print(e)
         err = "Could not create a new analysis."
-        new_analysis_data = None
+        new_analysis = None
     finally:
-        return err, new_analysis_data
+        return err, new_analysis
 
 
-async def get_analysis_data(analysis_id: str) -> Dict:
-    """Get analysis data from the database."""
+async def get_analysis(analysis_id: str) -> Tuple[str, Dict]:
+    """Get an analysis from the database."""
     async with AsyncSession(engine) as session:
         try:
             result = await session.execute(
                 select(Analyses).where(Analyses.analysis_id == analysis_id)
             )
-            row = result.fetchone()
+            row = result.scalar_one_or_none()
             if not row:
                 return "Analysis not found", None
-            result = analysis_data_from_row(row[0])
+            result = row
             return None, result
         except Exception as e:
             LOGGER.error(f"Error getting analysis data: {e}")
             return str(e), None
 
 
-async def get_assignment_understanding(analysis_id: str) -> Dict:
+async def get_assignment_understanding(analysis_id: str) -> Tuple[str, Dict]:
     """Get the assignment understanding for an analysis."""
     async with AsyncSession(engine) as session:
         try:
@@ -144,9 +156,8 @@ async def update_assignment_understanding(analysis_id: str, understanding: Dict)
 
 async def update_analysis_data(
     analysis_id: str,
-    request_type: str = None,
     new_data: Dict = None,
-) -> Dict:
+) -> Tuple[str | None, Dict | None]:
     """Update analysis data in the database."""
     async with AsyncSession(engine) as session:
         async with session.begin():
@@ -157,46 +168,48 @@ async def update_analysis_data(
                 analysis = result.scalar_one_or_none()
                 if not analysis:
                     return "Analysis not found", None
-                if request_type == "clarify":
-                    analysis.clarify = new_data
+                analysis.data = new_data
+                flag_modified(analysis, "data")
 
-                elif request_type == "gen_steps":
-                    analysis.gen_steps = new_data
+                row = await session.execute(
+                    update(Analyses)
+                    .where(Analyses.analysis_id == analysis_id)
+                    .values(data=new_data)
+                    .returning(Analyses)
+                )
 
-                data = analysis_data_from_row(analysis)
-                return data
+                row = row.scalar_one_or_none()
+                if not row:
+                    raise Exception("Analysis not found")
+
+                return None, analysis_data_from_row(row)
+
             except Exception as e:
                 LOGGER.error(f"Error updating analysis data: {e}")
-                raise
+                return str(e), None
 
 
-def analysis_data_from_row(row):
-    clarify = row.clarify
-    gen_steps = row.gen_steps
-    parent_analyses = row.parent_analyses or []
-    follow_up_analyses = row.follow_up_analyses or []
-    direct_parent_id = row.direct_parent_id or None
+def analysis_data_from_row(row: Analyses):
+    analysis_id = row.analysis_id
+    user_question = row.user_question
+    timestamp = row.timestamp
+    data = row.data
+    db_name = row.db_name
+    follow_up_analyses = row.follow_up_analyses
+    parent_analyses = row.parent_analyses
+    is_root_analysis = row.is_root_analysis
+    root_analysis_id = row.root_analysis_id
+    direct_parent_id = row.direct_parent_id
 
-    # send only the ones that are not none.
-    rpt = {
-        "user_question": row.user_question,
-        "analysis_id": row.analysis_id,
-        "timestamp": row.timestamp,
-        "parent_analyses": parent_analyses,
+    return {
+        "analysis_id": analysis_id,
+        "user_question": user_question,
+        "timestamp": str(timestamp),
+        "data": data,
+        "db_name": db_name,
         "follow_up_analyses": follow_up_analyses,
+        "parent_analyses": parent_analyses,
+        "is_root_analysis": is_root_analysis,
+        "root_analysis_id": root_analysis_id,
         "direct_parent_id": direct_parent_id,
     }
-
-    if clarify is not None:
-        rpt["clarify"] = {
-            "success": True,
-            "clarification_questions": clarify,
-        }
-
-    if gen_steps is not None:
-        rpt["gen_steps"] = {
-            "success": True,
-            "steps": gen_steps,
-        }
-
-    return rpt

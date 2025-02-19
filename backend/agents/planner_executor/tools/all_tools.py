@@ -21,7 +21,7 @@ tools = {
                 "default": [],
                 "description": "List of hard filters to apply to the data",
                 "type": "list",
-            }
+            },
         },
         "output_metadata": [
             {

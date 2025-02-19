@@ -7,13 +7,14 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 from db_analysis_utils import (
-    get_analysis_data,
+    get_analysis,
 )
 
 router = APIRouter()
 
+
 # download csv using step_id and output_storage_key
-@router.post("/download_csv")
+@router.post("/query-data/download_csv")
 async def download_csv(request: Request):
     """
     Download a csv using the step id and output storage key.
@@ -36,7 +37,7 @@ async def download_csv(request: Request):
 
         # re run this step
         # get steps from db
-        err, analysis_data = await get_analysis_data(analysis_id)
+        err, analysis_data = await get_analysis(analysis_id)
         if err:
             raise Exception(err)
 
@@ -67,7 +68,7 @@ async def download_csv(request: Request):
             temp=False,
         )
 
-        csv = analysis_data[0]['outputs']['answer']['data']
+        csv = analysis_data[0]["outputs"]["answer"]["data"]
 
         return {
             "success": True,

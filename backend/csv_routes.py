@@ -7,7 +7,7 @@ from utils_sql import generate_sql_query, retry_query_after_error
 router = APIRouter()
 
 
-@router.post("/generate_query_csv")
+@router.post("/query-data/generate_query_csv")
 async def generate_query_csv_route(request: Request):
     """
     Generates a CSV file with the results of a query
@@ -73,7 +73,7 @@ async def generate_query_csv_route(request: Request):
         }
 
 
-@router.post("/retry_query_csv")
+@router.post("/query-data/retry_query_csv")
 async def retry_query_csv_route(request: Request):
     """
     Generates a CSV file with the results of a query

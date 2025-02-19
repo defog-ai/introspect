@@ -2,12 +2,16 @@ import os
 import re
 import traceback
 import logging
-from uuid import uuid4
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
+from agents.planner_executor.tools.data_fetching import data_fetcher_and_aggregator
+from agent_models import AnalysisData
+from utils_sql import deduplicate_columns
 from utils_clarification import generate_clarification, classify_question_type
 from utils_question_related import generate_follow_on_questions
 from utils_chart import edit_chart
+from agents.planner_executor.tools.all_tools import tools
+import pandas as pd
 
 from agents.planner_executor.planner_executor_agent import (
     generate_assignment_understanding,
@@ -15,12 +19,12 @@ from agents.planner_executor.planner_executor_agent import (
     run_step,
 )
 from db_analysis_utils import (
-    get_analysis_data,
+    get_analysis,
     get_assignment_understanding,
     initialise_analysis,
+    update_analysis_data,
 )
 from auth_utils import validate_user_request
-from uuid import uuid4
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
@@ -29,13 +33,13 @@ router = APIRouter(
 LOGGER = logging.getLogger("server")
 
 
-@router.post("/get_analysis")
+@router.post("/query-data/get_analysis")
 async def get_analysis_route(request: Request):
     try:
         params = await request.json()
         analysis_id = params.get("analysis_id")
 
-        err, analysis_data = await get_analysis_data(analysis_id)
+        err, analysis_data = await get_analysis(analysis_id)
 
         if err is not None:
             return {"success": False, "error_message": err}
@@ -47,7 +51,7 @@ async def get_analysis_route(request: Request):
         return {"success": False, "error_message": "Incorrect request"}
 
 
-@router.post("/create_analysis")
+@router.post("/query-data/create_analysis")
 async def create_analysis_route(request: Request):
     try:
         params = await request.json()
@@ -76,8 +80,8 @@ async def create_analysis_route(request: Request):
         return {"success": False, "error_message": "Incorrect request"}
 
 
-@router.post("/generate_step")
-async def generate_step(request: Request):
+@router.post("/query-data/generate_analysis")
+async def generate_analysis(request: Request):
     """
     Function that returns a single step of a plan.
 
@@ -93,27 +97,27 @@ async def generate_step(request: Request):
     It is an array of objects. Each object references a "parent" analysis.
     Each parent analysis has a user_question and analysis_id, steps:
      - `user_question` - contains the question asked by the user.
-     - `analysis_id` - is the id of the parent analysis.
-     - `steps` - are the steps generated in the parent analysis.
+     - `sql` - is the sql generated in the parent analysis.
     """
     try:
         LOGGER.info("Generating step")
         params = await request.json()
         db_name = params.get("db_name")
-        question = params.get("user_question")
+        user_question = params.get("user_question")
         analysis_id = params.get("analysis_id")
         hard_filters = params.get("hard_filters", [])
-        dev = params.get("dev", False)
-        temp = params.get("temp", False)
         clarification_questions = params.get("clarification_questions", [])
         previous_context = params.get("previous_context", [])
         root_analysis_id = params.get("root_analysis_id", analysis_id)
+
+        # this will be the input to data fetcher (we will append assignment understanding to it later)
+        final_question = user_question
 
         # if key name or question is none or blank, return error
         if not db_name or db_name == "":
             raise Exception("Invalid request. Must have DB name.")
 
-        if not question or question == "":
+        if not user_question or user_question == "":
             raise Exception("Invalid request. Must have a question.")
 
         # check if the assignment_understanding exists in the db for the root analysis (aka the original question in this thread)
@@ -121,23 +125,22 @@ async def generate_step(request: Request):
             analysis_id=root_analysis_id
         )
 
-        # if assignment understanding does not exist, so try to generate it
+        # if assignment understanding does not exist, try to generate it
         if assignment_understanding is None:
-            _, assignment_understanding = await generate_assignment_understanding(
+            assignment_understanding = await generate_assignment_understanding(
                 analysis_id=root_analysis_id,
                 clarification_questions=clarification_questions,
                 db_name=db_name,
             )
 
         prev_questions = []
-        for idx, item in enumerate(previous_context):
-            for step in item["steps"]:
-                prev_question = step["inputs"].get("question", "")
-                if idx == 0:
-                    previous_question += " (" + assignment_understanding + ")"
-                prev_sql = step.get("sql")
-                if prev_sql:
-                    prev_questions.append({"question": prev_question, "sql": prev_sql})
+        for idx, analysis in enumerate(previous_context):
+            prev_question = analysis.get("user_question", "")
+            if idx == 0:
+                prev_question += " (" + assignment_understanding + ")"
+            prev_sql = analysis.get("sql")
+            if prev_sql:
+                prev_questions.append({"question": prev_question, "sql": prev_sql})
 
         # if sql_only is true, just call the sql generation function and return, while saving the step
         if type(assignment_understanding) == str and len(prev_questions) == 0:
@@ -147,66 +150,59 @@ async def generate_step(request: Request):
                     r"^\d+\.\s", "", assignment_understanding
                 )
 
-            question = question + " (" + assignment_understanding + ")"
+            final_question = user_question + " (" + assignment_understanding + ")"
 
         inputs = {
-            "question": question,
+            "question": final_question,
             "hard_filters": hard_filters,
             "db_name": db_name,
             "previous_context": prev_questions,
         }
 
-        step_id = str(uuid4())
-        step = {
-            "description": question,
+        analysis_data: AnalysisData = {
+            "db_name": db_name,
+            "initial_question": user_question,
             "tool_name": "data_fetcher_and_aggregator",
+            "last_inputs": inputs,
             "inputs": inputs,
-            "outputs_storage_keys": ["answer"],
-            "done": True,
-            "id": step_id,
-            "error_message": None,
-            "input_metadata": {
-                "question": {
-                    "name": "question",
-                    "type": "str",
-                    "default": None,
-                    "description": "natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string",
-                },
-                "hard_filters": {
-                    "name": "hard_filters",
-                    "type": "list",
-                    "default": None,
-                    "description": "hard filters to apply to the data",
-                },
-            },
+            "clarification_questions": clarification_questions,
+            "assignment_understanding": assignment_understanding,
+            "previous_context": previous_context,
+            "input_metadata": tools["data_fetcher_and_aggregator"]["input_metadata"],
         }
 
-        analysis_execution_cache = {
-            "db_name": db_name,
-            "user_question": question,
-            "hard_filters": hard_filters,
-            "dev": dev,
-            "temp": temp,
-        }
-        await run_step(
+        err, df, sql_query = await data_fetcher_and_aggregator(**inputs)
+
+        analysis_data["sql"] = None
+
+        if err:
+            analysis_data["error"] = err
+        elif df is not None and type(df) == type(pd.DataFrame()):
+            analysis_data["sql"] = sql_query
+
+            # process the output
+            deduplicated = deduplicate_columns(df)
+
+            analysis_data["output"] = deduplicated.to_csv(
+                float_format="%.3f", index=False
+            )
+
+        err, updated_analysis = await update_analysis_data(
             analysis_id=analysis_id,
-            step=step,
-            analysis_execution_cache=analysis_execution_cache,
-            db_name=db_name,
-            skip_cache_storing=True,
+            new_data=analysis_data,
         )
-        return {
-            "success": True,
-            "steps": [step],
-            "done": True,
-        }
+
+        return JSONResponse(content=updated_analysis)
     except Exception as e:
         LOGGER.error(e)
         traceback.print_exc()
-        return {"success": False, "error_message": str(e) or "Incorrect request"}
+        return JSONResponse(
+            status_code=400,
+            content=str(e) or "Incorrect request",
+        )
 
 
-@router.post("/generate_follow_on_questions")
+@router.post("/query-data/generate_follow_on_questions")
 async def generate_follow_on_questions_route(request: Request):
     """
     Function that returns follow on questions for a given question.
@@ -245,7 +241,7 @@ async def generate_follow_on_questions_route(request: Request):
         return {"success": False, "error_message": str(e) or "Incorrect request"}
 
 
-@router.post("/clarify")
+@router.post("/query-data/clarify")
 async def clarify(request: Request):
     """
     Function that returns clarifying questions, if any, for a given question.
@@ -302,7 +298,7 @@ async def clarify(request: Request):
         return {"success": False, "error_message": str(e) or "Incorrect request"}
 
 
-@router.post("/rerun_step")
+@router.post("/query-data/rerun_step")
 async def rerun_step_endpoint(request: Request):
     """
     Function that re runs a step given:
@@ -336,7 +332,7 @@ async def rerun_step_endpoint(request: Request):
         if not edited_step or type(edited_step) != dict:
             raise Exception("Invalid edited step given.")
 
-        err, analysis_data = await get_analysis_data(analysis_id=analysis_id)
+        err, analysis_data = await get_analysis(analysis_id=analysis_id)
         if err:
             raise Exception("Error fetching analysis data from database")
 
