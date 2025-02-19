@@ -2,6 +2,8 @@
 # also runs those steps
 
 from agents.planner_executor.execute_tool import execute_tool
+from agents.planner_executor.tools.all_tools import tools
+from agents.planner_executor.tools.data_fetching import data_fetcher_and_aggregator
 from utils_clarification import turn_clarifications_into_statement
 from tool_code_utilities import fetch_query_into_df
 from db_analysis_utils import (
@@ -15,12 +17,16 @@ from utils_logging import LOGGER
 
 import pandas as pd
 import warnings
-warnings.simplefilter(action='ignore', category=SyntaxWarning)
 
-async def run_step(analysis_id, step, analysis_execution_cache, skip_cache_storing=False):
+warnings.simplefilter(action="ignore", category=SyntaxWarning)
+
+
+async def run_step(
+    analysis_id, step, analysis_execution_cache, db_name, skip_cache_storing=False
+):
     """
     Runs a single step, updating the steps object in place with the results.
-    
+
     Args:
         analysis_id: ID of the analysis
         step: Step object containing tool and input information
@@ -33,7 +39,7 @@ async def run_step(analysis_id, step, analysis_execution_cache, skip_cache_stori
         """Handle data fetcher and aggregator specific logic"""
         if not ("model_generated_inputs" in step and "inputs" in step):
             return None, False
-            
+
         if step["tool_name"] != "data_fetcher_and_aggregator":
             return None, False
 
@@ -51,39 +57,43 @@ async def run_step(analysis_id, step, analysis_execution_cache, skip_cache_stori
                 sql_query=step["sql"],
                 question=current_question,
             )
-            results = {
-                "sql": final_sql_query,
-                "outputs": [{"data": output_df}]
-            }
+            results = {"sql": final_sql_query, "outputs": [{"data": output_df}]}
             analysis_execution_cache[step["outputs_storage_keys"][0]] = output_df
             return results, True
         except Exception as e:
             LOGGER.error(f"SQL execution failed: {str(e)}")
-            return {"error_message": "Could not run the SQL query. Is it correct?"}, True
+            return {
+                "error_message": "Could not run the SQL query. Is it correct?"
+            }, True
 
     def align_output_keys(output_storage_keys, outputs):
         """Align output storage keys with outputs"""
         if len(output_storage_keys) == len(outputs):
             return output_storage_keys
 
-        LOGGER.warning(f"Mismatched outputs_storage_keys and outputs length. Adjusting...")
+        LOGGER.warning(
+            f"Mismatched outputs_storage_keys and outputs length. Adjusting..."
+        )
         if len(output_storage_keys) <= len(outputs):
             return output_storage_keys + [
                 f"{step['tool_name']}_output_{i}"
                 for i in range(len(output_storage_keys), len(outputs))
             ]
-        return output_storage_keys[:len(outputs)]
+        return output_storage_keys[: len(outputs)]
 
     # Try data fetcher specific handling first
     results, executed = await handle_data_fetcher()
-    
+
     # If not handled by data fetcher, execute the tool
     if not executed:
-        results, tool_input_metadata = await execute_tool(
-            function_name=step["tool_name"],
-            tool_function_inputs=step["inputs"],
+        results = await data_fetcher_and_aggregator(
+            question=step["inputs"]["question"],
+            db_name=db_name,
+            hard_filters=step["inputs"]["hard_filters"],
+            previous_context=step["inputs"]["previous_context"],
         )
-        step["input_metadata"] = tool_input_metadata
+
+        step["input_metadata"] = tools["data_fetcher_and_aggregator"]["input_metadata"]
 
     # Update step with results
     step["error_message"] = results.get("error_message")
@@ -95,18 +105,17 @@ async def run_step(analysis_id, step, analysis_execution_cache, skip_cache_stori
     if not results.get("error_message"):
         outputs = results.get("outputs", [])
         step["outputs_storage_keys"] = align_output_keys(
-            step.get("outputs_storage_keys", []), 
-            outputs
+            step.get("outputs_storage_keys", []), outputs
         )
 
         # Process each output
         for output_name, output_value in zip(step["outputs_storage_keys"], outputs):
             LOGGER.info(f"Processing output: {output_name}")
             step["outputs"][output_name] = {}
-            
+
             # Extract data from output_value
             data = output_value.get("data")
-            
+
             # if the output has data and it is a pandas dataframe,
             # 1. deduplicate the columns
             # 2. store the dataframe in the analysis_execution_cache
@@ -147,7 +156,7 @@ async def generate_assignment_understanding(
     # get the assignment understanding aka answers to clarification questions
     err = None
     assignment_understanding = None
-    
+
     LOGGER.info(f"Clarification questions: {clarification_questions}")
 
     if len(clarification_questions) > 0:
@@ -185,7 +194,9 @@ async def prepare_cache(
     )
 
     if err:
-        LOGGER.warning("Could not fetch assignment understanding from the db. Using empty list")
+        LOGGER.warning(
+            "Could not fetch assignment understanding from the db. Using empty list"
+        )
         assignment_understanding = []
 
     analysis_execution_cache["assignment_understanding"] = assignment_understanding
@@ -230,6 +241,7 @@ async def rerun_step(
         analysis_id=analysis_id,
         step=step,
         analysis_execution_cache=analysis_execution_cache,
+        db_name=db_name,
     )
 
     # now after we've rerun everything, get the latest analysis data from the db and return those steps

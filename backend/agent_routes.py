@@ -17,7 +17,7 @@ from agents.planner_executor.planner_executor_agent import (
 from db_analysis_utils import (
     get_analysis_data,
     get_assignment_understanding,
-    initialise_analysis
+    initialise_analysis,
 )
 from auth_utils import validate_user_request
 from uuid import uuid4
@@ -27,6 +27,7 @@ router = APIRouter(
     tags=["Agent"],
 )
 LOGGER = logging.getLogger("server")
+
 
 @router.post("/get_analysis")
 async def get_analysis_route(request: Request):
@@ -52,7 +53,7 @@ async def create_analysis_route(request: Request):
         params = await request.json()
         token = params.get("token")
         db_name = params.get("db_name")
-        
+
         err, analysis_data = await initialise_analysis(
             user_question="",
             token=token,
@@ -191,6 +192,7 @@ async def generate_step(request: Request):
             analysis_id=analysis_id,
             step=step,
             analysis_execution_cache=analysis_execution_cache,
+            db_name=db_name,
             skip_cache_storing=True,
         )
         return {
