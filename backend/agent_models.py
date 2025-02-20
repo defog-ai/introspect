@@ -11,7 +11,7 @@ class Inputs(BaseModel):
 
 class Clarification(BaseModel):
     question: str
-    answer: str
+    answer: Optional[str] = None
 
 
 class PreviousContextItem(BaseModel):

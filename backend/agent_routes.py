@@ -57,24 +57,27 @@ async def create_analysis_route(request: Request):
         params = await request.json()
         token = params.get("token")
         db_name = params.get("db_name")
+        initialisation_details = params.get(
+            "initialisation_details",
+            params.get(
+                "other_data",
+            ),
+        )
 
-        err, analysis_data = await initialise_analysis(
-            user_question="",
+        err, analysis = await initialise_analysis(
+            user_question=initialisation_details.get("user_question"),
             token=token,
             db_name=db_name,
             custom_id=params.get("custom_id"),
-            other_initialisation_details=params.get(
-                "initialisation_details",
-                params.get(
-                    "other_data",
-                ),
-            ),
+            initialisation_details=initialisation_details,
         )
+
+        LOGGER.info(analysis)
 
         if err is not None:
             raise Exception(err)
 
-        return JSONResponse(content=analysis_data)
+        return JSONResponse(content=analysis)
     except Exception as e:
         print(e)
         traceback.print_exc()
@@ -126,6 +129,8 @@ async def generate_analysis(request: Request):
             analysis_id=root_analysis_id
         )
 
+        LOGGER.info(f"Assignment understanding: {assignment_understanding}")
+
         # if assignment understanding does not exist, try to generate it
         if assignment_understanding is None:
             assignment_understanding = await generate_assignment_understanding(
@@ -137,7 +142,7 @@ async def generate_analysis(request: Request):
         prev_questions = []
         for idx, analysis in enumerate(previous_context):
             prev_question = analysis.get("user_question", "")
-            if idx == 0:
+            if idx == 0 and assignment_understanding:
                 prev_question += " (" + assignment_understanding + ")"
             prev_sql = analysis.get("sql")
             if prev_sql:
@@ -160,31 +165,30 @@ async def generate_analysis(request: Request):
             "previous_context": prev_questions,
         }
 
-        analysis_data: AnalysisData = {
-            "db_name": db_name,
-            "initial_question": user_question,
-            "tool_name": "data_fetcher_and_aggregator",
-            "inputs": inputs,
-            "clarification_questions": clarification_questions,
-            "assignment_understanding": assignment_understanding,
-            "previous_context": previous_context,
-        }
+        analysis_data = AnalysisData(
+            analysis_id=analysis_id,
+            db_name=db_name,
+            initial_question=user_question,
+            tool_name="data_fetcher_and_aggregator",
+            inputs=inputs,
+            clarification_questions=clarification_questions,
+            assignment_understanding=assignment_understanding,
+            previous_context=previous_context,
+        )
 
         err, df, sql_query = await data_fetcher_and_aggregator(**inputs)
 
-        analysis_data["sql"] = None
+        analysis_data.sql = None
 
         if err:
-            analysis_data["error"] = err
+            analysis_data.error = err
         elif df is not None and type(df) == type(pd.DataFrame()):
-            analysis_data["sql"] = sql_query
+            analysis_data.sql = sql_query
 
             # process the output
             deduplicated = deduplicate_columns(df)
 
-            analysis_data["output"] = deduplicated.to_csv(
-                float_format="%.3f", index=False
-            )
+            analysis_data.output = deduplicated.to_csv(float_format="%.3f", index=False)
 
         err, updated_analysis = await update_analysis_data(
             analysis_id=analysis_id,
@@ -258,14 +262,9 @@ async def clarify(request: Request):
         params = await request.json()
         db_name = params.get("db_name")
         question = params.get("user_question")
-        previous_context = params.get("previous_context", [])
-        if len(previous_context) > 1:
-            return {
-                "success": True,
-                "done": True,
-                "clarification_questions": [],
-            }
+        analysis_id = params.get("analysis_id")
 
+        previous_context = params.get("previous_context", [])
         # if key name or question is none or blank, return error
         if not db_name or db_name == "":
             raise Exception("Invalid request. Must have API key name.")
@@ -273,25 +272,34 @@ async def clarify(request: Request):
         if not question or question == "":
             raise Exception("Invalid request. Must have a question.")
 
-        clarification_questions = await generate_clarification(
-            question=question,
+        if len(previous_context) <= 1:
+            clarification_questions = await generate_clarification(
+                question=question,
+                db_name=db_name,
+            )
+
+            if (
+                "not ambiguous" in clarification_questions.lower()
+                or "no clarifi" in clarification_questions.lower()
+            ):
+                clarification_questions = []
+            else:
+                clarification_questions = [{"question": clarification_questions}]
+
+        analysis_data = AnalysisData(
+            analysis_id=analysis_id,
             db_name=db_name,
+            initial_question=question,
+            clarification_questions=[],
+            previous_context=previous_context,
         )
 
-        if (
-            "not ambiguous" in clarification_questions.lower()
-            or "no clarifi" in clarification_questions.lower()
-        ):
-            clarification_questions = []
-        else:
-            clarification_questions = [{"question": clarification_questions}]
+        err, updated_analysis = await update_analysis_data(
+            analysis_id=analysis_id,
+            new_data=analysis_data,
+        )
 
-        return {
-            "success": True,
-            "done": True,
-            "clarification_questions": clarification_questions,
-        }
-
+        return JSONResponse(content=updated_analysis)
     except Exception as e:
         LOGGER.error(e)
         return {"success": False, "error_message": str(e) or "Incorrect request"}

@@ -150,7 +150,7 @@ async def generate_assignment_understanding(
     And stores in the analyses table.
     """
     # get the assignment understanding aka answers to clarification questions
-    assignment_understanding = None
+    assignment_understanding = ""
 
     LOGGER.info(f"Clarification questions: {clarification_questions}")
 
@@ -161,7 +161,7 @@ async def generate_assignment_understanding(
             )
         except Exception as e:
             LOGGER.error(e)
-            assignment_understanding = None
+            assignment_understanding = ""
 
     LOGGER.info(f"Assignment understanding: {assignment_understanding}")
 

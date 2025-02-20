@@ -15,7 +15,7 @@ from utils_logging import LOGGER
 
 
 async def initialise_analysis(
-    user_question, token, db_name, custom_id=None, other_initialisation_details={}
+    user_question, token, db_name, custom_id=None, initialisation_details={}
 ):
     user = await validate_user(token)
     if not user:
@@ -33,7 +33,7 @@ async def initialise_analysis(
                     analysis_id = str(uuid.uuid4())
                 else:
                     analysis_id = custom_id
-                LOGGER.info("Creating new analyis with uuid: {analysis_id}")
+                LOGGER.info(f"Creating new analyis with uuid: {analysis_id}")
 
                 new_analysis = {
                     "analysis_id": analysis_id,
@@ -42,29 +42,38 @@ async def initialise_analysis(
                     "data": {},
                 }
 
-                data: AnalysisData = AnalysisData(
+                data = AnalysisData(
                     analysis_id=analysis_id,
                     db_name=db_name,
-                    user_question=user_question,
+                    initial_question=user_question,
                 )
 
                 new_analysis["data"] = data.model_dump()
 
                 if (
-                    other_initialisation_details is not None
-                    and type(other_initialisation_details) is dict
+                    initialisation_details is not None
+                    and type(initialisation_details) is dict
                 ):
-                    new_analysis.update(other_initialisation_details)
+                    new_analysis.update(initialisation_details)
 
-                await session.execute(insert(Analyses).values(new_analysis))
+                row = await session.execute(
+                    insert(Analyses).values(new_analysis).returning(Analyses)
+                )
+
+                new_analysis = row.scalar_one_or_none()
+
+                if new_analysis is None:
+                    raise Exception("Failed to create analysis.")
+
+                session.expunge(new_analysis)
 
                 # if other data has parent_analyses, insert analysis_id into the follow_up_analyses column, which is an array, of all the parent analyses
                 if (
-                    other_initialisation_details is not None
-                    and type(other_initialisation_details) is dict
-                    and other_initialisation_details.get("parent_analyses") is not None
+                    initialisation_details is not None
+                    and type(initialisation_details) is dict
+                    and initialisation_details.get("parent_analyses") is not None
                 ):
-                    for parent_analysis_id in other_initialisation_details.get(
+                    for parent_analysis_id in initialisation_details.get(
                         "parent_analyses"
                     ):
                         # get the parent analysis
@@ -115,7 +124,7 @@ async def get_analysis(analysis_id: str) -> Tuple[str, Dict]:
             if not row:
                 return "Analysis not found", None
             result = row
-            return None, result
+            return None, analysis_dict_from_row(result)
         except Exception as e:
             LOGGER.error(f"Error getting analysis data: {e}")
             return str(e), None
@@ -126,13 +135,15 @@ async def get_assignment_understanding(analysis_id: str) -> Tuple[str, Dict]:
     async with AsyncSession(engine) as session:
         try:
             result = await session.execute(
-                select(Analyses.assignment_understanding).where(
-                    Analyses.analysis_id == analysis_id
-                )
+                select(Analyses).where(Analyses.analysis_id == analysis_id)
             )
-            row = result.first()
-            result = row[0] if row else None
-            return None, result
+
+            row = result.scalar_one_or_none()
+
+            if not row:
+                return None, None
+
+            return None, row.data.get("assignment_understanding", None)
         except Exception as e:
             LOGGER.error(f"Error getting assignment understanding: {e}")
             return str(e), None
@@ -156,7 +167,7 @@ async def update_assignment_understanding(analysis_id: str, understanding: Dict)
 
 async def update_analysis_data(
     analysis_id: str,
-    new_data: Dict = None,
+    new_data: AnalysisData | None = None,
 ) -> Tuple[str | None, Dict | None]:
     """Update analysis data in the database."""
     async with AsyncSession(engine) as session:
@@ -168,13 +179,11 @@ async def update_analysis_data(
                 analysis = result.scalar_one_or_none()
                 if not analysis:
                     return "Analysis not found", None
-                analysis.data = new_data
-                flag_modified(analysis, "data")
 
                 row = await session.execute(
                     update(Analyses)
                     .where(Analyses.analysis_id == analysis_id)
-                    .values(data=new_data)
+                    .values(data=new_data.model_dump() if new_data else None)
                     .returning(Analyses)
                 )
 
@@ -190,16 +199,16 @@ async def update_analysis_data(
 
 
 def analysis_dict_from_row(row: Analyses):
-    analysis_id = row.get("analysis_id", None)
-    user_question = row.get("user_question", None)
-    timestamp = row.get("timestamp", None)
-    data = row.get("data", None)
-    db_name = row.get("db_name", None)
-    follow_up_analyses = row.get("follow_up_analyses", None)
-    parent_analyses = row.get("parent_analyses", None)
-    is_root_analysis = row.get("is_root_analysis", None)
-    root_analysis_id = row.get("root_analysis_id", None)
-    direct_parent_id = row.get("direct_parent_id", None)
+    analysis_id = row.analysis_id
+    user_question = row.user_question
+    timestamp = row.timestamp
+    data = row.data
+    db_name = row.db_name
+    follow_up_analyses = row.follow_up_analyses
+    parent_analyses = row.parent_analyses
+    is_root_analysis = row.is_root_analysis
+    root_analysis_id = row.root_analysis_id
+    direct_parent_id = row.direct_parent_id
 
     return {
         "analysis_id": analysis_id,
