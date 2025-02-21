@@ -32,8 +32,7 @@ Try to aggregate data in clear and understandable buckets.
 
 Please give your final answer as a descriptive report.
 
-For each point that you make in the report, please include the relevant data for it as a CSV string. You can include as many CSV strings as you want, including multiple CSV strings for one point.
-Also include the SQL query that can be used to generated the CSV string.
+For each point that you make in the report, please include the relevant SQL query that was used to generate the data for it. You can include as many SQL queries as you want, including multiple SQL queries for one point.
 """
 }],
         )
