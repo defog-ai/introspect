@@ -4,8 +4,9 @@ import traceback
 import logging
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
+from tool_code_utilities import fetch_query_into_df
 from query_data.data_fetching import data_fetcher_and_aggregator
-from agent_models import AnalysisData, RerunRequest
+from agent_models import AnalysisData, Inputs, RerunRequest
 from utils_sql import deduplicate_columns
 from utils_clarification import (
     generate_clarification,
@@ -312,14 +313,12 @@ async def rerun_endpoint(request: RerunRequest):
     LOGGER.info("Rerunning analysis")
     analysis_id = request.analysis_id
     edited_inputs = request.edited_inputs
-    token = request.token
     db_name = request.db_name
 
     try:
-
         LOGGER.info(edited_inputs.model_dump())
 
-        err, analysis = await get_analysis("ttt")
+        err, analysis = await get_analysis(analysis_id)
 
         if err:
             raise Exception(err)
@@ -334,15 +333,68 @@ async def rerun_endpoint(request: RerunRequest):
             if analysis["data"]["inputs"]["question"] != edited_inputs.question:
                 did_question_change = True
 
+        old_question = analysis["data"]["inputs"]["question"]
+        new_inputs = Inputs(
+            question=old_question,
+            db_name=db_name,
+            previous_context=analysis["data"]["inputs"].get("previous_context") or [],
+            hard_filters=edited_inputs.hard_filters
+            or analysis["data"]["inputs"].get("hard_filters")
+            or [],
+        )
+
+        # we have to rerun everything with the new inputs
+        analysis_data = AnalysisData(**analysis["data"])
+
         if did_question_change:
             LOGGER.info("Question changed, rerunning from scratch")
-            # we have to rerun everything
-            pass
-        else:
-            LOGGER.info("Question unchanged, rerunning step")
-            pass
+            new_inputs.question = edited_inputs.question
+            err, df, sql_query = await data_fetcher_and_aggregator(**new_inputs)
 
-        return JSONResponse(content=edited_inputs.model_dump())
+            analysis_data.sql = None
+
+            if err:
+                analysis_data.error = err
+            elif df is not None and type(df) == type(pd.DataFrame()):
+                analysis_data.sql = sql_query
+
+                # process the output
+                deduplicated = deduplicate_columns(df)
+
+                analysis_data.output = deduplicated.to_csv(
+                    float_format="%.3f", index=False
+                )
+        elif edited_inputs.sql:
+            LOGGER.info("Question unchanged, rerunning the sql")
+            new_query = edited_inputs.sql
+
+            try:
+                df, sql_query = await fetch_query_into_df(
+                    db_name=db_name,
+                    sql_query=new_query,
+                    question=old_question,
+                )
+
+                analysis_data.sql = sql_query
+
+                # process the output
+                deduplicated = deduplicate_columns(df)
+
+                analysis_data.output = deduplicated.to_csv(
+                    float_format="%.3f", index=False
+                )
+            except Exception as e:
+                analysis_data.error = str(e)
+
+        err, updated_analysis = await update_analysis_data(
+            analysis_id=analysis_id,
+            new_data=analysis_data,
+        )
+
+        if err:
+            raise Exception(err)
+
+        return JSONResponse(content=updated_analysis)
     except Exception as e:
         LOGGER.error(e)
         return JSONResponse(status_code=500, content=str(e))

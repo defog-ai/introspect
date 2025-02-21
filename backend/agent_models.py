@@ -36,7 +36,7 @@ class AnalysisData(BaseModel):
 class RerunInputs(BaseModel):
     question: Optional[str] = None
     hard_filters: Optional[list] = None
-    db_name: Optional[str] = None
+    sql: Optional[str] = None
 
 
 class RerunRequest(BaseModel):
