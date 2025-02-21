@@ -576,7 +576,6 @@ async def generate_sql_query(
             )
 
     combined_metadata_ddl = mk_create_ddl(metadata, table_descriptions)
-    LOGGER.info(f"Combined metadata DDL: {combined_metadata_ddl}")
     t_start = save_timing(t_start, "Created metadata DDL", timings)
 
     messages = get_messages(
