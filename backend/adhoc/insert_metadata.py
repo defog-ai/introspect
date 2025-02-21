@@ -1210,22 +1210,3 @@ try:
                 )
 except Exception as e:
     print(f"Error inserting metadata for ({cricket_api_key}) into metadata:\n{e}")
-
-try:
-    with engine.begin() as conn:
-        # delete all existing metadata for the drug trials database
-        conn.execute(delete(Metadata).where(Metadata.db_name == drug_trials_api_key))
-        for table_name, columns in drug_trials_metadata.items():
-            for column in columns:
-                conn.execute(
-                    insert(Metadata).values(
-                        db_name=drug_trials_api_key,
-                        table_name=table_name,
-                        column_name=column["column_name"],
-                        data_type=column["data_type"],
-                        column_description=column["column_description"]
-                    )
-                )
-        conn.commit()
-except Exception as e:
-    print(f"Error inserting metadata for ({drug_trials_api_key}) into metadata:\n{e}")
