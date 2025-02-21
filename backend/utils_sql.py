@@ -1,37 +1,39 @@
 import collections
+import os
 import re
-from typing import Dict, Optional, Tuple
 import time
 from datetime import datetime
+from typing import Dict, Optional, Tuple
 
 import pandas as pd
+import sqlparse
+from db_utils import get_db_type_creds
+from defog.llm.utils import chat_async
+from defog.query import async_execute_query_once
+from generic_utils import is_sorry
+from llm_api import GPT_4O, O3_MINI
 from pandas.testing import assert_frame_equal, assert_series_equal
+from request_models import ColumnMetadata, HardFilter, QuestionAnswer, TableDescription
 from sqlglot import exp, parse_one
 from utils_df import mk_df
-from generic_utils import is_sorry
-from defog.query import async_execute_query_once
-from request_models import ColumnMetadata, HardFilter, QuestionAnswer
-from llm_api import O3_MINI, GPT_4O
-from utils_md import get_metadata, mk_create_ddl
-from utils_instructions import get_instructions
 from utils_embedding import get_embedding
 from utils_golden_queries import get_closest_golden_queries
-from defog.llm.utils import chat_async
-import sqlparse
+from utils_instructions import get_instructions
 from utils_logging import LOGGER, log_timings, save_timing
-from db_utils import get_db_type_creds
-import re
+from utils_md import get_metadata, mk_create_ddl
+from utils_table_descriptions import get_all_table_descriptions
 
-with open("./prompts/generate_sql/system.md", "r") as f:
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(BACKEND_DIR, "prompts/generate_sql/system.md"), "r") as f:
     GENERATE_SQL_SYSTEM_PROMPT = f.read()
 
-with open("./prompts/generate_sql/user.md", "r") as f:
+with open(os.path.join(BACKEND_DIR, "prompts/generate_sql/user.md"), "r") as f:
     GENERATE_SQL_USER_PROMPT = f.read()
 
-with open("./prompts/fix_sql/system.md", "r") as f:
+with open(os.path.join(BACKEND_DIR, "prompts/fix_sql/system.md"), "r") as f:
     FIX_SQL_SYSTEM_PROMPT = f.read()
 
-with open("./prompts/fix_sql/user.md", "r") as f:
+with open(os.path.join(BACKEND_DIR, "prompts/fix_sql/user.md"), "r") as f:
     FIX_SQL_USER_PROMPT = f.read()
 
 
@@ -517,6 +519,7 @@ async def generate_sql_query(
     db_name: str = None,
     db_type: str = None,
     metadata: list[ColumnMetadata] = None,
+    table_descriptions: list[TableDescription] = None,
     instructions: str = None,
     previous_context: list[Dict[str, str]] = None,
     hard_filters: list[HardFilter] = None,
@@ -533,22 +536,22 @@ async def generate_sql_query(
 
     using_db_metadata = metadata is None or len(metadata) == 0
 
-    if db_type is None:
+    if not db_type:
         db_type, _ = await get_db_type_creds(db_name)
-    t_start = save_timing(t_start, "Retrieved db type", timings)
+        t_start = save_timing(t_start, "Retrieved db type", timings)
 
     if using_db_metadata:
         metadata = await get_metadata(db_name)
+        t_start = save_timing(t_start, "Retrieved metadata", timings)
 
-    t_start = save_timing(t_start, "Retrieved metadata", timings)
-
-    if metadata is None or len(metadata) == 0:
-        return {"error": "metadata is required"}
-
-    if instructions is None:
+    if not table_descriptions:
+        table_descriptions = await get_all_table_descriptions(db_name)
+        t_start = save_timing(t_start, "Retrieved table descriptions", timings)
+        LOGGER.info(f"Table descriptions: {table_descriptions}")
+    if not instructions:
         if using_db_metadata:
             instructions = await get_instructions(db_name)
-    t_start = save_timing(t_start, "Retrieved instructions", timings)
+            t_start = save_timing(t_start, "Retrieved instructions", timings)
 
     golden_queries_prompt = ""
 
@@ -572,12 +575,16 @@ async def generate_sql_query(
                 + golden_queries_prompt
             )
 
+    combined_metadata_ddl = mk_create_ddl(metadata, table_descriptions)
+    LOGGER.info(f"Combined metadata DDL: {combined_metadata_ddl}")
+    t_start = save_timing(t_start, "Created metadata DDL", timings)
+
     messages = get_messages(
         db_type=db_type,
         date_today=datetime.now().strftime("%Y-%m-%d"),
         instructions=instructions,
         user_question=question,
-        table_metadata_ddl=mk_create_ddl(metadata),
+        table_metadata_ddl=combined_metadata_ddl,
         system_prompt=GENERATE_SQL_SYSTEM_PROMPT,
         user_prompt=GENERATE_SQL_USER_PROMPT,
         previous_context=previous_context,

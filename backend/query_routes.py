@@ -4,9 +4,8 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from llm_api import O3_MINI
 from request_models import GenerateSQLQueryRequest
-from utils_sql import generate_sql_query
 from utils_logging import LOGGER
-from llm_api import O3_MINI
+from utils_sql import generate_sql_query
 
 
 router = APIRouter(
@@ -26,6 +25,7 @@ async def generate_sql_query_route(request: GenerateSQLQueryRequest):
             db_name=request.db_name,
             db_type=request.db_type,
             metadata=request.metadata,
+            table_descriptions=request.table_descriptions,
             instructions=request.instructions,
             previous_context=request.previous_context,
             hard_filters=request.hard_filters,

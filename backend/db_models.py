@@ -8,8 +8,7 @@ from sqlalchemy import (
     MetaData,
     Text,
 )
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import declarative_base, mapped_column
 from pgvector.sqlalchemy import Vector
 
 base_metadata = MetaData()

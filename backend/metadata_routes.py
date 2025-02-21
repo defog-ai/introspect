@@ -114,7 +114,7 @@ async def generate_metadata(req: MetadataGenerateRequest):
 
 
 @router.post("/integration/get_table_descriptions")
-async def get_table_descriptions(req: UserRequest) -> list[dict[str, str]]:
+async def get_table_descriptions(req: UserRequest) -> list[TableDescription]:
     """
     Get table descriptions for a given database.
     """

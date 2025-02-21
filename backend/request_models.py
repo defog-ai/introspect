@@ -144,6 +144,7 @@ class GenerateSQLQueryRequest(UserRequest):
     question: str
     db_type: str | None = None
     metadata: list[ColumnMetadata] = []
+    table_descriptions: list[TableDescription] = []
     instructions: str = ""
     previous_context: list[QuestionAnswer] = []
     hard_filters: list[HardFilter] = []

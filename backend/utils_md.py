@@ -5,8 +5,11 @@
 import sqlglot
 from sqlalchemy import delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from db_models import Metadata as DbMetadata # to disambiguate from sqlalchemy's Metadata
+from db_models import (
+    Metadata as DbMetadata,
+)  # to disambiguate from sqlalchemy's Metadata
 from db_config import engine
+from request_models import TableDescription
 
 
 async def get_metadata(db_name: str) -> list[dict[str, str]]:
@@ -88,7 +91,9 @@ async def set_metadata(db_name: str, table_metadata: list[dict[str, str]]):
     return
 
 
-def mk_create_table_ddl(table_name: str, columns: list[dict[str, str]]) -> str:
+def mk_create_table_ddl(
+    table_name: str, columns: list[dict[str, str]], table_description: str | None = None
+) -> str:
     """
     Return a DDL statement for creating a table from a list of columns
     `columns` is a list of dictionaries with the following keys:
@@ -96,6 +101,8 @@ def mk_create_table_ddl(table_name: str, columns: list[dict[str, str]]) -> str:
     - data_type: str
     """
     md_create = ""
+    if table_description:
+        md_create += f"COMMENT ON TABLE {table_name} IS '{table_description}';\n"
     md_create += f"CREATE TABLE IF NOT EXISTS {table_name} (\n"
     for i, column in enumerate(columns):
         col_name = column["column_name"]
@@ -112,7 +119,9 @@ def mk_create_table_ddl(table_name: str, columns: list[dict[str, str]]) -> str:
     return md_create
 
 
-def mk_create_ddl(md: list[dict[str, str]]) -> str:
+def mk_create_ddl(
+    md: list[dict[str, str]], table_descriptions: list[TableDescription] = []
+) -> str:
     """
     Return a DDL statement for creating tables from a metadata list
     [
@@ -124,6 +133,9 @@ def mk_create_ddl(md: list[dict[str, str]]) -> str:
     md_create = ""
     available_schemas = set("")
     md_dict = {}
+    table_descriptions_dict = {
+        td.table_name: td.table_description for td in table_descriptions
+    }
     for column in md:
         if "." in column["table_name"]:
             table_name_split = column["table_name"].split(".", 1)
@@ -142,7 +154,9 @@ def mk_create_ddl(md: list[dict[str, str]]) -> str:
             md_dict[table_name] = []
         md_dict[table_name].append(column)
     for table_name, columns in md_dict.items():
-        md_create += mk_create_table_ddl(table_name, columns)
+        md_create += mk_create_table_ddl(
+            table_name, columns, table_descriptions_dict.get(table_name)
+        )
     return md_create
 
 

@@ -1,24 +1,28 @@
+import os
+import traceback
+
 from db_config import engine
 from db_models import TableInfo
 from defog.llm.utils import chat_async
+from llm_api import O3_MINI
 from pydantic import BaseModel
 from request_models import TableDescription
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-import traceback
 from utils_logging import LOGGER
 from utils_md import mk_create_ddl
 
-with open("./prompts/table_descriptions/system.md", "r") as f:
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(BACKEND_DIR, "prompts/table_descriptions/system.md"), "r") as f:
     TABLE_DESCRIPTIONS_SYSTEM_PROMPT = f.read()
-with open("./prompts/table_descriptions/user.md", "r") as f:
+with open(os.path.join(BACKEND_DIR, "prompts/table_descriptions/user.md"), "r") as f:
     TABLE_DESCRIPTIONS_USER_PROMPT = f.read()
 
 
 ### CRUD operations for table descriptions ###
 
 
-async def get_all_table_descriptions(db_name: str) -> list[dict[str, str]]:
+async def get_all_table_descriptions(db_name: str) -> list[TableDescription]:
     """
     Get all table descriptions for a given database.
 
@@ -27,8 +31,7 @@ async def get_all_table_descriptions(db_name: str) -> list[dict[str, str]]:
         session: SQLAlchemy session
 
     Returns:
-        List of dictionaries, where each dictionary contains a table name and
-        a table description.
+        List of TableDescription objects.
     """
     try:
         async with engine.begin() as conn:
@@ -38,10 +41,10 @@ async def get_all_table_descriptions(db_name: str) -> list[dict[str, str]]:
                 )
             )
             return [
-                {
-                    "table_name": table_info[0],
-                    "table_description": table_info[1],
-                }
+                TableDescription(
+                    table_name=table_info[0],
+                    table_description=table_info[1],
+                )
                 for table_info in table_infos.fetchall()
             ]
     except Exception as e:
@@ -154,7 +157,7 @@ async def infer_table_descriptions(
         {"role": "user", "content": user_prompt},
     ]
     response = await chat_async(
-        model="gpt-4o-mini",
+        model=O3_MINI,
         messages=messages,
         response_format=TableDescriptions,
     )
