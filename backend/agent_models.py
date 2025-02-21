@@ -2,7 +2,7 @@ from typing import Any, Optional
 from pydantic import BaseModel
 
 
-class Inputs(BaseModel):
+class DataFetcherInputs(BaseModel):
     question: str
     hard_filters: list
     db_name: str
@@ -24,7 +24,7 @@ class AnalysisData(BaseModel):
     db_name: str
     initial_question: Optional[str] = None
     tool_name: Optional[str] = None
-    inputs: Optional[Inputs] = None
+    inputs: Optional[DataFetcherInputs] = None
     clarification_questions: Optional[list[Clarification]] = None
     assignment_understanding: Optional[str] = None
     previous_context: Optional[list[PreviousContextItem]] = None
@@ -33,7 +33,7 @@ class AnalysisData(BaseModel):
     error: Optional[str] = None
 
 
-class RerunInputs(BaseModel):
+class RerunEditedInputs(BaseModel):
     question: Optional[str] = None
     hard_filters: Optional[list] = None
     sql: Optional[str] = None
@@ -43,4 +43,4 @@ class RerunRequest(BaseModel):
     token: str
     db_name: str
     analysis_id: str
-    edited_inputs: Optional[RerunInputs] = None
+    edited_inputs: Optional[RerunEditedInputs] = None

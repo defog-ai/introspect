@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 from tool_code_utilities import fetch_query_into_df
 from query_data.data_fetching import data_fetcher_and_aggregator
-from agent_models import AnalysisData, Inputs, RerunRequest
+from agent_models import AnalysisData, DataFetcherInputs, RerunRequest
 from utils_sql import deduplicate_columns
 from utils_clarification import (
     generate_clarification,
@@ -334,7 +334,7 @@ async def rerun_endpoint(request: RerunRequest):
                 did_question_change = True
 
         old_question = analysis["data"]["inputs"]["question"]
-        new_inputs = Inputs(
+        new_inputs = DataFetcherInputs(
             question=old_question,
             db_name=db_name,
             previous_context=analysis["data"]["inputs"].get("previous_context") or [],
