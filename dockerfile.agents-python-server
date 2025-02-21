@@ -5,10 +5,14 @@ WORKDIR /backend
 
 RUN apt-get update && apt-get install -y python3-pip
 
+# Install uv
+RUN pip install uv
+
 COPY ./backend/requirements.txt /root/requirements.txt
 
-RUN pip install --upgrade pip setuptools && \
-  pip install -r /root/requirements.txt
+# Use uv to install dependencies system-wide
+RUN uv pip install --system --upgrade setuptools && \
+    uv pip install --system -r /root/requirements.txt
 
 # expose python server port
 EXPOSE 1235
