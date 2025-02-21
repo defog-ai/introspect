@@ -83,6 +83,18 @@ class MetadataGenerateRequest(UserRequest):
     }
 
 
+class TableDescription(BaseModel):
+    table_name: str
+    table_description: str
+
+class TableDescriptionsUpdateRequest(UserRequest):
+    """
+    Request model for updating table descriptions.
+    """
+
+    table_descriptions: list[TableDescription]
+
+
 class InstructionsUpdateRequest(UserRequest):
     """
     Request model for updating instructions.

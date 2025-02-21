@@ -8,16 +8,23 @@ from db_utils import get_db_type_creds
 from defog import Defog
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
-from generic_utils import (
-    convert_nested_dict_to_list,
-)
+from generic_utils import convert_nested_dict_to_list
 from request_models import (
     MetadataGenerateRequest,
     MetadataGetRequest,
     MetadataUpdateRequest,
+    TableDescription,
+    TableDescriptionsUpdateRequest,
+    UserRequest,
 )
 from utils_logging import LOGGER
 from utils_md import check_metadata_validity, get_metadata, set_metadata
+from utils_table_descriptions import (
+    delete_table_descriptions,
+    get_all_table_descriptions,
+    infer_table_descriptions,
+    update_table_descriptions,
+)
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
@@ -104,3 +111,44 @@ async def generate_metadata(req: MetadataGenerateRequest):
     metadata = convert_nested_dict_to_list(metadata_dict)
     LOGGER.debug(f"Generated {len(metadata)} metadata entries")
     return {"metadata": metadata}
+
+
+@router.post("/integration/get_table_descriptions")
+async def get_table_descriptions(req: UserRequest) -> list[dict[str, str]]:
+    """
+    Get table descriptions for a given database.
+    """
+    table_descriptions_list = await get_all_table_descriptions(req.db_name)
+    return table_descriptions_list
+
+
+@router.post("/integration/update_table_descriptions")
+async def update_table_descriptions_route(req: TableDescriptionsUpdateRequest) -> None:
+    """
+    Update table descriptions for a given database.
+    """
+    try:
+        await update_table_descriptions(req.db_name, req.table_descriptions)
+    except Exception as e:
+        LOGGER.error(f"Error updating table descriptions: {e}")
+        return JSONResponse(
+            status_code=500, content={"error": "could not update table descriptions"}
+        )
+
+
+@router.post("/integration/delete_table_descriptions")
+async def delete_table_descriptions_route(req: UserRequest) -> None:
+    """
+    Delete table descriptions for a given database.
+    """
+    await delete_table_descriptions(req.db_name)
+
+
+@router.post("/integration/generate_table_descriptions")
+async def generate_table_descriptions(req: UserRequest) -> list[TableDescription]:
+    """
+    Query the database for metadata and generate table descriptions.
+    """
+    metadata = await get_metadata(req.db_name)
+    table_descriptions = await infer_table_descriptions(req.db_name, metadata)
+    return table_descriptions

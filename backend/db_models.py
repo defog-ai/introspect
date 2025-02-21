@@ -80,6 +80,21 @@ class Metadata(Base):
     __table_args__ = (Index("metadata_db_name_idx", "db_name"),)
 
 
+class TableInfo(Base):
+    """
+    Stores 1 row per table. Currently only used for table descriptions, but
+    could be extended to store other additional metadata in the future like
+    sample rows, join hints, embeddings, table-specific sample queries, etc.
+    """
+
+    __tablename__ = "table_info"
+    db_name = Column(Text, primary_key=True)
+    table_name = Column(Text, primary_key=True)
+    table_description = Column(Text)
+
+    __table_args__ = (Index("table_info_db_name_idx", "db_name"),)
+
+
 # This was formerly known as "glossary"
 class Instructions(Base):
     __tablename__ = "instructions"
