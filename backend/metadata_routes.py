@@ -18,7 +18,7 @@ from request_models import (
     UserRequest,
 )
 from utils_instructions import get_instructions
-from utils_join_hints import ReasonedJoinHints, get_join_hints
+from utils_join_hints import JoinHints, get_join_hints
 from utils_logging import LOGGER
 from utils_md import check_metadata_validity, get_metadata, set_metadata
 from utils_table_descriptions import (
@@ -157,7 +157,7 @@ async def generate_table_descriptions(req: UserRequest) -> list[TableDescription
 
 
 @router.post("/integration/get_join_hints")
-async def get_join_hints_route(req: UserRequest) -> ReasonedJoinHints:
+async def get_join_hints_route(req: UserRequest) -> JoinHints:
     """
     Get join hints for a given database.
     """

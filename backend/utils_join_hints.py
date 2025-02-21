@@ -14,8 +14,7 @@ with open(os.path.join(BACKEND_DIR, "prompts", "join_hints", "user.md"), "r") as
     JOIN_HINTS_USER_PROMPT = f.read()
 
 
-class ReasonedJoinHints(BaseModel):
-    reason: str
+class JoinHints(BaseModel):
     join_keys: list[list[str]]
 
 
@@ -24,7 +23,7 @@ async def get_join_hints(
     metadata: list[dict[str, str]],
     table_descriptions: list[TableDescription],
     instructions: str,
-) -> ReasonedJoinHints:
+) -> JoinHints:
     """
     Get join keys for a database.
     """
@@ -47,10 +46,10 @@ async def get_join_hints(
         model=O3_MINI,
         messages=messages,
         max_completion_tokens=16384,
-        response_format=ReasonedJoinHints,
+        response_format=JoinHints,
     )
     LOGGER.debug(f"{response.output_tokens} tokens, {response.cost_in_cents:.1f} cents, {response.time:.1f} seconds")
-    response_content: ReasonedJoinHints = response.content
+    response_content: JoinHints = response.content
     join_keys_list = response_content.join_keys
     valid_join_keys_list = validate_join_keys(join_keys_list, metadata)
     response_content.join_keys = valid_join_keys_list
