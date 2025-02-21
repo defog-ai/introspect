@@ -6,6 +6,9 @@ from llm_api import GPT_4O, GPT_4O_MINI
 from request_models import ColumnMetadata
 from pydantic import BaseModel
 from typing import Literal
+import warnings
+
+warnings.simplefilter(action="ignore", category=SyntaxWarning)
 
 with open("./prompts/clarify_question/user.md", "r") as f:
     CLARIFY_QUESTION_USER_PROMPT = f.read()
@@ -29,8 +32,6 @@ async def generate_clarification(
     """
     if metadata is None or len(metadata) == 0:
         metadata = await get_metadata(db_name)
-
-    LOGGER.info(f"Got metadata: {metadata}")
 
     if instructions is None:
         instructions = await get_instructions(db_name)
@@ -62,7 +63,10 @@ async def turn_clarifications_into_statement(
     Turn a list of clarifications into a single statement.
     """
     questions_and_answers = "\n".join(
-        [f'Question: {q["question"]}\nAnswer: {q["response"]}' for q in clarifications]
+        [
+            f'Question: {q["question"]}\nAnswer: {q.get("response", "No response")}'
+            for q in clarifications
+        ]
     )
 
     user_prompt = f"""Here is a Question / Answer statement that I got from a user: {questions_and_answers}
@@ -85,6 +89,33 @@ Question: What do you mean by the "worst" players? Answer: those with the lowest
     LOGGER.info("Time taken to generate clarification: %s", statement.time)
 
     return statement.content
+
+
+async def generate_assignment_understanding(
+    analysis_id, clarification_questions, db_name
+):
+    """
+    Generates the assignment understanding from the clarification questions.
+
+    And stores in the analyses table.
+    """
+    # get the assignment understanding aka answers to clarification questions
+    assignment_understanding = None
+
+    LOGGER.info(f"Clarification questions: {clarification_questions}")
+
+    if len(clarification_questions) > 0:
+        try:
+            assignment_understanding = await turn_clarifications_into_statement(
+                clarification_questions, db_name
+            )
+        except Exception as e:
+            LOGGER.error(e)
+            assignment_understanding = ""
+
+    LOGGER.info(f"Assignment understanding: {assignment_understanding}")
+
+    return assignment_understanding
 
 
 class QuestionType(BaseModel):

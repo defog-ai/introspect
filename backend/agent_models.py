@@ -11,7 +11,7 @@ class Inputs(BaseModel):
 
 class Clarification(BaseModel):
     question: str
-    answer: Optional[str] = None
+    response: Optional[str] = None
 
 
 class PreviousContextItem(BaseModel):
@@ -31,3 +31,16 @@ class AnalysisData(BaseModel):
     sql: Optional[str] = None
     output: Optional[str] = None
     error: Optional[str] = None
+
+
+class RerunInputs(BaseModel):
+    question: Optional[str] = None
+    hard_filters: Optional[list] = None
+    db_name: Optional[str] = None
+
+
+class RerunRequest(BaseModel):
+    token: str
+    db_name: str
+    analysis_id: str
+    edited_inputs: Optional[RerunInputs] = None

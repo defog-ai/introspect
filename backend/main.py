@@ -4,14 +4,12 @@ import traceback
 
 from db_utils import get_db_names
 import instructions_routes
-import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, file_upload_routes, golden_queries_routes, \
-    imported_tables_routes, integration_routes, metadata_routes, oracle_report_routes, oracle_routes, query_routes, \
-    slack_routes, tools.tool_routes, user_history_routes, xdb_routes
+import admin_routes, agent_routes, auth_routes, csv_routes, doc_endpoints, file_upload_routes, golden_queries_routes, imported_tables_routes, integration_routes, metadata_routes, oracle_report_routes, oracle_routes, query_routes, slack_routes, tools.tool_routes, user_history_routes, xdb_routes
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from startup import lifespan
 from auth_utils import validate_user
-from agents.planner_executor.tool_helpers.core_functions import analyse_data_streaming
+from query_data.core_functions import analyse_data_streaming
 
 
 logging.basicConfig(level=logging.INFO)
@@ -94,7 +92,9 @@ async def analyse_data_streaming_endpoint(websocket: WebSocket):
             ):
                 await websocket.send_text(token)
         else:
-            await websocket.send_text("Invalid authentication. Are you sure you are logged in?")
+            await websocket.send_text(
+                "Invalid authentication. Are you sure you are logged in?"
+            )
 
         # Send a final message to indicate the end of the stream
         await websocket.send_text("Defog data analysis has ended")

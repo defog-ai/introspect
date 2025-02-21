@@ -1,6 +1,21 @@
 from typing import Tuple
 import pandas as pd
 
+data_fetcher_input_metadata = {
+    "question": {
+        "name": "question",
+        "default": None,
+        "description": "natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string",
+        "type": "str",
+    },
+    "hard_filters": {
+        "name": "hard_filters",
+        "default": [],
+        "description": "List of hard filters to apply to the data",
+        "type": "list",
+    },
+}
+
 
 async def data_fetcher_and_aggregator(
     question: str,
@@ -66,6 +81,28 @@ async def data_fetcher_and_aggregator(
         err = str(e)
     finally:
         return err, df, sql_query
+
+
+send_email_input_metadata = {
+    "recipient_email_address": {
+        "name": "recipient_email_address",
+        "default": None,
+        "description": "email address of the recipient",
+        "type": "str",
+    },
+    "email_subject": {
+        "name": "email_subject",
+        "default": None,
+        "description": "Title of the email to be sent. This is usually a descriptive summary of the question asked.",
+        "type": "str",
+    },
+    "full_data": {
+        "name": "full_data",
+        "default": None,
+        "description": "global_dict.<input_df_name>",
+        "type": "pandas.core.frame.DataFrame",
+    },
+}
 
 
 async def send_email(

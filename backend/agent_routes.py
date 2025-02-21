@@ -4,20 +4,17 @@ import traceback
 import logging
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
-from agents.planner_executor.tools.data_fetching import data_fetcher_and_aggregator
-from agent_models import AnalysisData
+from query_data.data_fetching import data_fetcher_and_aggregator
+from agent_models import AnalysisData, RerunRequest
 from utils_sql import deduplicate_columns
-from utils_clarification import generate_clarification, classify_question_type
+from utils_clarification import (
+    generate_clarification,
+    classify_question_type,
+    generate_assignment_understanding,
+)
 from utils_question_related import generate_follow_on_questions
 from utils_chart import edit_chart
-from agents.planner_executor.tools.all_tools import tools
 import pandas as pd
-
-from agents.planner_executor.planner_executor_agent import (
-    generate_assignment_understanding,
-    rerun_step,
-    run_step,
-)
 from db_analysis_utils import (
     get_analysis,
     get_assignment_understanding,
@@ -129,8 +126,6 @@ async def generate_analysis(request: Request):
             analysis_id=root_analysis_id
         )
 
-        LOGGER.info(f"Assignment understanding: {assignment_understanding}")
-
         # if assignment understanding does not exist, try to generate it
         if assignment_understanding is None:
             assignment_understanding = await generate_assignment_understanding(
@@ -164,6 +159,8 @@ async def generate_analysis(request: Request):
             "db_name": db_name,
             "previous_context": prev_questions,
         }
+
+        LOGGER.info(clarification_questions)
 
         analysis_data = AnalysisData(
             analysis_id=analysis_id,
@@ -277,7 +274,6 @@ async def clarify(request: Request):
                 question=question,
                 db_name=db_name,
             )
-
             if (
                 "not ambiguous" in clarification_questions.lower()
                 or "no clarifi" in clarification_questions.lower()
@@ -286,11 +282,12 @@ async def clarify(request: Request):
             else:
                 clarification_questions = [{"question": clarification_questions}]
 
+        LOGGER.info(clarification_questions)
         analysis_data = AnalysisData(
             analysis_id=analysis_id,
             db_name=db_name,
             initial_question=question,
-            clarification_questions=[],
+            clarification_questions=clarification_questions,
             previous_context=previous_context,
         )
 
@@ -305,74 +302,50 @@ async def clarify(request: Request):
         return {"success": False, "error_message": str(e) or "Incorrect request"}
 
 
-@router.post("/query-data/rerun_step")
-async def rerun_step_endpoint(request: Request):
+@router.post("/query-data/rerun")
+async def rerun_endpoint(request: RerunRequest):
     """
     Function that re runs a step given:
     1. Analysis ID
-    2. Step id to re run
-    3. The edited step
-    4. Clarification questions
-
-    Note that it will only accept edits to one step. If the other steps have been edited, but they have not been re run, they will be re run with the original inputs (because unless the user presses re run on the front end, we don't get their edits).
-
-    It re runs both the parents and the dependent steps of the step to re run.
-
-    Called by the front end's lib/components/agent/analysis/analysisManager.js from inside the `reRun` function.
+    3. edited_inputs: new inputs
     """
+    LOGGER.info("Rerunning analysis")
+    analysis_id = request.analysis_id
+    edited_inputs = request.edited_inputs
+    token = request.token
+    db_name = request.db_name
+
     try:
-        params = await request.json()
-        db_name = params.get("db_name")
-        analysis_id = params.get("analysis_id")
-        step_id = params.get("step_id")
-        edited_step = params.get("edited_step")
 
-        if not db_name or db_name == "":
-            raise Exception("Invalid request. Must have API key name.")
+        LOGGER.info(edited_inputs.model_dump())
 
-        if not analysis_id or analysis_id == "":
-            raise Exception("Invalid request. Must have analysis id.")
+        err, analysis = await get_analysis("ttt")
 
-        if not step_id or step_id == "":
-            raise Exception("Invalid request. Must have step id.")
-
-        if not edited_step or type(edited_step) != dict:
-            raise Exception("Invalid edited step given.")
-
-        err, analysis_data = await get_analysis(analysis_id=analysis_id)
         if err:
-            raise Exception("Error fetching analysis data from database")
+            raise Exception(err)
 
-        # we use the original versions of all steps but the one being rerun
-        all_steps = analysis_data.get("gen_steps", {}).get("steps", [])
+        if analysis.get("data") is None or analysis["data"].get("inputs") is None:
+            raise Exception("Analysis has no data")
 
-        # first make sure the step exists in all_steps
-        step_idx = None
-        for i, s in enumerate(all_steps):
-            if s.get("id") == step_id:
-                all_steps[i] = edited_step
-                step_idx = i
-                break
+        did_question_change = False
+        if edited_inputs.question:
+            LOGGER.info(analysis["data"]["inputs"]["question"])
+            LOGGER.info(edited_inputs.question)
+            if analysis["data"]["inputs"]["question"] != edited_inputs.question:
+                did_question_change = True
 
-        if step_idx is None:
-            raise Exception("Step not found in all steps.")
+        if did_question_change:
+            LOGGER.info("Question changed, rerunning from scratch")
+            # we have to rerun everything
+            pass
+        else:
+            LOGGER.info("Question unchanged, rerunning step")
+            pass
 
-        # rerun this step and all its parents and dependents
-        # the re run function will handle the storage of all the steps in the db
-        new_steps = await rerun_step(
-            step=all_steps[step_idx],
-            all_steps=all_steps,
-            db_name=db_name,
-            analysis_id=analysis_id,
-            user_question=None,
-            dev=False,
-            temp=False,
-        )
-
-        return {"success": True, "steps": new_steps}
+        return JSONResponse(content=edited_inputs.model_dump())
     except Exception as e:
         LOGGER.error(e)
-        return {"success": False, "error_message": str(e) or "Incorrect request"}
+        return JSONResponse(status_code=500, content=str(e))
 
 
 @router.post("/edit_chart")

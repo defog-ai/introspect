@@ -130,7 +130,7 @@ async def get_analysis(analysis_id: str) -> Tuple[str, Dict]:
             return str(e), None
 
 
-async def get_assignment_understanding(analysis_id: str) -> Tuple[str, Dict]:
+async def get_assignment_understanding(analysis_id: str) -> Tuple[str, str | None]:
     """Get the assignment understanding for an analysis."""
     async with AsyncSession(engine) as session:
         try:
@@ -142,6 +142,8 @@ async def get_assignment_understanding(analysis_id: str) -> Tuple[str, Dict]:
 
             if not row:
                 return None, None
+
+            LOGGER.info(row.data)
 
             return None, row.data.get("assignment_understanding", None)
         except Exception as e:
@@ -198,7 +200,7 @@ async def update_analysis_data(
                 return str(e), None
 
 
-def analysis_dict_from_row(row: Analyses):
+def analysis_dict_from_row(row: Analyses) -> dict:
     analysis_id = row.analysis_id
     user_question = row.user_question
     timestamp = row.timestamp
