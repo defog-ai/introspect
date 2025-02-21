@@ -137,11 +137,12 @@ def mk_create_ddl(
         td.table_name: td.table_description for td in table_descriptions
     }
     for column in md:
-        if "." in column["table_name"]:
-            table_name_split = column["table_name"].split(".", 1)
+        full_table_name = column["table_name"]
+        if "." in full_table_name:
+            table_name_split = full_table_name.rsplit(".", 1)
             if len(table_name_split) == 2:
                 schema_name = table_name_split[0]
-                table_name = table_name_split[1]
+                table_name = f"{schema_name}.{table_name_split[1]}"
             else:
                 schema_name = ""
                 table_name = table_name_split[0]
@@ -149,7 +150,7 @@ def mk_create_ddl(
                 md_create += f"CREATE SCHEMA IF NOT EXISTS {schema_name};\n"
                 available_schemas.add(schema_name)
         else:
-            table_name = column["table_name"]
+            table_name = full_table_name
         if table_name not in md_dict:
             md_dict[table_name] = []
         md_dict[table_name].append(column)

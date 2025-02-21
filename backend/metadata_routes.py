@@ -17,6 +17,8 @@ from request_models import (
     TableDescriptionsUpdateRequest,
     UserRequest,
 )
+from utils_instructions import get_instructions
+from utils_join_hints import ReasonedJoinHints, get_join_hints
 from utils_logging import LOGGER
 from utils_md import check_metadata_validity, get_metadata, set_metadata
 from utils_table_descriptions import (
@@ -152,3 +154,15 @@ async def generate_table_descriptions(req: UserRequest) -> list[TableDescription
     metadata = await get_metadata(req.db_name)
     table_descriptions = await infer_table_descriptions(req.db_name, metadata)
     return table_descriptions
+
+
+@router.post("/integration/get_join_hints")
+async def get_join_hints_route(req: UserRequest) -> ReasonedJoinHints:
+    """
+    Get join hints for a given database.
+    """
+    metadata = await get_metadata(req.db_name)
+    table_descriptions = await get_all_table_descriptions(req.db_name)
+    instructions = await get_instructions(req.db_name)
+    join_hints = await get_join_hints(req.db_name, metadata, table_descriptions, instructions)
+    return join_hints

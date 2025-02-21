@@ -80,7 +80,7 @@ def test_mk_create_ddl_with_schema():
         {"table_name": "public.users", "column_name": "name", "data_type": "text"}
     ]
     expected = """CREATE SCHEMA IF NOT EXISTS public;
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS public.users (
   id int,
   name text
 );
@@ -114,11 +114,11 @@ def test_mk_create_ddl_multiple_schemas():
     ]
     expected = """CREATE SCHEMA IF NOT EXISTS public;
 CREATE SCHEMA IF NOT EXISTS analytics;
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS public.users (
   id int,
   name text
 );
-CREATE TABLE IF NOT EXISTS events (
+CREATE TABLE IF NOT EXISTS analytics.events (
   event_id int,
   event_type text
 );
@@ -130,16 +130,69 @@ def test_mk_create_ddl_multiple_schemas_with_table_descriptions():
     metadata = [
         {"table_name": "public.users", "column_name": "id", "data_type": "int"},
         {"table_name": "public.users", "column_name": "name", "data_type": "text"},
+        {"table_name": "another_schema.users", "column_name": "uid", "data_type": "int"},
     ]
     table_descriptions = [
-        TableDescription(table_name="users", table_description="User information table")
+        TableDescription(table_name="public.users", table_description="User information table")
     ]
     expected = """CREATE SCHEMA IF NOT EXISTS public;
-COMMENT ON TABLE users IS 'User information table';
-CREATE TABLE IF NOT EXISTS users (
+CREATE SCHEMA IF NOT EXISTS another_schema;
+COMMENT ON TABLE public.users IS 'User information table';
+CREATE TABLE IF NOT EXISTS public.users (
   id int,
   name text
 );
+CREATE TABLE IF NOT EXISTS another_schema.users (
+  uid int
+);
 """
     result = mk_create_ddl(metadata, table_descriptions)
+    assert result == expected
+
+def test_mk_create_ddl_schema_name_with_dots():
+    metadata = [
+        {
+            "table_name": "common.city",
+            "column_name": "city_name",
+            "data_type": "VARCHAR(50) NOT NULL",
+            "column_description": ""
+        },
+        {
+            "table_name": "common.city",
+            "column_name": "id",
+            "data_type": "INTEGER NOT NULL PRIMARY KEY",
+            "column_description": ""
+        },
+        {
+            "table_name": "common.city",
+            "column_name": "state_id",
+            "data_type": "INTEGER NOT NULL",
+            "column_description": "this references common.state.id"
+        },
+        {
+            "table_name": "company.company",
+            "column_name": "name",
+            "data_type": "VARCHAR(256) NOT NULL",
+            "column_description": ""
+        },
+        {
+            "table_name": "company.company",
+            "column_name": "next_full_review_date",
+            "data_type": "TIMESTAMP WITHOUT TIME ZONE",
+            "column_description": ""
+        }
+    ]
+    expected = """CREATE SCHEMA IF NOT EXISTS common;
+CREATE SCHEMA IF NOT EXISTS company;
+CREATE TABLE IF NOT EXISTS common.city (
+  city_name VARCHAR(50) NOT NULL,
+  id INTEGER NOT NULL PRIMARY KEY,
+  state_id INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS company.company (
+  name VARCHAR(256) NOT NULL,
+  next_full_review_date TIMESTAMP WITHOUT TIME ZONE
+);
+"""
+    result = mk_create_ddl(metadata)
     assert result == expected

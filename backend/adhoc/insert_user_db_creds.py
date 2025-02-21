@@ -75,6 +75,10 @@ databases = [
         "db_name": "Cricket",
         "database": "cricket",
     },
+    {
+        "db_name": "Drug Trials",
+        "database": "drug_trials",
+    },
 ]
 DB_CREDS = {
     "host": "host.docker.internal",
