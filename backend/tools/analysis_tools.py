@@ -1,10 +1,5 @@
-from defog.llm.utils import chat_async
 from tools.analysis_models import AnswerQuestionFromDatabaseInput, AnswerQuestionFromDatabaseOutput
-from db_utils import get_db_type_creds
-from utils_md import mk_create_ddl, get_metadata
-from utils_instructions import get_instructions
-from utils_golden_queries import get_closest_golden_queries
-from utils_embedding import get_embedding
+from utils_sql import generate_sql_query
 from defog.query import async_execute_query_once
 
 async def answer_question_from_database(input: AnswerQuestionFromDatabaseInput) -> AnswerQuestionFromDatabaseOutput:
@@ -17,37 +12,11 @@ async def answer_question_from_database(input: AnswerQuestionFromDatabaseInput) 
     
     print(question, flush=True)
 
-    db_type, db_creds = await get_db_type_creds(db_name)
-
-    # get metadata from API
-    metadata = await get_metadata(db_name)
-    ddl_statements = mk_create_ddl(metadata)
-
-    # get instruction manual from API
-    instructions = await get_instructions(db_name)
-
-    # get embedding of the question, and then get the closest golden queries
-    embedding = await get_embedding(text=question)
-    golden_queries = await get_closest_golden_queries(db_name=db_name, question_embedding=embedding)
-    # not using this for now, but we can make it part of the prompt in the future
-
-    # get SQL from LLM
-    response = await chat_async(
-        model="o3-mini",
-        messages=[
-            {
-                "role": "user",
-                "content": f"Generate a SQL query that answers this question: `{question}`. Please return only the SQL query, nothing else.\n"
-                f"The SQL query must be valid and executable on a {db_type} database.\n"
-                "Here are DDL statements and instruction manual associated with this database: \n"
-                f"*DDL Statements*\n```sql\n{ddl_statements}\n```\n\n"
-                f"*Instruction Manual*\n```{instructions}\n```\n"
-            },
-        ],
-        reasoning_effort="low",
+    sql_response = await generate_sql_query(
+        question=question,
+        db_name=db_name,
     )
-    sql = response.content
-    sql = sql.split("```sql")[-1].split(";")[0].replace("```", "").strip()
+    sql = sql_response["sql"]
 
     # execute SQL
     colnames, rows = await async_execute_query_once(db_type=db_type, db_creds=db_creds, query=sql)
