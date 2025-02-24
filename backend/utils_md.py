@@ -110,11 +110,20 @@ def mk_create_table_ddl(
         if " " in col_name and not col_name.startswith('"'):
             col_name = f'"{col_name}"'
         dtype = column["data_type"]
+        col_desc = column.get("column_description", "")
         if i < len(columns) - 1:
-            md_create += f"  {col_name} {dtype},\n"
+            md_create += (
+                f"  {col_name} {dtype}, /* {col_desc} */\n"
+                if col_desc
+                else f"  {col_name} {dtype},\n"
+            )
         else:
             # avoid the trailing comma for the last line
-            md_create += f"  {col_name} {dtype}\n"
+            md_create += (
+                f"  {col_name} {dtype} /* {col_desc} */\n"
+                if col_desc
+                else f"  {col_name} {dtype}\n"
+            )
     md_create += ");\n"
     return md_create
 
