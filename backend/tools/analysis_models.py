@@ -20,3 +20,35 @@ class AnswerQuestionFromDatabaseOutput(BaseModel):
     rows: List[List[Any]] = Field(
         ..., description="The rows of the table generated from SQL (data rows)"
     )
+
+
+class GenerateReportFromQuestionInput(BaseModel):
+    question: str = Field(..., description="The initial question to generate SQL for")
+    model: str = Field(
+        ..., description="The name of the model to use for generating SQL. "
+    )
+    db_name: str = Field(..., description="The name of database to generate SQL for. ")
+    num_reports: int = Field(
+        default=1,
+        description="The number of reports to generate. "
+        "This input class is used for generating single and multiple reports."
+        "The default is 1.",
+    )
+
+
+class GenerateReportFromQuestionOutput(BaseModel):
+    report: str = Field(
+        ..., description="The final report generated from the questions"
+    )
+    sql_answers: List[AnswerQuestionFromDatabaseOutput] = Field(
+        ..., description="The SQL queries and data answers used to generate the report"
+    )
+
+
+class SynthesizeReportFromQuestionsOutput(BaseModel):
+    report: str = Field(
+        ..., description="The final report synthesized from the questions"
+    )
+    report_answers: List[GenerateReportFromQuestionOutput] = Field(
+        ..., description="The intermediate reports used to synthesize the final report"
+    )

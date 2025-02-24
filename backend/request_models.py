@@ -225,3 +225,14 @@ class AnswerQuestionFromDatabaseRequest(UserRequest):
     """
     question: str
     model: str | None = None
+
+
+class SynthesizeReportFromQuestionRequest(UserRequest):
+    """
+    Request model for synthesizing a report from a question.
+    `num_reports` is the number of intermediate reports to generate and
+    synthesize into a final report.
+    """
+    question: str
+    model: str | None = None
+    num_reports: int = 3

@@ -1,9 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from llm_api import ALL_MODELS, O3_MINI
-from request_models import AnswerQuestionFromDatabaseRequest
-from tools.analysis_tools import answer_question_from_database
-from defog.llm.utils import chat_async
 from auth_utils import validate_user_request
+from fastapi import APIRouter, Depends
+from llm_api import ALL_MODELS, O3_MINI
+from request_models import (
+    AnswerQuestionFromDatabaseRequest,
+    SynthesizeReportFromQuestionRequest,
+)
+from tools.analysis_models import GenerateReportFromQuestionInput
+from tools.analysis_tools import (
+    generate_report_from_question,
+    synthesize_report_from_questions,
+)
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
@@ -21,25 +27,29 @@ async def answer_question_from_database_route(
     question = request.question
     db_name = request.db_name
     model = request.model if request.model and request.model in ALL_MODELS else O3_MINI
-    try:
-        tools = [answer_question_from_database]
-        return await chat_async(
+    return await generate_report_from_question(
+        GenerateReportFromQuestionInput(
+            question=question,
+            db_name=db_name,
             model=model,
-            tools=tools,
-            messages=[
-                {"role": "developer", "content": "Formatting re-enabled"},
-                {
-                    "role": "user",
-                    "content": f"""{question} Look in the database {db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few.
-
-Try to aggregate data in clear and understandable buckets.
-
-Please give your final answer as a descriptive report.
-
-For each point that you make in the report, please include the relevant SQL query that was used to generate the data for it. You can include as many SQL queries as you want, including multiple SQL queries for one point.
-""",
-                },
-            ],
         )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    )
+
+
+@router.post("/synthesize_report_from_question")
+async def synthesize_report_from_question_route(
+    request: SynthesizeReportFromQuestionRequest,
+):
+    """
+    Synthesizes a report from a question.
+    Multiple reports are generated and synthesized into a final report.
+    """
+    model = request.model if request.model and request.model in ALL_MODELS else O3_MINI
+    return await synthesize_report_from_questions(
+        GenerateReportFromQuestionInput(
+            question=request.question,
+            db_name=request.db_name,
+            model=model,
+            num_reports=request.num_reports,
+        )
+    )
