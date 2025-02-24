@@ -1,32 +1,30 @@
 "use client";
-import { DefogAnalysisAgentEmbed } from "@defogdotai/agents-ui-components/agent";
+import { QueryDataEmbed } from "@defogdotai/agents-ui-components/agent";
 import { SpinningLoader } from "@defogdotai/agents-ui-components/core-ui";
-import React from "react";
+import React, { useRef } from "react";
 import { useCallback, useEffect, useState } from "react";
 
 export function TestDrive({
   token,
   dbs,
-  devMode,
-  isAdmin = false,
   hideSqlTab = false,
   hidePreviewTabs = false,
   hiddenCharts = [],
   hideRawAnalysis = false,
+}: {
+  token: string;
+  dbs: {
+    name: string;
+    predefinedQuestions: string[];
+  }[];
+  hideSqlTab?: boolean;
+  hidePreviewTabs?: boolean;
+  hiddenCharts?: string[];
+  hideRawAnalysis?: boolean;
 }) {
   const [initialTrees, setInitialTrees] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // const initialTrees = useMemo(() => {
-  //   try {
-  //     const storedTrees = localStorage.getItem("analysisTrees");
-  //     if (storedTrees) {
-  //       return JSON.parse(storedTrees);
-  //     }
-  //   } catch (e) {
-  //     return null;
-  //   }
-  // }, []);
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}/get_user_history`, {
@@ -52,7 +50,8 @@ export function TestDrive({
       });
   }, []);
 
-  const updateUserHistory = useCallback((keyName, history) => {
+  const updateUserHistory = useCallback((dbName, history) => {
+    if (!dbName || !history) return;
     try {
       fetch(
         `${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}/update_user_history`,
@@ -61,7 +60,7 @@ export function TestDrive({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ token, history, key_name: keyName }),
+          body: JSON.stringify({ token, history, db_name: dbName }),
         }
       )
         .then((res) => res.json())
@@ -74,38 +73,18 @@ export function TestDrive({
   }, []);
 
   return !loading && !error && initialTrees ? (
-    <DefogAnalysisAgentEmbed
-      apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
+    <QueryDataEmbed
+      initialDbList={dbs}
+      hiddenCharts={["boxplot", "histogram"]}
       token={token}
-      isAdmin={isAdmin}
-      hideSqlTab={hideSqlTab}
-      hidePreviewTabs={hidePreviewTabs}
-      hiddenCharts={hiddenCharts}
-      hideRawAnalysis={hideRawAnalysis}
-      // these are the ones that will be shown for new csvs uploaded
-      uploadedCsvPredefinedQuestions={["Show me any 5 rows from the dataset"]}
       searchBarDraggable={false}
-      dbs={dbs}
-      disableMessages={false}
-      devMode={devMode}
+      hidePreviewTabs={false}
+      apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
       initialTrees={initialTrees}
-      onTreeChange={(keyName, tree) => {
-        try {
-          // // save in local storage in an object called analysisTrees
-          // let trees = localStorage.getItem("analysisTrees");
-          // if (!trees) {
-          //   trees = {};
-          //   localStorage.setItem("analysisTrees", "{}");
-          // } else {
-          //   trees = JSON.parse(trees);
-          // }
-
-          // trees[keyName] = tree;
-          // localStorage.setItem("analysisTrees", JSON.stringify(trees));
-          updateUserHistory(keyName, tree);
-        } catch (e) {
-          console.error(e);
-        }
+      hideRawAnalysis={hideRawAnalysis}
+      hideSqlTab={hideSqlTab}
+      onTreeChange={(dbName, tree) => {
+        updateUserHistory(dbName, tree);
       }}
     />
   ) : (

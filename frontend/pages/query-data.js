@@ -124,16 +124,16 @@ const QueryDataPage = () => {
                             "Is there a difference in the plasticity of components that are rejected vs accepted?",
                           ]
                         : name === "Sales"
-                        ? [
-                            "Who are our top 5 customers by revenue?",
-                            "What was the month on month change in revenue?",
-                          ]
-                        : name === "Slack"
-                        ? [
-                            "What is the count of number of queries by db type in the last 30 days, except for queries made by jp@defog.ai?",
-                            "Which users have the most queries?",
-                          ]
-                        : ["Show me any 5 rows from the first table"],
+                          ? [
+                              "Who are our top 5 customers by revenue?",
+                              "What was the month on month change in revenue?",
+                            ]
+                          : name === "Slack"
+                            ? [
+                                "What is the count of number of queries by db type in the last 30 days, except for queries made by jp@defog.ai?",
+                                "Which users have the most queries?",
+                              ]
+                            : ["Show me any 5 rows from the first table"],
                   };
                 }
               )}

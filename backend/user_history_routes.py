@@ -38,7 +38,7 @@ async def get_user_history(request: Request):
 
 class UpdateHistoryRequest(BaseModel):
     token: str
-    key_name: str
+    db_name: str
     history: dict
 
     model_config = {
@@ -46,7 +46,7 @@ class UpdateHistoryRequest(BaseModel):
             "examples": [
                 {
                     "token": "user_token",
-                    "key_name": "history_key",
+                    "db_name": "history_key",
                     "history": {"data": "history_data"},
                 }
             ]
@@ -58,10 +58,10 @@ class UpdateHistoryRequest(BaseModel):
 async def update_user_history(request: UpdateHistoryRequest):
     token = request.token
     user = await validate_user(token)
-    key_name = request.key_name
+    db_name = request.db_name
     history = request.history
 
-    if not key_name:
+    if not db_name:
         return {"error": "Invalid key name."}
 
     if not user:
@@ -82,7 +82,7 @@ async def update_user_history(request: UpdateHistoryRequest):
 
         if existing_history:
             new_history = existing_history._mapping["history"]
-            new_history[key_name] = history
+            new_history[db_name] = history
             # Update existing history
             await conn.execute(
                 update(UserHistory)
@@ -92,11 +92,11 @@ async def update_user_history(request: UpdateHistoryRequest):
         else:
             # Create new history entry
             LOGGER.debug(
-                f"creating new history item for user: {username} and key name: {key_name}"
+                f"creating new history item for user: {username} and key name: {db_name}"
             )
             await conn.execute(
                 insert(UserHistory).values(
-                    username=username, history={key_name: history}
+                    username=username, history={db_name: history}
                 )
             )
 
