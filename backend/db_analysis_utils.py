@@ -6,7 +6,7 @@ from typing import Dict, Tuple
 from sqlalchemy.orm.attributes import flag_modified
 
 from auth_utils import validate_user
-from agent_models import AnalysisData
+from query_data_models import AnalysisData
 from db_config import engine
 from db_models import Analyses
 from sqlalchemy import insert, select, update

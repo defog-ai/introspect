@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 from tool_code_utilities import fetch_query_into_df
 from query_data.data_fetching import data_fetcher_and_aggregator
-from agent_models import AnalysisData, DataFetcherInputs, RerunRequest
+from query_data_models import AnalysisData, DataFetcherInputs, RerunRequest
 from utils_sql import deduplicate_columns
 from utils_clarification import (
     generate_clarification,
