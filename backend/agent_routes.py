@@ -168,7 +168,7 @@ async def generate_analysis(request: Request):
             db_name=db_name,
             initial_question=user_question,
             tool_name="data_fetcher_and_aggregator",
-            inputs=inputs,
+            inputs=DataFetcherInputs(**inputs),
             clarification_questions=clarification_questions,
             assignment_understanding=assignment_understanding,
             previous_context=previous_context,
@@ -187,6 +187,7 @@ async def generate_analysis(request: Request):
             deduplicated = deduplicate_columns(df)
 
             analysis_data.output = deduplicated.to_csv(float_format="%.3f", index=False)
+            analysis_data.error = None
 
         err, updated_analysis = await update_analysis_data(
             analysis_id=analysis_id,
@@ -283,7 +284,6 @@ async def clarify(request: Request):
             else:
                 clarification_questions = [{"question": clarification_questions}]
 
-        LOGGER.info(clarification_questions)
         analysis_data = AnalysisData(
             analysis_id=analysis_id,
             db_name=db_name,
@@ -316,7 +316,7 @@ async def rerun_endpoint(request: RerunRequest):
     db_name = request.db_name
 
     try:
-        LOGGER.info(edited_inputs.model_dump())
+        LOGGER.info(f"Edited inputs: {edited_inputs.model_dump()}")
 
         err, analysis = await get_analysis(analysis_id)
 
@@ -328,27 +328,29 @@ async def rerun_endpoint(request: RerunRequest):
 
         did_question_change = False
         if edited_inputs.question:
-            LOGGER.info(analysis["data"]["inputs"]["question"])
-            LOGGER.info(edited_inputs.question)
             if analysis["data"]["inputs"]["question"] != edited_inputs.question:
                 did_question_change = True
 
         old_question = analysis["data"]["inputs"]["question"]
-        new_inputs = DataFetcherInputs(
-            question=old_question,
-            db_name=db_name,
-            previous_context=analysis["data"]["inputs"].get("previous_context") or [],
-            hard_filters=edited_inputs.hard_filters
+
+        new_inputs = {
+            "question": old_question,
+            "db_name": db_name,
+            "previous_context": analysis["data"]["inputs"].get("previous_context")
+            or [],
+            "hard_filters": edited_inputs.hard_filters
             or analysis["data"]["inputs"].get("hard_filters")
             or [],
-        )
+        }
 
         # we have to rerun everything with the new inputs
         analysis_data = AnalysisData(**analysis["data"])
 
         if did_question_change:
-            LOGGER.info("Question changed, rerunning from scratch")
-            new_inputs.question = edited_inputs.question
+            LOGGER.info(
+                f"Question changed, rerunning from scratch with new question: {edited_inputs.question}"
+            )
+            new_inputs["question"] = edited_inputs.question
             err, df, sql_query = await data_fetcher_and_aggregator(**new_inputs)
 
             analysis_data.sql = None
@@ -357,6 +359,7 @@ async def rerun_endpoint(request: RerunRequest):
                 analysis_data.error = err
             elif df is not None and type(df) == type(pd.DataFrame()):
                 analysis_data.sql = sql_query
+                analysis_data.inputs = DataFetcherInputs(**new_inputs)
 
                 # process the output
                 deduplicated = deduplicate_columns(df)
@@ -364,6 +367,7 @@ async def rerun_endpoint(request: RerunRequest):
                 analysis_data.output = deduplicated.to_csv(
                     float_format="%.3f", index=False
                 )
+                analysis_data.error = None
         elif edited_inputs.sql:
             LOGGER.info("Question unchanged, rerunning the sql")
             new_query = edited_inputs.sql
@@ -383,6 +387,7 @@ async def rerun_endpoint(request: RerunRequest):
                 analysis_data.output = deduplicated.to_csv(
                     float_format="%.3f", index=False
                 )
+                analysis_data.error = None
             except Exception as e:
                 analysis_data.error = str(e)
 

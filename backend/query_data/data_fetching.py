@@ -22,7 +22,6 @@ async def data_fetcher_and_aggregator(
     db_name: str,
     hard_filters: list = [],
     previous_context: list = [],
-    **kwargs,
 ) -> Tuple[str, pd.DataFrame, str]:
     """
     This function generates a SQL query and runs it to get the answer.

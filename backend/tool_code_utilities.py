@@ -9,6 +9,7 @@ from db_utils import get_db_type_creds
 from utils_sql import safe_sql, retry_query_after_error
 from typing import Tuple
 
+
 async def fetch_query_into_df(
     db_name: str,
     sql_query: str,
@@ -22,7 +23,7 @@ async def fetch_query_into_df(
     # make sure not unsafe
     if not safe_sql(sql_query):
         raise ValueError("Unsafe SQL Query")
-    
+
     try:
         colnames, data = await async_execute_query_once(
             query=sql_query,
@@ -103,4 +104,3 @@ def natural_sort(df, time_column, units=None, ascending=True):
     else:
         df = df.sort_values(by=time_column, ascending=ascending)
     return df
-
