@@ -46,6 +46,9 @@ users = [
         "username": "jp@defog.ai",
     },
     {
+        "username": "wendy@defog.ai",
+    },
+    {
         "username": "Coffee Export",
         "password": "test",
     }
