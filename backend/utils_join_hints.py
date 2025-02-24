@@ -18,14 +18,14 @@ class JoinHints(BaseModel):
     join_keys: list[list[str]]
 
 
-async def get_join_hints(
+async def infer_join_hints(
     db_name: str,
     metadata: list[dict[str, str]],
     table_descriptions: list[TableDescription],
     instructions: str,
 ) -> JoinHints:
     """
-    Get join keys for a database.
+    Infer join keys for a database given the metadata, table descriptions, and instructions.
     """
     combined_metadata_ddl = mk_create_ddl(metadata, table_descriptions)
     if instructions:

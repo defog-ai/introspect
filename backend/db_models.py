@@ -8,6 +8,7 @@ from sqlalchemy import (
     MetaData,
     Text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, mapped_column
 from pgvector.sqlalchemy import Vector
 
@@ -99,6 +100,7 @@ class Instructions(Base):
     __tablename__ = "instructions"
     db_name = Column(Text, primary_key=True)
     sql_instructions = Column(Text)
+    join_hints = Column(JSONB)
 
 
 class GoldenQueries(Base):

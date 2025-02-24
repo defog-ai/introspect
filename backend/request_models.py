@@ -103,6 +103,15 @@ class InstructionsUpdateRequest(UserRequest):
     instructions: str
 
 
+class JoinHintsUpdateRequest(UserRequest):
+    """
+    Request model for updating join hints.
+    Will delete the existing join hints if join_hints is None.
+    """
+
+    join_hints: list[list[str]] | None = None
+
+
 class GoldenQuery(BaseModel):
     question: str
     sql: str

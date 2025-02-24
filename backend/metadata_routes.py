@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from generic_utils import convert_nested_dict_to_list
 from request_models import (
+    JoinHintsUpdateRequest,
     MetadataGenerateRequest,
     MetadataGetRequest,
     MetadataUpdateRequest,
@@ -17,8 +18,8 @@ from request_models import (
     TableDescriptionsUpdateRequest,
     UserRequest,
 )
-from utils_instructions import get_instructions
-from utils_join_hints import JoinHints, get_join_hints
+from utils_instructions import delete_join_hints, get_instructions, get_join_hints, set_join_hints
+from utils_join_hints import JoinHints, infer_join_hints
 from utils_logging import LOGGER
 from utils_md import check_metadata_validity, get_metadata, set_metadata
 from utils_table_descriptions import (
@@ -157,12 +158,32 @@ async def generate_table_descriptions(req: UserRequest) -> list[TableDescription
 
 
 @router.post("/integration/get_join_hints")
-async def get_join_hints_route(req: UserRequest) -> JoinHints:
+async def get_join_hints_route(req: UserRequest) -> list[list[str]] | None:
     """
     Get join hints for a given database.
+    """
+    join_hints = await get_join_hints(req.db_name)
+    return join_hints
+
+
+@router.post("/integration/set_join_hints")
+async def set_join_hints_route(req: JoinHintsUpdateRequest) -> None:
+    """
+    Set join hints for a given database.
+    """
+    if req.join_hints is None:
+        await delete_join_hints(req.db_name)
+    else:
+        await set_join_hints(req.db_name, req.join_hints)
+
+
+@router.post("/integration/infer_join_hints")
+async def infer_join_hints_route(req: UserRequest) -> JoinHints:
+    """
+    Infer join hints for a given database.
     """
     metadata = await get_metadata(req.db_name)
     table_descriptions = await get_all_table_descriptions(req.db_name)
     instructions = await get_instructions(req.db_name)
-    join_hints = await get_join_hints(req.db_name, metadata, table_descriptions, instructions)
+    join_hints = await infer_join_hints(req.db_name, metadata, table_descriptions, instructions)
     return join_hints
