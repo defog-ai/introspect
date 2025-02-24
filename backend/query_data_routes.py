@@ -26,7 +26,7 @@ from auth_utils import validate_user_request
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
-    tags=["Agent"],
+    tags=["Query data"],
 )
 LOGGER = logging.getLogger("server")
 
