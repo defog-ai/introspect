@@ -19,14 +19,7 @@ users = [
 
 ## Insert User DB Creds
 
-You can start by adding the following api_key's and key names to your `.env` file like below:
-
-```sh
-DEFOG_API_KEYS="456,123,test_restaurant,test_macmillan"
-DEFOG_API_KEY_NAMES="Housing,Cards,Restaurant,Macmillan" # feel free to edit to whatever you want displayed on the UI
-```
-
-This script inserts multiple test user and db creds data into the database, so that we can skip the db connection setup step on the UI. It needs to be run from within the docker container as such:
+Next, update the `insert_user_db_creds.py` file with the db name and db creds data in a dictionary in the `databases` list. Then, run the following command to insert the data into the database:
 
 ```sh
 $ docker exec -it defog-self-hosted-agents-python-server-1 /bin/bash -c "python adhoc/insert_user_db_creds.py"
@@ -34,9 +27,12 @@ $ docker exec -it defog-self-hosted-agents-python-server-1 /bin/bash -c "python 
 
 This script is idempotent, so it can be run multiple times without any issues. We will update the existing users and db creds if they already exist, instead of throwing an error or creating duplicates.
 
-We can also insert metadata for the imported tables. This script is idempotent, so it can be run multiple times without any issues. We will update the existing metadata if it already exists, instead of throwing an error or creating duplicates.
+## Insert Metadata
+
+We can also insert metadata for the imported tables. Update the `insert_metadata.py` file with your desired metadata as a dictionary whose keys are the table names and values are lists of dictionaries, each containing the metadata for a column. Then, run the following command to insert the data into the database:
 
 ```sh
 $ docker exec -it defog-self-hosted-agents-python-server-1 /bin/bash -c "python adhoc/insert_metadata.py"
 ```
 
+This script is idempotent, so it can be run multiple times without any issues. We will update the existing metadata if it already exists, instead of throwing an error or creating duplicates.

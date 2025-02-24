@@ -1210,3 +1210,189 @@ try:
                 )
 except Exception as e:
     print(f"Error inserting metadata for ({cricket_api_key}) into metadata:\n{e}")
+
+
+# Insert metadata for coffee export
+coffee_export_api_key = "Coffee Export"
+coffee_export_metadata = {
+    "coffee_export": [
+        {
+            "data_type": "character varying",
+            "column_name": "country",
+            "column_description": "Name of the country exporting coffee"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "1990",
+            "column_description": "Coffee export data for the year 1990"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "1991",
+            "column_description": "Coffee export data for the year 1991"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "1992",
+            "column_description": "Coffee export data for the year 1992"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "1993",
+            "column_description": "Coffee export data for the year 1993"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "1994",
+            "column_description": "Coffee export data for the year 1994"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "1995",
+            "column_description": "Coffee export data for the year 1995"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "1996",
+            "column_description": "Coffee export data for the year 1996"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "1997",
+            "column_description": "Coffee export data for the year 1997"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "1998",
+            "column_description": "Coffee export data for the year 1998"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "1999",
+            "column_description": "Coffee export data for the year 1999"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2000",
+            "column_description": "Coffee export data for the year 2000"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2001",
+            "column_description": "Coffee export data for the year 2001"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2002",
+            "column_description": "Coffee export data for the year 2002"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2003",
+            "column_description": "Coffee export data for the year 2003"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2004",
+            "column_description": "Coffee export data for the year 2004"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2005",
+            "column_description": "Coffee export data for the year 2005"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2006",
+            "column_description": "Coffee export data for the year 2006"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2007",
+            "column_description": "Coffee export data for the year 2007"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2008",
+            "column_description": "Coffee export data for the year 2008"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2009",
+            "column_description": "Coffee export data for the year 2009"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2010",
+            "column_description": "Coffee export data for the year 2010"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2011",
+            "column_description": "Coffee export data for the year 2011"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2012",
+            "column_description": "Coffee export data for the year 2012"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2013",
+            "column_description": "Coffee export data for the year 2013"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2014",
+            "column_description": "Coffee export data for the year 2014"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2015",
+            "column_description": "Coffee export data for the year 2015"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2016",
+            "column_description": "Coffee export data for the year 2016"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2017",
+            "column_description": "Coffee export data for the year 2017"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2018",
+            "column_description": "Coffee export data for the year 2018"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "2019",
+            "column_description": "Coffee export data for the year 2019"
+        },
+        {
+            "data_type": "integer",
+            "column_name": "total_export",
+            "column_description": "Total coffee exports over all years",
+        },
+    ],
+}
+
+try:
+    with engine.begin() as conn:
+        # delete all existing metadata for the coffee_export api key
+        conn.execute(delete(Metadata).where(Metadata.db_name == coffee_export_api_key))
+        for table in coffee_export_metadata:
+            for column in coffee_export_metadata[table]:
+                conn.execute(
+                    insert(Metadata).values(
+                        db_name=coffee_export_api_key,
+                        table_name=table,
+                        column_name=column["column_name"],
+                        data_type=column["data_type"],
+                        column_description=column["column_description"],
+                    )
+                )
+except Exception as e:
+    print(f"Error inserting metadata for ({coffee_export_api_key}) into metadata:\n{e}")

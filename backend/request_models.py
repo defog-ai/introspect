@@ -217,3 +217,11 @@ class UploadFileAsDBRequest(UserRequest):
     """
     file_name: str
     tables: dict[str, UserTable]
+
+
+class AnswerQuestionFromDatabaseRequest(UserRequest):
+    """
+    Request model for answering a question from a database.
+    """
+    question: str
+    model: str | None = None

@@ -44,6 +44,10 @@ users = [
     },
     {
         "username": "jp@defog.ai",
+    },
+    {
+        "username": "Coffee Export",
+        "password": "test",
     }
 ]
 databases = [
@@ -74,6 +78,10 @@ databases = [
     {
         "db_name": "Cricket",
         "database": "cricket",
+    },
+    {
+        "db_name": "Coffee Export",
+        "database": "coffee_export",
     },
 ]
 DB_CREDS = {

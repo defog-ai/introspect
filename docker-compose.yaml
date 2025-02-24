@@ -22,8 +22,6 @@ services:
     environment:
       - SALT=${SALT:-default_salt}
       - DEFOG_API_KEY=${DEFOG_API_KEY} # for backwards compatibility. avoid using DEFOG_API_KEY going forward due to potential conflicts with usage in defog-python
-      - DEFOG_API_KEYS=${DEFOG_API_KEYS}
-      - DEFOG_API_KEY_NAMES=${DEFOG_API_KEY_NAMES}
       - DEFOG_BASE_URL=${DEFOG_BASE_URL:-https://api.defog.ai}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}

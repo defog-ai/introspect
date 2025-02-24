@@ -1,22 +1,11 @@
 import copy
-import httpx
-import os
-import sqlparse
-from datetime import datetime
 import re
+from datetime import datetime
 
+import httpx
+import sqlparse
 from db_utils import get_db_names
-from utils_logging import LOGGER, LOG_LEVEL, truncate_obj
-
-DEFOG_API_KEYS = os.environ.get("DEFOG_API_KEYS")
-if not DEFOG_API_KEYS:
-    DEFOG_API_KEYS = os.environ.get(
-        "DEFOG_API_KEY"
-    )  # default to old env var for backwards compatibility
-
-    LOGGER.warning(
-        f"DEFOG_API_KEYS not set. Defaulting to DEFOG_API_KEY: {DEFOG_API_KEYS}"
-    )
+from utils_logging import LOG_LEVEL, LOGGER, truncate_obj
 
 
 async def make_request(url, data, timeout=180, log_time=False):
