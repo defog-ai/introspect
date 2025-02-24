@@ -266,10 +266,12 @@ async def clarify(request: Request):
         previous_context = params.get("previous_context", [])
         # if key name or question is none or blank, return error
         if not db_name or db_name == "":
-            raise Exception("Invalid request. Must have API key name.")
+            raise Exception("Invalid request. Must have database name.")
 
         if not question or question == "":
             raise Exception("Invalid request. Must have a question.")
+
+        clarification_questions = []
 
         if len(previous_context) <= 1:
             clarification_questions = await generate_clarification(
@@ -300,6 +302,7 @@ async def clarify(request: Request):
         return JSONResponse(content=updated_analysis)
     except Exception as e:
         LOGGER.error(e)
+        traceback.print_exc()
         return {"success": False, "error_message": str(e) or "Incorrect request"}
 
 
