@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
-from typing import List, Any
+from typing import List, Any, Optional
+import uuid
 
 
 class AnswerQuestionFromDatabaseInput(BaseModel):
@@ -13,13 +14,23 @@ class AnswerQuestionFromDatabaseInput(BaseModel):
 
 
 class AnswerQuestionFromDatabaseOutput(BaseModel):
-    sql: str = Field(..., description="The SQL query generated from the question")
-    colnames: List[str] = Field(
-        ..., description="The column names of the table (header row)"
+
+    analysis_id: Optional[str] = Field(
+        default=None,
+        description="The analysis ID. Will be later used for source citation.",
     )
-    rows: List[List[Any]] = Field(
-        ..., description="The rows of the table generated from SQL (data rows)"
+    question: Optional[str] = Field(..., description="The question to generate SQL for")
+    sql: Optional[str] = Field(
+        default=None, description="The SQL query generated from the question"
     )
+    df_json: Optional[str] = Field(
+        default=None,
+        description="The JSON string representation of the dataframe returned by the SQL query",
+    )
+    df_truncated: Optional[bool] = Field(
+        default=None, description="Whether the dataframe was truncated"
+    )
+    error: Optional[str] = Field(default=None, description="Error message if any")
 
 
 class GenerateReportFromQuestionInput(BaseModel):
