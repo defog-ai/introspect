@@ -214,12 +214,12 @@ Here are the reports to synthesize:
             messages=messages,
         )
         return SynthesizeReportFromQuestionsOutput(
-            report=synthesis_response.content,
+            synthesized_report=synthesis_response.content,
             report_answers=responses,
         )
     except Exception as e:
         LOGGER.error(f"Error in synthesize_report_from_questions:\n{e}")
         return SynthesizeReportFromQuestionsOutput(
-            report="Error in synthesizing report from questions",
+            synthesized_report="Error in synthesizing report from questions",
             report_answers=[],
         )

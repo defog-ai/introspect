@@ -60,7 +60,7 @@ class GenerateReportFromQuestionOutput(BaseModel):
 
 
 class SynthesizeReportFromQuestionsOutput(BaseModel):
-    report: str = Field(
+    synthesized_report: str = Field(
         ..., description="The final report synthesized from the questions"
     )
     report_answers: List[GenerateReportFromQuestionOutput] = Field(
