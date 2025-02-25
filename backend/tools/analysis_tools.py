@@ -89,9 +89,10 @@ async def answer_1_question_from_database(
             return AnswerQuestionFromDatabaseOutput(
                 question=question, sql=agg_sql, error=error_msg
             )
+        sql = agg_sql
 
         if LOG_LEVEL == "DEBUG":
-            LOGGER.debug(f"AggregateColumn names:\n{colnames}\n")
+            LOGGER.debug(f"Aggregate column names:\n{colnames}\n")
             first_5_rows_str = "\n".join([str(row) for row in rows[:5]])
             LOGGER.debug(f"First 5 aggregate rows:\n{first_5_rows_str}\n")
 
