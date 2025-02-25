@@ -23,7 +23,10 @@ class AnswerQuestionFromDatabaseOutput(BaseModel):
     sql: Optional[str] = Field(
         default=None, description="The SQL query generated from the question"
     )
-    df_json: Optional[str] = Field(
+    columns: Optional[List[str]] = Field(
+        default=None, description="The columns returned by the SQL query"
+    )
+    rows: Optional[str] = Field(
         default=None,
         description="The JSON string representation of the dataframe returned by the SQL query",
     )

@@ -16,7 +16,7 @@ from defog.query import async_execute_query_once
 import uuid
 
 
-async def answer_1_question_from_database(
+async def text_to_sql_tool(
     input: AnswerQuestionFromDatabaseInput,
 ) -> AnswerQuestionFromDatabaseOutput:
     """
@@ -103,6 +103,7 @@ async def answer_1_question_from_database(
         result_df = result_df.head(max_rows_displayed)
         df_truncated = True
     result_json = result_df.to_json(orient="records", double_precision=4)
+    columns = result_df.columns.tolist()
     if result_json == "[]":
         result_json = "No data retrieved. Consider rephrasing the question or generating a new question. Pay close attention to column names and column descriptions in the database schema to ensure you are fetching the right data. If necessary, first retrieve the unique values of the column(s) or first few rows of the table to better understand the data."
 
@@ -110,7 +111,8 @@ async def answer_1_question_from_database(
         analysis_id=str(uuid.uuid4()),
         question=question,
         sql=sql,
-        df_json=result_json,
+        columns=columns,
+        rows=result_json,
         df_truncated=df_truncated,
     )
 
@@ -120,13 +122,13 @@ async def generate_report_from_question(
 ) -> GenerateReportFromQuestionOutput:
     """
     Given an initial question for a single database, this function will call
-    answer_1_question_from_database() to answer the question.
+    text_to_sql_tool() to answer the question.
     Then, it will use the output to generate a new question, and call
-    answer_1_question_from_database() again.
+    text_to_sql_tool() again.
     It will continue to do this until the LLM model decides to stop.
     """
     try:
-        tools = [answer_1_question_from_database]
+        tools = [text_to_sql_tool]
         metadata = await get_metadata(input.db_name)
         metadata_str = mk_create_ddl(metadata)
         response = await chat_async(
@@ -154,7 +156,7 @@ For each point that you make in the report, please include all the relevant anal
         )
         sql_answers = []
         for tool_output in response.tool_outputs:
-            if tool_output.get("name") == "answer_1_question_from_database":
+            if tool_output.get("name") == "text_to_sql_tool":
                 result = tool_output.get("result")
                 if not result or not isinstance(
                     result, AnswerQuestionFromDatabaseOutput
