@@ -1,4 +1,5 @@
 import asyncio
+import pandas as pd
 from tools.analysis_models import (
     AnswerQuestionFromDatabaseInput,
     AnswerQuestionFromDatabaseOutput,
@@ -12,6 +13,7 @@ from utils_sql import generate_sql_query
 from db_utils import get_db_type_creds
 from defog.llm.utils import chat_async
 from defog.query import async_execute_query_once
+import uuid
 
 
 async def answer_1_question_from_database(
@@ -28,26 +30,88 @@ async def answer_1_question_from_database(
 
     LOGGER.debug(f"Question to answer from database ({db_name}):\n{question}\n")
 
-    sql_response = await generate_sql_query(
-        question=question,
-        db_name=db_name,
-    )
+    try:
+        sql_response = await generate_sql_query(
+            question=question,
+            db_name=db_name,
+        )
+    except Exception as e:
+        error_msg = f"Error generating SQL: {e}. Rephrase the question by incorporating specific details of the error to address it."
+        LOGGER.error(error_msg)
+        return AnswerQuestionFromDatabaseOutput(question=question, error=error_msg)
     sql = sql_response["sql"]
 
     # execute SQL
     db_type, db_creds = await get_db_type_creds(db_name)
-    colnames, rows = await async_execute_query_once(
-        db_type=db_type, db_creds=db_creds, query=sql
-    )
+    try:
+        colnames, rows = await async_execute_query_once(
+            db_type=db_type, db_creds=db_creds, query=sql
+        )
+    except Exception as e:
+        error_msg = f"Error executing SQL: {e}. Rephrase the question by incorporating specific details of the error to address it."
+        LOGGER.error(error_msg)
+        return AnswerQuestionFromDatabaseOutput(
+            question=question, sql=sql, error=error_msg
+        )
 
     if LOG_LEVEL == "DEBUG":
         LOGGER.debug(f"Column names:\n{colnames}\n")
         first_20_rows_str = "\n".join([str(row) for row in rows[:20]])
         LOGGER.debug(f"First 20 rows:\n{first_20_rows_str}\n")
 
-    # known issue: if the query returns way too much data, it may run out of context window limits
+    # aggregate data if too large
+    max_rows_displayed = 50
+    if len(rows) > max_rows_displayed:
+        agg_question = (
+            question
+            + f" Aggregate or limit the data appropriately or place the data in meaningful buckets such that the result is within a reasonable size (max {max_rows_displayed} rows) and useful for analysis."
+        )
 
-    return AnswerQuestionFromDatabaseOutput(sql=sql, colnames=colnames, rows=rows)
+        try:
+            agg_sql_response = await generate_sql_query(
+                question=agg_question,
+                db_name=db_name,
+            )
+        except Exception as e:
+            error_msg = f"Error generating aggregate SQL: {e}. Rephrase the question by incorporating specific details of the error to address it."
+            LOGGER.error(error_msg)
+            return AnswerQuestionFromDatabaseOutput(question=question, error=error_msg)
+        agg_sql = agg_sql_response["sql"]
+
+        db_type, db_creds = await get_db_type_creds(db_name)
+        try:
+            colnames, rows = await async_execute_query_once(
+                db_type=db_type, db_creds=db_creds, query=agg_sql
+            )
+        except Exception as e:
+            error_msg = f"Error executing aggregate SQL: {e}. Rephrase the question by incorporating specific details of the error to address it."
+            LOGGER.error(error_msg)
+            return AnswerQuestionFromDatabaseOutput(
+                question=question, sql=agg_sql, error=error_msg
+            )
+
+        if LOG_LEVEL == "DEBUG":
+            LOGGER.debug(f"AggregateColumn names:\n{colnames}\n")
+            first_5_rows_str = "\n".join([str(row) for row in rows[:5]])
+            LOGGER.debug(f"First 5 aggregate rows:\n{first_5_rows_str}\n")
+
+    # construct df and then convert to json string
+    df_truncated = False
+    result_df = pd.DataFrame(rows, columns=colnames)
+    if len(rows) > max_rows_displayed:
+        result_df = result_df.head(max_rows_displayed)
+        df_truncated = True
+    result_json = result_df.to_json(orient="records")
+    if result_json == "[]":
+        result_json = "No data retrieved. Consider rephrasing the question or generating a new question. Pay close attention to column names and column descriptions in the database schema to ensure you are fetching the right data. If necessary, first retrieve the unique values of the column(s) or first few rows of the table to better understand the data."
+
+    return AnswerQuestionFromDatabaseOutput(
+        analysis_id=str(uuid.uuid4()),
+        question=question,
+        sql=sql,
+        df_json=result_json,
+        df_truncated=df_truncated,
+    )
 
 
 async def generate_report_from_question(
@@ -73,7 +137,7 @@ async def generate_report_from_question(
                     "role": "user",
                     "content": f"""I would like you to create a comprehensive analysis for answering this question: {input.question}
 
-Look in the database {input.db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few.
+Look in the database {input.db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few. Do not ask the exact same question twice. Always ask new questions or rephrase the previous question if it led to an error.
 
 The database schema is below:
 ```sql
@@ -82,9 +146,7 @@ The database schema is below:
 
 Try to aggregate data in clear and understandable buckets. Please give your final answer as a descriptive report.
 
-For each point that you make in the report, please include the full SQL query that was used to generate the data for it. You can include as many SQL queries as you want, including multiple SQL queries for one point.
-
-It is *very* important that you return a complete and runnable SQL query, not an example or abbreviation.
+For each point that you make in the report, please include all the relevant analysis IDs in brackets that was used to generate the data for it e.g. [ID: analysis_id_1, analysis_id_2].
 """,
                 },
             ],
@@ -93,7 +155,9 @@ It is *very* important that you return a complete and runnable SQL query, not an
         for tool_output in response.tool_outputs:
             if tool_output.get("name") == "answer_1_question_from_database":
                 result = tool_output.get("result")
-                if not result or not isinstance(result, AnswerQuestionFromDatabaseOutput):
+                if not result or not isinstance(
+                    result, AnswerQuestionFromDatabaseOutput
+                ):
                     LOGGER.error(f"Invalid tool output: {tool_output}")
                     continue
                 sql_answers.append(result)
@@ -135,7 +199,7 @@ Synthesize these intermediate reports done by a group of independent analysts in
 
 You should attempt to get the most useful insights from each report, without repeating the insights across reports. Please ensure that you get the actual data insights from these reports, and not just methodologies.
 
-For the final report, please include the full SQL queries that were used to generate the data for each point.
+You must cite the relevant analysis IDs in brackets [] for each key insight in the report.
 
 Here are the reports to synthesize:
 """
