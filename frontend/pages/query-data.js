@@ -12,12 +12,12 @@ const QueryDataPage = () => {
   const [token, setToken] = useState("");
   const [user, setUser] = useState("");
   const [userType, setUserType] = useState("");
-  const [apiKeyNames, setApiKeyNames] = useState(["Default DB"]);
+  const [dbNames, setDbNames] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [nonAdminConfig, setNonAdminConfig] = useState({});
 
-  const getApiKeyNames = async (token) => {
+  const getDbNames = async (token) => {
     setLoading(true);
     let res = await fetch(
       (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_db_names",
@@ -38,7 +38,7 @@ const QueryDataPage = () => {
       );
     }
     let data = await res.json();
-    setApiKeyNames(data.db_names);
+    setDbNames(data.db_names);
 
     res = await fetch(
       (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_non_admin_config",
@@ -76,7 +76,7 @@ const QueryDataPage = () => {
     setUserType(userType);
     setToken(token);
 
-    getApiKeyNames(token);
+    getDbNames(token);
   }, []);
 
   const isAdmin = userType === "admin";
@@ -112,31 +112,29 @@ const QueryDataPage = () => {
               hideRawAnalysis={
                 isAdmin ? false : nonAdminConfig.hide_raw_analysis_for_non_admin
               }
-              dbs={(apiKeyNames.length > 0 ? apiKeyNames : ["Default DB"]).map(
-                (name) => {
-                  return {
-                    name: name,
-                    keyName: name,
-                    predefinedQuestions:
-                      name === "Manufacturing"
+              dbs={(dbNames.length > 0 ? dbNames : []).map((name) => {
+                return {
+                  name: name,
+                  keyName: name,
+                  predefinedQuestions:
+                    name === "Manufacturing"
+                      ? [
+                          "What is the average rejection rate by lot?",
+                          "Is there a difference in the plasticity of components that are rejected vs accepted?",
+                        ]
+                      : name === "Sales"
                         ? [
-                            "What is the average rejection rate by lot?",
-                            "Is there a difference in the plasticity of components that are rejected vs accepted?",
+                            "Who are our top 5 customers by revenue?",
+                            "What was the month on month change in revenue?",
                           ]
-                        : name === "Sales"
+                        : name === "Slack"
                           ? [
-                              "Who are our top 5 customers by revenue?",
-                              "What was the month on month change in revenue?",
+                              "What is the count of number of queries by db type in the last 30 days, except for queries made by jp@defog.ai?",
+                              "Which users have the most queries?",
                             ]
-                          : name === "Slack"
-                            ? [
-                                "What is the count of number of queries by db type in the last 30 days, except for queries made by jp@defog.ai?",
-                                "Which users have the most queries?",
-                              ]
-                            : ["Show me any 5 rows from the first table"],
-                  };
-                }
-              )}
+                          : ["Show me any 5 rows from the first table"],
+                };
+              })}
             />
           )
         ) : (

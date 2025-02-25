@@ -1,6 +1,7 @@
 """Database credential utility functions."""
 
 from typing import Dict, Tuple
+from defog.query import async_execute_query_once
 from sqlalchemy import select, update, insert
 from db_config import engine
 from db_models import DbCreds
@@ -44,3 +45,24 @@ async def update_db_type_creds(db_name, db_type, db_creds):
             )
 
     return True
+
+
+async def validate_db_connection(db_type, db_creds):
+    for k in ["api_key", "db_type"]:
+        if isinstance(db_creds, dict) and k in db_creds:
+            del db_creds[k]
+
+    if db_type == "bigquery":
+        db_creds["json_key_path"] = "./bq.json"
+
+    sql_query = "SELECT 'test';"
+    try:
+        await async_execute_query_once(
+            db_type,
+            db_creds,
+            sql_query,
+        )
+        return True
+    except Exception as e:
+        LOGGER.error(str(e))
+        return False

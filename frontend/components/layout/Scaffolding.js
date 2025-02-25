@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { NavBar } from "@defogdotai/agents-ui-components/core-ui";
 import { usePathname } from "next/navigation";
@@ -58,7 +58,7 @@ const Scaffolding = ({
               title: "Evaluate Model",
               href: "/evaluate-model",
             },
-          ]
+          ],
         },
         {
           key: "query-data",

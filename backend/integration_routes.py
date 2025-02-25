@@ -3,11 +3,13 @@ import json
 import os
 import re
 from io import StringIO
+import traceback
 from uuid import uuid4
 import pandas as pd
 from db_utils import (
     get_db_type_creds,
     update_db_type_creds,
+    validate_db_connection,
 )
 from db_config import redis_client
 from auth_utils import validate_user, validate_user_request
@@ -20,7 +22,7 @@ from generic_utils import (
 )
 from request_models import UserRequest
 from utils_logging import LOGGER
-from utils_md import check_metadata_validity, set_metadata
+from utils_md import check_metadata_validity, get_metadata, set_metadata
 
 home_dir = os.path.expanduser("~")
 defog_path = os.path.join(home_dir, ".defog")
@@ -35,79 +37,70 @@ router = APIRouter(
 )
 
 
-@router.post("/integration/get_tables_db_creds")
+@router.post("/integration/get_db_info")
 async def get_tables_db_creds(req: UserRequest):
-    res = await get_db_type_creds(req.db_name)
-    LOGGER.info(f"Res: {res}")
-    if not res:
-        return {"error": "No database credentials found"}
-    db_type, db_creds = res
-    defog = Defog(api_key=req.db_name, db_type=db_type, db_creds=db_creds)
-    table_names = await asyncio.to_thread(
-        defog.generate_db_schema,
-        tables=[],
-        upload=False,
-        scan=False,
-        return_tables_only=True,
-    )
-
-    db_type = defog.db_type
-    db_creds = defog.db_creds
-
-    # get selected_tables from file. this is a legacy way of keeping track
-    # of tables that the user has selected to add to the metadata
-    # ideally we'd want this to be stored somewhere more persistent like in
-    # the database, but we just keep it around for now to avoid breaking changes
-    selected_tables_path = os.path.join(
-        defog_path, f"selected_tables_{req.db_name}.json"
-    )
-    if os.path.exists(selected_tables_path):
-        with open(selected_tables_path, "r") as f:
-            selected_tables_saved = json.load(f)
-            if isinstance(selected_tables_saved, list):
-                selected_tables = selected_tables_saved
-            else:
-                selected_tables = table_names
-    else:
-        selected_tables = table_names
-
-    return {
-        "tables": table_names,
-        "db_creds": db_creds,
-        "db_type": db_type,
-        "selected_tables": selected_tables,
-    }
-
-
-@router.post("/integration/validate_db_connection")
-async def validate_db_connection(request: Request):
-    params = await request.json()
-    db_type = params.get("db_type")
-    db_creds = params.get("db_creds")
-    for k in ["api_key", "db_type"]:
-        if isinstance(db_creds, dict) and k in db_creds:
-            del db_creds[k]
-
-    if db_type == "bigquery":
-        db_creds["json_key_path"] = "./bq.json"
-
-    key_name = params.get("db_name")
-    sql_query = "SELECT 'test';"
     try:
-        await async_execute_query_once(
-            db_type,
-            db_creds,
-            sql_query,
+        res = await get_db_type_creds(req.db_name)
+        if not res:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "no db creds found"},
+            )
+
+        db_type, db_creds = res
+        defog = Defog(api_key=req.db_name, db_type=db_type, db_creds=db_creds)
+        can_connect = await validate_db_connection(db_type, db_creds)
+        table_names = []
+        metadata = []
+
+        if can_connect:
+            table_names = await asyncio.to_thread(
+                defog.generate_db_schema,
+                tables=[],
+                upload=False,
+                scan=False,
+                return_tables_only=True,
+            )
+
+        db_type = defog.db_type
+        db_creds = defog.db_creds
+
+        # get selected_tables from file. this is a legacy way of keeping track
+        # of tables that the user has selected to add to the metadata
+        # ideally we'd want this to be stored somewhere more persistent like in
+        # the database, but we just keep it around for now to avoid breaking changes
+        selected_tables_path = os.path.join(
+            defog_path, f"selected_tables_{req.db_name}.json"
         )
-        return {"status": "success"}
-    except Exception as e:
-        print(e, flush=True)
+        if os.path.exists(selected_tables_path):
+            with open(selected_tables_path, "r") as f:
+                selected_tables_saved = json.load(f)
+                if isinstance(selected_tables_saved, list):
+                    selected_tables = selected_tables_saved
+                else:
+                    selected_tables = table_names
+        else:
+            selected_tables = table_names
+
+        metadata = await get_metadata(req.db_name)
+
         return JSONResponse(
-            {
-                "status": "error",
-                "message": "Could not connect to the database within 10 seconds. Please verify that the DB credentials are correct.",
+            content={
+                "db_name": req.db_name,
+                "tables": table_names,
+                "db_creds": db_creds,
+                "db_type": db_type,
+                "selected_tables": selected_tables,
+                "can_connect": can_connect,
+                "metadata": metadata,
             },
-            status_code=400,
+            status_code=200,
+        )
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)},
         )
 
 
@@ -130,12 +123,20 @@ async def update_db_creds(request: Request):
                 f.write(credentials_file)
         db_creds["json_key_path"] = os.path.join(defog_path, fname)
 
-    success = await update_db_type_creds(
-        db_name=key_name, db_type=db_type, db_creds=db_creds
-    )
-    print(success)
-
-    return {"success": True}
+    try:
+        await update_db_type_creds(db_name=key_name, db_type=db_type, db_creds=db_creds)
+        return JSONResponse(
+            content={"status": "success"},
+            status_code=200,
+        )
+    except Exception as e:
+        return JSONResponse(
+            {
+                "status": "error",
+                "message": "Could not update the database credentials. Please try again.",
+            },
+            status_code=400,
+        )
 
 
 @router.post("/integration/preview_table")

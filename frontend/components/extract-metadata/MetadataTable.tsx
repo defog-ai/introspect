@@ -16,7 +16,7 @@ import {
 
 const MetadataTable = ({
   token,
-  apiKeyName,
+  dbName,
   tablesData,
   initialMetadata,
   setColumnDescriptionCheck,
@@ -24,7 +24,9 @@ const MetadataTable = ({
   // all tables from the database
   const [tables, setTables] = useState([]);
   // tables indexed for defog
-  const [selectedTablesForIndexing, setSelectedTablesForIndexing] = useState([]);
+  const [selectedTablesForIndexing, setSelectedTablesForIndexing] = useState(
+    []
+  );
   const [metadata, setMetadata] = useState(initialMetadata);
   const [filteredMetadata, setFilteredMetadata] = useState(initialMetadata);
 
@@ -38,8 +40,7 @@ const MetadataTable = ({
 
   const hasNonEmptyDescriptionFunction = (metadataArr) => {
     return metadataArr.some(
-      (item) =>
-        item.column_description && item.column_description.trim() !== ""
+      (item) => item.column_description && item.column_description.trim() !== ""
     );
   };
 
@@ -68,7 +69,7 @@ const MetadataTable = ({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         token,
-        db_name: apiKeyName,
+        db_name: dbName,
       }),
     });
     if (res.status === 401) {
@@ -96,7 +97,7 @@ const MetadataTable = ({
           body: JSON.stringify({
             metadata,
             token,
-            db_name: apiKeyName,
+            db_name: dbName,
           }),
         }
       );
@@ -166,7 +167,7 @@ const MetadataTable = ({
           body: JSON.stringify({
             tables: selectedTablesForIndexing,
             token,
-            db_name: apiKeyName,
+            db_name: dbName,
           }),
         }
       );
@@ -289,7 +290,7 @@ const MetadataTable = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          db_name: apiKeyName,
+          db_name: dbName,
           format: "csv",
         }),
       }
@@ -326,7 +327,7 @@ const MetadataTable = ({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               token,
-              db_name: apiKeyName,
+              db_name: dbName,
               metadata_csv: metadataCsv,
             }),
           }
@@ -348,18 +349,14 @@ const MetadataTable = ({
     setLoading(false);
   };
 
-  console.log(tables);
-  console.log(selectedTablesForIndexing);
-
   // We'll replicate the old "Alert" with a Tailwind info box
   const InfoAlert = () => (
     <div className="mb-4 px-3 py-2 rounded border border-blue-300 bg-blue-50 text-blue-800">
-      <span className="font-semibold pr-1">Info:</span>{" "}
-      This table is a preview for your changes. Please hit 'Save Changes' to
-      update metadata on the defog server, or upload your metadata as a CSV
+      <span className="font-semibold pr-1">Info:</span> This table is a preview
+      for your changes. Please hit 'Save Changes' to update metadata on the
+      defog server, or upload your metadata as a CSV
     </div>
   );
-
 
   if (loading) {
     return (
@@ -389,7 +386,7 @@ const MetadataTable = ({
         <div className="text-xl font-medium text-center dark:text-dark-text-primary mt-2">
           View and Update Metadata
         </div>
-        
+
         <div className="w-full dark:bg-dark-bg-secondary">
           <label className="block text-sm font-medium text-gray-700 dark:text-dark-text-primary mb-1">
             Select tables

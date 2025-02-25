@@ -1,45 +1,5 @@
 import setupBaseUrl from "./setupBaseUrl";
 
-export const addTool = async ({
-  tool_name,
-  function_name,
-  description,
-  code,
-  input_metadata,
-  output_metadata,
-  no_code = false,
-}) => {
-  const addToolEndpoint = setupBaseUrl("http", "add_tool");
-  const payload = {
-    tool_name,
-    function_name,
-    description,
-    code,
-    input_metadata,
-    output_metadata,
-    no_code: no_code,
-  };
-  try {
-    const res = await fetch(addToolEndpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to add tool");
-    }
-
-    const json = await res.json();
-    return json;
-  } catch (e) {
-    console.error(e);
-    return { success: false, error_message: e };
-  }
-};
-
 /**
  *
  * Converts an array of object to a single object.
@@ -114,4 +74,96 @@ export const clipStringToLength = (
     return str.slice(0, length) + (addEllipsis ? "..." : "");
   }
   return str;
+};
+
+export const fetchMetadata = async (token: string, dbName: string) => {
+  const res = await fetch(setupBaseUrl("http", `integration/get_metadata`), {
+    method: "POST",
+    body: JSON.stringify({ token, db_name: dbName }),
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    throw new Error("Failed to get metadata");
+  }
+  return await res.json();
+};
+
+export type DbType =
+  | "postgres"
+  | "redshift"
+  | "snowflake"
+  | "databricks"
+  | "bigquery"
+  | "sqlserver";
+
+export interface DbCreds {
+  postgres: {
+    host: string;
+    port: string;
+    user: string;
+    password: string;
+    database: string;
+  };
+  redshift: {
+    host: string;
+    port: string;
+    user: string;
+    password: string;
+    database: string;
+    schema: string;
+  };
+  snowflake: {
+    account: string;
+    warehouse: string;
+    user: string;
+    password: string;
+  };
+  databricks: {
+    server_hostname: string;
+    access_token: string;
+    http_path: string;
+    schema: string;
+  };
+  bigquery: {
+    credentials_file_content: string;
+  };
+  sqlserver: {
+    server: string;
+    database: string;
+    user: string;
+    password: string;
+  };
+}
+
+export type DbMetadata = Array<{
+  table_name: string;
+  column_name: string;
+  data_type: string;
+  column_description: string;
+}>;
+
+export interface DbInfo {
+  db_name?: string;
+  db_type?: DbType;
+  db_creds?: DbCreds[DbType];
+  can_connect?: boolean;
+  metadata?: DbMetadata;
+  selected_tables?: string[];
+  tables?: string[];
+}
+
+export const getDbInfo = async (
+  token: string,
+  dbName: string
+): Promise<DbInfo> => {
+  const res = await fetch(setupBaseUrl("http", `integration/get_db_info`), {
+    method: "POST",
+    body: JSON.stringify({ token, db_name: dbName }),
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    throw new Error("Failed to get tables and db creds");
+  } else {
+    return await res.json();
+  }
 };

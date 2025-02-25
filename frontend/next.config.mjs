@@ -9,10 +9,10 @@ export default {
     config.resolve.fallback = { fs: false };
     return config;
   },
-  experimental: {
-    // If you’re on Next 12 or 13, this often helps
-    esmExternals: false,
-  },
+  // experimental: {
+  // If you’re on Next 12 or 13, this often helps
+  // esmExternals: false,
+  // },
   images: {
     unoptimized: true,
   },
