@@ -11,7 +11,6 @@ from db_utils import get_db_type_creds
 from defog.llm.utils import chat_async
 from defog.query import async_execute_query_once
 from generic_utils import is_sorry
-from llm_api import GPT_4O, O3_MINI
 from pandas.testing import assert_frame_equal, assert_series_equal
 from request_models import ColumnMetadata, HardFilter, QuestionAnswer, TableDescription
 from sqlglot import exp, parse_one
@@ -524,7 +523,7 @@ async def generate_sql_query(
     previous_context: list[Dict[str, str]] = None,
     hard_filters: list[HardFilter] = None,
     num_golden_queries: int = 4,
-    model_name: str = O3_MINI,
+    model_name: str = "o3-mini",
 ):
     """
     Generate SQL query for a given question, using an LLM.
@@ -662,7 +661,7 @@ async def retry_query_after_error(
     )
 
     query = await chat_async(
-        model=GPT_4O,
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},

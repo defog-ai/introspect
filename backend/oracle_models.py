@@ -3,7 +3,6 @@ from typing import List, Dict, Any, Optional
 import logging
 
 from pydantic import BaseModel
-from llm_api import GPT_4O_MINI
 from utils_logging import LOG_LEVEL
 
 LOGGER = logging.getLogger("oracle")

@@ -1,6 +1,5 @@
 from auth_utils import validate_user_request
 from fastapi import APIRouter, Depends
-from llm_api import ALL_MODELS, O3_MINI
 from request_models import (
     AnswerQuestionFromDatabaseRequest,
     SynthesizeReportFromQuestionRequest,
@@ -26,7 +25,7 @@ async def answer_question_from_database_route(
     """
     question = request.question
     db_name = request.db_name
-    model = request.model if request.model and request.model in ALL_MODELS else O3_MINI
+    model = request.model or "o3-mini"
     return await generate_report_from_question(
         GenerateReportFromQuestionInput(
             question=question,

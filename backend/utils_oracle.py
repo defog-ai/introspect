@@ -5,7 +5,6 @@ from db_models import OracleGuidelines, OracleAnalyses, OracleReports
 from db_config import engine
 from utils_md import get_metadata, mk_create_ddl
 from defog.llm.utils import chat_async
-from llm_api import O3_MINI
 from utils_logging import LOGGER
 from typing import Literal
 from datetime import datetime
@@ -51,7 +50,7 @@ async def clarify_question(
 
     response = await chat_async(
         messages=messages,
-        model=O3_MINI,
+        model="o3-mini",
         response_format=ClarificationOutput,
     )
 

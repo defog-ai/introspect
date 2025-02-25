@@ -2,7 +2,6 @@ from defog.llm.utils import chat_async
 from utils_logging import LOGGER
 from utils_md import get_metadata, mk_create_ddl
 from utils_instructions import get_instructions
-from llm_api import GPT_4O, GPT_4O_MINI
 from request_models import ColumnMetadata
 from pydantic import BaseModel
 from typing import Literal
@@ -22,7 +21,7 @@ async def generate_clarification(
     db_name: str = None,
     metadata: list[ColumnMetadata] = None,
     instructions: str = None,
-    model_name: str = GPT_4O,
+    model_name: str = "gpt-4o",
 ) -> str:
     """
     Generate clarification for a given question, using an LLM.
@@ -57,7 +56,7 @@ async def generate_clarification(
 
 
 async def turn_clarifications_into_statement(
-    clarifications: list[str], model_name: str = GPT_4O
+    clarifications: list[str], model_name: str = "gpt-4o"
 ) -> str:
     """
     Turn a list of clarifications into a single statement.
@@ -78,7 +77,7 @@ Question: What do you mean by "best" restaurants?" Answer: those with the most r
 Question: What do you mean by the "worst" players? Answer: those with the lowest total scores Response: Return the players with the lowest total scores"""
 
     statement = await chat_async(
-        model=GPT_4O_MINI,
+        model="gpt-4o-mini",
         messages=[
             {"role": "user", "content": user_prompt},
         ],
