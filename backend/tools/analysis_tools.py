@@ -102,7 +102,7 @@ async def answer_1_question_from_database(
     if len(rows) > max_rows_displayed:
         result_df = result_df.head(max_rows_displayed)
         df_truncated = True
-    result_json = result_df.to_json(orient="records")
+    result_json = result_df.to_json(orient="records", double_precision=4)
     if result_json == "[]":
         result_json = "No data retrieved. Consider rephrasing the question or generating a new question. Pay close attention to column names and column descriptions in the database schema to ensure you are fetching the right data. If necessary, first retrieve the unique values of the column(s) or first few rows of the table to better understand the data."
 
