@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import pandas as pd
-import re
+import json
 import time
 from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines, set_analysis, set_oracle_report, replace_sql_blocks
 from db_models import OracleGuidelines
@@ -18,8 +18,7 @@ from pydantic import BaseModel
 from tools.analysis_models import GenerateReportFromQuestionInput
 
 from utils_logging import LOGGER, save_and_log, save_timing
-from tools.analysis_tools import synthesize_report_from_questions
-from llm_api import O3_MINI
+from tools.analysis_tools import synthesize_report_from_questions, generate_report_from_question
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
@@ -193,16 +192,19 @@ async def generate_report(req: GenerateReportRequest):
     user_question = req.user_question
     answered_clarifications = req.answered_clarifications
 
-    analysis_response = await synthesize_report_from_questions(
+    analysis_response = await generate_report_from_question(
         GenerateReportFromQuestionInput(
             db_name=db_name,
-            model=O3_MINI,
+            model="claude-3-7-sonnet-latest",
             question=user_question,
-            num_reports=3,
         )
     )
     
     main_content = analysis_response.report
+    sql_answers = analysis_response.sql_answers.model_dump()
+    for idx, answer in enumerate(sql_answers):
+        answer[idx]["rows"] = json.loads(answer["rows"])
+        answer[idx]["columns"] = [{"dataIndex": col, "title": col} for col in answer["columns"]]
     print(main_content, flush=True)
 
     mdx = f"# {user_question.title()}\n\n{main_content}"
@@ -218,5 +220,5 @@ async def generate_report(req: GenerateReportRequest):
 
     return {
         "mdx": main_content,
-        "analysis_ids": [],
+        "sql_answers": sql_answers,
     }
