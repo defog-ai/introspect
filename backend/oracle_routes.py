@@ -5,15 +5,14 @@ from enum import Enum
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import pandas as pd
 import json
 import time
 from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines, set_oracle_report, post_tool_call_func
 from db_models import OracleGuidelines
 from db_config import engine
 from auth_utils import validate_user_request
-from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from functools import partial
 
@@ -157,6 +156,7 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
         report_id = await set_oracle_report(
             db_name=db_name,
             report_name=req.user_question,
+            status="initialized"
         )
         clarify_response["report_id"] = report_id
     except Exception as e:
@@ -201,13 +201,6 @@ async def generate_report(req: GenerateReportRequest):
     answered_clarifications = req.answered_clarifications
     report_id = req.report_id
 
-    # set the clarified answers in the database
-    await set_oracle_report(
-        report_id=report_id,
-        report_name=user_question,
-        inputs=req.model_dump(),
-    )
-
     # convert clarification responses into a single string
     clarification_responses = ""
     if answered_clarifications:
@@ -215,8 +208,15 @@ async def generate_report(req: GenerateReportRequest):
         for clarification in answered_clarifications:
             clarification_responses += f" {clarification.clarification} (Answer: {clarification.answer})\n"
     
-    # use partial to pass the report_id to post_tool_call_func, so that it can update the correct report
+    # use partial to pass the report_id to post_tool_func, so that it can update the correct report
     post_tool_func = partial(post_tool_call_func, report_id=report_id)
+
+    # set the clarified answers in the database
+    await set_oracle_report(
+        report_id=report_id,
+        inputs=req.model_dump(),
+        status="thinking",
+    )
 
     # generate the report
     analysis_response = await generate_report_from_question(
@@ -246,9 +246,17 @@ async def generate_report(req: GenerateReportRequest):
         report_id=report_id,
         mdx=mdx,
         analyses=sql_answers,
+        status="done",
     )
 
     return {
         "mdx": main_content,
         "sql_answers": sql_answers,
     }
+
+# return a stream for updating the report's thinking status
+@router.post("/oracle/update_report_thinking_status")
+async def update_report_thinking_status(req: Request):
+    params = await req.json()
+    report_id = params.get("report_id")
+    

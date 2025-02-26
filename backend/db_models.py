@@ -158,7 +158,6 @@ class OracleGuidelines(Base):
 
 class ReportStatus(enum.Enum):
     INITIALIZED = "initialized"
-    CLARIFICATION_PROVIDED = "clarification_provided"
     THINKING = "thinking"
     ERRORED = "errored"
     DONE = "done"

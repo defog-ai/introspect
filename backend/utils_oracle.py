@@ -114,7 +114,8 @@ async def set_oracle_report(
     inputs: dict = None,
     mdx: str = None,
     analyses: list = None,
-    thinking_steps: list = None
+    thinking_steps: list = None,
+    status: Literal["initialized", "thinking", "errored", "done"] = None,
 ) -> str:
     async with AsyncSession(engine) as session:
         async with session.begin():
@@ -127,6 +128,7 @@ async def set_oracle_report(
                         inputs=inputs,
                         mdx=mdx,
                         analyses=analyses,
+                        status=status
                     ).returning(OracleReports.report_id)
                 )
                 report_id = report_id.scalar_one()
@@ -153,7 +155,9 @@ async def set_oracle_report(
                     report.analyses = analyses
                 if thinking_steps:
                     report.thinking_steps = thinking_steps
-                
+                if status:
+                    report.status = status
+
     return report_id
 
 async def append_thinking_step_to_oracle_report(report_id: int, thinking_step: Any):
@@ -195,3 +199,4 @@ async def post_tool_call_func(function_name, input_args, tool_result, report_id)
             "result": thinking_step_result
         }
     )
+
