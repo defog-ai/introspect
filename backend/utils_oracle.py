@@ -140,7 +140,7 @@ async def set_analysis(analysis_id: str, db_name: str, sql: str, csv: str, mdx: 
                 LOGGER.debug(f"Updated analysis ID {analysis_id} for API key {db_name}")
     return analysis_id
 
-async def set_oracle_report(db_name: str, report_name: str, inputs: dict, mdx: str, analysis_ids: list) -> str:
+async def set_oracle_report(db_name: str, report_name: str, inputs: dict, mdx: str, analyses: list) -> str:
     async with AsyncSession(engine) as session:
         async with session.begin():
             await session.execute(
@@ -150,7 +150,7 @@ async def set_oracle_report(db_name: str, report_name: str, inputs: dict, mdx: s
                     created_ts=datetime.now(),
                     inputs=inputs,
                     mdx=mdx,
-                    analysis_ids=analysis_ids,
+                    analyses=analyses,
                 )
             )
     return True

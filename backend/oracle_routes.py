@@ -201,13 +201,18 @@ async def generate_report(req: GenerateReportRequest):
     )
     
     main_content = analysis_response.report
-    sql_answers = analysis_response.sql_answers.model_dump()
-    for idx, answer in enumerate(sql_answers):
-        answer[idx]["rows"] = json.loads(answer["rows"])
-        answer[idx]["columns"] = [{"dataIndex": col, "title": col} for col in answer["columns"]]
     print(main_content, flush=True)
+    sql_answers = analysis_response.model_dump()["sql_answers"]
+    sql_answers = [i for i in sql_answers if not i["error"]]
+    for idx, answer in enumerate(sql_answers):
+        try:
+            sql_answers[idx]["rows"] = json.loads(answer["rows"])
+            sql_answers[idx]["columns"] = [{"dataIndex": col, "title": col} for col in answer["columns"]]
+        except Exception as e:
+            print(str(e), flush=True)
+            print(answer, flush=True)
 
-    mdx = f"# {user_question.title()}\n\n{main_content}"
+    mdx = f"# {user_question}\n\n{main_content}"
 
     # save to oracle_reports table
     await set_oracle_report(
@@ -215,7 +220,7 @@ async def generate_report(req: GenerateReportRequest):
         report_name=user_question,
         inputs=req.model_dump(),
         mdx=mdx,
-        analysis_ids=[],
+        analyses=sql_answers,
     )
 
     return {
