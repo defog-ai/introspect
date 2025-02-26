@@ -89,7 +89,7 @@ async def reports_list(req: BasicRequest):
 
     reports_list = []
     for report in reports:
-        status = report.status or ""
+        status = report.status.value or ""
         is_revision = status.startswith("Revision: ")
         is_being_revised = status.startswith("Revision in progress: ")
         if is_revision:
@@ -98,7 +98,7 @@ async def reports_list(req: BasicRequest):
             {
                 "report_id": report.report_id,
                 "report_name": report.report_name,
-                "status": report.status,
+                "status": report.status.value,
                 "is_revision": is_revision,
                 "is_being_revised": is_being_revised,
                 "date_created": report.created_ts.isoformat(),  # Convert to ISO 8601 string
