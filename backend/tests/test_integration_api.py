@@ -134,7 +134,7 @@ def test_add_db_creds(admin_token):
     """Test adding a new database with real Postgres connection"""
     try:
         # First setup the test database in our system
-        # setup_test_database()
+        setup_test_database()
 
         # Use our test database configuration
         db_name = TEST_DB["db_name"]
@@ -191,8 +191,9 @@ def test_add_db_creds(admin_token):
 
         # Verify we got our real tables back
         tables = data.get("tables", [])
-        assert "users" in tables, "Users table not found"
-        assert "orders" in tables, "Orders table not found"
+        assert "customers" in tables, "Customers table not found"
+        assert "ticket_types" in tables, "Ticket types table not found"
+        assert "ticket_sales" in tables, "Ticket sales table not found"
 
         # Verify credentials were returned correctly
         assert data.get("db_type") == "postgres"
@@ -616,7 +617,7 @@ def test_generate_query(admin_token):
 
 
 def test_run_query(admin_token):
-    """Test getting first row from users table"""
+    """Test getting first row from customers table"""
     from utils_sql import execute_sql
     import asyncio
     
@@ -629,8 +630,8 @@ def test_run_query(admin_token):
         "password": "postgres",
     }
     
-    # Query to get first row from users table
-    sql = "SELECT * FROM users LIMIT 1;"
+    # Query to get first row from customers table
+    sql = "SELECT * FROM customers LIMIT 1;"
 
     # Execute query
     df, err = asyncio.run(execute_sql("postgres", db_creds, sql))
@@ -647,7 +648,86 @@ def test_run_query(admin_token):
     assert all(col in df.columns for col in expected_columns), f"Missing columns. Expected {expected_columns}, got {df.columns.tolist()}"
     
     # Print the result
-    print("First user in database:")
+    print("First customer in database:")
     print(df.to_dict(orient="records")[0])
 
 
+def test_oracle_report_generation(admin_token):
+    """Test the oracle report generation flow including clarifications and report generation"""
+    try:
+        # First setup the test database in our system
+        setup_test_database()
+
+        # Use our test database configuration
+        db_name = TEST_DB["db_name"]
+
+        # Step 1: Ask for clarification questions
+        user_question = "What are the sales trends for each ticket type?"
+        clarify_response = requests.post(
+            f"{BASE_URL}/oracle/clarify_question",
+            json={
+                "token": admin_token,
+                "db_name": db_name,
+                "user_question": user_question,
+                "answered_clarifications": [],
+                "clarification_guidelines": "If unspecified, trends should cover the last 3 months on a weekly basis."
+            },
+            headers={"Content-Type": "application/json"},
+        )
+
+        # Check clarification response
+        assert clarify_response.status_code == 200, f"Failed to get clarifications: {clarify_response.text}"
+        clarify_data = clarify_response.json()
+        clarifications = clarify_data.get("clarifications", [])
+        
+        print("\nReceived clarification questions:")
+        for c in clarifications:
+            print(f"- {c['clarification']}")
+            if 'options' in c:
+                print(f"  Options: {c['options']}")
+
+        # Step 2: Answer a couple expected clarifications
+        def get_clarification_answer(clarification: str) -> str:
+            clarification = clarification.lower()
+            if "sales metric" in clarification:
+                return "Sales revenue"
+            elif "status" in clarification:
+                return "Combine all statuses"
+            else:
+                return "All ticket types"
+
+        answered_clarifications = [
+            {
+                "clarification": c["clarification"],
+                "answer": get_clarification_answer(c["clarification"])
+            }
+            for c in clarifications
+        ]
+
+        # Step 3: Generate the report
+        report_response = requests.post(
+            f"{BASE_URL}/oracle/generate_report",
+            json={
+                "token": admin_token,
+                "db_name": db_name,
+                "user_question": user_question,
+                "answered_clarifications": answered_clarifications
+            },
+            headers={"Content-Type": "application/json"},
+        )
+
+        # Check report response
+        assert report_response.status_code == 200, f"Failed to generate report: {report_response.text}"
+        report_data = report_response.json()
+        
+        # Verify report content
+        assert "mdx" in report_data, "No MDX content in report response"
+        assert report_data["mdx"], "Empty MDX content in report"
+        assert "analysis_ids" in report_data, "No analysis IDs in report response"
+
+        print("\nGenerated Report:")
+        print(report_data["mdx"])
+
+    except Exception as e:
+        print(f"\nTest failed with error: {str(e)}")
+        raise e
