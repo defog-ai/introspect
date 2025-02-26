@@ -105,7 +105,9 @@ async def text_to_sql_tool(
     result_json = result_df.to_json(orient="records", double_precision=4)
     columns = result_df.columns.tolist()
     if result_json == "[]":
-        result_json = "No data retrieved. Consider rephrasing the question or generating a new question. Pay close attention to column names and column descriptions in the database schema to ensure you are fetching the right data. If necessary, first retrieve the unique values of the column(s) or first few rows of the table to better understand the data."
+        error_msg = "No data retrieved. Consider rephrasing the question or generating a new question. Pay close attention to column names and column descriptions in the database schema to ensure you are fetching the right data. If necessary, first retrieve the unique values of the column(s) or first few rows of the table to better understand the data."
+    else:
+        error_msg = ""
 
     return AnswerQuestionFromDatabaseOutput(
         analysis_id=str(uuid.uuid4()),
@@ -114,6 +116,7 @@ async def text_to_sql_tool(
         columns=columns,
         rows=result_json,
         df_truncated=df_truncated,
+        error=error_msg,
     )
 
 
@@ -135,7 +138,7 @@ async def generate_report_from_question(
             model=input.model,
             tools=tools,
             messages=[
-                {"role": "developer", "content": "Formatting re-enabled"},
+                # {"role": "developer", "content": "Formatting re-enabled"},
                 {
                     "role": "user",
                     "content": f"""I would like you to create a comprehensive analysis for answering this question: {input.question}
@@ -148,8 +151,6 @@ The database schema is below:
 ```
 
 Try to aggregate data in clear and understandable buckets. Please give your final answer as a descriptive report.
-
-For each point that you make in the report, please include all the relevant analysis IDs in brackets that was used to generate the data for it e.g. [ID: analysis_id_1, analysis_id_2].
 """,
                 },
             ],
@@ -201,8 +202,6 @@ The schema for the database is as follows:
 Synthesize these intermediate reports done by a group of independent analysts into a final report by combining the insights from each of the reports provided.
 
 You should attempt to get the most useful insights from each report, without repeating the insights across reports. Please ensure that you get the actual data insights from these reports, and not just methodologies.
-
-You must cite the relevant analysis IDs in brackets [] for each key insight in the report.
 
 Here are the reports to synthesize:
 """
