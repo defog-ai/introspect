@@ -1,4 +1,5 @@
 from datetime import datetime
+import enum
 from sqlalchemy import (
     Boolean,
     Column,
@@ -8,6 +9,7 @@ from sqlalchemy import (
     JSON,
     MetaData,
     Text,
+    Enum,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, mapped_column
@@ -145,6 +147,7 @@ class UserHistory(Base):
 
 
 # ORACLE TABLES
+
 class OracleGuidelines(Base):
     __tablename__ = "oracle_guidelines"
     db_name = Column(Text, primary_key=True)
@@ -153,13 +156,19 @@ class OracleGuidelines(Base):
     generate_questions_deeper_guidelines = Column(Text)
     generate_report_guidelines = Column(Text)
 
+class ReportStatus(enum.Enum):
+    INITIALIZED = "initialized"
+    CLARIFICATION_PROVIDED = "clarification_provided"
+    THINKING = "thinking"
+    ERRORED = "errored"
+    DONE = "done"
 
 class OracleReports(Base):
     __tablename__ = "oracle_reports"
     report_id = Column(Integer, primary_key=True, autoincrement=True)
     report_name = Column(Text)
     created_ts = Column(DateTime, default=datetime.now)
-    status = Column(Text)
+    status = Column(Enum(ReportStatus), default=ReportStatus.INITIALIZED)
     db_name = Column(Text)
     inputs = Column(JSON)
     mdx = Column(Text)
@@ -167,6 +176,7 @@ class OracleReports(Base):
     feedback = Column(Text, default=None)
     general_comments = Column(Text, default=None)
     comments = Column(JSON, default=None)
+    thinking_steps = Column(JSON, default=None)
 
 
 class OracleSources(Base):
