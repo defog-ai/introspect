@@ -33,7 +33,7 @@ async def edit_chart(
         temperature=0,
     )
 
-    LOGGER.info("Cost of generating chart edit: {:.2f} ¢".format(response.cost_in_cents))
+    LOGGER.info("Cost of generating chart edit: {:.2f}¢".format(response.cost_in_cents))
     LOGGER.info("Time taken to generate chart edit: %s", response.time)
 
     response = response.content

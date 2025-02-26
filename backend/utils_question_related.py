@@ -41,7 +41,7 @@ async def generate_follow_on_questions(
         max_completion_tokens=128,
     )
     
-    LOGGER.info("Cost of generating follow-on questions: {:.2f} ¢".format(follow_on_questions.cost_in_cents))
+    LOGGER.info("Cost of generating follow-on questions: {:.2f}¢".format(follow_on_questions.cost_in_cents))
     LOGGER.info("Time taken to generate follow-on questions: %s", follow_on_questions.time)
 
     follow_on_questions = follow_on_questions.content.splitlines()
