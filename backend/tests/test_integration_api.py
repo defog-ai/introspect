@@ -878,14 +878,8 @@ def test_run_query(admin_token):
     from utils_sql import execute_sql
     import asyncio
 
-    # Database credentials
-    db_creds = {
-        "host": "host.docker.internal",
-        "port": 5432,
-        "database": "test_db",
-        "user": "postgres",
-        "password": "postgres",
-    }
+    # Use test database configuration
+    db_creds = TEST_DB["db_creds"]
 
     # Query to get first row from customers table
     sql = "SELECT * FROM customers LIMIT 1;"
