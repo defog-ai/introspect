@@ -6,7 +6,7 @@ from db_config import engine
 from utils_md import get_metadata, mk_create_ddl
 from defog.llm.utils import chat_async
 from utils_logging import LOGGER
-from typing import Literal
+from typing import Literal, Any
 from datetime import datetime
 import re
 
@@ -154,3 +154,19 @@ async def set_oracle_report(
                     report.thinking_steps = thinking_steps
                 
     return report_id
+
+async def append_thinking_step_to_oracle_report(report_id: int, thinking_step: Any):
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            report = await session.execute(
+                select(OracleReports).where(
+                    OracleReports.report_id == report_id
+                )
+            )
+            report = report.scalar_one_or_none()
+            if not report:
+                return None
+            
+            report.thinking_steps.append(thinking_step)
+    
+    return
