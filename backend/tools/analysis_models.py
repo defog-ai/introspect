@@ -42,6 +42,10 @@ class GenerateReportFromQuestionInput(BaseModel):
         ..., description="The name of the model to use for generating SQL. "
     )
     db_name: str = Field(..., description="The name of database to generate SQL for. ")
+    clarification_responses: Optional[str] = Field(
+        default="",
+        description="The clarifications provided by the user after asking the initial question.",
+    )
     num_reports: int = Field(
         default=1,
         description="The number of reports to generate. "

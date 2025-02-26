@@ -192,11 +192,18 @@ async def generate_report(req: GenerateReportRequest):
     user_question = req.user_question
     answered_clarifications = req.answered_clarifications
 
+    clarification_responses = ""
+    if answered_clarifications:
+        clarification_responses = "\nFor additional context: after the user asked this question, they provided the following clarifications:"
+        for clarification in answered_clarifications:
+            clarification_responses += f" {clarification.clarification} (Answer: {clarification.answer})\n"
+
     analysis_response = await generate_report_from_question(
         GenerateReportFromQuestionInput(
             db_name=db_name,
             model="claude-3-7-sonnet-latest",
             question=user_question,
+            clarification_responses=clarification_responses,
         )
     )
     

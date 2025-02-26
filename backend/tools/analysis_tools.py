@@ -144,7 +144,7 @@ async def generate_report_from_question(
                     "content": f"""I would like you to create a comprehensive analysis for answering this question: {input.question}
 
 Look in the database {input.db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few. Do not ask the exact same question twice. Always ask new questions or rephrase the previous question if it led to an error.
-
+{input.clarification_responses}
 The database schema is below:
 ```sql
 {metadata_str}
