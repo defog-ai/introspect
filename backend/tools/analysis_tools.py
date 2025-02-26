@@ -109,10 +109,12 @@ async def text_to_sql_tool(
     # this will make it much nicer to read on the frontend, and might also make it easier to analyze by the AI
     num_rows, num_cols = result_df.shape
     if num_rows < 5 and num_cols > num_rows:
+        # we want to make the first column the index, so that the transposed columns are not just random numbers
+        result_df = result_df.set_index(result_df.columns[0])
         result_df = result_df.T
 
     result_json = result_df.to_json(orient="records", double_precision=4)
-    columns = result_df.columns.tolist()
+    columns = result_df.columns.astype(str).tolist()
     if result_json == "[]":
         error_msg = "No data retrieved. Consider rephrasing the question or generating a new question. Pay close attention to column names and column descriptions in the database schema to ensure you are fetching the right data. If necessary, first retrieve the unique values of the column(s) or first few rows of the table to better understand the data."
     else:
