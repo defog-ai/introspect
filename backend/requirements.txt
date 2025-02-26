@@ -1,6 +1,6 @@
 boto3
 colorama
-defog==0.67.8
+defog==0.67.10
 fastapi
 google-auth
 httpx
