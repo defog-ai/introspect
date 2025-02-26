@@ -101,20 +101,11 @@ const MetadataTable = ({
         if (data.error) {
           message.error(data.error || "Error updating metadata", 10);
         } else {
-          if (data.suggested_joins) {
-            document.getElementById("allowed-joins").value =
-              data.suggested_joins;
-          }
-          if (data.detail) {
-            message.error(data.detail, 3);
-          } else {
-            message.success("Metadata updated successfully!");
-          }
+          message.success("Metadata updated successfully!");
         }
       } catch (error) {
         console.error("Error saving data:", error);
         message.error("Error saving data");
-        // setLoading(false);
       }
     }, 500),
     [dbName]
