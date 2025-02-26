@@ -1,7 +1,7 @@
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from oracle_models import Clarification
-from db_models import OracleGuidelines, OracleAnalyses, OracleReports
+from db_models import OracleGuidelines, OracleReports
 from db_config import engine
 from utils_md import get_metadata, mk_create_ddl
 from defog.llm.utils import chat_async
@@ -106,39 +106,6 @@ async def get_oracle_guidelines(db_name: str) -> str:
             guidelines = result.scalar_one_or_none()
 
     return guidelines
-
-async def set_analysis(analysis_id: str, db_name: str, sql: str, csv: str, mdx: str) -> str:
-    async with AsyncSession(engine) as session:
-        async with session.begin():
-            stmt = await session.execute(
-                select(OracleAnalyses).where(
-                    OracleAnalyses.db_name == db_name,
-                    OracleAnalyses.analysis_id == analysis_id,
-                )
-            )
-            result = stmt.scalar_one_or_none()
-
-            if not result:
-                await session.execute(
-                    insert(OracleAnalyses).values(
-                        db_name=db_name,
-                        analysis_id=analysis_id,
-                        sql=sql,
-                        csv=csv,
-                        mdx=mdx,
-                    )
-                )
-            else:
-                await session.execute(
-                    update(OracleAnalyses)
-                    .where(
-                        OracleAnalyses.db_name == db_name,
-                        OracleAnalyses.analysis_id == analysis_id,
-                    )
-                    .values(sql=sql, mdx=mdx, csv=csv)
-                )
-                LOGGER.debug(f"Updated analysis ID {analysis_id} for API key {db_name}")
-    return analysis_id
 
 async def set_oracle_report(db_name: str, report_name: str, inputs: dict, mdx: str, analyses: list) -> str:
     async with AsyncSession(engine) as session:
