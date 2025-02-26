@@ -49,7 +49,7 @@ async def generate_clarification(
         max_completion_tokens=128,
     )
 
-    LOGGER.info("Cost of generating clarification: %s", clarifications.cost_in_cents)
+    LOGGER.info("Cost of generating clarification: {:.2f} ¢".format(clarifications.cost_in_cents))
     LOGGER.info("Time taken to generate clarification: %s", clarifications.time)
 
     return clarifications.content
@@ -84,7 +84,7 @@ Question: What do you mean by the "worst" players? Answer: those with the lowest
         max_completion_tokens=128,
     )
 
-    LOGGER.info("Cost of generating clarification: %s", statement.cost_in_cents)
+    LOGGER.info("Cost of generating clarification: {:.2f} ¢".format(statement.cost_in_cents))
     LOGGER.info("Time taken to generate clarification: %s", statement.time)
 
     return statement.content
