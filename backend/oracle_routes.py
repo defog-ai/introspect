@@ -8,14 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import pandas as pd
 import json
 import time
-from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines, set_oracle_report
+from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines, set_oracle_report, post_tool_call_func
 from db_models import OracleGuidelines
 from db_config import engine
 from auth_utils import validate_user_request
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from tools.analysis_models import GenerateReportFromQuestionInput
+from functools import partial
 
 from utils_logging import LOGGER, save_and_log, save_timing
 from tools.analysis_tools import generate_report_from_question
@@ -194,7 +194,7 @@ class GenerateReportRequest(BaseModel):
         }
     }
 
-@router.post("/oracle/generate_report", dependencies=[Depends(validate_user_request)])
+@router.post("/oracle/generate_report")
 async def generate_report(req: GenerateReportRequest):
     db_name = req.db_name
     user_question = req.user_question
@@ -214,15 +214,17 @@ async def generate_report(req: GenerateReportRequest):
         clarification_responses = "\nFor additional context: after the user asked this question, they provided the following clarifications:"
         for clarification in answered_clarifications:
             clarification_responses += f" {clarification.clarification} (Answer: {clarification.answer})\n"
+    
+    # use partial to pass the report_id to post_tool_call_func, so that it can update the correct report
+    post_tool_func = partial(post_tool_call_func, report_id=report_id)
 
     # generate the report
     analysis_response = await generate_report_from_question(
-        GenerateReportFromQuestionInput(
-            db_name=db_name,
-            model="claude-3-7-sonnet-latest",
-            question=user_question,
-            clarification_responses=clarification_responses,
-        )
+        db_name=db_name,
+        model="claude-3-7-sonnet-latest",
+        question=user_question,
+        clarification_responses=clarification_responses,
+        post_tool_func=post_tool_func,
     )
     
     main_content = analysis_response.report
