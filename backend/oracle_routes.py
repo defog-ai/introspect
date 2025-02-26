@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import pandas as pd
 import json
 import time
-from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines, set_analysis, set_oracle_report, replace_sql_blocks
+from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines, set_oracle_report, replace_sql_blocks
 from db_models import OracleGuidelines
 from db_config import engine
 from auth_utils import validate_user_request
