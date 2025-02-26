@@ -159,11 +159,11 @@ async def get_report_mdx(req: ReportRequest):
             report = result.scalar_one_or_none()
 
             if report:
-                mdx = report.mdx
                 return JSONResponse(
                     status_code=200,
                     content={
-                        "mdx": mdx,
+                        "mdx": report.mdx,
+                        "analyses": report.analyses,
                     },
                 )
             else:
