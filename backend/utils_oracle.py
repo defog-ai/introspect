@@ -108,12 +108,12 @@ async def get_oracle_guidelines(db_name: str) -> str:
     return guidelines
 
 async def set_oracle_report(
-    db_name: str,
+    report_id: str = None,
+    db_name: str = None,
     report_name: str = None,
     inputs: dict = None,
     mdx: str = None,
     analyses: list = None,
-    report_id: str = None,
     thinking_steps: list = None
 ) -> str:
     async with AsyncSession(engine) as session:
@@ -154,40 +154,3 @@ async def set_oracle_report(
                     report.thinking_steps = thinking_steps
                 
     return report_id
-
-def replace_sql_blocks(markdown: str, sql_to_analysis_id: dict) -> str:
-    """
-    Replace SQL code blocks in a markdown string with their corresponding analysis id,
-    if a matching normalized SQL exists in the provided sql_to_analysis_id dictionary.
-    
-    Normalization steps:
-    - Convert SQL to lowercase.
-    - Replace newlines with spaces.
-    - Collapse multiple spaces into a single space.
-    
-    Args:
-        markdown (str): The markdown string containing SQL code blocks.
-        sql_to_analysis_id (dict): A dictionary mapping normalized SQL strings to analysis ids.
-        
-    Returns:
-        str: The markdown string with SQL code blocks replaced by their analysis id where applicable.
-    """
-    
-    # Regex pattern to match SQL code blocks (```sql ... ```)
-    pattern = re.compile(r'```sql\s*\n(.*?)\n```', re.DOTALL)
-    
-    def normalize_sql(sql: str) -> str:
-        # Convert to lowercase, replace newlines with a space, and collapse extra whitespace.
-        return ' '.join(sql.lower().replace('\n', ' ').split())
-    
-    def replacement(match: re.Match) -> str:
-        sql_code = match.group(1)
-        normalized = normalize_sql(sql_code)
-        # Look up the normalized SQL in the dictionary.
-        if normalized in sql_to_analysis_id:
-            return sql_to_analysis_id[normalized]
-        # If no matching analysis id is found, return the original SQL block unchanged.
-        return match.group(0)
-    
-    # Substitute all SQL blocks using the replacement function.
-    return pattern.sub(replacement, markdown)

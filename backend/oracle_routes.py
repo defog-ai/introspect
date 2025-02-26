@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import pandas as pd
 import json
 import time
-from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines, set_oracle_report, replace_sql_blocks
+from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines, set_oracle_report
 from db_models import OracleGuidelines
 from db_config import engine
 from auth_utils import validate_user_request
@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from tools.analysis_models import GenerateReportFromQuestionInput
 
 from utils_logging import LOGGER, save_and_log, save_timing
-from tools.analysis_tools import synthesize_report_from_questions, generate_report_from_question
+from tools.analysis_tools import generate_report_from_question
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
@@ -152,6 +152,13 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
                 or "options" not in clarification
             ):
                 raise ValueError(f"Invalid clarification response: {clarification}")
+        
+        # create a new report in the db
+        report_id = await set_oracle_report(
+            db_name=db_name,
+            report_name=req.user_question,
+        )
+        clarify_response["report_id"] = report_id
     except Exception as e:
         LOGGER.error(f"Error getting clarifications: {e}")
         return JSONResponse(
@@ -168,6 +175,7 @@ class Clarification(BaseModel):
     clarification: str
     answer: Optional[Union[str, List[str]]] = None
 class GenerateReportRequest(BaseModel):
+    report_id: int
     db_name: str
     token: str
     user_question: str
@@ -186,18 +194,28 @@ class GenerateReportRequest(BaseModel):
         }
     }
 
-@router.post("/oracle/generate_report")
+@router.post("/oracle/generate_report", dependencies=[Depends(validate_user_request)])
 async def generate_report(req: GenerateReportRequest):
     db_name = req.db_name
     user_question = req.user_question
     answered_clarifications = req.answered_clarifications
+    report_id = req.report_id
 
+    # set the clarified answers in the database
+    await set_oracle_report(
+        report_id=report_id,
+        report_name=user_question,
+        inputs=req.model_dump(),
+    )
+
+    # convert clarification responses into a single string
     clarification_responses = ""
     if answered_clarifications:
         clarification_responses = "\nFor additional context: after the user asked this question, they provided the following clarifications:"
         for clarification in answered_clarifications:
             clarification_responses += f" {clarification.clarification} (Answer: {clarification.answer})\n"
 
+    # generate the report
     analysis_response = await generate_report_from_question(
         GenerateReportFromQuestionInput(
             db_name=db_name,
@@ -223,9 +241,7 @@ async def generate_report(req: GenerateReportRequest):
 
     # save to oracle_reports table
     await set_oracle_report(
-        db_name=db_name,
-        report_name=user_question,
-        inputs=req.model_dump(),
+        report_id=report_id,
         mdx=mdx,
         analyses=sql_answers,
     )
