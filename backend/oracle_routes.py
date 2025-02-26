@@ -156,7 +156,7 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
         report_id = await set_oracle_report(
             db_name=db_name,
             report_name=req.user_question,
-            status="initialized"
+            status="INITIALIZED"
         )
         clarify_response["report_id"] = report_id
     except Exception as e:
@@ -215,7 +215,7 @@ async def generate_report(req: GenerateReportRequest):
     await set_oracle_report(
         report_id=report_id,
         inputs=req.model_dump(),
-        status="thinking",
+        status="THINKING",
     )
 
     # generate the report
@@ -246,7 +246,7 @@ async def generate_report(req: GenerateReportRequest):
         report_id=report_id,
         mdx=mdx,
         analyses=sql_answers,
-        status="done",
+        status="DONE",
     )
 
     return {

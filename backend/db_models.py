@@ -157,10 +157,10 @@ class OracleGuidelines(Base):
     generate_report_guidelines = Column(Text)
 
 class ReportStatus(enum.Enum):
-    INITIALIZED = "initialized"
-    THINKING = "thinking"
-    ERRORED = "errored"
-    DONE = "done"
+    INITIALIZED = "INITIALIZED"
+    THINKING = "THINKING"
+    ERRORED = "ERRORED"
+    DONE = "DONE"
 
 class OracleReports(Base):
     __tablename__ = "oracle_reports"

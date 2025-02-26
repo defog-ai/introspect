@@ -115,7 +115,7 @@ async def set_oracle_report(
     mdx: str = None,
     analyses: list = None,
     thinking_steps: list = None,
-    status: Literal["initialized", "thinking", "errored", "done"] = None,
+    status: Literal["INITIALIZED", "THINKING", "ERRORED", "DONE"] = None,
 ) -> str:
     async with AsyncSession(engine) as session:
         async with session.begin():
