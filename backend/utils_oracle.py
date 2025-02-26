@@ -107,20 +107,53 @@ async def get_oracle_guidelines(db_name: str) -> str:
 
     return guidelines
 
-async def set_oracle_report(db_name: str, report_name: str, inputs: dict, mdx: str, analyses: list) -> str:
+async def set_oracle_report(
+    db_name: str,
+    report_name: str = None,
+    inputs: dict = None,
+    mdx: str = None,
+    analyses: list = None,
+    report_id: str = None,
+    thinking_steps: list = None
+) -> str:
     async with AsyncSession(engine) as session:
         async with session.begin():
-            await session.execute(
-                insert(OracleReports).values(
-                    db_name=db_name,
-                    report_name=report_name,
-                    created_ts=datetime.now(),
-                    inputs=inputs,
-                    mdx=mdx,
-                    analyses=analyses,
+            if not report_id:    
+                report_id = await session.execute(
+                    insert(OracleReports).values(
+                        db_name=db_name,
+                        report_name=report_name,
+                        created_ts=datetime.now(),
+                        inputs=inputs,
+                        mdx=mdx,
+                        analyses=analyses,
+                    ).returning(OracleReports.report_id)
                 )
-            )
-    return True
+                report_id = report_id.scalar_one()
+            else:
+                # first, get the report
+                report = await session.execute(
+                    select(OracleReports).where(
+                        OracleReports.report_id == report_id,
+                        OracleReports.db_name == db_name
+                    )
+                )
+                report = report.scalar_one_or_none()
+                if not report:
+                    return None
+                
+                if report_name:
+                    report.report_name = report_name
+                if inputs:
+                    report.inputs = inputs
+                if mdx:
+                    report.mdx = mdx
+                if analyses:
+                    report.analyses = analyses
+                if thinking_steps:
+                    report.thinking_steps = thinking_steps
+                
+    return report_id
 
 def replace_sql_blocks(markdown: str, sql_to_analysis_id: dict) -> str:
     """
