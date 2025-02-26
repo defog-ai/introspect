@@ -134,8 +134,7 @@ async def set_oracle_report(
                 # first, get the report
                 report = await session.execute(
                     select(OracleReports).where(
-                        OracleReports.report_id == report_id,
-                        OracleReports.db_name == db_name
+                        OracleReports.report_id == report_id
                     )
                 )
                 report = report.scalar_one_or_none()
@@ -144,6 +143,8 @@ async def set_oracle_report(
                 
                 if report_name:
                     report.report_name = report_name
+                if db_name:
+                    report.db_name = db_name
                 if inputs:
                     report.inputs = inputs
                 if mdx:
@@ -167,6 +168,30 @@ async def append_thinking_step_to_oracle_report(report_id: int, thinking_step: A
             if not report:
                 return None
             
-            report.thinking_steps.append(thinking_step)
+            thinking_steps = report.thinking_steps
+            if thinking_steps is None:
+                thinking_steps = []
+            thinking_steps.append(thinking_step)
+            report.thinking_steps = thinking_steps
     
     return
+
+async def post_tool_call_func(function_name, input_args, tool_result, report_id):
+    print("calling post_tool_call_func", flush=True)
+    print(f"current report id: {report_id}", flush=True)
+    
+    thinking_step_inputs = input_args
+    thinking_step_result = tool_result
+
+    # check if thinking_step_result is a pydantic model. if so, convert to dict
+    if isinstance(thinking_step_result, BaseModel):
+        thinking_step_result = thinking_step_result.model_dump()
+
+    await append_thinking_step_to_oracle_report(
+        report_id=report_id, 
+        thinking_step = {
+            "function_name": function_name,
+            "inputs": thinking_step_inputs,
+            "result": thinking_step_result
+        }
+    )
