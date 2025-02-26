@@ -202,7 +202,7 @@ async def generate_report(req: GenerateReportRequest):
         )
     )
     
-    main_content = analysis_response.report
+    main_content = analysis_response.synthesized_report
     print(main_content, flush=True)
 
     mdx = f"# {user_question.title()}\n\n{main_content}"
