@@ -2,8 +2,9 @@ import pytest
 import requests
 import json
 import os
-from sqlalchemy import create_engine, insert, select, update, text
-from db_models import DbCreds
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+from db_models import DbCreds, Base
 
 # Configuration
 BASE_URL = "http://localhost:1235"  # Backend server port
@@ -74,6 +75,34 @@ def setup_test_database():
         conn.execute(text(sql_setup))
 
 
+def setup_test_db_name():
+    """Setup test database name in DbCreds table using SQLAlchemy ORM."""
+    
+    # Connect to the database where DbCreds table exists
+    docker_db_creds = {
+        "user": os.environ.get("DEFOG_DBUSER", "postgres"),
+        "password": os.environ.get("DEFOG_DBPASSWORD", "postgres"),
+        "host": os.environ.get("DEFOG_DBHOST", "agents-postgres"),
+        "port": os.environ.get("DEFOG_DBPORT", "5432"),
+        "database": os.environ.get("DEFOG_DATABASE", "postgres"),
+    }
+    
+    docker_uri = f"postgresql://{docker_db_creds['user']}:{docker_db_creds['password']}@{docker_db_creds['host']}:{docker_db_creds['port']}/{docker_db_creds['database']}"
+    engine = create_engine(docker_uri)
+    Session = sessionmaker(bind=engine)
+    
+    with Session() as session:
+        # Check if db_name already exists
+        existing_db = session.query(DbCreds).filter_by(db_name=TEST_DB["db_name"]).first()
+        
+        if not existing_db:
+            # Create new DbCreds entry
+            new_db_cred = DbCreds(db_name=TEST_DB["db_name"])
+            session.add(new_db_cred)
+            session.commit()
+
+
+
 @pytest.fixture
 def admin_token():
     """Get admin token for authentication reusable across all the integration API tests as a fixture"""
@@ -84,6 +113,99 @@ def admin_token():
     data = response.json()
     assert "token" in data
     return data["token"]
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup():
+    """
+    Cleanup fixture that runs once per session.
+    After all tests finish, it removes everything related to the test_db from the database.
+    """
+    setup_test_database()
+    setup_test_db_name()
+
+    yield
+
+    # --- Cleanup code runs here, *after* all tests have completed ---
+    print("\n--- Running cleanup for test_db ---")
+    try:
+        db_name = TEST_DB["db_name"]
+
+        # 1. Get admin token for verification
+        response = requests.post(
+            f"{BASE_URL}/login", json={"username": USERNAME, "password": PASSWORD}
+        )
+        if response.status_code != 200:
+            print("Failed to get admin token for cleanup verification.")
+            return
+        admin_token = response.json()["token"]
+
+        # 2. Clean up all tables in the docker postgres container
+        docker_db_creds = {
+            "user": os.environ.get("DEFOG_DBUSER", "postgres"),
+            "password": os.environ.get("DEFOG_DBPASSWORD", "postgres"),
+            "host": os.environ.get("DEFOG_DBHOST", "agents-postgres"),
+            "port": os.environ.get("DEFOG_DBPORT", "5432"),
+            "database": os.environ.get("DEFOG_DATABASE", "postgres"),
+        }
+        docker_uri = f"postgresql://{docker_db_creds['user']}:{docker_db_creds['password']}@{docker_db_creds['host']}:{docker_db_creds['port']}/{docker_db_creds['database']}"
+        docker_engine = create_engine(docker_uri)
+
+        with docker_engine.begin() as conn:
+            # Delete from all tables where db_name is a column
+            tables_with_db_name = [
+                "metadata", "table_info", "instructions", "golden_queries",
+                "imported_tables", "analyses", "oracle_guidelines", 
+                "oracle_analyses", "oracle_sources", "db_creds"
+            ]
+            
+            for table in tables_with_db_name:
+                conn.execute(text(f"DELETE FROM {table} WHERE db_name = :db_name"), {"db_name": db_name})
+
+            # Delete from oracle_reports where db_name is in a JSON column
+            conn.execute(text("DELETE FROM oracle_reports WHERE db_name = :db_name"), {"db_name": db_name})
+
+            # Delete any users created during tests
+            conn.execute(text("DELETE FROM users WHERE username != :admin_user"), {"admin_user": USERNAME})
+
+        # 3. Verify db_creds are deleted by calling get_tables_db_creds
+        response = requests.post(
+            f"{BASE_URL}/integration/get_tables_db_creds",
+            json={"token": admin_token, "db_name": db_name},
+            headers={"Content-Type": "application/json"},
+        )
+        if response.status_code == 200 and not response.json().get("error"):
+            print("Warning: Database credentials still exist after cleanup!")
+
+        # 4. Drop the test database
+        # Setup connection to postgres database
+        local_db_creds = {
+            "user": "postgres",
+            "password": "postgres",
+            "host": "host.docker.internal",
+            "port": "5432",
+            "database": "postgres",
+        }
+        local_uri = f"postgresql://{local_db_creds['user']}:{local_db_creds['password']}@{local_db_creds['host']}:{local_db_creds['port']}/{local_db_creds['database']}"
+        local_engine = create_engine(local_uri)
+
+        with local_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            conn.execute(
+                text(
+                    """
+                    SELECT pg_terminate_backend(pg_stat_activity.pid)
+                    FROM pg_stat_activity
+                    WHERE pg_stat_activity.datname = 'test_db'
+                    AND pid <> pg_backend_pid();
+                    """
+                )
+            )
+            conn.execute(text("DROP DATABASE IF EXISTS test_db;"))
+
+        print("--- Test cleanup completed successfully ---")
+
+    except Exception as e:
+        print(f"Cleanup failed with error: {str(e)}")
+
 
 
 def test_admin_login(admin_token):
@@ -99,8 +221,6 @@ def test_add_db_creds(admin_token):
     3. The database tables are accessible with the registered credentials
     """
     try:
-        # First setup the test database locally
-        setup_test_database()
         db_name = TEST_DB["db_name"]
 
         # Step 1: Add database credentials via API
@@ -148,7 +268,6 @@ def test_add_db_creds(admin_token):
     except Exception as e:
         print(f"\nTest failed with error: {str(e)}")
         raise
-
 
 
 def test_add_initial_metadata(admin_token):
@@ -903,82 +1022,82 @@ def test_run_query(admin_token):
     print(df.to_dict(orient="records")[0])
 
 
-# def test_oracle_report_generation(admin_token):
-#     """Test the oracle report generation flow including clarifications and report generation"""
-#     try:
-#         # First setup the test database in our system
-#         setup_test_database()
+def test_oracle_report_generation(admin_token):
+    """Test the oracle report generation flow including clarifications and report generation"""
+    try:
+        # First setup the test database in our system
+        setup_test_database()
 
-#         # Use our test database configuration
-#         db_name = TEST_DB["db_name"]
+        # Use our test database configuration
+        db_name = TEST_DB["db_name"]
 
-#         # Step 1: Ask for clarification questions
-#         user_question = "What are the sales trends for each ticket type?"
-#         clarify_response = requests.post(
-#             f"{BASE_URL}/oracle/clarify_question",
-#             json={
-#                 "token": admin_token,
-#                 "db_name": db_name,
-#                 "user_question": user_question,
-#                 "answered_clarifications": [],
-#                 "clarification_guidelines": "If unspecified, trends should cover the last 3 months on a weekly basis."
-#             },
-#             headers={"Content-Type": "application/json"},
-#         )
+        # Step 1: Ask for clarification questions
+        user_question = "What are the sales trends for each ticket type?"
+        clarify_response = requests.post(
+            f"{BASE_URL}/oracle/clarify_question",
+            json={
+                "token": admin_token,
+                "db_name": db_name,
+                "user_question": user_question,
+                "answered_clarifications": [],
+                "clarification_guidelines": "If unspecified, trends should cover the last 3 months on a weekly basis."
+            },
+            headers={"Content-Type": "application/json"},
+        )
 
-#         # Check clarification response
-#         assert clarify_response.status_code == 200, f"Failed to get clarifications: {clarify_response.text}"
-#         clarify_data = clarify_response.json()
-#         clarifications = clarify_data.get("clarifications", [])
+        # Check clarification response
+        assert clarify_response.status_code == 200, f"Failed to get clarifications: {clarify_response.text}"
+        clarify_data = clarify_response.json()
+        clarifications = clarify_data.get("clarifications", [])
 
-#         print("\nReceived clarification questions:")
-#         for c in clarifications:
-#             print(f"- {c['clarification']}")
-#             if 'options' in c:
-#                 print(f"  Options: {c['options']}")
+        print("\nReceived clarification questions:")
+        for c in clarifications:
+            print(f"- {c['clarification']}")
+            if 'options' in c:
+                print(f"  Options: {c['options']}")
 
-#         # Step 2: Answer a couple expected clarifications
-#         def get_clarification_answer(clarification: str) -> str:
-#             clarification = clarification.lower()
-#             if "sales metric" in clarification:
-#                 return "Sales revenue"
-#             elif "status" in clarification:
-#                 return "Combine all statuses"
-#             else:
-#                 return "All ticket types"
+        # Step 2: Answer a couple expected clarifications
+        def get_clarification_answer(clarification: str) -> str:
+            clarification = clarification.lower()
+            if "sales metric" in clarification:
+                return "Sales revenue"
+            elif "status" in clarification:
+                return "Combine all statuses"
+            else:
+                return "All ticket types"
 
-#         answered_clarifications = [
-#             {
-#                 "clarification": c["clarification"],
-#                 "answer": get_clarification_answer(c["clarification"])
-#             }
-#             for c in clarifications
-#         ]
+        answered_clarifications = [
+            {
+                "clarification": c["clarification"],
+                "answer": get_clarification_answer(c["clarification"])
+            }
+            for c in clarifications
+        ]
 
-#         # Step 3: Generate the report
-#         report_response = requests.post(
-#             f"{BASE_URL}/oracle/generate_report",
-#             json={
-#                 "token": admin_token,
-#                 "db_name": db_name,
-#                 "user_question": user_question,
-#                 "answered_clarifications": answered_clarifications
-#             },
-#             headers={"Content-Type": "application/json"},
-#         )
+        # Step 3: Generate the report
+        report_response = requests.post(
+            f"{BASE_URL}/oracle/generate_report",
+            json={
+                "token": admin_token,
+                "db_name": db_name,
+                "user_question": user_question,
+                "answered_clarifications": answered_clarifications
+            },
+            headers={"Content-Type": "application/json"},
+        )
 
-#         # Check report response
-#         assert report_response.status_code == 200, f"Failed to generate report: {report_response.text}"
-#         report_data = report_response.json()
+        # Check report response
+        assert report_response.status_code == 200, f"Failed to generate report: {report_response.text}"
+        report_data = report_response.json()
 
-#         # Verify report content
-#         assert "mdx" in report_data, "No MDX content in report response"
-#         assert report_data["mdx"], "Empty MDX content in report"
-#         assert "analysis_ids" in report_data, "No analysis IDs in report response"
+        # Verify report content
+        assert "mdx" in report_data, "No MDX content in report response"
+        assert report_data["mdx"], "Empty MDX content in report"
+        assert "analysis_ids" in report_data, "No analysis IDs in report response"
 
-#         print("\nGenerated Report:")
-#         print(report_data["mdx"])
+        print("\nGenerated Report:")
+        print(report_data["mdx"])
 
-#     except Exception as e:
-#         print(f"\nTest failed with error: {str(e)}")
-#         raise e
+    except Exception as e:
+        print(f"\nTest failed with error: {str(e)}")
+        raise e
