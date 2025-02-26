@@ -565,3 +565,39 @@ def test_generate_query(admin_token):
     except Exception as e:
         print(f"\nTest failed with error: {str(e)}")
         raise e
+
+
+def test_run_query(admin_token):
+    """Test getting first row from users table"""
+    from utils_sql import execute_sql
+    import asyncio
+    
+    # Database credentials
+    db_creds = {
+        "host": "host.docker.internal",
+        "port": 5432,
+        "database": "test_db",
+        "user": "postgres",
+        "password": "postgres",
+    }
+    
+    # Query to get first row from users table
+    sql = "SELECT * FROM users LIMIT 1;"
+
+    # Execute query
+    df, err = asyncio.run(execute_sql("postgres", db_creds, sql))
+    
+    # Assert no errors
+    assert err is None, f"Error executing query: {err}"
+    
+    # Assert we got a dataframe with one row
+    assert df is not None, "No dataframe returned"
+    assert len(df) == 1, f"Expected 1 row, got {len(df)}"
+    
+    # Assert all expected columns are present
+    expected_columns = ["id", "name", "email", "created_at"]
+    assert all(col in df.columns for col in expected_columns), f"Missing columns. Expected {expected_columns}, got {df.columns.tolist()}"
+    
+    # Print the result
+    print("First user in database:")
+    print(df.to_dict(orient="records")[0])
