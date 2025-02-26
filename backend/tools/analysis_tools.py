@@ -103,6 +103,14 @@ async def text_to_sql_tool(
     if len(rows) > max_rows_displayed:
         result_df = result_df.head(max_rows_displayed)
         df_truncated = True
+    
+    # check if the number of rows is significantly lower than the number of columns
+    # if so, transpose the dataframe
+    # this will make it much nicer to read on the frontend, and might also make it easier to analyze by the AI
+    num_rows, num_cols = result_df.shape
+    if num_rows < 5 and num_cols > num_rows:
+        result_df = result_df.T
+
     result_json = result_df.to_json(orient="records", double_precision=4)
     columns = result_df.columns.tolist()
     if result_json == "[]":
