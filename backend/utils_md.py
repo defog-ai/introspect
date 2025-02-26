@@ -2,6 +2,7 @@
 ### Metadata Related Functions Below ###
 ########################################
 
+import json
 import sqlglot
 from sqlalchemy import delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,10 @@ from db_models import (
 )  # to disambiguate from sqlalchemy's Metadata
 from db_config import engine
 from request_models import TableDescription
+import os
+
+home_dir = os.path.expanduser("~")
+defog_path = os.path.join(home_dir, ".defog")
 
 
 async def get_metadata(db_name: str) -> list[dict[str, str]]:
@@ -59,6 +64,8 @@ async def set_metadata(db_name: str, table_metadata: list[dict[str, str]]):
     if not table_metadata:
         return
 
+    table_names = list({item["table_name"] for item in table_metadata})
+
     # Validate required fields exist in each item
     required_fields = {"table_name", "column_name", "data_type"}
     for item in table_metadata:
@@ -88,6 +95,17 @@ async def set_metadata(db_name: str, table_metadata: list[dict[str, str]]):
                     for item in table_metadata
                 ],
             )
+
+            # update the selected tables in the json
+            # set the selected tables according to the metadata
+            # see comment in `get_tables_db_creds` for the full context
+            selected_tables_path = os.path.join(
+                defog_path, f"selected_tables_{db_name}.json"
+            )
+
+            with open(selected_tables_path, "w") as f:
+                json.dump(table_names, f)
+
     return
 
 

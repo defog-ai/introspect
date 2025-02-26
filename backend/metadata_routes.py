@@ -4,7 +4,7 @@ import os
 
 import pandas as pd
 from auth_utils import validate_user_request
-from db_utils import get_db_type_creds
+from db_utils import get_db_info, get_db_type_creds
 from defog import Defog
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
@@ -18,7 +18,12 @@ from request_models import (
     TableDescriptionsUpdateRequest,
     UserRequest,
 )
-from utils_instructions import delete_join_hints, get_instructions, get_join_hints, set_join_hints
+from utils_instructions import (
+    delete_join_hints,
+    get_instructions,
+    get_join_hints,
+    set_join_hints,
+)
 from utils_join_hints import JoinHints, infer_join_hints
 from utils_logging import LOGGER
 from utils_md import check_metadata_validity, get_metadata, set_metadata
@@ -74,7 +79,8 @@ async def update_metadata_route(req: MetadataUpdateRequest):
         return JSONResponse(status_code=400, content={"error": md_error})
     try:
         await set_metadata(req.db_name, metadata)
-        return {"success": True}
+        db_info = await get_db_info(req.db_name)
+        return JSONResponse(status_code=200, content=db_info)
     except Exception as e:
         LOGGER.error(f"Error updating metadata: {e}")
         return JSONResponse(
@@ -88,22 +94,30 @@ async def generate_metadata(req: MetadataGenerateRequest):
     Query the database and generate metadata for the given tables.
     """
     db_name = req.db_name
-    res = await get_db_type_creds(req.db_name)
-    if res:
-        db_type, db_creds = res
-    else:
-        return {"error": "no db creds found"}
+    res = await get_db_info(req.db_name)
+    db_type = res["db_type"]
+    db_creds = res["db_creds"]
+    all_tables = res["tables"]
+
+    if not db_type or not db_creds:
+        return JSONResponse(status_code=400, content={"error": "no db creds found"})
 
     tables = req.tables
 
     # see comment in `get_tables_db_creds` for the full context
     selected_tables_path = os.path.join(defog_path, f"selected_tables_{db_name}.json")
+
     with open(selected_tables_path, "w") as f:
-        json.dump(tables, f)
+        # if tables is empty, use all tables
+        if len(tables) == 0:
+            json.dump(all_tables, f)
+        else:
+            json.dump(tables, f)
 
     # this just generates a list of tables
     # no upload or scan, so api_key can be any value and does not matter
     defog = Defog(api_key=db_name, db_type=db_type, db_creds=db_creds)
+    LOGGER.info(f"Generated {len(tables)} tables: {tables}")
 
     metadata_dict = await asyncio.to_thread(
         defog.generate_db_schema,
@@ -111,9 +125,16 @@ async def generate_metadata(req: MetadataGenerateRequest):
         upload=False,
         scan=False,
     )
+
     metadata = convert_nested_dict_to_list(metadata_dict)
-    LOGGER.debug(f"Generated {len(metadata)} metadata entries")
-    return {"metadata": metadata}
+    LOGGER.info(f"Generated {len(metadata)} metadata entries")
+
+    await set_metadata(req.db_name, metadata)
+
+    # return full db info
+    db_info = await get_db_info(req.db_name)
+
+    return JSONResponse(status_code=200, content=db_info)
 
 
 @router.post("/integration/get_table_descriptions")
@@ -185,5 +206,7 @@ async def infer_join_hints_route(req: UserRequest) -> JoinHints:
     metadata = await get_metadata(req.db_name)
     table_descriptions = await get_all_table_descriptions(req.db_name)
     instructions = await get_instructions(req.db_name)
-    join_hints = await infer_join_hints(req.db_name, metadata, table_descriptions, instructions)
+    join_hints = await infer_join_hints(
+        req.db_name, metadata, table_descriptions, instructions
+    )
     return join_hints

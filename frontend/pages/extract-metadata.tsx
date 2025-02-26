@@ -14,6 +14,13 @@ import {
 } from "@defogdotai/agents-ui-components/core-ui";
 import { DbInfo, getDbInfo } from "$utils/utils";
 import DbCredentialsForm from "$components/extract-metadata/DBCredentialsForm";
+import { twMerge } from "tailwind-merge";
+
+const statusClasses = (status: boolean) => {
+  return status
+    ? "text-lime-800 bg-lime-200 dark:bg-lime-800/30 dark:text-lime-500"
+    : "text-rose-800 bg-rose-100 dark:bg-rose-500/30 dark:text-rose-100";
+};
 
 const ExtractMetadata = () => {
   const router = useRouter();
@@ -86,40 +93,101 @@ const ExtractMetadata = () => {
       (item) => item.column_description && item.column_description.trim() !== ""
     );
 
+  const canConnect = dbInfo[selectedDbName]?.can_connect;
+
+  const dbSelector = useMemo(() => {
+    if (
+      !selectedDbName ||
+      !dbInfo[selectedDbName] ||
+      !Object.keys(dbInfo).length
+    )
+      return null;
+    return (
+      <div className="flex flex-col mt-6 mb-10 w-full gap-2 items-start flex-wrap">
+        {Object.keys(dbInfo).length > 0 && (
+          <SingleSelect
+            label="Select database"
+            labelClassNames="font-bold text-sm"
+            allowClear={false}
+            allowCreateNewOption={false}
+            options={Object.keys(dbInfo).map((db) => ({
+              value: db,
+              label: db,
+            }))}
+            value={selectedDbName || undefined}
+            onChange={(val) => setSelectedDbName(val)}
+            placeholder="Select your DB name"
+            // rootClassNames="my-4"
+          />
+        )}
+        <div className="text-xs flex flex-row gap-1 items-center">
+          <span
+            className={twMerge(
+              "rounded-xl px-2 py-1 mr-2",
+              statusClasses(canConnect)
+            )}
+          >
+            {canConnect ? "Connection healthy" : "Connection failed"}
+          </span>
+          <span
+            className={twMerge(
+              "rounded-xl px-2 py-1 mr-2",
+              statusClasses(isTablesIndexed)
+            )}
+          >
+            {isTablesIndexed ? "AI metadata generated" : "AI metadata missing"}
+          </span>
+          <span
+            className={twMerge(
+              "rounded-xl px-2 py-1",
+              statusClasses(hasNonEmptyDescription)
+            )}
+          >
+            {hasNonEmptyDescription
+              ? "Has column descriptions"
+              : "Column descriptions missing"}
+          </span>
+        </div>
+      </div>
+    );
+  }, [isTablesIndexed, hasNonEmptyDescription, canConnect, selectedDbName]);
+
   const tabs = useMemo(() => {
     if (!selectedDbName) return [];
     if (loading) return [];
 
     return [
       {
-        name: "Update Database Credentials",
+        name: "Database Connection",
         content: (
-          <DbCredentialsForm
-            token={token.current}
-            existingDbInfo={dbInfo[selectedDbName]}
-            onDbUpdatedOrCreated={(dbName, dbInfo) => {
-              setSelectedDbName(dbName);
-              setDbInfo((prev) => ({ ...prev, [dbName]: dbInfo }));
-            }}
-          />
+          <>
+            <DbCredentialsForm
+              token={token.current}
+              existingDbInfo={dbInfo[selectedDbName]}
+              onDbUpdatedOrCreated={(dbName, dbInfo) => {
+                setSelectedDbName(dbName);
+                setDbInfo((prev) => ({ ...prev, [dbName]: dbInfo }));
+              }}
+            />
+          </>
         ),
       },
       {
-        name: "Extract Metadata",
+        name: "AI Metadata Management",
         content: (
-          <MetadataTable
-            token={token.current}
-            dbName={selectedDbName}
-            tablesData={dbInfo[selectedDbName]}
-            initialMetadata={dbInfo[selectedDbName].metadata}
-            // setColumnDescriptionCheck={setColumnDescriptionCheck}
-          />
+          <>
+            <MetadataTable
+              token={token.current}
+              dbInfo={dbInfo[selectedDbName]}
+              onUpdate={(dbName, newDbInfo) => {
+                setDbInfo((prev) => ({ ...prev, [dbName]: newDbInfo }));
+              }}
+            />
+          </>
         ),
       },
     ];
   }, [loading, selectedDbName, dbInfo]);
-
-  console.log(selectedDbName, dbInfo, isTablesIndexed, hasNonEmptyDescription);
 
   if (loading) {
     return (
@@ -139,44 +207,22 @@ const ExtractMetadata = () => {
     <>
       <Meta />
       <Scaffolding id="manage-database" userType="admin">
-        <div className="w-full dark:bg-dark-bg-primary">
-          {Object.keys(dbInfo).length > 1 && (
-            <div className="mb-4 w-full">
-              <SingleSelect
-                options={Object.keys(dbInfo).map((db) => ({
-                  value: db,
-                  label: db,
-                }))}
-                value={selectedDbName || undefined}
-                onChange={(val) => setSelectedDbName(val)}
-                placeholder="Select your DB name"
-                rootClassNames="w-full"
-              />
-            </div>
-          )}
-
+        <div className="w-full dark:bg-dark-bg-primary px-2 md:px-0">
+          {dbSelector}
           {Object.keys(dbInfo).length ? (
             <>
-              <div className="mt-4 flex items-center flex-row">
-                <div>Can connect:{dbInfo[selectedDbName]?.can_connect}</div>
-                <div>Tables indexed: {isTablesIndexed ? "Yes" : "No"}</div>
-                <div>
-                  Has non-empty description:{" "}
-                  {hasNonEmptyDescription ? "Yes" : "No"}
-                </div>
-              </div>
-
               <div className="dark:bg-dark-bg-primary mt-4">
                 <Tabs
-                  rootClassNames="w-full dark:bg-dark-bg-primary"
+                  rootClassNames="w-full dark:bg-dark-bg-primary min-h-[500px]"
                   tabs={tabs.map((tab) => ({
                     ...tab,
                     className:
-                      "dark:bg-dark-bg-primary dark:text-dark-text-primary dark:hover:bg-dark-hover dark:border-dark-border",
+                      "!overflow-y-visible dark:bg-dark-bg-primary dark:text-dark-text-primary dark:hover:bg-dark-hover dark:border-dark-border",
                     selectedClassName:
                       "dark:bg-dark-hover dark:text-dark-text-primary dark:border-b-2 dark:border-blue-500",
                   }))}
                   disableSingleSelect={true}
+                  contentClassNames="border dark:border-gray-700 border-t-none"
                 />
               </div>
             </>
@@ -188,11 +234,15 @@ const ExtractMetadata = () => {
                   file or enter your database credentials.
                 </p>
               </div>
-              <div className="col-span-1">
+              <div className="col-span-1 prose dark:prose-invert">
+                <p>Enter database credentials</p>
                 <DbCredentialsForm
                   token={token.current}
                   existingDbInfo={dbInfo[selectedDbName]}
-                  onDbUpdatedOrCreated={() => setSelectedDbName("")}
+                  onDbUpdatedOrCreated={(dbName, dbInfo) => {
+                    setSelectedDbName(dbName);
+                    setDbInfo((prev) => ({ ...prev, [dbName]: dbInfo }));
+                  }}
                 />
               </div>
               <div className="col-span-1 prose dark:prose-invert">

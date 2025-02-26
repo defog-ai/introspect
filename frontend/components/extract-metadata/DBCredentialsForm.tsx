@@ -30,7 +30,7 @@ const placeholders = {
   schema: "Schema",
 };
 
-const emptyDbCredsType: DbInfo = {
+const emptyDbInfo: DbInfo = {
   db_name: "",
   db_type: "postgres",
   db_creds: {
@@ -45,14 +45,12 @@ const emptyDbCredsType: DbInfo = {
 const DbCredentialsForm = ({
   dbName = "",
   token = "",
-  setDbConnectionStatus = () => {},
-  existingDbInfo = {},
+  existingDbInfo = null,
   onDbUpdatedOrCreated = () => {},
 }: {
-  dbName: string;
+  dbName?: string;
   token: string;
-  setDbConnectionStatus: (status: boolean) => void;
-  existingDbInfo?: DbInfo | {};
+  existingDbInfo?: DbInfo | null;
   onDbUpdatedOrCreated: (dbName: string, dbInfo: DbInfo) => void;
 }) => {
   const [loading, setLoading] = useState(false);
@@ -67,146 +65,98 @@ const DbCredentialsForm = ({
     { value: "sqlserver", label: "Microsoft SQL Server" },
   ];
 
-  const [dbCredsType, setDbCredsType] = useState<DbInfo | null>({
-    ...emptyDbCredsType,
+  const [dbInfo, setDbInfo] = useState<DbInfo | null>({
+    ...emptyDbInfo,
     ...existingDbInfo,
   });
 
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     if (!dbCredsType) return;
-  //     if (Object.keys(dbCredsType).length > 0) {
-  //       // setDbType(dbCredsType.db_type);
-  //       // setFormData({
-  //       //   db_type: dbCredsType.db_type,
-  //       //   ...dbCredsType.db_creds,
-  //       // });
+  useEffect(() => {
+    if (!existingDbInfo) return;
 
-  //       try {
-  //         const res = await validateDatabaseConnection(
-  //           dbCredsType.db_type,
-  //           dbCredsType.db_creds
-  //         );
-  //         if (res.status === "success") {
-  //           setDbConnectionStatus(true);
-  //           message.success("Database connection validated!");
-  //         } else {
-  //           message.error("Database connection is not valid.");
-  //           setDbConnectionStatus(false);
-  //         }
-  //       } catch (error) {
-  //         console.error("Validation error:", error);
-  //         message.error("Failed to validate database connection.");
-  //         setDbConnectionStatus(false);
-  //       }
-  //     }
-  //   };
-
-  //   fetchData();
-  // }, []);
+    setDbInfo({
+      ...emptyDbInfo,
+      ...existingDbInfo,
+    });
+  }, [existingDbInfo]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = {
-      db_name: dbCredsType.db_name,
-      db_type: dbCredsType.db_type,
-      db_creds: dbCredsType.db_creds,
+      token: token,
+      db_name: dbInfo.db_name,
+      db_type: dbInfo.db_type,
+      db_creds: dbInfo.db_creds,
     };
 
     console.log(payload);
 
     try {
       setLoading(true);
-      // first, check if the database connection is valid
-      let res = await fetch(
-        setupBaseUrl("http", `integration/validate_db_connection`),
+      const res = await fetch(
+        setupBaseUrl("http", `integration/update_db_creds`),
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token: token,
-            ...dbCredsType,
-          }),
+          body: JSON.stringify(payload),
         }
       );
 
       if (!res.ok) {
-        setDbConnectionStatus(false);
-        message.error(
-          "Could not connect to this database. Are you sure that database credentials are valid, and that your machine has DB access?"
-        );
-        return;
-      } else {
-        setDbConnectionStatus(true);
-        message.success("Database connection validated!");
+        throw Error("Could not update db creds");
       }
 
-      res = await fetch(setupBaseUrl("http", `integration/update_db_creds`), {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+      const newDbInfo: DbInfo = await res.json();
 
-      if (data?.success === true) {
-        message.success("Database Credentials updated successfully!");
-        onDbUpdatedOrCreated(dbName, dbCredsType);
-      } else {
-        message.error("Failed to update Database Credentials.");
-      }
+      onDbUpdatedOrCreated(dbName, newDbInfo);
     } catch (e) {
       console.log(e);
-      message.error(
-        "Error fetching tables. Please check your logs for more information."
-      );
+      message.error(e.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="prose dark:bg-dark-bg-primary">
-      {existingDbInfo ? (
-        <p className="dark:text-dark-text-primary">Update your credentials</p>
-      ) : null}
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <>
+      <div className="space-y-4 max-w-2xl not-prose">
         <SingleSelect
           allowClear={false}
           label={"Database Type"}
-          value={dbCredsType?.db_type || "postgres"}
+          value={dbInfo?.db_type || "postgres"}
           options={dbOptions}
           onChange={(value) => {
-            setDbCredsType({ ...dbCredsType, db_type: value });
+            setDbInfo({ ...dbInfo, db_type: value });
           }}
         />
 
-        {!dbName && (
-          <>
-            <Input
-              label={
-                "Database nickname (This is for your reference so make it memorable)"
-              }
-              type="text"
-              name="db_name"
-              onChange={(e) => {
-                setDbCredsType({ ...dbCredsType, db_name: e.target.value });
-              }}
-            />
-          </>
-        )}
-
-        {dbCredsType?.db_type &&
-          dbCredOptions[dbCredsType.db_type].map((field) => (
-            <div key={field} className="mb-4">
+        <Input
+          label={
+            "Database nickname (This is for your reference so make it memorable)"
+          }
+          status={
+            !existingDbInfo || dbInfo?.db_name === existingDbInfo?.db_name
+              ? null
+              : "error"
+          }
+          type="text"
+          name="db_name"
+          value={dbInfo?.db_name || ""}
+          onChange={(e) => {
+            setDbInfo({ ...dbInfo, db_name: e.target.value });
+          }}
+        />
+        {dbInfo?.db_type &&
+          dbCredOptions[dbInfo.db_type].map((field) => (
+            <div key={field}>
               <Input
                 label={field.charAt(0).toUpperCase() + field.slice(1)}
                 type={field === "password" ? "password" : "text"}
                 name={field}
-                defaultValue={dbCredsType.db_creds?.[field] || ""}
+                value={dbInfo.db_creds?.[field] || ""}
                 onChange={(e) => {
-                  setDbCredsType({
-                    ...dbCredsType,
+                  setDbInfo({
+                    ...dbInfo,
                     db_creds: {
-                      ...dbCredsType.db_creds,
+                      ...dbInfo.db_creds,
                       [field]: e.target.value,
                     },
                   });
@@ -215,16 +165,16 @@ const DbCredentialsForm = ({
               />
             </div>
           ))}
-
         <Button
+          onClick={handleSubmit}
           className="w-full justify-center p-2"
           variant="normal"
           disabled={loading}
         >
-          {loading ? "Updating..." : "Update"}
+          {loading ? "Updating..." : !existingDbInfo ? "Create" : "Update"}
         </Button>
-      </form>
-    </div>
+      </div>
+    </>
   );
 };
 
