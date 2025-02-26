@@ -37,6 +37,7 @@ class AnswerQuestionFromDatabaseOutput(BaseModel):
 
 
 class GenerateReportFromQuestionInput(BaseModel):
+    report_id: str = Field(..., description="The report ID")
     question: str = Field(..., description="The initial question to generate SQL for")
     model: str = Field(
         ..., description="The name of the model to use for generating SQL. "

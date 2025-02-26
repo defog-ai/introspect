@@ -14,6 +14,7 @@ from db_utils import get_db_type_creds
 from defog.llm.utils import chat_async
 from defog.query import async_execute_query_once
 import uuid
+from typing import Callable
 
 
 async def text_to_sql_tool(
@@ -121,7 +122,11 @@ async def text_to_sql_tool(
 
 
 async def generate_report_from_question(
-    input: GenerateReportFromQuestionInput,
+    db_name: str,
+    model: str,
+    question: str,
+    clarification_responses: str,
+    post_tool_func: Callable
 ) -> GenerateReportFromQuestionOutput:
     """
     Given an initial question for a single database, this function will call
@@ -132,19 +137,19 @@ async def generate_report_from_question(
     """
     try:
         tools = [text_to_sql_tool]
-        metadata = await get_metadata(input.db_name)
+        metadata = await get_metadata(db_name)
         metadata_str = mk_create_ddl(metadata)
         response = await chat_async(
-            model=input.model,
+            model=model,
             tools=tools,
             messages=[
                 # {"role": "developer", "content": "Formatting re-enabled"},
                 {
                     "role": "user",
-                    "content": f"""I would like you to create a comprehensive analysis for answering this question: {input.question}
+                    "content": f"""I would like you to create a comprehensive analysis for answering this question: {question}
 
-Look in the database {input.db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few. Do not ask the exact same question twice. Always ask new questions or rephrase the previous question if it led to an error.
-{input.clarification_responses}
+Look in the database {db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few. Do not ask the exact same question twice. Always ask new questions or rephrase the previous question if it led to an error.
+{clarification_responses}
 The database schema is below:
 ```sql
 {metadata_str}
@@ -154,6 +159,7 @@ Try to aggregate data in clear and understandable buckets. Please give your fina
 """,
                 },
             ],
+            post_tool_function=post_tool_func,
         )
         sql_answers = []
         for tool_output in response.tool_outputs:
@@ -175,6 +181,7 @@ Try to aggregate data in clear and understandable buckets. Please give your fina
         return GenerateReportFromQuestionOutput(
             report="Error in generating report from question",
             sql_answers=[],
+            tool_outputs=[],
         )
 
 
