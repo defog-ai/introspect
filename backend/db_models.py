@@ -163,19 +163,10 @@ class OracleReports(Base):
     db_name = Column(Text)
     inputs = Column(JSON)
     mdx = Column(Text)
-    analysis_ids = Column(JSON) # this is a list of analysis ids
+    analyses = Column(JSON) # this is a list of analyses
     feedback = Column(Text, default=None)
     general_comments = Column(Text, default=None)
     comments = Column(JSON, default=None)
-
-
-class OracleAnalyses(Base):
-    __tablename__ = "oracle_analyses"
-    db_name = Column(Text, primary_key=True)
-    analysis_id = Column(Text, primary_key=True)
-    sql = Column(Text)
-    csv = Column(Text, default=None)
-    mdx = Column(Text, default=None)
 
 
 class OracleSources(Base):
