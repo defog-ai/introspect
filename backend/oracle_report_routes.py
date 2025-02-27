@@ -164,6 +164,7 @@ async def get_report_mdx(req: ReportRequest):
                     content={
                         "mdx": report.mdx,
                         "analyses": analyses,
+                        "inputs": report.inputs,
                     },
                 )
             else:
