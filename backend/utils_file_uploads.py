@@ -95,9 +95,12 @@ def to_float_if_possible(val):
     # Count total alphanumeric characters in the original value
     alphanum_count = sum(c.isalnum() for c in val)
     
+    if digit_count == 0 or alphanum_count == 0:
+        return None
+
     # If the string has very few digits compared to its alphanumeric length,
     # it's probably not meant to be a float (e.g., "NDA1" has 1 digit out of 4 alphanumeric chars)
-    if alphanum_count > 0 and digit_count / alphanum_count < 0.5:
+    if alphanum_count > 0 and alphanum_count / digit_count > 3:
         return None
     
     try:
