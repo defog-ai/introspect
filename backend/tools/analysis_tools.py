@@ -29,7 +29,7 @@ async def text_to_sql_tool(
     question = input.question
     db_name = input.db_name
 
-    LOGGER.debug(f"Question to answer from database ({db_name}):\n{question}\n")
+    LOGGER.info(f"Question to answer from database ({db_name}):\n{question}\n")
 
     try:
         sql_response = await generate_sql_query(
@@ -156,7 +156,7 @@ The database schema is below:
 {metadata_str}
 ```
 
-Try to aggregate data in clear and understandable buckets. Please give your final answer as a descriptive report.
+Try to aggregate data in clear and understandable buckets. Please give your final answer as a descriptive report. Please make the report extremely to the point, and do not use any management-consulting style fluff words.
 """,
                 },
             ],
