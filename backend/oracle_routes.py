@@ -144,13 +144,11 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
             LOGGER.debug(f"Retrieved clarification guidelines from DB: {guidelines}")
 
     try:
-        # clarify_response = await clarify_question(
-        #     user_question=req.user_question,
-        #     db_name=db_name,
-        #     oracle_guidelines=guidelines,
-        # )
-
-        clarify_response = {"clarifications": []}
+        clarify_response = await clarify_question(
+            user_question=req.user_question,
+            db_name=db_name,
+            oracle_guidelines=guidelines,
+        )
 
         LOGGER.info(f"Clarify response: {clarify_response}")
 
