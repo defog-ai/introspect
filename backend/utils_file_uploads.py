@@ -1,5 +1,6 @@
 import re
 from uuid import uuid4
+import numpy as np
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -161,6 +162,12 @@ def sanitize_column_name(col_name: str):
     """
     col_name = col_name.strip().lower()
 
+    # replace any `%` characters with `perc`
+    col_name = col_name.replace('%', 'perc')
+
+    # replace any `&` characters with `and`
+    col_name = col_name.replace('&', 'and')
+
     # Replace any character not in [a-z0-9_] with underscore
     col_name = re.sub(r'[^a-z0-9_]', '_', col_name)
 
@@ -205,7 +212,7 @@ def convert_values_to_postgres_type(value: str, target_type: str):
     Convert a string `value` to the appropriate Python object for insertion into Postgres
     based on `target_type`. If conversion fails, return None (NULL).
     """
-    if value is None or str(value).strip() == '':
+    if value is None or str(value).strip() == '' or pd.isna(value):
         return None
     
     val_str = str(value).strip()
@@ -224,7 +231,11 @@ def convert_values_to_postgres_type(value: str, target_type: str):
             return None
         try:
             if target_type == 'BIGINT':
-                return int(float(cleaned_val))  # or directly int(...) if you want strict
+                float_val = float(cleaned_val)
+                # Check if the float is NaN or infinity before converting to int
+                if pd.isna(float_val) or float_val in (float('inf'), float('-inf')):
+                    return None
+                return int(float_val)  # or directly int(...) if you want strict
             else:  # DOUBLE PRECISION
                 return float(cleaned_val)
         except:
@@ -278,7 +289,7 @@ async def export_df_to_postgres(df: pd.DataFrame, table_name: str, db_connection
     async with engine.begin() as conn:
         # We'll insert in batches
         rows_to_insert = []
-        for idx, row in enumerate(df.to_dict("records")):
+        for idx, row in enumerate(df.replace({np.nan: None}).to_dict("records")):
             rows_to_insert.append(row)
 
             # If we reached the chunk size or the end, do a batch insert
