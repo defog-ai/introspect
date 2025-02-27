@@ -4,7 +4,9 @@ import traceback
 
 from db_utils import get_db_names
 import instructions_routes
-import admin_routes, query_data_routes, auth_routes, file_upload_routes, golden_queries_routes, imported_tables_routes, integration_routes, metadata_routes, oracle_report_routes, oracle_routes, query_routes, slack_routes, tools.tool_routes, user_history_routes, xdb_routes
+import admin_routes, auth_routes, file_upload_routes, golden_queries_routes, imported_tables_routes, \
+    integration_routes, metadata_routes, oracle_report_routes, oracle_routes, oracle_streaming_routes, \
+        query_routes, query_data_routes, slack_routes, tools.tool_routes, user_history_routes, xdb_routes
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from startup import lifespan
@@ -18,7 +20,6 @@ LOGGER = logging.getLogger("server")
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(admin_routes.router)
-app.include_router(query_data_routes.router)
 app.include_router(auth_routes.router)
 app.include_router(file_upload_routes.router)
 app.include_router(golden_queries_routes.router)
@@ -28,7 +29,9 @@ app.include_router(integration_routes.router)
 app.include_router(metadata_routes.router)
 app.include_router(oracle_report_routes.router)
 app.include_router(oracle_routes.router)
+app.include_router(oracle_streaming_routes.router)
 app.include_router(query_routes.router)
+app.include_router(query_data_routes.router)
 app.include_router(slack_routes.router)
 app.include_router(tools.tool_routes.router)
 app.include_router(user_history_routes.router)

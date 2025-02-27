@@ -11,10 +11,11 @@ from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_gui
 from db_models import OracleGuidelines
 from db_config import engine
 from auth_utils import validate_user_request
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from functools import partial
+
 
 from utils_logging import LOGGER, save_and_log, save_timing
 from tools.analysis_tools import generate_report_from_question
@@ -253,10 +254,3 @@ async def generate_report(req: GenerateReportRequest):
         "mdx": main_content,
         "sql_answers": sql_answers,
     }
-
-# return a stream for updating the report's thinking status
-@router.post("/oracle/update_report_thinking_status")
-async def update_report_thinking_status(req: Request):
-    params = await req.json()
-    report_id = params.get("report_id")
-    
