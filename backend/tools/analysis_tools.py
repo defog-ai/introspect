@@ -1,8 +1,10 @@
 import asyncio
 import pandas as pd
+import os
 from tools.analysis_models import (
     AnswerQuestionFromDatabaseInput,
     AnswerQuestionFromDatabaseOutput,
+    AnswerQuestionViaGoogleSearchInput,
     GenerateReportFromQuestionInput,
     GenerateReportFromQuestionOutput,
     SynthesizeReportFromQuestionsOutput,
@@ -15,6 +17,8 @@ from defog.llm.utils import chat_async
 from defog.query import async_execute_query_once
 import uuid
 from typing import Callable
+from google import genai
+from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
 
 
 async def text_to_sql_tool(
@@ -121,6 +125,28 @@ async def text_to_sql_tool(
         error=error_msg,
     )
 
+
+async def web_search_tool(
+    input: AnswerQuestionViaGoogleSearchInput,
+):
+    """
+    Given a user question, this tool will visit the top ranked pages on Google and extract information from them.
+    It will then concisely answer the question based on the extracted information, and will return the answer as a string.
+    It should be used when a question cannot be directly answered by the database, or when additional context can be provided to the user by searching the web.
+    """
+    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+    google_search_tool = Tool(
+        google_search = GoogleSearch()
+    )
+    response = await client.aio.models.generate_content(
+        model="gemini-2.0-flash",
+        config=GenerateContentConfig(
+            tools=[google_search_tool],
+            response_modalities=["TEXT"],
+        ),
+        contents=input.question,
+    )
+    return response.text
 
 async def generate_report_from_question(
     db_name: str,
