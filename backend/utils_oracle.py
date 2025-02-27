@@ -8,6 +8,7 @@ from defog.llm.utils import chat_async
 from utils_logging import LOGGER
 from typing import Literal, Any
 from datetime import datetime
+from sqlalchemy.orm.attributes import flag_modified
 import re
 
 # read in prompts
@@ -149,12 +150,15 @@ async def set_oracle_report(
                     report.db_name = db_name
                 if inputs:
                     report.inputs = inputs
+                    flag_modified(report, "inputs")
                 if mdx:
                     report.mdx = mdx
                 if analyses:
                     report.analyses = analyses
+                    flag_modified(report, "analyses")
                 if thinking_steps:
                     report.thinking_steps = thinking_steps
+                    flag_modified(report, "thinking_steps")
                 if status:
                     report.status = status
 
@@ -177,6 +181,7 @@ async def append_thinking_step_to_oracle_report(report_id: int, thinking_step: A
                 thinking_steps = []
             thinking_steps.append(thinking_step)
             report.thinking_steps = thinking_steps
+            flag_modified(report, "thinking_steps")
     
     return
 
@@ -199,4 +204,3 @@ async def post_tool_call_func(function_name, input_args, tool_result, report_id)
             "result": thinking_step_result
         }
     )
-
