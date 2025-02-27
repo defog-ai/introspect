@@ -82,9 +82,24 @@ def to_float_if_possible(val):
     Helper function: attempt to parse to numeric after cleaning
     e.g. remove $, commas, random whitespace
     """
-    cleaned_val = re.sub(r'[^\d.\-+eE]', '', val)  # remove any non-numeric symbol except . - + e E
+    # First, clean the value by removing non-numeric symbols except . - + e E
+    cleaned_val = re.sub(r'[^\d.\-+eE]', '', val)
+    
+    # Check if the cleaned value is empty or just a symbol
     if cleaned_val in ('', '.', '-', '+'):
         return None
+    
+    # Check if the string has a reasonable proportion of numeric characters
+    # Count digits in the original value
+    digit_count = sum(c.isdigit() for c in val)
+    # Count total alphanumeric characters in the original value
+    alphanum_count = sum(c.isalnum() for c in val)
+    
+    # If the string has very few digits compared to its alphanumeric length,
+    # it's probably not meant to be a float (e.g., "NDA1" has 1 digit out of 4 alphanumeric chars)
+    if alphanum_count > 0 and digit_count / alphanum_count < 0.5:
+        return None
+    
     try:
         return float(cleaned_val)
     except:
