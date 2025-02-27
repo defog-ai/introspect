@@ -2,7 +2,8 @@ from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from db_models import OracleReports
+from utils_logging import LOGGER
+from db_models import OracleReports, ReportStatus
 from db_config import engine
 import asyncio
 from auth_utils import validate_user
@@ -11,6 +12,8 @@ import json
 router = APIRouter(
     tags=["Oracle"],
 )
+
+sep = "\n\n------\n\n"
 
 
 async def oracle_thinking_stream(report_id: int):
@@ -33,22 +36,25 @@ async def oracle_thinking_stream(report_id: int):
 
                 # Handle case where report doesn't exist
                 if not report_data:
-                    yield f"data: {json.dumps({'error': 'Report not found'})}\n\n"
+                    yield f"data: {json.dumps({'error': 'Report not found'})}{sep}"
                     break
 
                 thinking_steps, status = report_data
 
                 # Check if report is complete
-                if status == "DONE":
+                if status == ReportStatus.DONE:
                     # Send any remaining thinking steps
                     if thinking_steps and len(current_thinking_steps) != len(
                         thinking_steps
                     ):
-                        new_thinking_steps = thinking_steps[
-                            len(current_thinking_steps) :
-                        ]
-                        yield f"data: {json.dumps(new_thinking_steps)}\n\n"
-                    yield "data: Stream closed\n\n"
+                        # new_thinking_steps = thinking_steps[
+                        #     len(current_thinking_steps) :
+                        # ]
+                        # yield f"data: {json.dumps(new_thinking_steps)}{sep}"
+                        # send these one by one to keep within the limit
+                        for step in thinking_steps[len(current_thinking_steps) :]:
+                            yield f"data: {json.dumps(step)}{sep}"
+                    yield f"data: Stream closed without errors{sep}"
                     break
 
                 # Check for new thinking steps
@@ -56,7 +62,10 @@ async def oracle_thinking_stream(report_id: int):
                     thinking_steps
                 ):
                     new_thinking_steps = thinking_steps[len(current_thinking_steps) :]
-                    yield f"data: {json.dumps(new_thinking_steps)}\n\n"
+                    # yield f"data: {json.dumps(new_thinking_steps)}{sep}"
+                    # send these one by one to keep within the limit
+                    for step in new_thinking_steps:
+                        yield f"data: {json.dumps(step)}{sep}"
                     current_thinking_steps = thinking_steps
 
             # Use a shorter sleep interval for more responsive updates
@@ -64,8 +73,8 @@ async def oracle_thinking_stream(report_id: int):
             await asyncio.sleep(2)
     except Exception as e:
         # Handle exceptions and provide error information in the stream
-        yield f"data: {json.dumps({'error': str(e)})}\n\n"
-        yield "data: Stream closed\n\n"
+        yield f"data: {json.dumps({'error': str(e)})}{sep}"
+        yield f"data: Stream closed with error {sep}"
 
 
 # return a stream for updating the report's thinking status
