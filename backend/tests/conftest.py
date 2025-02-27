@@ -167,7 +167,7 @@ def cleanup():
             tables_with_db_name = [
                 "metadata", "table_info", "instructions", "golden_queries",
                 "imported_tables", "analyses", "oracle_guidelines", 
-                "oracle_analyses", "oracle_sources", "db_creds"
+                "oracle_sources", "db_creds"
             ]
             
             for table in tables_with_db_name:

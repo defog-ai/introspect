@@ -842,6 +842,9 @@ def test_oracle_report_generation(admin_token):
         clarify_data = clarify_response.json()
         clarifications = clarify_data.get("clarifications", [])
 
+        report_id = clarify_data.get("report_id", None)
+        assert report_id is not None, "Report ID not found in response"
+
         print("\nReceived clarification questions:")
         for c in clarifications:
             print(f"- {c['clarification']}")
@@ -870,6 +873,7 @@ def test_oracle_report_generation(admin_token):
         report_response = requests.post(
             f"{BASE_URL}/oracle/generate_report",
             json={
+                "report_id": report_id,
                 "token": admin_token,
                 "db_name": db_name,
                 "user_question": user_question,
@@ -885,7 +889,7 @@ def test_oracle_report_generation(admin_token):
         # Verify report content
         assert "mdx" in report_data, "No MDX content in report response"
         assert report_data["mdx"], "Empty MDX content in report"
-        assert "analysis_ids" in report_data, "No analysis IDs in report response"
+        assert "analyses" in report_data, "No analyses in report response"
 
         print("\nGenerated Report:")
         print(report_data["mdx"])
