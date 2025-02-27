@@ -116,7 +116,7 @@ const DbCredentialsForm = ({
       <div className="space-y-4">
         <Input
           label={
-            "Database nickname" +
+            "Database nickname " +
             (!existingDbInfo
               ? "(This is for your reference so make it memorable. This cannot be changed later!)"
               : "")
