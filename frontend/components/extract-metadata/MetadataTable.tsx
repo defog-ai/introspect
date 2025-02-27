@@ -312,7 +312,7 @@ const MetadataTable = ({
             options={multiSelectOptions}
             value={selectedTablesForIndexing}
             allowCreateNewOption={false}
-            onChange={(value) => {
+            onChange={(value: string[]) => {
               if (value.indexOf("all") > -1) {
                 setSelectedTablesForIndexing(tables);
                 return;
@@ -354,12 +354,14 @@ const MetadataTable = ({
           paginationPosition="bottom"
           rowCellRender={({ cellValue, row, dataIndex, column }) => {
             // If column.render is a function, call it
+            // @ts-ignore
             if (typeof column.render === "function") {
               return (
                 <td
                   key={`${row.key}-${dataIndex}`}
                   className="px-3 py-2 align-top text-sm text-gray-700 dark:text-gray-200"
                 >
+                  {/* @ts-ignore */}
                   {column.render(cellValue, row)}
                 </td>
               );
