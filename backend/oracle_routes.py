@@ -227,7 +227,7 @@ async def generate_report(req: GenerateReportRequest):
         post_tool_func=post_tool_func,
     )
     
-    main_content = analysis_response.synthesized_report
+    main_content = analysis_response.report
     print(main_content, flush=True)
     sql_answers = analysis_response.model_dump()["sql_answers"]
     sql_answers = [i for i in sql_answers if not i["error"]]
