@@ -13,6 +13,9 @@ class AnswerQuestionFromDatabaseInput(BaseModel):
     )
 
 
+class AnswerQuestionViaGoogleSearchInput(BaseModel):
+    question: str = Field(..., description="The question to do a web search for")
+
 class AnswerQuestionFromDatabaseOutput(BaseModel):
 
     analysis_id: Optional[str] = Field(

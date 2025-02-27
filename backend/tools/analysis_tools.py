@@ -33,7 +33,7 @@ async def text_to_sql_tool(
     question = input.question
     db_name = input.db_name
 
-    LOGGER.debug(f"Question to answer from database ({db_name}):\n{question}\n")
+    LOGGER.info(f"Question to answer from database ({db_name}):\n{question}\n")
 
     try:
         sql_response = await generate_sql_query(
@@ -163,7 +163,7 @@ async def generate_report_from_question(
     It will continue to do this until the LLM model decides to stop.
     """
     try:
-        tools = [text_to_sql_tool]
+        tools = [text_to_sql_tool, web_search_tool]
         metadata = await get_metadata(db_name)
         metadata_str = mk_create_ddl(metadata)
         response = await chat_async(
