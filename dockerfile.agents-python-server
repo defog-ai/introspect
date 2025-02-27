@@ -5,15 +5,6 @@ WORKDIR /backend
 
 RUN apt-get update && apt-get install -y python3-pip
 
-# Install uv
-RUN pip install uv
-
-COPY ./backend/requirements.txt /root/requirements.txt
-
-# Use uv to install dependencies system-wide
-RUN uv pip install --system --upgrade setuptools && \
-    uv pip install --system -r /root/requirements.txt
-
 # expose python server port
 EXPOSE 1235
 
@@ -42,6 +33,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Cleanup
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN pip install uv
+
+COPY ./backend/requirements.txt /root/requirements.txt
+
+# Use uv to install dependencies system-wide
+RUN uv pip install --system --upgrade setuptools && \
+    uv pip install --system -r /root/requirements.txt
 
 # run start_docker.sh file as entrypoint to run as PID 1
 ENTRYPOINT ["/backend/startup.sh"]

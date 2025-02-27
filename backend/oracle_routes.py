@@ -7,7 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import json
 import time
-from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines, set_oracle_report, post_tool_call_func
+from utils_oracle import (
+    clarify_question,
+    get_oracle_guidelines,
+    set_oracle_guidelines,
+    set_oracle_report,
+    post_tool_call_func,
+)
 from db_models import OracleGuidelines
 from db_config import engine
 from auth_utils import validate_user_request
@@ -116,6 +122,7 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
             - input_type: str (one of single_choice, multiple_choice, number, text)
             - options: list[str]
     """
+
     ts, timings = time.time(), []
     db_name = req.db_name
     ts = save_timing(ts, "validate_user", timings)
@@ -137,11 +144,13 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
             LOGGER.debug(f"Retrieved clarification guidelines from DB: {guidelines}")
 
     try:
-        clarify_response = await clarify_question(
-            user_question=req.user_question,
-            db_name=db_name,
-            oracle_guidelines=guidelines,
-        )
+        # clarify_response = await clarify_question(
+        #     user_question=req.user_question,
+        #     db_name=db_name,
+        #     oracle_guidelines=guidelines,
+        # )
+
+        clarify_response = {"clarifications": []}
 
         LOGGER.info(f"Clarify response: {clarify_response}")
 
@@ -152,12 +161,10 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
                 or "options" not in clarification
             ):
                 raise ValueError(f"Invalid clarification response: {clarification}")
-        
+
         # create a new report in the db
         report_id = await set_oracle_report(
-            db_name=db_name,
-            report_name=req.user_question,
-            status="INITIALIZED"
+            db_name=db_name, report_name=req.user_question, status="INITIALIZED"
         )
         clarify_response["report_id"] = report_id
     except Exception as e:
@@ -172,9 +179,12 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
     save_and_log(ts, "get_clarifications", timings)
     return JSONResponse(content=clarify_response)
 
+
 class Clarification(BaseModel):
     clarification: str
     answer: Optional[Union[str, List[str]]] = None
+
+
 class GenerateReportRequest(BaseModel):
     report_id: int
     db_name: str
@@ -195,6 +205,7 @@ class GenerateReportRequest(BaseModel):
         }
     }
 
+
 @router.post("/oracle/generate_report")
 async def generate_report(req: GenerateReportRequest):
     db_name = req.db_name
@@ -207,8 +218,10 @@ async def generate_report(req: GenerateReportRequest):
     if answered_clarifications:
         clarification_responses = "\nFor additional context: after the user asked this question, they provided the following clarifications:"
         for clarification in answered_clarifications:
-            clarification_responses += f" {clarification.clarification} (Answer: {clarification.answer})\n"
-    
+            clarification_responses += (
+                f" {clarification.clarification} (Answer: {clarification.answer})\n"
+            )
+
     # use partial to pass the report_id to post_tool_func, so that it can update the correct report
     post_tool_func = partial(post_tool_call_func, report_id=report_id)
 
@@ -227,7 +240,7 @@ async def generate_report(req: GenerateReportRequest):
         clarification_responses=clarification_responses,
         post_tool_func=post_tool_func,
     )
-    
+
     main_content = analysis_response.report
     print(main_content, flush=True)
     sql_answers = analysis_response.model_dump()["sql_answers"]
@@ -235,19 +248,23 @@ async def generate_report(req: GenerateReportRequest):
     for idx, answer in enumerate(sql_answers):
         try:
             sql_answers[idx]["rows"] = json.loads(answer["rows"])
-            sql_answers[idx]["columns"] = [{"dataIndex": col, "title": col} for col in answer["columns"]]
+            sql_answers[idx]["columns"] = [
+                {"dataIndex": col, "title": col} for col in answer["columns"]
+            ]
         except Exception as e:
             print(str(e), flush=True)
             print(answer, flush=True)
 
     mdx = f"# {user_question}\n\n{main_content}"
 
+    had_error = main_content == "Error in generating report from question"
+
     # save to oracle_reports table
     await set_oracle_report(
         report_id=report_id,
         mdx=mdx,
         analyses=sql_answers,
-        status="DONE",
+        status="DONE" if not had_error else "ERRORED",
     )
 
     return {

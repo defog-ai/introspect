@@ -11,22 +11,21 @@ from db_models import (
 )
 from db_config import engine
 from auth_utils import validate_user
-from generic_utils import get_api_key_from_key_name
 
 router = APIRouter()
 
 
 class BasicRequest(BaseModel):
     """
-    Basic request model for identifying the user and the api key.
+    Basic request model for identifying the user and the db name.
     """
 
-    key_name: str
+    db_name: str
     token: str
 
     model_config = {
         "json_schema_extra": {
-            "examples": [{"key_name": "my_api_key", "token": "my_token"}]
+            "examples": [{"db_name": "my_db_name", "token": "my_token"}]
         }
     }
 
@@ -39,7 +38,7 @@ class ReportRequest(BasicRequest):
     report_id: int
 
     model_config = {
-        "json_schema_extra": {"examples": [{"key_name": "my_api_key", "report_id": 1}]}
+        "json_schema_extra": {"examples": [{"db_name": "my_db_name", "report_id": 1}]}
     }
 
 
@@ -52,7 +51,7 @@ class ReportAnalysisRequest(ReportRequest):
 
     model_config = {
         "json_schema_extra": {
-            "examples": [{"key_name": "my_api_key", "report_id": 1, "analysis_id": 1}]
+            "examples": [{"db_name": "my_db_name", "report_id": 1, "analysis_id": 1}]
         }
     }
 
@@ -69,7 +68,6 @@ async def reports_list(req: BasicRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = await get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
         async with session.begin():
@@ -81,7 +79,7 @@ async def reports_list(req: BasicRequest):
                     OracleReports.created_ts,
                     OracleReports.inputs,
                 )
-                .where(OracleReports.db_name == api_key)
+                .where(OracleReports.db_name == req.db_name)
                 .order_by(OracleReports.created_ts.desc())
             )
             result = await session.execute(stmt)
@@ -117,13 +115,12 @@ async def delete_report(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = await get_api_key_from_key_name(req.key_name)
     report = None
 
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = select(OracleReports).where(
-                OracleReports.db_name == api_key,
+                OracleReports.db_name == req.db_name,
                 OracleReports.report_id == req.report_id,
             )
             result = await session.execute(stmt)
@@ -146,12 +143,11 @@ async def get_report_mdx(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = await get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = select(OracleReports).where(
-                OracleReports.db_name == api_key,
+                OracleReports.db_name == req.db_name,
                 OracleReports.report_id == req.report_id,
             )
             result = await session.execute(stmt)
@@ -186,9 +182,7 @@ class UpdateReportMDXRequest(ReportRequest):
 
     model_config = {
         "json_schema_extra": {
-            "examples": [
-                {"key_name": "my_api_key", "report_id": 1, "mdx": "MDX string"}
-            ]
+            "examples": [{"db_name": "my_db_name", "report_id": 1, "mdx": "MDX string"}]
         }
     }
 
@@ -200,18 +194,19 @@ async def get_report_analysis_ids(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = await get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = select(OracleReports).where(
-                OracleReports.db_name == api_key,
+                OracleReports.db_name == req.db_name,
                 OracleReports.report_id == req.report_id,
             )
             result = await session.execute(stmt)
             result = result.scalar_one_or_none()
             if not result:
-                return JSONResponse(status_code=404, content={"error": "Report not found"})
+                return JSONResponse(
+                    status_code=404, content={"error": "Report not found"}
+                )
 
             analyses = result.analysis_ids
 
@@ -225,13 +220,12 @@ async def get_report_status(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = await get_api_key_from_key_name(req.key_name)
 
     # get the report
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = select(OracleReports).where(
-                OracleReports.db_name == api_key,
+                OracleReports.db_name == req.db_name,
                 OracleReports.report_id == req.report_id,
             )
             result = await session.execute(stmt)
@@ -251,12 +245,11 @@ async def get_report_comments(req: ReportRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = await get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = select(OracleReports).where(
-                OracleReports.db_name == api_key,
+                OracleReports.db_name == req.db_name,
                 OracleReports.report_id == req.report_id,
             )
             result = await session.execute(stmt)
@@ -282,7 +275,7 @@ class UpdateReportCommentsRequest(ReportRequest):
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {"key_name": "my_api_key", "report_id": 1, "comments": "Comments"}
+                {"db_name": "my_db_name", "report_id": 1, "comments": "Comments"}
             ]
         }
     }
@@ -295,12 +288,11 @@ async def update_report_comments(req: UpdateReportCommentsRequest):
     """
     if not (await validate_user(req.token)):
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = await get_api_key_from_key_name(req.key_name)
 
     async with AsyncSession(engine) as session:
         async with session.begin():
             stmt = select(OracleReports).where(
-                OracleReports.db_name == api_key,
+                OracleReports.db_name == req.db_name,
                 OracleReports.report_id == req.report_id,
             )
             result = await session.execute(stmt)
