@@ -129,7 +129,7 @@ async def classify_question_type(
     Classify the question type.
     """
     response = await chat_async(
-        model=GPT_4O_MINI,
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": CLASSIFY_QUESTION_SYSTEM_PROMPT},
             {"role": "user", "content": f"Here is the user's question: `{question}`"},
