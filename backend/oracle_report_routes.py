@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
 from db_models import (
-    OracleAnalyses,
     OracleReports,
 )
 from db_config import engine
@@ -90,7 +89,7 @@ async def reports_list(req: BasicRequest):
 
     reports_list = []
     for report in reports:
-        status = report.status or ""
+        status = report.status.value or ""
         is_revision = status.startswith("Revision: ")
         is_being_revised = status.startswith("Revision in progress: ")
         if is_revision:
@@ -99,7 +98,7 @@ async def reports_list(req: BasicRequest):
             {
                 "report_id": report.report_id,
                 "report_name": report.report_name,
-                "status": report.status,
+                "status": report.status.value,
                 "is_revision": is_revision,
                 "is_being_revised": is_being_revised,
                 "date_created": report.created_ts.isoformat(),  # Convert to ISO 8601 string
@@ -159,11 +158,12 @@ async def get_report_mdx(req: ReportRequest):
             report = result.scalar_one_or_none()
 
             if report:
-                mdx = report.mdx
+                analyses = report.analyses or []
                 return JSONResponse(
                     status_code=200,
                     content={
-                        "mdx": mdx,
+                        "mdx": report.mdx,
+                        "analyses": analyses,
                     },
                 )
             else:
@@ -215,39 +215,6 @@ async def get_report_analysis_ids(req: ReportRequest):
             analyses = result.analysis_ids
 
             return JSONResponse(status_code=200, content={"analyses": analyses})
-
-
-@router.post("/oracle/get_report_analysis")
-async def get_report_analysis(req: ReportAnalysisRequest):
-    """
-    Given a report_id and an analysis_id, this endpoint will return the analysis for the report.
-    """
-    if not (await validate_user(req.token)):
-        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
-    api_key = await get_api_key_from_key_name(req.key_name)
-
-    # get the report
-    async with AsyncSession(engine) as session:
-        async with session.begin():
-            stmt = select(OracleAnalyses).where(
-                OracleAnalyses.db_name == api_key,
-                OracleAnalyses.report_id == req.report_id,
-                OracleAnalyses.analysis_id == req.analysis_id,
-            )
-            result = await session.execute(stmt)
-            row = result.scalar_one_or_none()
-            if row:
-                analysis = {
-                    column.name: getattr(row, column.name)
-                    for column in OracleAnalyses.__table__.columns
-                }
-                return JSONResponse(
-                    status_code=200,
-                    content=analysis,
-                )
-            return JSONResponse(
-                status_code=404, content={"error": "Analysis not found"}
-            )
 
 
 @router.post("/oracle/get_report_status")

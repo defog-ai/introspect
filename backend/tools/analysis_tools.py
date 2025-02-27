@@ -14,9 +14,10 @@ from db_utils import get_db_type_creds
 from defog.llm.utils import chat_async
 from defog.query import async_execute_query_once
 import uuid
+from typing import Callable
 
 
-async def answer_1_question_from_database(
+async def text_to_sql_tool(
     input: AnswerQuestionFromDatabaseInput,
 ) -> AnswerQuestionFromDatabaseOutput:
     """
@@ -102,59 +103,68 @@ async def answer_1_question_from_database(
     if len(rows) > max_rows_displayed:
         result_df = result_df.head(max_rows_displayed)
         df_truncated = True
+
     result_json = result_df.to_json(orient="records", double_precision=4)
+    columns = result_df.columns.astype(str).tolist()
     if result_json == "[]":
-        result_json = "No data retrieved. Consider rephrasing the question or generating a new question. Pay close attention to column names and column descriptions in the database schema to ensure you are fetching the right data. If necessary, first retrieve the unique values of the column(s) or first few rows of the table to better understand the data."
+        error_msg = "No data retrieved. Consider rephrasing the question or generating a new question. Pay close attention to column names and column descriptions in the database schema to ensure you are fetching the right data. If necessary, first retrieve the unique values of the column(s) or first few rows of the table to better understand the data."
+    else:
+        error_msg = ""
 
     return AnswerQuestionFromDatabaseOutput(
         analysis_id=str(uuid.uuid4()),
         question=question,
         sql=sql,
-        df_json=result_json,
+        columns=columns,
+        rows=result_json,
         df_truncated=df_truncated,
+        error=error_msg,
     )
 
 
 async def generate_report_from_question(
-    input: GenerateReportFromQuestionInput,
+    db_name: str,
+    model: str,
+    question: str,
+    clarification_responses: str,
+    post_tool_func: Callable
 ) -> GenerateReportFromQuestionOutput:
     """
     Given an initial question for a single database, this function will call
-    answer_1_question_from_database() to answer the question.
+    text_to_sql_tool() to answer the question.
     Then, it will use the output to generate a new question, and call
-    answer_1_question_from_database() again.
+    text_to_sql_tool() again.
     It will continue to do this until the LLM model decides to stop.
     """
     try:
-        tools = [answer_1_question_from_database]
-        metadata = await get_metadata(input.db_name)
+        tools = [text_to_sql_tool]
+        metadata = await get_metadata(db_name)
         metadata_str = mk_create_ddl(metadata)
         response = await chat_async(
-            model=input.model,
+            model=model,
             tools=tools,
             messages=[
-                {"role": "developer", "content": "Formatting re-enabled"},
+                # {"role": "developer", "content": "Formatting re-enabled"},
                 {
                     "role": "user",
-                    "content": f"""I would like you to create a comprehensive analysis for answering this question: {input.question}
+                    "content": f"""I would like you to create a comprehensive analysis for answering this question: {question}
 
-Look in the database {input.db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few. Do not ask the exact same question twice. Always ask new questions or rephrase the previous question if it led to an error.
-
+Look in the database {db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few. Do not ask the exact same question twice. Always ask new questions or rephrase the previous question if it led to an error.
+{clarification_responses}
 The database schema is below:
 ```sql
 {metadata_str}
 ```
 
 Try to aggregate data in clear and understandable buckets. Please give your final answer as a descriptive report.
-
-For each point that you make in the report, please include all the relevant analysis IDs in brackets that was used to generate the data for it e.g. [ID: analysis_id_1, analysis_id_2].
 """,
                 },
             ],
+            post_tool_function=post_tool_func,
         )
         sql_answers = []
         for tool_output in response.tool_outputs:
-            if tool_output.get("name") == "answer_1_question_from_database":
+            if tool_output.get("name") == "text_to_sql_tool":
                 result = tool_output.get("result")
                 if not result or not isinstance(
                     result, AnswerQuestionFromDatabaseOutput
@@ -172,6 +182,7 @@ For each point that you make in the report, please include all the relevant anal
         return GenerateReportFromQuestionOutput(
             report="Error in generating report from question",
             sql_answers=[],
+            tool_outputs=[],
         )
 
 
@@ -199,8 +210,6 @@ The schema for the database is as follows:
 Synthesize these intermediate reports done by a group of independent analysts into a final report by combining the insights from each of the reports provided.
 
 You should attempt to get the most useful insights from each report, without repeating the insights across reports. Please ensure that you get the actual data insights from these reports, and not just methodologies.
-
-You must cite the relevant analysis IDs in brackets [] for each key insight in the report.
 
 Here are the reports to synthesize:
 """

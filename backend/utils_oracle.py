@@ -1,13 +1,12 @@
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from oracle_models import Clarification
-from db_models import OracleGuidelines, OracleAnalyses, OracleReports
+from db_models import OracleGuidelines, OracleReports
 from db_config import engine
 from utils_md import get_metadata, mk_create_ddl
 from defog.llm.utils import chat_async
-from llm_api import O3_MINI
 from utils_logging import LOGGER
-from typing import Literal
+from typing import Literal, Any
 from datetime import datetime
 import re
 
@@ -51,7 +50,7 @@ async def clarify_question(
 
     response = await chat_async(
         messages=messages,
-        model=O3_MINI,
+        model="o3-mini",
         response_format=ClarificationOutput,
     )
 
@@ -108,87 +107,96 @@ async def get_oracle_guidelines(db_name: str) -> str:
 
     return guidelines
 
-async def set_analysis(analysis_id: str, db_name: str, sql: str, csv: str, mdx: str) -> str:
+async def set_oracle_report(
+    report_id: str = None,
+    db_name: str = None,
+    report_name: str = None,
+    inputs: dict = None,
+    mdx: str = None,
+    analyses: list = None,
+    thinking_steps: list = None,
+    status: Literal["INITIALIZED", "THINKING", "ERRORED", "DONE"] = None,
+) -> str:
     async with AsyncSession(engine) as session:
         async with session.begin():
-            stmt = await session.execute(
-                select(OracleAnalyses).where(
-                    OracleAnalyses.db_name == db_name,
-                    OracleAnalyses.analysis_id == analysis_id,
-                )
-            )
-            result = stmt.scalar_one_or_none()
-
-            if not result:
-                await session.execute(
-                    insert(OracleAnalyses).values(
+            if not report_id:    
+                report_id = await session.execute(
+                    insert(OracleReports).values(
                         db_name=db_name,
-                        analysis_id=analysis_id,
-                        sql=sql,
-                        csv=csv,
+                        report_name=report_name,
+                        created_ts=datetime.now(),
+                        inputs=inputs,
                         mdx=mdx,
-                    )
+                        analyses=analyses,
+                        status=status
+                    ).returning(OracleReports.report_id)
                 )
+                report_id = report_id.scalar_one()
             else:
-                await session.execute(
-                    update(OracleAnalyses)
-                    .where(
-                        OracleAnalyses.db_name == db_name,
-                        OracleAnalyses.analysis_id == analysis_id,
+                # first, get the report
+                report = await session.execute(
+                    select(OracleReports).where(
+                        OracleReports.report_id == report_id
                     )
-                    .values(sql=sql, mdx=mdx, csv=csv)
                 )
-                LOGGER.debug(f"Updated analysis ID {analysis_id} for API key {db_name}")
-    return analysis_id
+                report = report.scalar_one_or_none()
+                if not report:
+                    return None
+                
+                if report_name:
+                    report.report_name = report_name
+                if db_name:
+                    report.db_name = db_name
+                if inputs:
+                    report.inputs = inputs
+                if mdx:
+                    report.mdx = mdx
+                if analyses:
+                    report.analyses = analyses
+                if thinking_steps:
+                    report.thinking_steps = thinking_steps
+                if status:
+                    report.status = status
 
-async def set_oracle_report(db_name: str, report_name: str, inputs: dict, mdx: str, analysis_ids: list) -> str:
+    return report_id
+
+async def append_thinking_step_to_oracle_report(report_id: int, thinking_step: Any):
     async with AsyncSession(engine) as session:
         async with session.begin():
-            await session.execute(
-                insert(OracleReports).values(
-                    db_name=db_name,
-                    report_name=report_name,
-                    created_ts=datetime.now(),
-                    inputs=inputs,
-                    mdx=mdx,
-                    analysis_ids=analysis_ids,
+            report = await session.execute(
+                select(OracleReports).where(
+                    OracleReports.report_id == report_id
                 )
             )
-    return True
+            report = report.scalar_one_or_none()
+            if not report:
+                return None
+            
+            thinking_steps = report.thinking_steps
+            if thinking_steps is None:
+                thinking_steps = []
+            thinking_steps.append(thinking_step)
+            report.thinking_steps = thinking_steps
+    
+    return
 
-def replace_sql_blocks(markdown: str, sql_to_analysis_id: dict) -> str:
-    """
-    Replace SQL code blocks in a markdown string with their corresponding analysis id,
-    if a matching normalized SQL exists in the provided sql_to_analysis_id dictionary.
+async def post_tool_call_func(function_name, input_args, tool_result, report_id):
+    print("calling post_tool_call_func", flush=True)
+    print(f"current report id: {report_id}", flush=True)
     
-    Normalization steps:
-    - Convert SQL to lowercase.
-    - Replace newlines with spaces.
-    - Collapse multiple spaces into a single space.
-    
-    Args:
-        markdown (str): The markdown string containing SQL code blocks.
-        sql_to_analysis_id (dict): A dictionary mapping normalized SQL strings to analysis ids.
-        
-    Returns:
-        str: The markdown string with SQL code blocks replaced by their analysis id where applicable.
-    """
-    
-    # Regex pattern to match SQL code blocks (```sql ... ```)
-    pattern = re.compile(r'```sql\s*\n(.*?)\n```', re.DOTALL)
-    
-    def normalize_sql(sql: str) -> str:
-        # Convert to lowercase, replace newlines with a space, and collapse extra whitespace.
-        return ' '.join(sql.lower().replace('\n', ' ').split())
-    
-    def replacement(match: re.Match) -> str:
-        sql_code = match.group(1)
-        normalized = normalize_sql(sql_code)
-        # Look up the normalized SQL in the dictionary.
-        if normalized in sql_to_analysis_id:
-            return sql_to_analysis_id[normalized]
-        # If no matching analysis id is found, return the original SQL block unchanged.
-        return match.group(0)
-    
-    # Substitute all SQL blocks using the replacement function.
-    return pattern.sub(replacement, markdown)
+    thinking_step_inputs = input_args
+    thinking_step_result = tool_result
+
+    # check if thinking_step_result is a pydantic model. if so, convert to dict
+    if isinstance(thinking_step_result, BaseModel):
+        thinking_step_result = thinking_step_result.model_dump()
+
+    await append_thinking_step_to_oracle_report(
+        report_id=report_id, 
+        thinking_step = {
+            "function_name": function_name,
+            "inputs": thinking_step_inputs,
+            "result": thinking_step_result
+        }
+    )
+

@@ -1,6 +1,5 @@
 from defog.llm.utils import chat_async
 from utils_logging import LOGGER
-from llm_api import GPT_4O
 import json
 
 with open("./prompts/chart_edits/system.md", "r") as f:
@@ -13,7 +12,7 @@ async def edit_chart(
     current_chart_state: dict,
     columns: list[str],
     user_request: str,
-    model_name: str = GPT_4O
+    model_name: str = "gpt-4o"
 ):
     """
     Edit a chart based on the current state and the columns available.
@@ -34,7 +33,7 @@ async def edit_chart(
         temperature=0,
     )
 
-    LOGGER.info("Cost of generating chart edit: %s", response.cost_in_cents)
+    LOGGER.info("Cost of generating chart edit: {:.2f}¢".format(response.cost_in_cents))
     LOGGER.info("Time taken to generate chart edit: %s", response.time)
 
     response = response.content

@@ -23,7 +23,10 @@ class AnswerQuestionFromDatabaseOutput(BaseModel):
     sql: Optional[str] = Field(
         default=None, description="The SQL query generated from the question"
     )
-    df_json: Optional[str] = Field(
+    columns: Optional[List[str]] = Field(
+        default=None, description="The columns returned by the SQL query"
+    )
+    rows: Optional[str] = Field(
         default=None,
         description="The JSON string representation of the dataframe returned by the SQL query",
     )
@@ -34,11 +37,16 @@ class AnswerQuestionFromDatabaseOutput(BaseModel):
 
 
 class GenerateReportFromQuestionInput(BaseModel):
+    report_id: str = Field(..., description="The report ID")
     question: str = Field(..., description="The initial question to generate SQL for")
     model: str = Field(
         ..., description="The name of the model to use for generating SQL. "
     )
     db_name: str = Field(..., description="The name of database to generate SQL for. ")
+    clarification_responses: Optional[str] = Field(
+        default="",
+        description="The clarifications provided by the user after asking the initial question.",
+    )
     num_reports: int = Field(
         default=1,
         description="The number of reports to generate. "

@@ -4,7 +4,6 @@ import traceback
 from db_config import engine
 from db_models import TableInfo
 from defog.llm.utils import chat_async
-from llm_api import O3_MINI
 from pydantic import BaseModel
 from request_models import TableDescription
 from sqlalchemy import delete, select
@@ -157,7 +156,7 @@ async def infer_table_descriptions(
         {"role": "user", "content": user_prompt},
     ]
     response = await chat_async(
-        model=O3_MINI,
+        model="o3-mini",
         messages=messages,
         response_format=TableDescriptions,
     )

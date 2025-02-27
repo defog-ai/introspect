@@ -2,7 +2,6 @@ from defog.llm.utils import chat_async
 from utils_logging import LOGGER
 from utils_md import get_metadata, mk_create_ddl
 from utils_instructions import get_instructions
-from llm_api import GPT_4O
 from request_models import ColumnMetadata
 import re
 
@@ -14,7 +13,7 @@ async def generate_follow_on_questions(
     db_name: str = None, 
     metadata: list[ColumnMetadata] = None,
     instructions: str = None,
-    model_name: str = GPT_4O,
+    model_name: str = "gpt-4o",
 ) -> list[str]:
     """
     Generate follow-on questions for a given question, using an LLM.
@@ -42,7 +41,7 @@ async def generate_follow_on_questions(
         max_completion_tokens=128,
     )
     
-    LOGGER.info("Cost of generating follow-on questions: %s", follow_on_questions.cost_in_cents)
+    LOGGER.info("Cost of generating follow-on questions: {:.2f}¢".format(follow_on_questions.cost_in_cents))
     LOGGER.info("Time taken to generate follow-on questions: %s", follow_on_questions.time)
 
     follow_on_questions = follow_on_questions.content.splitlines()

@@ -5,21 +5,19 @@ from enum import Enum
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import pandas as pd
-import re
+import json
 import time
-from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines, set_analysis, set_oracle_report, replace_sql_blocks
+from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines, set_oracle_report, post_tool_call_func
 from db_models import OracleGuidelines
 from db_config import engine
 from auth_utils import validate_user_request
-from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
-from tools.analysis_models import GenerateReportFromQuestionInput
+from functools import partial
 
 from utils_logging import LOGGER, save_and_log, save_timing
-from tools.analysis_tools import synthesize_report_from_questions
-from llm_api import O3_MINI
+from tools.analysis_tools import generate_report_from_question
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
@@ -153,6 +151,14 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
                 or "options" not in clarification
             ):
                 raise ValueError(f"Invalid clarification response: {clarification}")
+        
+        # create a new report in the db
+        report_id = await set_oracle_report(
+            db_name=db_name,
+            report_name=req.user_question,
+            status="INITIALIZED"
+        )
+        clarify_response["report_id"] = report_id
     except Exception as e:
         LOGGER.error(f"Error getting clarifications: {e}")
         return JSONResponse(
@@ -169,6 +175,7 @@ class Clarification(BaseModel):
     clarification: str
     answer: Optional[Union[str, List[str]]] = None
 class GenerateReportRequest(BaseModel):
+    report_id: int
     db_name: str
     token: str
     user_question: str
@@ -192,31 +199,64 @@ async def generate_report(req: GenerateReportRequest):
     db_name = req.db_name
     user_question = req.user_question
     answered_clarifications = req.answered_clarifications
+    report_id = req.report_id
 
-    analysis_response = await synthesize_report_from_questions(
-        GenerateReportFromQuestionInput(
-            db_name=db_name,
-            model=O3_MINI,
-            question=user_question,
-            num_reports=3,
-        )
+    # convert clarification responses into a single string
+    clarification_responses = ""
+    if answered_clarifications:
+        clarification_responses = "\nFor additional context: after the user asked this question, they provided the following clarifications:"
+        for clarification in answered_clarifications:
+            clarification_responses += f" {clarification.clarification} (Answer: {clarification.answer})\n"
+    
+    # use partial to pass the report_id to post_tool_func, so that it can update the correct report
+    post_tool_func = partial(post_tool_call_func, report_id=report_id)
+
+    # set the clarified answers in the database
+    await set_oracle_report(
+        report_id=report_id,
+        inputs=req.model_dump(),
+        status="THINKING",
+    )
+
+    # generate the report
+    analysis_response = await generate_report_from_question(
+        db_name=db_name,
+        model="claude-3-7-sonnet-latest",
+        question=user_question,
+        clarification_responses=clarification_responses,
+        post_tool_func=post_tool_func,
     )
     
     main_content = analysis_response.synthesized_report
     print(main_content, flush=True)
+    sql_answers = analysis_response.model_dump()["sql_answers"]
+    sql_answers = [i for i in sql_answers if not i["error"]]
+    for idx, answer in enumerate(sql_answers):
+        try:
+            sql_answers[idx]["rows"] = json.loads(answer["rows"])
+            sql_answers[idx]["columns"] = [{"dataIndex": col, "title": col} for col in answer["columns"]]
+        except Exception as e:
+            print(str(e), flush=True)
+            print(answer, flush=True)
 
-    mdx = f"# {user_question.title()}\n\n{main_content}"
+    mdx = f"# {user_question}\n\n{main_content}"
 
     # save to oracle_reports table
     await set_oracle_report(
-        db_name=db_name,
-        report_name=user_question,
-        inputs=req.model_dump(),
+        report_id=report_id,
         mdx=mdx,
-        analysis_ids=[],
+        analyses=sql_answers,
+        status="DONE",
     )
 
     return {
         "mdx": main_content,
-        "analysis_ids": [],
+        "sql_answers": sql_answers,
     }
+
+# return a stream for updating the report's thinking status
+@router.post("/oracle/update_report_thinking_status")
+async def update_report_thinking_status(req: Request):
+    params = await req.json()
+    report_id = params.get("report_id")
+    
