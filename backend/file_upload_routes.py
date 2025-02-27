@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from request_models import UploadFileAsDBRequest
 from utils_logging import LOGGER
 from utils_file_uploads import clean_table_name
-from db_utils import get_db_type_creds
+from db_utils import get_db_info, get_db_type_creds
 import random
 import os
 import pandas as pd
@@ -53,10 +53,11 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
     # connection uri
     connection_uri = f"postgresql://{INTERNAL_DB_CREDS['user']}:{INTERNAL_DB_CREDS['password']}@{INTERNAL_DB_CREDS['host']}:{INTERNAL_DB_CREDS['port']}/{cleaned_db_name}"
     if database_exists(connection_uri):
-        LOGGER.info(f"Database already exists: {cleaned_db_name}, but is not added to db creds. Dropping it.")
+        LOGGER.info(
+            f"Database already exists: {cleaned_db_name}, but is not added to db creds. Dropping it."
+        )
         drop_database(connection_uri)
         LOGGER.info(f"Database dropped: {cleaned_db_name}")
-
 
     LOGGER.info(f"Creating database: {cleaned_db_name}")
     create_database(connection_uri)
@@ -77,15 +78,21 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
             # store all values as strings to preserve dirty data
             dtype=str,
         )
-        inferred_types = (await export_df_to_postgres(df, cleaned_table_name, connection_uri, chunksize=5000))["inferred_types"]
+        inferred_types = (
+            await export_df_to_postgres(
+                df, cleaned_table_name, connection_uri, chunksize=5000
+            )
+        )["inferred_types"]
         for col, dtype in inferred_types.items():
-            db_metadata.append({
-                "db_name": cleaned_db_name,
-                "table_name": cleaned_table_name,
-                "column_name": col,
-                "data_type": dtype
-            })
-    
+            db_metadata.append(
+                {
+                    "db_name": cleaned_db_name,
+                    "table_name": cleaned_table_name,
+                    "column_name": col,
+                    "data_type": dtype,
+                }
+            )
+
     LOGGER.info(f"Adding metadata for {cleaned_db_name}")
     await set_metadata(cleaned_db_name, db_metadata)
 
@@ -94,9 +101,11 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
         "password": INTERNAL_DB_CREDS["password"],
         "host": INTERNAL_DB_CREDS["host"],
         "port": INTERNAL_DB_CREDS["port"],
-        "database": cleaned_db_name
+        "database": cleaned_db_name,
     }
     LOGGER.info(f"Creating DbCreds entry for {cleaned_db_name}")
     await update_db_type_creds(cleaned_db_name, "postgres", user_db_creds)
 
-    return JSONResponse(content={"db_name": cleaned_db_name})
+    db_info = await get_db_info(cleaned_db_name)
+
+    return JSONResponse(content={"db_info": db_info, "db_name": cleaned_db_name})

@@ -57,30 +57,6 @@ const MetadataTable = ({
     setSelectedTablesForIndexing(dbInfo?.selected_tables || []);
   }, [dbInfo]);
 
-  const fetchMetadata = async () => {
-    setLoading(true);
-    const res = await fetch(setupBaseUrl("http", `integration/get_metadata`), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token,
-        db_name: dbName,
-      }),
-    });
-    if (res.status === 401) {
-      message.error("Your credentials are incorrect. Please log in again.");
-      setLoading(false);
-      return;
-    }
-    const data = await res.json();
-    setLoading(false);
-    if (!data.error) {
-      setMetadata(data.metadata || []);
-    } else {
-      setMetadata([]);
-    }
-  };
-
   const updateMetadata = useCallback(
     debounce(async (latestMetadata) => {
       try {
@@ -97,15 +73,17 @@ const MetadataTable = ({
           }
         );
 
-        const data = await res.json();
-        if (data.error) {
-          message.error(data.error || "Error updating metadata", 10);
-        } else {
-          message.success("Metadata updated successfully!");
+        if (!res.ok) {
+          throw Error("Error updating metadata");
         }
+
+        const newDbInfo = await res.json();
+
+        onUpdate(dbName, newDbInfo);
+
+        message.success("Metadata updated successfully");
       } catch (error) {
-        console.error("Error saving data:", error);
-        message.error("Error saving data");
+        message.error("Error updating metadata:");
       }
     }, 500),
     [dbName]
@@ -322,7 +300,7 @@ const MetadataTable = ({
 
   return (
     <div className="space-y-10">
-      <div className="flex flex-row items-center text-blue-500 rounded-lg dark:text-blue-700 gap-2 text-sm">
+      <div className="flex flex-row items-center text-blue-500 rounded-lg dark:text-blue-300 gap-2 text-sm">
         <InfoIcon />
         Extracting table and column metadata helps our AI generate more accurate
         SQL queries.

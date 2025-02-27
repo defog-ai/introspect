@@ -1,29 +1,20 @@
-import { useState, useEffect, useMemo, useContext, useRef } from "react";
-import { useRouter } from "next/router";
+import { useState, useEffect, useMemo, useContext, useRef, useId } from "react";
 import Meta from "$components/layout/Meta";
 import MetadataTable from "../components/extract-metadata/MetadataTable";
-import SetupStatus from "../components/extract-metadata/SetupStatus";
-import setupBaseUrl from "$utils/setupBaseUrl";
 import Scaffolding from "$components/layout/Scaffolding";
 import {
   MessageManagerContext,
   Tabs,
   SingleSelect,
-  DropFiles,
   SpinningLoader,
 } from "@defogdotai/agents-ui-components/core-ui";
-import { DbInfo, getDbInfo } from "$utils/utils";
+import { DbInfo, deleteDbInfo, getDbInfo } from "$utils/utils";
 import DbCredentialsForm from "$components/extract-metadata/DBCredentialsForm";
-import { twMerge } from "tailwind-merge";
-
-const statusClasses = (status: boolean) => {
-  return status
-    ? "text-lime-800 bg-lime-200 dark:bg-lime-800/30 dark:text-lime-500"
-    : "text-rose-800 bg-rose-100 dark:bg-rose-500/30 dark:text-rose-100";
-};
+import SetupStatus from "$components/extract-metadata/SetupStatus";
+import { NewDbCreation } from "$components/extract-metadata/NewDbCreation";
+import { Database, Plus, Trash } from "lucide-react";
 
 const ExtractMetadata = () => {
-  const router = useRouter();
   const [dbInfo, setDbInfo] = useState<{
     [dbName: string]: DbInfo;
   }>({});
@@ -57,7 +48,7 @@ const ExtractMetadata = () => {
 
         const data = await res.json();
 
-        const dbNames = data.db_names;
+        const dbNames = data.db_names.filter((dbName) => dbName);
 
         const fetchedInfo = {};
 
@@ -80,7 +71,7 @@ const ExtractMetadata = () => {
   }, []);
 
   // Are any tables indexed?
-  const isTablesIndexed =
+  const areTablesIndexed =
     dbInfo[selectedDbName] &&
     dbInfo[selectedDbName].tables &&
     dbInfo[selectedDbName].tables.length > 0;
@@ -95,66 +86,86 @@ const ExtractMetadata = () => {
 
   const canConnect = dbInfo[selectedDbName]?.can_connect;
 
+  const newDbOption = useId();
+
   const dbSelector = useMemo(() => {
-    if (
-      !selectedDbName ||
-      !dbInfo[selectedDbName] ||
-      !Object.keys(dbInfo).length
-    )
-      return null;
+    if (!Object.keys(dbInfo).length) return null;
+
+    let options = Object.keys(dbInfo).map((db) => ({
+      value: db,
+      label: db,
+    }));
+
+    options = [
+      {
+        value: newDbOption,
+        label: "Add new database",
+      },
+      ...options,
+    ];
+
     return (
-      <div className="flex flex-col mt-6 mb-10 w-full gap-2 items-start flex-wrap">
+      <div className="flex flex-row my-6 w-full gap-2 items-center">
         {Object.keys(dbInfo).length > 0 && (
-          <SingleSelect
-            label="Select database"
-            labelClassNames="font-bold text-sm"
-            allowClear={false}
-            allowCreateNewOption={false}
-            options={Object.keys(dbInfo).map((db) => ({
-              value: db,
-              label: db,
-            }))}
-            value={selectedDbName || undefined}
-            onChange={(val) => setSelectedDbName(val)}
-            placeholder="Select your DB name"
-            // rootClassNames="my-4"
-          />
+          <>
+            <SingleSelect
+              label="Select database"
+              labelClassNames="font-bold text-sm"
+              allowClear={false}
+              allowCreateNewOption={false}
+              options={options}
+              value={selectedDbName || undefined}
+              onChange={(val) => setSelectedDbName(val)}
+              placeholder="Select your DB name"
+              optionRenderer={(option) => {
+                if (option.value === newDbOption) {
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Plus className="w-4" />
+                      Add new database
+                    </div>
+                  );
+                }
+                return (
+                  <div className="whitespace-pre flex items-center gap-2">
+                    <Database className="w-4" />
+                    {option.label}
+                  </div>
+                );
+              }}
+            />
+            {selectedDbName !== newDbOption && (
+              <Trash
+                className="w-5 h-5 relative top-3 cursor-pointer hover:text-rose-500"
+                onClick={() => {
+                  try {
+                    deleteDbInfo(token.current, selectedDbName);
+                    message.success("Database deleted");
+
+                    setDbInfo((prev) => {
+                      const newDbInfo = { ...prev };
+                      delete newDbInfo[selectedDbName];
+
+                      return newDbInfo;
+                    });
+
+                    setSelectedDbName(newDbOption);
+                  } catch (e) {
+                    console.error(e);
+                    message.error("Failed to delete database");
+                  }
+                }}
+              />
+            )}
+          </>
         )}
-        <div className="text-xs flex flex-row gap-1 items-center">
-          <span
-            className={twMerge(
-              "rounded-xl px-2 py-1 mr-2",
-              statusClasses(canConnect)
-            )}
-          >
-            {canConnect ? "Connection healthy" : "Connection failed"}
-          </span>
-          <span
-            className={twMerge(
-              "rounded-xl px-2 py-1 mr-2",
-              statusClasses(isTablesIndexed)
-            )}
-          >
-            {isTablesIndexed ? "AI metadata generated" : "AI metadata missing"}
-          </span>
-          <span
-            className={twMerge(
-              "rounded-xl px-2 py-1",
-              statusClasses(hasNonEmptyDescription)
-            )}
-          >
-            {hasNonEmptyDescription
-              ? "Has column descriptions"
-              : "Column descriptions missing"}
-          </span>
-        </div>
       </div>
     );
-  }, [isTablesIndexed, hasNonEmptyDescription, canConnect, selectedDbName]);
+  }, [selectedDbName]);
 
   const tabs = useMemo(() => {
-    if (!selectedDbName) return [];
-    if (loading) return [];
+    if (!selectedDbName || selectedDbName === newDbOption) return null;
+    if (loading) return null;
 
     return [
       {
@@ -209,8 +220,14 @@ const ExtractMetadata = () => {
       <Scaffolding id="manage-database" userType="admin">
         <div className="w-full dark:bg-dark-bg-primary px-2 md:px-0">
           {dbSelector}
-          {Object.keys(dbInfo).length ? (
+          {Object.keys(dbInfo).length && tabs ? (
             <>
+              <SetupStatus
+                loading={loading}
+                canConnect={canConnect}
+                areTablesIndexed={areTablesIndexed}
+                hasNonEmptyDescription={hasNonEmptyDescription}
+              />
               <div className="dark:bg-dark-bg-primary mt-4">
                 <Tabs
                   rootClassNames="w-full dark:bg-dark-bg-primary min-h-[500px]"
@@ -227,37 +244,25 @@ const ExtractMetadata = () => {
               </div>
             </>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 md:min-w-full gap-4 my-2 prose dark:prose-invert">
-              <div className="col-span-2">
-                <p className="text-sm">
-                  You have no databases yet. You can either upload a CSV/Excel
-                  file or enter your database credentials.
-                </p>
-              </div>
-              <div className="col-span-1 prose dark:prose-invert">
-                <p>Enter database credentials</p>
-                <DbCredentialsForm
-                  token={token.current}
-                  existingDbInfo={dbInfo[selectedDbName]}
-                  onDbUpdatedOrCreated={(dbName, dbInfo) => {
-                    setSelectedDbName(dbName);
-                    setDbInfo((prev) => ({ ...prev, [dbName]: dbInfo }));
-                  }}
-                />
-              </div>
-              <div className="col-span-1 prose dark:prose-invert">
-                <p>Or upload a CSV/Excel file</p>
-                <p className="text-xs ">
-                  Your file will be used to create a database which you can then
-                  query/create reports for
-                </p>
-                <DropFiles
-                  showIcon={true}
-                  rootClassNames="w-full h-full border flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-600 text-gray-400 dark:text-gray-200"
-                  labelClassNames="text-gray-400 dark:text-gray-200"
-                  iconClassNames="m-auto text-gray-400"
-                />
-              </div>
+            <div className="prose dark:prose-invert max-w-none">
+              {Object.keys(dbInfo).length === 0 && (
+                <div className="max-w-lg mx-auto text-center my-10">
+                  <h3>Welcome to Defog!</h3>
+                  <p>
+                    Let's get you set up with your first database connection.
+                    Connect your data source to start generating AI-powered SQL
+                    queries and reports.
+                  </p>
+                </div>
+              )}
+              <NewDbCreation
+                token={token.current}
+                onCreated={(dbName, dbInfo) => {
+                  setDbInfo((prev) => ({ ...prev, [dbName]: dbInfo }));
+                  setSelectedDbName(dbName);
+                  message.success(`Database ${dbName} created successfully`);
+                }}
+              />
             </div>
           )}
         </div>

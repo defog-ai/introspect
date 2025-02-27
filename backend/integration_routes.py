@@ -7,10 +7,10 @@ import traceback
 from uuid import uuid4
 import pandas as pd
 from db_utils import (
+    delete_db_info,
     get_db_info,
     get_db_type_creds,
     update_db_type_creds,
-    validate_db_connection,
 )
 from db_config import redis_client
 from auth_utils import validate_user, validate_user_request
@@ -88,6 +88,28 @@ async def update_db_creds(request: Request):
                 "status": "error",
                 "message": "Could not update the database credentials. Please try again.",
             },
+            status_code=400,
+        )
+
+
+@router.post("/integration/delete_db_info")
+async def delete_db_info_endpoint(request: Request):
+    """
+    Delete the database credentials for a given db_name
+    """
+    params = await request.json()
+    db_name = params.get("db_name")
+
+    try:
+        await delete_db_info(db_name=db_name)
+
+        return JSONResponse(
+            content=True,
+            status_code=200,
+        )
+    except Exception as e:
+        return JSONResponse(
+            content=False,
             status_code=400,
         )
 

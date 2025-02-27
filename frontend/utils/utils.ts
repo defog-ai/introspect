@@ -1,4 +1,6 @@
 import setupBaseUrl from "./setupBaseUrl";
+import Papa from "papaparse";
+import { read, utils } from "xlsx";
 
 /**
  *
@@ -167,3 +169,130 @@ export const getDbInfo = async (
     return await res.json();
   }
 };
+
+export const deleteDbInfo = async (token: string, dbName: string) => {
+  const res = await fetch(setupBaseUrl("http", `integration/delete_db_info`), {
+    method: "POST",
+    body: JSON.stringify({ token, db_name: dbName }),
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    throw new Error("Failed to delete db info");
+  } else {
+    return await res.json();
+  }
+};
+
+export const FILE_TYPES = {
+  EXCEL: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  OLD_EXCEL: "application/vnd.ms-excel",
+  CSV: "text/csv",
+};
+
+/**
+ * Simple function to check if given gile type exists in the FILE_TYPES object
+ */
+export function isValidFileType(fileType: string) {
+  return Object.values(FILE_TYPES).includes(fileType);
+}
+
+interface UserFile {
+  rows: { [key: string]: any }[];
+  columns: { title: string }[];
+}
+
+export const uploadFile = async (
+  token: string,
+  fileName: string,
+  tables: { [key: string]: UserFile }
+): Promise<{ dbName: string; dbInfo: DbInfo }> => {
+  const res = await fetch(setupBaseUrl("http", `upload_file_as_db`), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      token: token,
+      file_name: fileName,
+      tables,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      "Failed to create new api key name - are you sure your network is working?"
+    );
+  }
+  const data = await res.json();
+  return { dbName: data.db_name, dbInfo: data.db_info };
+};
+
+export function parseCsvFile(
+  file: File,
+  cb: ({
+    file,
+    rows,
+    columns,
+  }: {
+    file: File;
+    rows: any[];
+    columns: any[];
+  }) => void = (...args) => {}
+) {
+  // if file type is not csv, error
+  if (file.type !== "text/csv") {
+    throw new Error("File type must be CSV");
+  }
+
+  Papa.parse(file, {
+    dynamicTyping: true,
+    skipEmptyLines: true,
+    header: true,
+    complete: (results) => {
+      const columns = results.meta.fields.map((f) => {
+        return {
+          title: f,
+          dataIndex: f,
+          key: f,
+        };
+      });
+
+      let rows: any = results.data;
+
+      rows.forEach((row, i) => {
+        row.key = i;
+      });
+
+      cb({ file, rows, columns });
+    },
+  });
+}
+
+export async function parseExcelFile(
+  file: File,
+  cb: ({
+    file,
+    sheets,
+  }: {
+    file: File;
+    sheets: { [sheetName: string]: { rows: any[]; columns: any[] } };
+  }) => void = (...args) => {}
+) {
+  const arrayBuf = await file.arrayBuffer();
+  const d = read(arrayBuf);
+  // go through all sheets, and stream to csvs
+  const sheets = {};
+
+  d.SheetNames.forEach((sheetName) => {
+    const rows = utils.sheet_to_json(d.Sheets[sheetName], { defval: null });
+    const columns = Object.keys(rows[0]).map((d) => ({
+      title: d,
+      dataIndex: d,
+      key: d,
+    }));
+
+    sheets[sheetName] = { rows, columns };
+  });
+
+  cb({ file, sheets });
+}

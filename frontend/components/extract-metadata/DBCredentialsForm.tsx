@@ -1,6 +1,6 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { Database } from "lucide-react";
+import { CircleAlert, Database } from "lucide-react";
 import {
   Button,
   Input,
@@ -43,12 +43,10 @@ const emptyDbInfo: DbInfo = {
 };
 
 const DbCredentialsForm = ({
-  dbName = "",
   token = "",
   existingDbInfo = null,
   onDbUpdatedOrCreated = () => {},
 }: {
-  dbName?: string;
   token: string;
   existingDbInfo?: DbInfo | null;
   onDbUpdatedOrCreated: (dbName: string, dbInfo: DbInfo) => void;
@@ -88,8 +86,6 @@ const DbCredentialsForm = ({
       db_creds: dbInfo.db_creds,
     };
 
-    console.log(payload);
-
     try {
       setLoading(true);
       const res = await fetch(
@@ -106,7 +102,7 @@ const DbCredentialsForm = ({
 
       const newDbInfo: DbInfo = await res.json();
 
-      onDbUpdatedOrCreated(dbName, newDbInfo);
+      onDbUpdatedOrCreated(newDbInfo.db_name, newDbInfo);
     } catch (e) {
       console.log(e);
       message.error(e.message);
@@ -117,20 +113,13 @@ const DbCredentialsForm = ({
 
   return (
     <>
-      <div className="space-y-4 max-w-2xl not-prose">
-        <SingleSelect
-          allowClear={false}
-          label={"Database Type"}
-          value={dbInfo?.db_type || "postgres"}
-          options={dbOptions}
-          onChange={(value) => {
-            setDbInfo({ ...dbInfo, db_type: value });
-          }}
-        />
-
+      <div className="space-y-4">
         <Input
           label={
-            "Database nickname (This is for your reference so make it memorable)"
+            "Database nickname" +
+            (!existingDbInfo
+              ? "(This is for your reference so make it memorable. This cannot be changed later!)"
+              : "")
           }
           status={
             !existingDbInfo || dbInfo?.db_name === existingDbInfo?.db_name
@@ -143,7 +132,20 @@ const DbCredentialsForm = ({
           onChange={(e) => {
             setDbInfo({ ...dbInfo, db_name: e.target.value });
           }}
+          disabled={existingDbInfo && true}
         />
+
+        <SingleSelect
+          rootClassNames="not-prose"
+          allowClear={false}
+          label={"Database Type"}
+          value={dbInfo?.db_type || "postgres"}
+          options={dbOptions}
+          onChange={(value) => {
+            setDbInfo({ ...dbInfo, db_type: value });
+          }}
+        />
+
         {dbInfo?.db_type &&
           dbCredOptions[dbInfo.db_type].map((field) => (
             <div key={field}>
@@ -168,8 +170,8 @@ const DbCredentialsForm = ({
         <Button
           onClick={handleSubmit}
           className="w-full justify-center p-2"
-          variant="normal"
-          disabled={loading}
+          variant="primary"
+          disabled={loading || !dbInfo.db_name}
         >
           {loading ? "Updating..." : !existingDbInfo ? "Create" : "Update"}
         </Button>

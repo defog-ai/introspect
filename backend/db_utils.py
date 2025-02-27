@@ -2,7 +2,7 @@
 
 from typing import Dict, Tuple
 from defog.query import async_execute_query_once
-from sqlalchemy import select, update, insert
+from sqlalchemy import delete, select, update, insert
 from utils_md import get_metadata
 from db_config import engine
 from db_models import DbCreds
@@ -124,3 +124,8 @@ async def get_db_info(db_name):
         "can_connect": can_connect,
         "metadata": metadata,
     }
+
+
+async def delete_db_info(db_name):
+    async with engine.begin() as conn:
+        await conn.execute(delete(DbCreds).where(DbCreds.db_name == db_name))
