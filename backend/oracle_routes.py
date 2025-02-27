@@ -240,7 +240,7 @@ async def generate_report(req: GenerateReportRequest):
             print(str(e), flush=True)
             print(answer, flush=True)
 
-    mdx = f"# {user_question}\n\n{main_content}"
+    mdx = main_content
 
     # save to oracle_reports table
     await set_oracle_report(
