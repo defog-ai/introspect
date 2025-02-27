@@ -157,6 +157,8 @@ The database schema is below:
 ```
 
 Try to aggregate data in clear and understandable buckets. Please give your final answer as a descriptive report.
+
+Don't give me management-consultant styled fluff. Be to the point, and give smart insights in plain language.
 """,
                 },
             ],
