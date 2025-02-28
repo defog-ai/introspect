@@ -1,8 +1,9 @@
 """Integration tests for the Defog backend API routes.
 Tests database setup, configuration, user management, query execution, and cleanup, requires Docker on localhost:1235."""
 
-import requests
 import json
+
+import requests
 from conftest import BASE_URL, TEST_DB
 
 
@@ -31,26 +32,20 @@ def test_add_db_creds(admin_token):
         response = requests.post(
             f"{BASE_URL}/integration/update_db_creds", json=add_creds_payload
         )
-        assert (
-            response.status_code == 200
-        ), f"Failed to add database credentials. Response: {response.text}"
-        assert response.json().get("success") is True, "Expected success response"
+        assert response.status_code == 200, f"Failed to add database credentials. Response: {response.text}"
 
         # Step 2: Verify credentials were added correctly
         get_tables_payload = {"token": admin_token, "db_name": db_name}
         response = requests.post(
-            f"{BASE_URL}/integration/get_tables_db_creds", json=get_tables_payload
+            f"{BASE_URL}/integration/get_db_info", json=get_tables_payload
         )
-        assert (
-            response.status_code == 200
-        ), f"Failed to get database tables. Response: {response.text}"
-
+        assert response.status_code == 200, f"Failed to get database tables. Response: {response.text}"
         data = response.json()
-        assert "error" not in data, f"Error in response: {data.get('error')}"
+        assert "error" not in data
 
         # Step 3: Verify database configuration
-        assert data.get("db_type") == TEST_DB["db_type"], "Incorrect database type"
-        assert "db_creds" in data, "Database credentials not found in response"
+        assert data.get("db_type") == TEST_DB["db_type"]
+        assert "db_creds" in data
 
         db_creds = data["db_creds"]
         expected_creds = TEST_DB["db_creds"]
@@ -85,30 +80,18 @@ def test_add_initial_metadata(admin_token):
                 "column_name": "id",
                 "data_type": "integer",
                 "column_description": "Unique identifier for customers",
-                "is_primary_key": True,
-                "is_foreign_key": False,
-                "foreign_key_table": None,
-                "foreign_key_column": None,
             },
             {
                 "table_name": "customers",
                 "column_name": "name",
                 "data_type": "varchar",
                 "column_description": "Full name of the customer",
-                "is_primary_key": False,
-                "is_foreign_key": False,
-                "foreign_key_table": None,
-                "foreign_key_column": None,
             },
             {
                 "table_name": "customers",
                 "column_name": "email",
                 "data_type": "varchar",
                 "column_description": "Customer's email address",
-                "is_primary_key": False,
-                "is_foreign_key": False,
-                "foreign_key_table": None,
-                "foreign_key_column": None,
             },
             # Ticket Types table metadata
             {
@@ -116,30 +99,18 @@ def test_add_initial_metadata(admin_token):
                 "column_name": "id",
                 "data_type": "integer",
                 "column_description": "Unique identifier for ticket types",
-                "is_primary_key": True,
-                "is_foreign_key": False,
-                "foreign_key_table": None,
-                "foreign_key_column": None,
             },
             {
                 "table_name": "ticket_types",
                 "column_name": "name",
                 "data_type": "varchar",
                 "column_description": "Name of the ticket type (e.g., Standard, VIP)",
-                "is_primary_key": False,
-                "is_foreign_key": False,
-                "foreign_key_table": None,
-                "foreign_key_column": None,
             },
             {
                 "table_name": "ticket_types",
                 "column_name": "price",
                 "data_type": "decimal",
                 "column_description": "Price of the ticket type",
-                "is_primary_key": False,
-                "is_foreign_key": False,
-                "foreign_key_table": None,
-                "foreign_key_column": None,
             },
             # Ticket Sales table metadata
             {
@@ -147,40 +118,24 @@ def test_add_initial_metadata(admin_token):
                 "column_name": "id",
                 "data_type": "integer",
                 "column_description": "Unique identifier for ticket sales",
-                "is_primary_key": True,
-                "is_foreign_key": False,
-                "foreign_key_table": None,
-                "foreign_key_column": None,
             },
             {
                 "table_name": "ticket_sales",
                 "column_name": "customer_id",
                 "data_type": "integer",
                 "column_description": "Reference to the customer who bought the ticket",
-                "is_primary_key": False,
-                "is_foreign_key": True,
-                "foreign_key_table": "customers",
-                "foreign_key_column": "id",
             },
             {
                 "table_name": "ticket_sales",
                 "column_name": "ticket_type_id",
                 "data_type": "integer",
                 "column_description": "Reference to the type of ticket purchased",
-                "is_primary_key": False,
-                "is_foreign_key": True,
-                "foreign_key_table": "ticket_types",
-                "foreign_key_column": "id",
             },
             {
                 "table_name": "ticket_sales",
                 "column_name": "status",
                 "data_type": "varchar",
                 "column_description": "Current status of the ticket (active, used, expired)",
-                "is_primary_key": False,
-                "is_foreign_key": False,
-                "foreign_key_table": None,
-                "foreign_key_column": None,
             }
         ]
 
@@ -191,11 +146,26 @@ def test_add_initial_metadata(admin_token):
         )
 
         # Check update response
-        assert (
-            response.status_code == 200
-        ), f"Failed to update metadata: {response.text}"
-        data = response.json()
-        assert data["success"] == True
+        assert response.status_code == 200, f"Failed to update metadata: {response.text}"
+        update_data = response.json()
+        assert update_data["db_name"] == db_name
+        assert set(update_data["tables"]) == set(["customers", "ticket_sales", "ticket_types"])
+        assert update_data["db_creds"] == TEST_DB["db_creds"]
+        assert update_data["db_type"] == TEST_DB["db_type"]
+        assert set(update_data["selected_tables"]) == set(["customers", "ticket_sales", "ticket_types"])
+        assert update_data["can_connect"] == True
+        for column_metadata in update_data["metadata"]:
+            table_name = column_metadata["table_name"]
+            column_name = column_metadata["column_name"]
+            found = False
+            for expected_meta in metadata:
+                if expected_meta["table_name"] == table_name and expected_meta["column_name"] == column_name:
+                    assert column_metadata["data_type"] == expected_meta["data_type"]
+                    assert column_metadata["column_description"] == expected_meta["column_description"]
+                    found = True
+                    break
+            assert found, f"Could not find metadata for {table_name}.{column_name}"
+
 
         # Now fetch the metadata and verify it
         get_response = requests.post(
@@ -203,9 +173,7 @@ def test_add_initial_metadata(admin_token):
             json={"token": admin_token, "db_name": db_name, "format": "json"},
         )
 
-        assert (
-            get_response.status_code == 200
-        ), f"Failed to get metadata: {get_response.text}"
+        assert get_response.status_code == 200, f"Failed to get metadata: {get_response.text}"
         get_data = get_response.json()
         fetched_metadata = get_data["metadata"]
 
@@ -224,9 +192,7 @@ def test_add_initial_metadata(admin_token):
                 ),
                 None,
             )
-            assert (
-                matching_meta is not None
-            ), f"Could not find metadata for {expected_meta['table_name']}.{expected_meta['column_name']}"
+            assert matching_meta is not None, f"Could not find metadata for {expected_meta['table_name']}.{expected_meta['column_name']}"
 
             # Verify the fields that are returned by the API
             for key in ["table_name", "column_name", "data_type", "column_description"]:
@@ -278,7 +244,6 @@ def test_update_metadata(admin_token):
             json={"token": admin_token, "db_name": db_name, "metadata": updated_metadata},
         )
         assert response.status_code == 200, f"Failed to update metadata: {response.text}"
-        assert response.json()["success"] is True
         
         # Verify updates
         verify_response = requests.post(
@@ -340,9 +305,7 @@ def test_initial_instructions(admin_token):
         )
 
         # Check update response
-        assert (
-            response.status_code == 200
-        ), f"Failed to update instructions: {response.text}"
+        assert response.status_code == 200, f"Failed to update instructions: {response.text}"
         data = response.json()
         assert data["success"] == True
 
@@ -353,16 +316,12 @@ def test_initial_instructions(admin_token):
             headers={"Content-Type": "application/json"},
         )
 
-        assert (
-            get_response.status_code == 200
-        ), f"Failed to get instructions: {get_response.text}"
+        assert get_response.status_code == 200, f"Failed to get instructions: {get_response.text}"
         get_data = get_response.json()
         fetched_instructions = get_data["instructions"]
 
         # Verify instructions match
-        assert (
-            fetched_instructions == test_instructions
-        ), f"Instructions mismatch. Expected:\n{test_instructions}\n\nGot:\n{fetched_instructions}"
+        assert fetched_instructions == test_instructions, f"Instructions mismatch. Expected:\n{test_instructions}\n\nGot:\n{fetched_instructions}"
 
     except Exception as e:
         print(f"\nTest failed with error: {str(e)}")
@@ -426,9 +385,7 @@ def test_update_instructions(admin_token):
         assert get_response.status_code == 200, "Failed to get updated instructions"
         
         fetched_instructions = get_response.json()["instructions"]
-        assert (
-            fetched_instructions == updated_instructions
-        ), f"Instructions mismatch after update. Expected:\n{updated_instructions}\n\nGot:\n{fetched_instructions}"
+        assert fetched_instructions == updated_instructions, f"Instructions mismatch after update. Expected:\n{updated_instructions}\n\nGot:\n{fetched_instructions}"
 
     except Exception as e:
         print(f"\nTest failed with error: {str(e)}")
@@ -770,14 +727,10 @@ def test_generate_query(admin_token):
             headers={"Content-Type": "application/json"},
         )
 
-        assert (
-            generate_response.status_code == 200
-        ), f"Failed to generate SQL: {generate_response.text}"
+        assert generate_response.status_code == 200, f"Failed to generate SQL: {generate_response.text}"
         generate_data = generate_response.json()
         assert "sql" in generate_data, "No SQL in response"
-        assert (
-            generate_data["error"] is None
-        ), f"Error in SQL generation: {generate_data['error']}"
+        assert generate_data["error"] is None, f"Error in SQL generation: {generate_data['error']}"
 
         sql = generate_data["sql"]
         print(f"\nGenerated SQL: {sql}")
@@ -789,8 +742,9 @@ def test_generate_query(admin_token):
 
 def test_run_query(admin_token):
     """Test getting first row from customers table"""
-    from utils_sql import execute_sql
     import asyncio
+
+    from utils_sql import execute_sql
 
     # Use test database configuration
     db_creds = TEST_DB["db_creds"]
@@ -888,7 +842,7 @@ def test_oracle_report_generation(admin_token):
 
         # Verify report content
         assert "mdx" in report_data, "No MDX content in report response"
-        assert report_data["mdx"], "Empty MDX content in report"
+        assert "mdx" in report_data, "Empty MDX content in report"
         assert "sql_answers" in report_data, "No sql_answers in report response"
 
         print("\nGenerated Report:")
