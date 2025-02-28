@@ -60,7 +60,7 @@ export default function OracleDashboard() {
         <OracleEmbed
           apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
           token={token}
-          initialKeyNames={dbNames}
+          initialDbNames={dbNames}
         />
       </Scaffolding>
     </div>
