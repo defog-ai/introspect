@@ -482,7 +482,8 @@ async def test_custom_tool(request: CustomToolTestRequest):
             #     a: int = Field(..., description="The first number")
             #     b: int = Field(..., description="The second number"
 
-            namespace = {"BaseModel": BaseModel, "Field": Field}
+            # no built ins for safety
+            namespace = {"BaseModel": BaseModel, "Field": Field, "__builtins__": {}}
             before_keys = set(namespace.keys())
             exec(request.input_model, namespace)
             after_keys = set(namespace.keys())
