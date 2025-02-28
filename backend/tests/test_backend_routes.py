@@ -842,7 +842,6 @@ def test_oracle_report_generation(admin_token):
 
         # Verify report content
         assert "mdx" in report_data, "No MDX content in report response"
-        assert "mdx" in report_data, "Empty MDX content in report"
         assert "sql_answers" in report_data, "No sql_answers in report response"
 
         print("\nGenerated Report:")
