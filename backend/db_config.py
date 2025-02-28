@@ -1,10 +1,12 @@
 import os
+import contextlib
+from typing import AsyncGenerator
 
 import redis
 import psycopg2
 import pyodbc
 from sqlalchemy import Engine, create_engine
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, AsyncSession
 from utils_logging import LOGGER
 
 REDIS_HOST = os.getenv("REDIS_INTERNAL_HOST", "agents-redis")
@@ -162,3 +164,21 @@ def get_db_engine() -> tuple[AsyncEngine, Engine | None, Engine | None]:
 
 
 engine, imported_tables_engine, temp_tables_engine = get_db_engine()
+
+
+@contextlib.asynccontextmanager
+async def get_defog_internal_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Returns an async session for interacting with the defog internal database.
+    This should be used with an async context manager:
+    
+    async with get_defog_internal_session() as session:
+        # Use the session
+        result = await session.execute(...)
+    """
+    async with AsyncSession(engine) as session:
+        try:
+            yield session
+        except Exception as e:
+            await session.rollback()
+            raise e
