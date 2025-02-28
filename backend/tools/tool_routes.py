@@ -3,11 +3,16 @@ from fastapi import APIRouter, Depends
 from request_models import (
     AnswerQuestionFromDatabaseRequest,
     SynthesizeReportFromQuestionRequest,
+    WebSearchRequest,
 )
-from tools.analysis_models import GenerateReportFromQuestionInput
+from tools.analysis_models import (
+    GenerateReportFromQuestionInput,
+    AnswerQuestionViaGoogleSearchInput,
+)
 from tools.analysis_tools import (
     generate_report_from_question,
     synthesize_report_from_questions,
+    web_search_tool,
 )
 
 router = APIRouter(
@@ -27,11 +32,11 @@ async def answer_question_from_database_route(
     db_name = request.db_name
     model = request.model or "o3-mini"
     return await generate_report_from_question(
-        GenerateReportFromQuestionInput(
-            question=question,
-            db_name=db_name,
-            model=model,
-        )
+        question=question,
+        db_name=db_name,
+        model=model,
+        clarification_responses="",
+        post_tool_func=None
     )
 
 
@@ -43,7 +48,7 @@ async def synthesize_report_from_question_route(
     Synthesizes a report from a question.
     Multiple reports are generated and synthesized into a final report.
     """
-    model = request.model if request.model and request.model in ALL_MODELS else O3_MINI
+    model = request.model if request.model else "o3-mini"
     return await synthesize_report_from_questions(
         GenerateReportFromQuestionInput(
             question=request.question,
@@ -52,3 +57,29 @@ async def synthesize_report_from_question_route(
             num_reports=request.num_reports,
         )
     )
+
+
+@router.post("/web_search")
+async def web_search_route(request: WebSearchRequest):
+    """
+    Test route for testing the web search tool.
+    Performs a Google search for the given question and returns the AI-generated
+    summary of the search results.
+    """
+    try:
+        search_input = AnswerQuestionViaGoogleSearchInput(
+            question=request.question,
+        )
+        search_result = await web_search_tool(search_input)
+        
+        # Return a structured response
+        return {
+            "question": request.question,
+            "search_result": search_result
+        }
+    except Exception as e:
+        # Return error information
+        return {
+            "question": request.question,
+            "error": str(e)
+        }

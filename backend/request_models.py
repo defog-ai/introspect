@@ -245,3 +245,10 @@ class SynthesizeReportFromQuestionRequest(UserRequest):
     question: str
     model: str | None = None
     num_reports: int = 3
+
+
+class WebSearchRequest(UserRequest):
+    """
+    Request model for performing a web search.
+    """
+    question: str
