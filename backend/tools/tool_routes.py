@@ -31,6 +31,7 @@ import ast
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
+    tags=["Tools"],
 )
 
 
