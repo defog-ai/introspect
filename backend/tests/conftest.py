@@ -179,6 +179,9 @@ def cleanup():
             # Delete any users created during tests
             conn.execute(text("DELETE FROM users WHERE username != :admin_user"), {"admin_user": USERNAME})
 
+            # Delete all custom tools
+            conn.execute(text("DELETE FROM custom_tools;"))
+
         # 3. Verify db_creds are deleted by calling get_tables_db_creds
         response = requests.post(
             f"{BASE_URL}/integration/get_tables_db_creds",
