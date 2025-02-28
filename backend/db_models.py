@@ -189,3 +189,19 @@ class OracleSources(Base):
     snippet = Column(Text)
     text_parsed = Column(Text)
     text_summary = Column(Text)
+
+
+# CUSTOM TOOLS
+class CustomTools(Base):
+    """
+    Stores custom tools defined by users that can be used alongside default analysis tools.
+    Each tool has a unique nam.
+    """
+    __tablename__ = "custom_tools"
+    tool_name = Column(Text, primary_key=True)
+    tool_description = Column(Text)
+    input_model = Column(Text)  # JSON schema for input validation
+    tool_code = Column(Text)    # The actual Python code for the tool
+    is_enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
