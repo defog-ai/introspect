@@ -147,9 +147,13 @@ async def web_search_tool(
             tools=[google_search_tool],
             response_modalities=["TEXT"],
         ),
-        contents=input.question,
+        contents=input.question + "\nNote: you must **always** use the google search tool to answer questions - no exceptions.",
     )
-    return response.text
+    sources = [{"source": chunk.web.title, "url": chunk.web.uri} for chunk in response.candidates[0].grounding_metadata.grounding_chunks]
+    return {
+        "answer_summary": response.text,
+        "reference_sources": sources
+    }
 
 
 async def pdf_citations_tool(
