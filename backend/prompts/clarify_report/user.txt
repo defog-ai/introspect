@@ -2,7 +2,7 @@ Given a question, additional context and metadata about the available data (SQL 
 
 Question: "{question}"
 Additional Context: "{context}"
-Metadata:
+Database Metadata:
 ```sql
 {metadata}
 ```

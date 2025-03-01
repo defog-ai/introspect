@@ -1,8 +1,5 @@
 Your task is to make clarifications that will help define the goals and boundaries of an exploratory data analysis, based on the given question, additional context, and metadata about the available data (SQL DDL statements).
 
-# Context
-The exploratory data analysis would be conducted mostly as a univariate / bivariate analysis of a dependent variable against one or more independent variables. The goal is to understand the data and identify patterns, relationships, or anomalies that could be useful for further analysis.
-
 # Instructions
 - Suggest potential question refinements in the `clarifications` list that the user might be interested in based on the given question, additional context, and metadata.
 - If clarifications like specific filters or views have been provided in additional context, DO NOT generate similar clarifications. For example, if the additional context specifies the time period to be the past 10 years, do not ask for the time period again.
@@ -13,7 +10,7 @@ The exploratory data analysis would be conducted mostly as a univariate / bivari
 - If a user has answered or dismissed a certain clarification, do not generate clarifications similar to it again.
 - Return output as a json object with the following key->value types:
     "clarifications": List[Dict[str, str]] - a list of clarifications to ask the user. Each clarification dict should contain the `clarification` text, `input_type` and `options` (if applicable).
-
+- Recall that outside of the database, web search is also available as a tool. If users ask for data that is not available in the database, let them know and ask if they want to use web search for it.
 
 Example input:
 question: "Tell me more about housing prices"
