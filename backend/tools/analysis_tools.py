@@ -1,10 +1,12 @@
 import asyncio
+from openai.types import file_content
 import pandas as pd
 import os
 from tools.analysis_models import (
+    AnswerQuestionInput,
     AnswerQuestionFromDatabaseInput,
     AnswerQuestionFromDatabaseOutput,
-    AnswerQuestionViaGoogleSearchInput,
+    AnswerQuestionViaPDFCitationsInput,
     GenerateReportFromQuestionInput,
     GenerateReportFromQuestionOutput,
     SynthesizeReportFromQuestionsOutput,
@@ -19,6 +21,7 @@ import uuid
 from typing import Callable
 from google import genai
 from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
+from anthropic import AsyncAnthropic
 
 
 async def text_to_sql_tool(
@@ -127,8 +130,8 @@ async def text_to_sql_tool(
 
 
 async def web_search_tool(
-    input: AnswerQuestionViaGoogleSearchInput,
-):
+    input: AnswerQuestionInput,
+) -> str:
     """
     Given a user question, this tool will visit the top ranked pages on Google and extract information from them.
     It will then concisely answer the question based on the extracted information, and will return the answer as a string.
@@ -147,6 +150,52 @@ async def web_search_tool(
         contents=input.question,
     )
     return response.text
+
+
+async def pdf_citations_tool(
+    input: AnswerQuestionViaPDFCitationsInput,
+) -> str:
+    """
+    Given a user question and the id of a PDF, this tool will attempt to answer the question from the data that is available in the PDF.
+    It will return the answer as a string.
+    """
+    client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    file_content_messages = []
+    for file_id in input.pdf_files:
+        pdf_content = await get_pdf_page_content(file_id)
+        title = pdf_content.title
+        base_64_pdf = pdf_content.base_64_pdf
+        file_content_messages.append(
+            {
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": base_64_pdf
+                },
+                "title": title,
+                "citations": {"enabled": True},
+                "cache_control": {"type": "ephemeral"}
+            }
+        )
+    
+    messages = [
+        {
+            "role": "user",
+            "content": file_content_messages + [
+                {
+                    "type": "text",
+                    "content": input.question,
+                }
+            ],
+        }
+    ]
+
+    response = await client.messages.create(
+        model="claude-3-7-sonnet-latest",
+        messages=messages,
+    )
+    return response.content
 
 async def load_custom_tools():
     """

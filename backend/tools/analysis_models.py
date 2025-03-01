@@ -2,9 +2,11 @@ from pydantic import BaseModel, Field
 from typing import List, Any, Optional
 import uuid
 
-
-class AnswerQuestionFromDatabaseInput(BaseModel):
+class AnswerQuestionInput(BaseModel):
     question: str = Field(..., description="The question to generate SQL for")
+
+
+class AnswerQuestionFromDatabaseInput(AnswerQuestionInput):
     db_name: str = Field(
         ...,
         description="The name of database to generate SQL for. "
@@ -12,9 +14,11 @@ class AnswerQuestionFromDatabaseInput(BaseModel):
         "associated with this database.",
     )
 
+class PDFInput(BaseModel):
+    pdf_ids: str = Field(..., description="The ID of the PDF file")
 
-class AnswerQuestionViaGoogleSearchInput(BaseModel):
-    question: str = Field(..., description="The question to do a web search for")
+class AnswerQuestionViaPDFCitationsInput(AnswerQuestionInput):
+    pdf_files: List[PDFInput]
 
 class AnswerQuestionFromDatabaseOutput(BaseModel):
 
