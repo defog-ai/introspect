@@ -1,7 +1,7 @@
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from oracle_models import Clarification
-from db_models import OracleGuidelines, OracleReports
+from db_models import OracleGuidelines, OracleReports, PDFFiles
 from db_config import engine
 from utils_md import get_metadata, mk_create_ddl
 from defog.llm.utils import chat_async
@@ -9,7 +9,7 @@ from utils_logging import LOGGER
 from typing import Literal, Any
 from datetime import datetime
 from sqlalchemy.orm.attributes import flag_modified
-import re
+
 
 # read in prompts
 with open("./prompts/clarify_report/sys.txt", "r") as f:
@@ -117,6 +117,7 @@ async def set_oracle_report(
     analyses: list = None,
     thinking_steps: list = None,
     status: Literal["INITIALIZED", "THINKING", "ERRORED", "DONE"] = None,
+    pdf_file_ids: list[int] = [],
 ) -> str:
     async with AsyncSession(engine) as session:
         async with session.begin():
@@ -129,7 +130,8 @@ async def set_oracle_report(
                         inputs=inputs,
                         mdx=mdx,
                         analyses=analyses,
-                        status=status
+                        status=status,
+                        pdf_file_ids=pdf_file_ids,
                     ).returning(OracleReports.report_id)
                 )
                 report_id = report_id.scalar_one()
@@ -161,6 +163,8 @@ async def set_oracle_report(
                     flag_modified(report, "thinking_steps")
                 if status:
                     report.status = status
+                if pdf_file_ids and len(pdf_file_ids) > 0:
+                    report.pdf_file_ids = pdf_file_ids
 
     return report_id
 
@@ -204,3 +208,45 @@ async def post_tool_call_func(function_name, input_args, tool_result, report_id)
             "result": thinking_step_result
         }
     )
+
+async def upload_pdf_files(pdf_files: list) -> list[int]:
+    pdf_file_ids = []
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            for pdf_file in pdf_files:
+                pdf_file_id = await session.execute(
+                    insert(PDFFiles).values(
+                        file_name=pdf_file.file_name,
+                        base64_data=pdf_file.base64_content
+                    ).returning(PDFFiles.file_id)
+                )
+                pdf_file_id = pdf_file_id.scalar_one()
+                pdf_file_ids.append(pdf_file_id)
+    
+    return pdf_file_ids
+
+async def get_report_pdf_files(report_id: int) -> list[int]:
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            pdf_file_ids = await session.execute(
+                select(OracleReports.pdf_file_ids).where(
+                    OracleReports.report_id == report_id
+                )
+            )
+            pdf_file_ids = pdf_file_ids.scalar_one_or_none()
+    
+    if pdf_file_ids is None:
+        pdf_file_ids = []
+    return pdf_file_ids
+
+async def get_pdf_content(file_id: int):
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            pdf_file = await session.execute(
+                select(PDFFiles).where(
+                    PDFFiles.file_id == file_id
+                )
+            )
+            pdf_file = pdf_file.scalar_one_or_none()
+    
+    return pdf_file
