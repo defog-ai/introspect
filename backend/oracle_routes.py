@@ -84,6 +84,9 @@ async def get_guidelines(req: GetGuidelinesRequest):
         column_name = req.guideline_type.value + "_guidelines"
         return JSONResponse(content={"guidelines": getattr(result, column_name)})
 
+class PDFFile(BaseModel):
+    file_name: str
+    base64_content: str
 
 class ClarifyQuestionRequest(BaseModel):
     db_name: str
@@ -91,6 +94,7 @@ class ClarifyQuestionRequest(BaseModel):
     user_question: str
     answered_clarifications: List[Dict[str, Any]] = []
     clarification_guidelines: Optional[str] = None
+    pdf_files: Optional[List[PDFFile]] = []
 
     model_config = {
         "json_schema_extra": {
@@ -134,12 +138,7 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
             guidelines=guidelines,
         )
     else:
-        LOGGER.debug("No clarification guidelines provided, retrieving from DB")
         guidelines = await get_oracle_guidelines(db_name)
-        if not guidelines:
-            LOGGER.warning("No clarification guidelines found in DB")
-        else:
-            LOGGER.debug(f"Retrieved clarification guidelines from DB: {guidelines}")
 
     try:
         clarify_response = await clarify_question(
