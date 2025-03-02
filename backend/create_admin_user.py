@@ -11,8 +11,6 @@ from db_models import Users
 from sqlalchemy import create_engine, select, insert
 
 SALT = os.getenv("SALT", "default_salt")
-if SALT == "default_salt":
-    print("SALT is the default value. Please set a custom value if you require a more secure authentication.")
 
 username = "admin"
 password = "admin"

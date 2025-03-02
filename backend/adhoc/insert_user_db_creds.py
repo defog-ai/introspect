@@ -9,8 +9,6 @@ from sqlalchemy import create_engine, insert, select, update
 
 
 SALT = os.getenv("SALT", "default_salt")
-if SALT == "default_salt":
-    print("SALT is the default value. Please set a custom value if you require a more secure authentication.")
 
 # Edit this section based on your data setup
 users = [
