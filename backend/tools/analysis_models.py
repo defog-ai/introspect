@@ -14,11 +14,8 @@ class AnswerQuestionFromDatabaseInput(AnswerQuestionInput):
         "associated with this database.",
     )
 
-class PDFInput(BaseModel):
-    pdf_ids: str = Field(..., description="The ID of the PDF file")
-
 class AnswerQuestionViaPDFCitationsInput(AnswerQuestionInput):
-    pdf_files: List[PDFInput]
+    pdf_files: List[int] = Field(..., description="The ids of the PDFs to use for citation")
 
 class AnswerQuestionFromDatabaseOutput(BaseModel):
 

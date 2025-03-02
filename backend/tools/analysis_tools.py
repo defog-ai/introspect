@@ -1,5 +1,3 @@
-import asyncio
-from openai.types import file_content
 import pandas as pd
 import os
 from tools.analysis_models import (
@@ -22,7 +20,7 @@ from typing import Callable
 from google import genai
 from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
 from anthropic import AsyncAnthropic
-
+from utils_oracle import get_pdf_content
 
 async def text_to_sql_tool(
     input: AnswerQuestionFromDatabaseInput,
@@ -134,7 +132,7 @@ async def web_search_tool(
 ) -> str:
     """
     Given a user question, this tool will visit the top ranked pages on Google and extract information from them.
-    It will then concisely answer the question based on the extracted information, and will return the answer as a string.
+    It will then concisely answer the question based on the extracted information, and will return the answer as a JSON, with a "reference_sources" key that lists the web pages from which the information was extracted and an "answer" key that contains the concisely answered question.
     It should be used when a question cannot be directly answered by the database, or when additional context can be provided to the user by searching the web.
     """
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
@@ -151,7 +149,7 @@ async def web_search_tool(
     )
     sources = [{"source": chunk.web.title, "url": chunk.web.uri} for chunk in response.candidates[0].grounding_metadata.grounding_chunks]
     return {
-        "answer_summary": response.text,
+        "answer": response.text,
         "reference_sources": sources
     }
 
@@ -160,15 +158,15 @@ async def pdf_citations_tool(
     input: AnswerQuestionViaPDFCitationsInput,
 ) -> str:
     """
-    Given a user question and the id of a PDF, this tool will attempt to answer the question from the data that is available in the PDF.
-    It will return the answer as a string.
+    Given a user question and a list of PDF ids, this tool will attempt to answer the question from the information that is available in the PDFs.
+    It will return the answer as a JSON.
     """
     client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
     file_content_messages = []
     for file_id in input.pdf_files:
-        pdf_content = await get_pdf_page_content(file_id)
-        title = pdf_content.title
-        base_64_pdf = pdf_content.base_64_pdf
+        pdf_content = await get_pdf_content(file_id)
+        title = pdf_content.file_name
+        base_64_pdf = pdf_content.base64_data
         file_content_messages.append(
             {
                 "type": "document",
@@ -186,12 +184,7 @@ async def pdf_citations_tool(
     messages = [
         {
             "role": "user",
-            "content": file_content_messages + [
-                {
-                    "type": "text",
-                    "content": input.question,
-                }
-            ],
+            "content": file_content_messages + [{"type": "text", "content": input.question}],
         }
     ]
 
@@ -357,7 +350,8 @@ async def generate_report_from_question(
     model: str,
     question: str,
     clarification_responses: str,
-    post_tool_func: Callable
+    post_tool_func: Callable,
+    pdf_file_ids: list[int] = [],
 ) -> GenerateReportFromQuestionOutput:
     """
     Given an initial question for a single database, this function will call
@@ -368,7 +362,12 @@ async def generate_report_from_question(
     """
     try:
         # Start with default tools
-        tools = [text_to_sql_tool, web_search_tool]
+        pdf_instruction = ""
+        if len(pdf_file_ids) == 0:
+            tools = [text_to_sql_tool, web_search_tool]
+        else:
+            tools = [text_to_sql_tool, web_search_tool, pdf_citations_tool]
+            pdf_instruction = f"\nThe following PDF file ids can be searched through to help generate your answer: {pdf_file_ids}\n"
         
         # Load custom tools for this database
         custom_tools = await load_custom_tools()
@@ -384,14 +383,14 @@ async def generate_report_from_question(
                     "role": "user",
                     "content": f"""I would like you to create a comprehensive analysis for answering this question: {question}
 
-Look in the database {db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few. Do not ask the exact same question twice. Always ask new questions or rephrase the previous question if it led to an error.
+Look in the database {db_name}, the internet, or PDF files (if provided) for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few. Do not ask the exact same question twice. Always ask new questions or rephrase the previous question if it led to an error.
 {clarification_responses}
 The database schema is below:
 ```sql
 {metadata_str}
 ```
-
-Try to aggregate data in clear and understandable buckets. Please give your final answer as a descriptive report.
+{pdf_instruction}
+Try to break down your answer clear and understandable categories. Please give your final answer as a descriptive report.
 """,
                 },
             ],
