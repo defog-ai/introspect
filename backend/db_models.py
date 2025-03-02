@@ -171,11 +171,11 @@ class OracleReports(Base):
     db_name = Column(Text)
     inputs = Column(JSON)
     mdx = Column(Text)
-    analyses = Column(JSON) # this is a list of analyses
+    analyses = Column(JSON) # this is a list of analyses. These are SQL only and do not include any non-SQL tools.
     feedback = Column(Text, default=None)
     general_comments = Column(Text, default=None)
     comments = Column(JSON, default=None)
-    thinking_steps = Column(JSON, default=None)
+    thinking_steps = Column(JSON, default=None) # this is a list of all tool inputs and outputs, including all non-SQL tools.
     pdf_file_ids = Column(JSON, default=None) # list of int file_ids, links to PDFFiles.file_id
 
 
