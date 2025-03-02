@@ -205,3 +205,11 @@ class CustomTools(Base):
     is_enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+# PDF Files
+class PDFFiles(Base):
+    __tablename__ = "pdf_files"
+    file_id = Column(Integer, primary_key=True, autoincrement=True)
+    file_name = Column(Text, primary_key=True)
+    base64_data = Column(Text)
+    created_at = Column(DateTime, default=datetime.now)
