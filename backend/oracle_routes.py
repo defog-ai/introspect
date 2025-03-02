@@ -13,6 +13,8 @@ from utils_oracle import (
     set_oracle_guidelines,
     set_oracle_report,
     post_tool_call_func,
+    upload_pdf_files,
+    get_report_pdf_files,
 )
 from db_models import OracleGuidelines
 from db_config import engine
@@ -139,6 +141,10 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
         )
     else:
         guidelines = await get_oracle_guidelines(db_name)
+    
+    pdf_file_ids = []
+    if len(req.pdf_files) > 0:
+        pdf_file_ids = await upload_pdf_files(req.pdf_files)
 
     try:
         clarify_response = await clarify_question(
@@ -159,7 +165,10 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
 
         # create a new report in the db
         report_id = await set_oracle_report(
-            db_name=db_name, report_name=req.user_question, status="INITIALIZED"
+            db_name=db_name,
+            report_name=req.user_question,
+            status="INITIALIZED",
+            pdf_file_ids=pdf_file_ids,
         )
         clarify_response["report_id"] = report_id
     except Exception as e:
@@ -227,6 +236,9 @@ async def generate_report(req: GenerateReportRequest):
         status="THINKING",
     )
 
+    # get pdf files
+    pdf_file_ids = await get_report_pdf_files(report_id)
+
     # generate the report
     analysis_response = await generate_report_from_question(
         db_name=db_name,
@@ -234,6 +246,7 @@ async def generate_report(req: GenerateReportRequest):
         question=user_question,
         clarification_responses=clarification_responses,
         post_tool_func=post_tool_func,
+        pdf_file_ids=pdf_file_ids,
     )
 
     main_content = analysis_response.report
