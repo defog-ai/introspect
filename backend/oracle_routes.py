@@ -94,7 +94,6 @@ class ClarifyQuestionRequest(BaseModel):
     db_name: str
     token: str
     user_question: str
-    answered_clarifications: List[Dict[str, Any]] = []
     clarification_guidelines: Optional[str] = None
     pdf_files: Optional[List[PDFFile]] = []
 
@@ -105,7 +104,6 @@ class ClarifyQuestionRequest(BaseModel):
                     "key_name": "my_api_key",
                     "token": "user_token",
                     "user_question": "What are the sales trends?",
-                    "answered_clarifications": [],
                     "clarification_guidelines": "If unspecified, trends should be cover the last 3 years on a monthly basis.",
                 }
             ]
@@ -195,6 +193,7 @@ class GenerateReportRequest(BaseModel):
     token: str
     user_question: str
     answered_clarifications: List[Clarification] = []
+    use_websearch: bool = True
 
     model_config = {
         "json_schema_extra": {
@@ -204,6 +203,7 @@ class GenerateReportRequest(BaseModel):
                     "token": "user_token",
                     "user_question": "User question",
                     "answered_clarifications": [],
+                    "use_websearch": True,
                 }
             ]
         }
@@ -247,6 +247,7 @@ async def generate_report(req: GenerateReportRequest):
         clarification_responses=clarification_responses,
         post_tool_func=post_tool_func,
         pdf_file_ids=pdf_file_ids,
+        use_websearch=req.use_websearch,
     )
 
     main_content = analysis_response.report
