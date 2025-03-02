@@ -176,6 +176,7 @@ class OracleReports(Base):
     general_comments = Column(Text, default=None)
     comments = Column(JSON, default=None)
     thinking_steps = Column(JSON, default=None)
+    pdf_file_ids = Column(JSON, default=None) # list of int file_ids, links to PDFFiles.file_id
 
 
 class OracleSources(Base):
