@@ -53,11 +53,6 @@ const Scaffolding = ({
               title: "Align Model",
               href: "/align-model",
             },
-            {
-              key: "evaluate-model",
-              title: "Evaluate Model",
-              href: "/evaluate-model",
-            },
           ],
         },
         {
