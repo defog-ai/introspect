@@ -232,7 +232,7 @@ async def get_report_pdf_files(report_id: int) -> list[int]:
                 select(OracleReports.pdf_file_ids).where(
                     OracleReports.report_id == report_id
                 )
-            )
+        )
             pdf_file_ids = pdf_file_ids.scalar_one_or_none()
     
     if pdf_file_ids is None:
@@ -248,5 +248,14 @@ async def get_pdf_content(file_id: int):
                 )
             )
             pdf_file = pdf_file.scalar_one_or_none()
+            
+            # Create a detached copy of the data before the session closes
+            if pdf_file:
+                return {
+                    "file_id": pdf_file.file_id,
+                    "file_name": pdf_file.file_name,
+                    "base64_data": pdf_file.base64_data,
+                    "created_at": pdf_file.created_at
+                }
     
-    return pdf_file
+    return None
