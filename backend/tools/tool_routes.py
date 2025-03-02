@@ -14,7 +14,7 @@ from request_models import (
 )
 from tools.analysis_models import (
     GenerateReportFromQuestionInput,
-    AnswerQuestionViaGoogleSearchInput,
+    AnswerQuestionInput,
 )
 from tools.analysis_tools import (
     generate_report_from_question,
@@ -82,7 +82,7 @@ async def web_search_route(request: WebSearchRequest):
     summary of the search results.
     """
     try:
-        search_input = AnswerQuestionViaGoogleSearchInput(
+        search_input = AnswerQuestionInput(
             question=request.question,
         )
         search_result = await web_search_tool(search_input)
