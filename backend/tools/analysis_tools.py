@@ -161,12 +161,13 @@ async def pdf_citations_tool(
     Given a user question and a list of PDF ids, this tool will attempt to answer the question from the information that is available in the PDFs.
     It will return the answer as a JSON.
     """
+    LOGGER.info(f"Calling PDF Citations tool with question: {input.question} and PDF ids: {input.pdf_files}")
     client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
     file_content_messages = []
     for file_id in input.pdf_files:
         pdf_content = await get_pdf_content(file_id)
-        title = pdf_content.file_name
-        base_64_pdf = pdf_content.base64_data
+        title = pdf_content["file_name"]
+        base_64_pdf = pdf_content["base64_data"]
         file_content_messages.append(
             {
                 "type": "document",
@@ -184,15 +185,16 @@ async def pdf_citations_tool(
     messages = [
         {
             "role": "user",
-            "content": file_content_messages + [{"type": "text", "content": input.question}],
+            "content": file_content_messages + [{"type": "text", "text": input.question}],
         }
     ]
 
     response = await client.messages.create(
         model="claude-3-7-sonnet-latest",
         messages=messages,
+        max_tokens=4096,
     )
-    return response.content
+    return [item.to_dict() for item in response.content]
 
 async def load_custom_tools():
     """
@@ -352,6 +354,7 @@ async def generate_report_from_question(
     clarification_responses: str,
     post_tool_func: Callable,
     pdf_file_ids: list[int] = [],
+    use_websearch: bool = False,
 ) -> GenerateReportFromQuestionOutput:
     """
     Given an initial question for a single database, this function will call
@@ -362,11 +365,13 @@ async def generate_report_from_question(
     """
     try:
         # Start with default tools
+        tools = [text_to_sql_tool]
         pdf_instruction = ""
-        if len(pdf_file_ids) == 0:
-            tools = [text_to_sql_tool, web_search_tool]
-        else:
-            tools = [text_to_sql_tool, web_search_tool, pdf_citations_tool]
+        if use_websearch:
+            tools.append(web_search_tool)
+        
+        if len(pdf_file_ids) > 0:
+            tools.append(pdf_citations_tool)
             pdf_instruction = f"\nThe following PDF file ids can be searched through to help generate your answer: {pdf_file_ids}\n"
         
         # Load custom tools for this database
