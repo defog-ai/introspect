@@ -1,5 +1,4 @@
-import os
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 from enum import Enum
 
 from sqlalchemy import select
@@ -7,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import json
 import time
+from file_upload_routes import upload_files_as_db
+from request_models import DataFile
 from utils_oracle import (
     clarify_question,
     get_oracle_guidelines,
@@ -86,9 +87,11 @@ async def get_guidelines(req: GetGuidelinesRequest):
         column_name = req.guideline_type.value + "_guidelines"
         return JSONResponse(content={"guidelines": getattr(result, column_name)})
 
+
 class PDFFile(BaseModel):
     file_name: str
     base64_content: str
+
 
 class ClarifyQuestionRequest(BaseModel):
     db_name: str
@@ -96,6 +99,7 @@ class ClarifyQuestionRequest(BaseModel):
     user_question: str
     clarification_guidelines: Optional[str] = None
     pdf_files: Optional[List[PDFFile]] = []
+    data_files: Optional[List[DataFile]] = []
 
     model_config = {
         "json_schema_extra": {
@@ -138,10 +142,17 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
         )
     else:
         guidelines = await get_oracle_guidelines(db_name)
-    
+
     pdf_file_ids = []
     if len(req.pdf_files) > 0:
         pdf_file_ids = await upload_pdf_files(req.pdf_files)
+
+    new_db = None
+    if len(req.data_files) > 0:
+        new_db = await upload_files_as_db(req.data_files)
+
+        # set the db name to this new db that was created
+        db_name = new_db.db_name
 
     try:
         clarify_response = await clarify_question(
@@ -151,6 +162,10 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
         )
 
         LOGGER.info(f"Clarify response: {clarify_response}")
+
+        if new_db:
+            clarify_response["new_db_name"] = new_db.db_name
+            clarify_response["new_db_info"] = new_db.db_info
 
         for clarification in clarify_response["clarifications"]:
             if (

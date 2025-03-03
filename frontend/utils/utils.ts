@@ -194,11 +194,6 @@ export function isValidFileType(fileType: string) {
   return Object.values(FILE_TYPES).find((f) => f === fileType);
 }
 
-interface UserFile {
-  rows: { [key: string]: any }[];
-  columns: { title: string }[];
-}
-
 export const uploadFile = async (
   token: string,
   fileName: string,
@@ -212,7 +207,7 @@ export const uploadFile = async (
     body: JSON.stringify({
       token: token,
       file_name: fileName,
-      base_64_file: fileBase64,
+      base64_content: fileBase64,
     }),
   });
 

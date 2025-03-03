@@ -221,13 +221,31 @@ class UserTable(BaseModel):
     columns: list[UserTableColumn]
 
 
+class DbDetails(BaseModel):
+    db_name: str
+    db_info: dict[str, Any]
+
+
+class DataFile(BaseModel):
+    file_name: str
+    base64_content: str  # File as base 64 encoded string
+
+
+class UploadMultipleFilesAsDBRequest(UserRequest):
+    """
+    Request model for uploading multiple files as databases.
+    """
+
+    files: list[DataFile]
+
+
 class UploadFileAsDBRequest(UserRequest):
     """
     Request model for uploading a file as a database.
     """
 
     file_name: str
-    base_64_file: str  # File as base 64 encoded string
+    base64_content: str  # File as base 64 encoded string
 
 
 class AnswerQuestionFromDatabaseRequest(UserRequest):
@@ -263,6 +281,7 @@ class CustomToolRequest(UserRequest):
     """
     Base request model for custom tool operations.
     """
+
     tool_name: str
 
 
@@ -270,6 +289,7 @@ class CustomToolCreateRequest(CustomToolRequest):
     """
     Request model for creating a custom tool.
     """
+
     tool_description: str
     input_model: str
     tool_code: str
@@ -282,7 +302,7 @@ class CustomToolCreateRequest(CustomToolRequest):
                     "tool_name": "my_custom_tool",
                     "tool_description": "This tool performs X operation",
                     "input_model": "class MyToolInput(BaseModel):\n    param1: str\n    param2: int",
-                    "tool_code": "async def my_custom_tool(input):\n    # Tool implementation\n    return {'result': f'Processed {input.param1} {input.param2}'}"
+                    "tool_code": "async def my_custom_tool(input):\n    # Tool implementation\n    return {'result': f'Processed {input.param1} {input.param2}'}",
                 }
             ]
         }
@@ -293,6 +313,7 @@ class CustomToolUpdateRequest(CustomToolCreateRequest):
     """
     Request model for updating an existing custom tool.
     """
+
     pass
 
 
@@ -300,6 +321,7 @@ class CustomToolDeleteRequest(CustomToolRequest):
     """
     Request model for deleting a custom tool.
     """
+
     pass
 
 
@@ -307,6 +329,7 @@ class CustomToolListRequest(UserRequest):
     """
     Request model for listing all custom tools for a database.
     """
+
     pass
 
 
@@ -314,6 +337,7 @@ class CustomToolToggleRequest(CustomToolRequest):
     """
     Request model for enabling or disabling a custom tool.
     """
+
     is_enabled: bool
 
 
@@ -321,6 +345,7 @@ class CustomToolTestRequest(UserRequest):
     """
     Request model for testing a custom tool without saving it.
     """
+
     tool_name: Optional[str] = None
     tool_description: Optional[str] = None
     input_model: Optional[str] = None

@@ -41,7 +41,7 @@ async function uploadFile(
     body: JSON.stringify({
       token: token,
       file_name: fileName,
-      base_64_file: fileBase64,
+      base64_content: fileBase64,
     }),
   });
 
