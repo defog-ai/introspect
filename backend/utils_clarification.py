@@ -47,6 +47,7 @@ async def generate_clarification(
             {"role": "user", "content": user_prompt},
         ],
         max_completion_tokens=128,
+        temperature=0.8,
     )
 
     LOGGER.info("Cost of generating clarification: {:.2f}¢".format(clarifications.cost_in_cents))
