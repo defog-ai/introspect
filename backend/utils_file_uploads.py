@@ -72,14 +72,45 @@ def clean_table_name(table_name: str):
     return validated
 
 
+def is_date_column_name(col_name):
+    """
+    Check if a column name indicates it might contain date/time data.
+    Returns True if the column name contains date-related terms.
+    """
+    if not isinstance(col_name, str):
+        return False
+        
+    # Normalize the column name for better matching
+    name_lower = col_name.lower()
+    
+    # List of date-related terms to check for
+    date_terms = [
+        'date', 'time', 'year', 'month', 'day', 'quarter', 'qtr',
+        'yr', 'mm', 'dd', 'yyyy', 'created', 'modified', 'updated',
+        'timestamp', 'dob', 'birth', 'start', 'end', 'period',
+        'calendar', 'fiscal', 'dtm', 'dt', 'ymd', 'mdy', 'dmy'
+    ]
+    
+    # Check if any date term appears in the column name
+    for term in date_terms:
+        if term in name_lower:
+            return True
+            
+    # Check for common date patterns (e.g., date_of_birth, create_dt)
+    if re.search(r'(_|^)(dt|date|time)(_|$)', name_lower):
+        return True
+        
+    return False
+
+
 def can_parse_date(val):
     """
     Return True if `val` looks like a date.
 
     For non-string inputs, we convert to string. If the string is
-    purely numeric, we only allow four digits (a year) or eight digits
-    (a compact date like YYYYMMDD). Otherwise, we require the presence
-    of a typical date separator.
+    purely numeric, we allow four digits (a year), six digits (YYMMDD),
+    or eight digits (a compact date like YYYYMMDD). Otherwise, we require 
+    the presence of a typical date separator.
     """
     if not isinstance(val, str):
         val = str(val)
@@ -87,13 +118,35 @@ def can_parse_date(val):
     # Trim whitespace
     val = val.strip()
 
-    # If the string is empty, it’s not a date.
+    # If the string is empty, it's not a date.
     if not val:
         return False
 
-    # If the string is all digits, only allow if length is 4 or 8.
+    # Common date patterns
+    common_date_patterns = [
+        # MM/DD/YYYY or DD/MM/YYYY
+        r'^\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}$',
+        # YYYY/MM/DD
+        r'^\d{4}[/\-\.]\d{1,2}[/\-\.]\d{1,2}$',
+        # Month name formats: Jan 01, 2020 or January 1, 2020
+        r'^[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{2,4}$',
+        # 01-Jan-2020 or 1-January-20
+        r'^\d{1,2}[/\-\.\s]+[A-Za-z]{3,9}\.?[/\-\.\s]+\d{2,4}$'
+    ]
+    
+    # Check against common date patterns first for efficiency
+    for pattern in common_date_patterns:
+        if re.match(pattern, val):
+            try:
+                parser.parse(val)
+                return True
+            except:
+                # If it matches pattern but fails parsing, continue checking
+                pass
+    
+    # If the string is all digits, only allow specific lengths
     if re.fullmatch(r"\d+", val):
-        if len(val) in (4, 8):
+        if len(val) in (4, 6, 8):  # Added 6 for YYMMDD format
             try:
                 parser.parse(val)
                 return True
@@ -103,13 +156,18 @@ def can_parse_date(val):
             return False
 
     # For strings that are not all digits, require at least one common date separator.
-    if not re.search(r"[\s/\-:]", val):
+    if not re.search(r"[\s/\-\.:]", val):
         return False
 
     # Finally, try to parse it with dateutil.
     try:
-        parser.parse(val, fuzzy=True)
-        return True
+        parsed_date = parser.parse(val, fuzzy=True)
+        # Additional validation: check if the parsed date is reasonable
+        # (between 1900 and 2100)
+        year = parsed_date.year
+        if 1900 <= year <= 2100:
+            return True
+        return False
     except Exception:
         return False
 
@@ -146,10 +204,11 @@ def to_float_if_possible(val):
         return None
 
 
-def guess_column_type(series, sample_size=50):
+def guess_column_type(series, column_name=None, sample_size=50):
     """
     Guess the most appropriate Postgres column type for a given Pandas Series of strings.
     We sample up to `sample_size` non-null elements to make the guess.
+    Also considers the column name for date detection.
     """
     # Drop nulls/empty
     non_null_values = [str(v) for v in series.dropna() if str(v).strip() != ""]
@@ -161,6 +220,9 @@ def guess_column_type(series, sample_size=50):
     # Sample some values (to limit computational overhead if large)
     sampled_values = non_null_values[:sample_size]
 
+    # Check if column name suggests a date
+    column_suggests_date = column_name is not None and is_date_column_name(column_name)
+    
     # Determine fraction that are valid dates
     date_count = sum(can_parse_date(v) for v in sampled_values)
     date_ratio = date_count / len(sampled_values)
@@ -171,12 +233,17 @@ def guess_column_type(series, sample_size=50):
     numeric_ratio = numeric_count / len(sampled_values)
 
     # Decide on type
-    # Priority: If enough are numeric -> check int vs float
-    #           Else if enough are date, check TIMESTAMP
-    #           Else TEXT
-    # We can tweak the thresholds to handle partial columns better
+    # Priority: 
+    # 1. If column name suggests date and some values can be parsed as dates -> TIMESTAMP
+    # 2. If enough are numeric -> check int vs float
+    # 3. Else if enough are date -> TIMESTAMP
+    # 4. Else TEXT
 
-    # 1) Check numeric
+    # 1) Date column name check with partial date values
+    if column_suggests_date and date_ratio > 0.4:  # Lower threshold for columns with date-suggesting names
+        return "TIMESTAMP"
+
+    # 2) Check numeric
     # If a large majority (>80%) is parseable as numeric, figure out if integer or decimal
     if numeric_ratio > 0.8:
         # Check if everything is "integer-like" (no decimal part) among the valid portion
@@ -186,21 +253,21 @@ def guess_column_type(series, sample_size=50):
                 # Check if val is integral
                 are_ints.append(val.is_integer())
         if all(are_ints):
-            # Use BIGINT or INT based on range
-            # For simplicity, let's just use BIGINT.
+            # If the column name suggests a date and values can be integers (like year numbers)
+            if column_suggests_date:
+                return "TIMESTAMP"
+            # Otherwise use BIGINT
             return "BIGINT"
         else:
-            # Use DOUBLE PRECISION or NUMERIC
-            # We'll choose DOUBLE PRECISION for simplicity
+            # Use DOUBLE PRECISION
             return "DOUBLE PRECISION"
 
-    # 2) Check date
-    # If a large majority (>80% for instance) is parseable as date, pick a date/timestamp
-    if date_ratio > 0.8:
-        # We can further refine if we want DATE vs. TIMESTAMP. We'll assume TIMESTAMP for broad coverage.
+    # 3) Check date
+    # If a majority (>70% - lowered threshold) is parseable as date, pick a date/timestamp
+    if date_ratio > 0.7:
         return "TIMESTAMP"
 
-    # 3) Default
+    # 4) Default
     return "TEXT"
 
 
@@ -306,22 +373,32 @@ async def export_df_to_postgres(
 ):
     """
     1. Reads CSV into a pandas DataFrame (as strings).
-    2. Infers column types for Postgres.
+    2. Infers column types for Postgres, intelligently detecting date columns.
     3. Creates table in Postgres.
     4. Inserts data chunk by chunk.
     """
+    # Store original column names for type inference
+    original_cols = list(df.columns)
+    
     # Insert data chunk-by-chunk to handle large CSVs
     col_list = list(df.columns)
     safe_col_list = [sanitize_column_name(c) for c in col_list]  # safe col names
+    
+    # Create a column name mapping for reference
+    col_name_mapping = dict(zip(safe_col_list, original_cols))
+    
+    # Update dataframe with sanitized column names
     df.columns = safe_col_list
 
     # Create a SQLAlchemy engine
     engine = create_async_engine(db_connection_string)
 
-    # Infer data types
+    # Infer data types using original column names for better date detection
     inferred_types = {}
     for col in df.columns:
-        inferred_types[col] = guess_column_type(df[col])
+        # Pass the original column name for better date detection
+        original_name = col_name_mapping.get(col, col)
+        inferred_types[col] = guess_column_type(df[col], column_name=original_name)
 
     LOGGER.info(inferred_types)
 
