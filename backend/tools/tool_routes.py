@@ -82,10 +82,14 @@ async def web_search_route(request: WebSearchRequest):
     summary of the search results.
     """
     try:
+        LOGGER.info(f"Web search route called with question: {request.question}")
+        
         search_input = AnswerQuestionInput(
             question=request.question,
         )
         search_result = await web_search_tool(search_input)
+        
+        LOGGER.info(f"Web search completed successfully")
         
         # Return a structured response
         return {
@@ -93,6 +97,7 @@ async def web_search_route(request: WebSearchRequest):
             "search_result": search_result
         }
     except Exception as e:
+        LOGGER.error(f"Error in web_search_route: {str(e)}", exc_info=True)
         # Return error information
         return {
             "question": request.question,
