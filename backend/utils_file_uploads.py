@@ -61,11 +61,12 @@ def clean_table_name(table_name: str):
     If the table name is empty, adds a random string.
     If the table name has special characters, quotes it.
     """
+    if not isinstance(table_name, str):
+        raise ValueError("Table name must be a string.")
+        
     validated = str(table_name).strip().lower()
     validated = re.sub(r"[^a-zA-Z0-9_]", "_", validated)
 
-    if not isinstance(table_name, str):
-        raise ValueError("Table name must be a string.")
     if not validated:
         validated = f"table_{uuid4().hex[:7]}"
 
@@ -187,34 +188,37 @@ def to_float_if_possible(val):
     Helper function: attempt to parse to numeric after cleaning
     e.g. remove $, commas, random whitespace
     """
-    # Handle accounting negative numbers (123.45) -> -123.45
-    # Convert accounting-style negatives to regular negatives
-    val_str = str(val).strip()
-    if val_str.startswith("(") and val_str.endswith(")"):
-        val_str = "-" + val_str[1:-1]
-    
-    # First, clean the value by removing non-numeric symbols except . - + e E
-    cleaned_val = re.sub(r"[^\d.\-+eE]", "", val_str)
-
-    # Check if the cleaned value is empty or just a symbol
-    if cleaned_val in ("", ".", "-", "+"):
+    if not val:
         return None
-
-    # Check if the string has a reasonable proportion of numeric characters
-    # Count digits in the original value
-    digit_count = sum(c.isdigit() for c in val_str)
-    # Count total alphanumeric characters in the original value
-    alphanum_count = sum(c.isalnum() for c in val_str)
-
-    if digit_count == 0 or alphanum_count == 0:
-        return None
-
-    # If the string alphanumcount > digitcount, it's TEXT
-    # Example: NDA1, NDA2, 2007AMAN01, etc
-    if alphanum_count > digit_count:
-        return None
-
+        
     try:
+        # Handle accounting negative numbers (123.45) -> -123.45
+        # Convert accounting-style negatives to regular negatives
+        val_str = str(val).strip()
+        if val_str.startswith("(") and val_str.endswith(")"):
+            val_str = "-" + val_str[1:-1].strip("$").strip()
+        
+        # First, clean the value by removing non-numeric symbols except . - + e E
+        cleaned_val = re.sub(r"[^\d.\-+eE]", "", val_str)
+    
+        # Check if the cleaned value is empty or just a symbol
+        if cleaned_val in ("", ".", "-", "+"):
+            return None
+    
+        # Check if the string has a reasonable proportion of numeric characters
+        # Count digits in the original value
+        digit_count = sum(c.isdigit() for c in val_str)
+        # Count total alphanumeric characters in the original value
+        alphanum_count = sum(c.isalnum() for c in val_str)
+    
+        if digit_count == 0 or alphanum_count == 0:
+            return None
+    
+        # If the string alphanumcount > digitcount, it's TEXT
+        # Example: NDA1, NDA2, 2007AMAN01, etc
+        if alphanum_count > digit_count:
+            return None
+    
         # Try to handle scientific notation correctly
         return float(cleaned_val)
     except:
@@ -239,6 +243,14 @@ def guess_column_type(series, column_name=None, sample_size=50):
 
     # Check if column name suggests a date
     column_suggests_date = column_name is not None and is_date_column_name(column_name)
+    
+    # Check for percentage values in column
+    pct_count = sum(1 for v in sampled_values if str(v).strip().endswith("%"))
+    pct_ratio = pct_count / len(sampled_values)
+    
+    # If many percentage values, use DOUBLE PRECISION or TEXT
+    if pct_ratio > 0.3:
+        return "DOUBLE PRECISION" if pct_ratio > 0.8 else "TEXT"
     
     # Determine fraction that are valid dates
     date_count = sum(can_parse_date(v) for v in sampled_values)
@@ -299,6 +311,9 @@ def sanitize_column_name(col_name: str):
       6) If empty, fallback to "col" + some random suffix or index.
       7) Optionally rename if it's a Postgres reserved keyword.
     """
+    if not isinstance(col_name, str):
+        col_name = str(col_name)
+    
     col_name = col_name.strip().lower()
 
     # replace any `%` characters with `perc`
@@ -351,28 +366,107 @@ def convert_values_to_postgres_type(value: str, target_type: str):
     Convert a string `value` to the appropriate Python object for insertion into Postgres
     based on `target_type`. If conversion fails, return None (NULL).
     """
-    if value is None or str(value).strip() == "" or pd.isna(value):
+    if value is None or pd.isna(value):
+        return None
+        
+    val_str = str(value).strip()
+    
+    # Handle common NULL-like string values
+    if val_str.lower() in ("", "null", "none", "nan", "   "):
         return None
 
-    val_str = str(value).strip()
-
     if target_type == "TIMESTAMP":
-        # Attempt parse
+        # Attempt date parsing
         try:
-            return parser.parse(val_str, fuzzy=True)
-        except:
+            # Check for invalid date patterns before trying to parse
+            if re.search(r'(\d{4}-\d{2}-\d{2})-[a-zA-Z]', val_str):  # Like "2023-01-01-extra"
+                return None
+                
+            # Set fuzzy=False to be stricter with parsing
+            parsed_date = parser.parse(val_str, fuzzy=False)
+            
+            # Additional validation: check if the parsed date is reasonable
+            # (between 1900 and 2100)
+            year = parsed_date.year
+            if 1900 <= year <= 2100:
+                return parsed_date
             return None
+        except:
+            # One more attempt with fuzzy=True but only for values with date-like patterns
+            try:
+                if re.search(r'\d{1,4}[-/. ]\d{1,2}[-/. ]\d{1,4}', val_str) or \
+                   re.search(r'[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{2,4}', val_str) or \
+                   re.search(r'\d{1,2}[/\-\.\s]+[A-Za-z]{3,9}\.?[/\-\.\s]+\d{2,4}', val_str):
+                    parsed_date = parser.parse(val_str, fuzzy=True)
+                    year = parsed_date.year
+                    if 1900 <= year <= 2100:
+                        return parsed_date
+                return None
+            except:
+                return None
 
     elif target_type in ("BIGINT", "DOUBLE PRECISION"):
+        # Skip processing for values that are clearly not numeric
+        if re.search(r'^[a-zA-Z]', val_str):  # Starts with letter
+            return None
+            
+        # Handle accounting negative numbers (123.45) -> -123.45
+        if val_str.startswith("(") and val_str.endswith(")"):
+            val_str = "-" + val_str[1:-1].strip("$").strip()
+            
+        # Check for percentage values
+        if val_str.endswith("%"):
+            if target_type == "BIGINT":
+                return None  # Don't try to convert percentages to integers
+            # For DOUBLE PRECISION, strip the % and divide by 100
+            val_str = val_str.rstrip("%").strip()
+            try:
+                return float(re.sub(r"[^\d.\-+eE]", "", val_str)) / 100
+            except:
+                return None
+            
+        # Special handling for BIGINT with currency or currency codes
+        if target_type == "BIGINT":
+            # Handle currency symbol at beginning
+            if val_str.startswith('$'):
+                val_str = val_str[1:].strip()
+            # Handle currency code at end like "USD"
+            elif re.search(r'\s+[A-Z]{3}$', val_str):
+                val_str = re.sub(r'\s+[A-Z]{3}$', '', val_str)
+                
         # Remove non-numeric chars except '.', '-', '+', 'e', 'E'
         cleaned_val = re.sub(r"[^\d.\-+eE]", "", val_str)
         if cleaned_val in ("", ".", "-", "+"):
             return None
+            
+        # Check for obviously invalid numeric patterns
+        if cleaned_val.count('.') > 1 or cleaned_val.count('-') > 1 or cleaned_val.count('+') > 1:
+            return None
+            
+        # Check for obviously invalid comma patterns for numbers (like 1,2,3)
+        if re.search(r'\d,\d,\d', val_str):
+            return None
+            
+        # Check for specific patterns we want to reject
+        if re.search(r'[0-9a-fA-F]+', val_str) and val_str.startswith("0x"):  # Hex notation
+            return None
+            
+        # Check for values containing slashes or multiple symbols that indicate mathematical expressions
+        if "/" in val_str or "+" in val_str[1:]:
+            return None
+            
+        # For BIGINT, after all the special handling, reject if we still have letters
+        if target_type == "BIGINT" and re.search(r'[a-zA-Z]', val_str):
+            return None
+            
         try:
             if target_type == "BIGINT":
                 float_val = float(cleaned_val)
                 # Check if the float is NaN or infinity before converting to int
                 if pd.isna(float_val) or float_val in (float("inf"), float("-inf")):
+                    return None
+                # Validate the range is within -2^63 to 2^63-1 (PostgreSQL BIGINT range)
+                if float_val < -9223372036854775808 or float_val > 9223372036854775807:
                     return None
                 return int(float_val)  # or directly int(...) if you want strict
             else:  # DOUBLE PRECISION
@@ -395,6 +489,12 @@ async def export_df_to_postgres(
     3. Creates table in Postgres.
     4. Inserts data chunk by chunk.
     """
+    # Make a copy of the dataframe to avoid modifying the original
+    df = df.copy()
+    
+    # Handle NaN values before proceeding
+    df = df.fillna(value="")
+    
     # Store original column names for type inference
     original_cols = list(df.columns)
     
@@ -420,9 +520,10 @@ async def export_df_to_postgres(
 
     LOGGER.info(inferred_types)
 
-    # convert inferred types to Postgres types
+    # Convert inferred types to Postgres types
+    converted_df = df.copy()
     for col in df.columns:
-        df[col] = df[col].apply(
+        converted_df[col] = df[col].apply(
             lambda value: convert_values_to_postgres_type(
                 value, target_type=inferred_types[col]
             )
@@ -447,11 +548,12 @@ async def export_df_to_postgres(
     async with engine.begin() as conn:
         # We'll insert in batches
         rows_to_insert = []
-        for idx, row in enumerate(df.replace({np.nan: None}).to_dict("records")):
+        # Replace any remaining NaN values with None for database compatibility
+        for idx, row in enumerate(converted_df.replace({np.nan: None}).to_dict("records")):
             rows_to_insert.append(row)
 
             # If we reached the chunk size or the end, do a batch insert
-            if len(rows_to_insert) == chunksize or idx == len(df) - 1:
+            if len(rows_to_insert) == chunksize or idx == len(converted_df) - 1:
                 await conn.execute(text(insert_sql), rows_to_insert)
                 rows_to_insert = []
 
