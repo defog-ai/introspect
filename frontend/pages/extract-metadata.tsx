@@ -23,8 +23,44 @@ const ExtractMetadata = () => {
 
   const token = useRef("");
   const [loading, setLoading] = useState(true);
+  const [fileUploading, setFileUploading] = useState(false);
 
   const message = useContext(MessageManagerContext);
+
+  const uploadWorkerRef = useRef<Worker | null>(null);
+
+  useEffect(() => {
+    if (!uploadWorkerRef.current && typeof window !== "undefined") {
+      uploadWorkerRef.current = new Worker(
+        new URL(
+          "../components/extract-metadata/db-upload-worker.ts",
+          import.meta.url
+        ),
+        { type: "module" }
+      );
+
+      uploadWorkerRef.current.onmessage = (event) => {
+        const { type, dbName, dbInfo, error } = event.data;
+
+        if (type === "UPLOAD_SUCCESS") {
+          message.success(`DB ${dbName} created successfully`);
+          setDbInfo((prev) => ({ ...prev, [dbName]: dbInfo }));
+          setSelectedDbName(dbName);
+        } else if (type === "UPLOAD_ERROR") {
+          message.error(error || "Failed to upload file");
+        }
+        setFileUploading(false);
+      };
+    }
+
+    return () => {
+      console.log("ubsubbing");
+      if (uploadWorkerRef.current) {
+        uploadWorkerRef.current.terminate();
+        uploadWorkerRef.current = null;
+      }
+    };
+  }, [message]);
 
   useEffect(() => {
     token.current = localStorage.getItem("defogToken");
@@ -109,6 +145,7 @@ const ExtractMetadata = () => {
         {Object.keys(dbInfo).length > 0 && (
           <>
             <SingleSelect
+              disabled={fileUploading}
               label="Select database"
               labelClassNames="font-bold text-sm"
               allowClear={false}
@@ -161,7 +198,7 @@ const ExtractMetadata = () => {
         )}
       </div>
     );
-  }, [selectedDbName]);
+  }, [message, selectedDbName, fileUploading]);
 
   const tabs = useMemo(() => {
     if (!selectedDbName || selectedDbName === newDbOption) return null;
@@ -218,7 +255,7 @@ const ExtractMetadata = () => {
     <>
       <Meta />
       <Scaffolding id="manage-database" userType="admin">
-        <div className="w-full dark:bg-dark-bg-primary px-2 md:px-0">
+        <div className="w-full dark:bg-dark-bg-primary px-2 md:px-0 mb-4">
           {dbSelector}
           {Object.keys(dbInfo).length && tabs ? (
             <>
@@ -257,7 +294,19 @@ const ExtractMetadata = () => {
               )}
               <NewDbCreation
                 token={token.current}
-                onCreated={(dbName, dbInfo) => {
+                uploadFile={({ fileName, fileBuffer }) => {
+                  setFileUploading(true);
+                  uploadWorkerRef.current.postMessage(
+                    {
+                      type: "UPLOAD_FILE",
+                      token: token.current,
+                      fileName,
+                      fileBuffer,
+                    },
+                    [fileBuffer]
+                  );
+                }}
+                onCredsSubmit={(dbName, dbInfo) => {
                   setDbInfo((prev) => ({ ...prev, [dbName]: dbInfo }));
                   setSelectedDbName(dbName);
                   message.success(`Database ${dbName} created successfully`);

@@ -23,8 +23,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "sass": "^1.69.7",
-    "tailwind-merge": "^2.3.0",
-    "xlsx": "^0.18.5"
+    "tailwind-merge": "^2.3.0"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "15.1.1",

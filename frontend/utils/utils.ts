@@ -1,6 +1,4 @@
 import setupBaseUrl from "./setupBaseUrl";
-import Papa from "papaparse";
-import { read, utils } from "xlsx";
 
 /**
  *
@@ -193,7 +191,7 @@ export const FILE_TYPES = {
  * Simple function to check if given gile type exists in the FILE_TYPES object
  */
 export function isValidFileType(fileType: string) {
-  return Object.values(FILE_TYPES).includes(fileType);
+  return Object.values(FILE_TYPES).find((f) => f === fileType);
 }
 
 interface UserFile {
@@ -204,7 +202,7 @@ interface UserFile {
 export const uploadFile = async (
   token: string,
   fileName: string,
-  tables: { [key: string]: UserFile }
+  fileBase64: string
 ): Promise<{ dbName: string; dbInfo: DbInfo }> => {
   const res = await fetch(setupBaseUrl("http", `upload_file_as_db`), {
     method: "POST",
@@ -214,7 +212,7 @@ export const uploadFile = async (
     body: JSON.stringify({
       token: token,
       file_name: fileName,
-      tables,
+      base_64_file: fileBase64,
     }),
   });
 
@@ -227,72 +225,12 @@ export const uploadFile = async (
   return { dbName: data.db_name, dbInfo: data.db_info };
 };
 
-export function parseCsvFile(
-  file: File,
-  cb: ({
-    file,
-    rows,
-    columns,
-  }: {
-    file: File;
-    rows: any[];
-    columns: any[];
-  }) => void = (...args) => {}
-) {
-  // if file type is not csv, error
-  if (file.type !== "text/csv") {
-    throw new Error("File type must be CSV");
+export function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  var binary = "";
+  var bytes = new Uint8Array(buffer);
+  var len = bytes.byteLength;
+  for (var i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
   }
-
-  Papa.parse(file, {
-    dynamicTyping: true,
-    skipEmptyLines: true,
-    header: true,
-    complete: (results) => {
-      const columns = results.meta.fields.map((f) => {
-        return {
-          title: f,
-          dataIndex: f,
-          key: f,
-        };
-      });
-
-      let rows: any = results.data;
-
-      rows.forEach((row, i) => {
-        row.key = i;
-      });
-
-      cb({ file, rows, columns });
-    },
-  });
-}
-
-export async function parseExcelFile(
-  file: File,
-  cb: ({
-    file,
-    sheets,
-  }: {
-    file: File;
-    sheets: { [sheetName: string]: { rows: any[]; columns: any[] } };
-  }) => void = (...args) => {}
-) {
-  const arrayBuf = await file.arrayBuffer();
-  const d = read(arrayBuf);
-  // go through all sheets, and stream to csvs
-  const sheets = {};
-
-  d.SheetNames.forEach((sheetName) => {
-    const rows = utils.sheet_to_json(d.Sheets[sheetName], { defval: null });
-    const columns = Object.keys(rows[0]).map((d) => ({
-      title: d,
-      dataIndex: d,
-      key: d,
-    }));
-
-    sheets[sheetName] = { rows, columns };
-  });
-
-  cb({ file, sheets });
+  return window.btoa(binary);
 }
