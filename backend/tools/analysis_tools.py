@@ -242,7 +242,7 @@ async def inspect_table_head(input: InspectHeadInput) -> InspectHeadOutput:
             db_type=db_type, db_creds=db_creds, query=sql
         )
     except Exception as e:
-        error_msg = f"Error executing SQL: {e}. Rephrase the question by incorporating specific details of the error to address it."
+        error_msg = f"Error retrieving head of table {input.table_name} in database {input.db_name}: {e}."
         LOGGER.error(error_msg)
         return InspectHeadOutput(columns=None, rows=None, error=error_msg)
     result_df = pd.DataFrame(rows, columns=colnames)
