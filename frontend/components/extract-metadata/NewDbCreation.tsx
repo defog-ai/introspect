@@ -29,8 +29,8 @@ export function NewDbCreation({
   const tabs = useMemo(() => {
     return [
       {
-        id: "connect-db",
-        name: (
+        name: "connect-db",
+        headerContent: (
           <div className="flex items-center gap-2">
             <Server className="w-4" />
             Connect Database
@@ -53,8 +53,8 @@ export function NewDbCreation({
         ),
       },
       {
-        id: "upload-file",
-        name: (
+        name: "upload-file",
+        headerContent: (
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="w-4" />
             Upload CSV/Excel
