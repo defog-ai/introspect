@@ -269,6 +269,26 @@ def guess_column_type(series, column_name=None, sample_size=50):
 
     # Check if column name suggests a date
     column_suggests_date = column_name is not None and is_date_column_name(column_name)
+    
+    # Check if column name suggests it contains numeric values (even with descriptive terms)
+    column_suggests_numeric = False
+    if column_name is not None:
+        # Check for column names containing currency, monetary terms, or numeric units
+        numeric_terms = [
+            "amount", "total", "sum", "value", "price", "cost", "revenue", 
+            "income", "expense", "fee", "rate", "ratio", "score", "balance",
+            "million", "billion", "thousand", "usd", "eur", "gbp", "jpy",
+            "dollar", "euro", "pound", "yen", "currency", "money", "cash",
+            "profit", "loss", "gain", "discount", "tax", "interest",
+            "count", "number", "quantity", "weight", "height", "width", "length",
+            "volume", "area", "size", "measurement", "rate", "percentage", "percent"
+        ]
+        
+        col_lower = column_name.lower().replace("_", " ")
+        for term in numeric_terms:
+            if term in col_lower:
+                column_suggests_numeric = True
+                break
 
     # Check for percentage values in column
     pct_count = sum(1 for v in sampled_values if str(v).strip().endswith("%"))
@@ -289,10 +309,28 @@ def guess_column_type(series, column_name=None, sample_size=50):
 
     # Decide on type
     # Priority:
-    # 1. If column name suggests date and some values can be parsed as dates -> TIMESTAMP
-    # 2. If enough are numeric -> check int vs float
-    # 3. Else if enough are date -> TIMESTAMP
-    # 4. Else TEXT
+    # 1. If column name is exactly "Year" with integer values -> BIGINT
+    # 2. If column name suggests date and some values can be parsed as dates -> TIMESTAMP
+    # 3. If enough are numeric -> check int vs float
+    # 4. Else if enough are date -> TIMESTAMP
+    # 5. Else TEXT
+
+    # Special case for year-related columns with 4-digit integers
+    if (column_name and 
+        (column_name.lower() == "year" or 
+         re.match(r"^(fiscal_|calendar_)?years?(_\d+)?$", column_name.lower()) or
+         "year" in column_name.lower()) and 
+        numeric_ratio > 0.8):
+        
+        # Check if values appear to be years (4-digit integers in reasonable range)
+        are_years = True
+        for val in float_parsed:
+            if val is not None:
+                if not (val.is_integer() and 1000 <= val <= 2100):
+                    are_years = False
+                    break
+        if are_years:
+            return "BIGINT"
 
     # 1) Date column name check with partial date values
     if (
@@ -301,22 +339,29 @@ def guess_column_type(series, column_name=None, sample_size=50):
         return "TIMESTAMP"
 
     # 2) Check numeric
-    # If a large majority (>80%) is parseable as numeric, figure out if integer or decimal
-    if numeric_ratio > 0.8:
+    # Relax the threshold for columns with names suggesting numeric values
+    numeric_threshold = 0.7 if column_suggests_numeric else 0.8
+    
+    # If enough values are parseable as numeric, figure out if integer or decimal
+    if numeric_ratio >= numeric_threshold:
         # Check if everything is "integer-like" (no decimal part) among the valid portion
         are_ints = []
         for val in float_parsed:
             if val is not None:
                 # Check if val is integral
                 are_ints.append(val.is_integer())
+                
+        # If all numeric values are integers
         if all(are_ints):
-            # If the column name suggests a date and values can be integers (like year numbers)
-            if column_suggests_date:
+            # If the column name suggests a date (but not already handled as a year)
+            # and values can be integers (like year numbers)
+            if column_suggests_date and not ("year" in str(column_name).lower()):
                 return "TIMESTAMP"
             # Otherwise use BIGINT
             return "BIGINT"
         else:
-            # Use DOUBLE PRECISION
+            # Always use DOUBLE PRECISION for columns that seem numeric
+            # This addresses columns like "net_trade_balance_usd million"
             return "DOUBLE PRECISION"
 
     # 3) Check date

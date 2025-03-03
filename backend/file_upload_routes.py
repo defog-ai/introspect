@@ -61,6 +61,12 @@ async def upload_files_as_db(files: list[DataFile]) -> DbDetails:
         if file_name.endswith(".csv"):
             # For CSV files
             df = pd.read_csv(io.StringIO(buffer.decode("utf-8")))
+            
+            # Drop rows and columns that are all NaN
+            df = df.dropna(how='all')  # Drop rows where all values are NaN
+            df = df.dropna(axis=1, how='all')  # Drop columns where all values are NaN
+            
+            LOGGER.info(f"After dropping NaN rows/columns: {df.shape[0]} rows, {df.shape[1]} columns")
 
             table_name = clean_table_name(
                 re.sub(r"\.csv$", "", file_name), existing=tables.keys()
@@ -69,10 +75,18 @@ async def upload_files_as_db(files: list[DataFile]) -> DbDetails:
             tables[table_name] = df
         elif file_name.endswith((".xls", ".xlsx")):
             # For Excel files
-            df = pd.ExcelFile(io.BytesIO(buffer))
-            for sheet_name in df.sheet_names:
+            excel_file = pd.ExcelFile(io.BytesIO(buffer))
+            for sheet_name in excel_file.sheet_names:
+                df = excel_file.parse(sheet_name)
+                
+                # Drop rows and columns that are all NaN
+                df = df.dropna(how='all')  # Drop rows where all values are NaN
+                df = df.dropna(axis=1, how='all')  # Drop columns where all values are NaN
+                
+                LOGGER.info(f"Sheet {sheet_name} after dropping NaN rows/columns: {df.shape[0]} rows, {df.shape[1]} columns")
+                
                 table_name = clean_table_name(sheet_name, existing=tables.keys())
-                tables[table_name] = df.parse(sheet_name)
+                tables[table_name] = df
         else:
             raise Exception(
                 f"Unsupported file format for file: {file_name}. Please upload a CSV or Excel file."
