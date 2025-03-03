@@ -131,7 +131,9 @@ def can_parse_date(val):
         # Month name formats: Jan 01, 2020 or January 1, 2020
         r'^[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{2,4}$',
         # 01-Jan-2020 or 1-January-20
-        r'^\d{1,2}[/\-\.\s]+[A-Za-z]{3,9}\.?[/\-\.\s]+\d{2,4}$'
+        r'^\d{1,2}[/\-\.\s]+[A-Za-z]{3,9}\.?[/\-\.\s]+\d{2,4}$',
+        # Formats like 01Jan2023 or 01JAN2023
+        r'^\d{1,2}[A-Za-z]{3,9}\d{2,4}$'
     ]
     
     # Check against common date patterns first for efficiency
@@ -157,7 +159,15 @@ def can_parse_date(val):
 
     # For strings that are not all digits, require at least one common date separator.
     if not re.search(r"[\s/\-\.:]", val):
-        return False
+        # One more attempt with dateutil parser for formats like "01Jan2023"
+        try:
+            parsed_date = parser.parse(val, fuzzy=False)
+            year = parsed_date.year
+            if 1900 <= year <= 2100:
+                return True
+            return False
+        except:
+            return False
 
     # Finally, try to parse it with dateutil.
     try:
@@ -177,8 +187,14 @@ def to_float_if_possible(val):
     Helper function: attempt to parse to numeric after cleaning
     e.g. remove $, commas, random whitespace
     """
+    # Handle accounting negative numbers (123.45) -> -123.45
+    # Convert accounting-style negatives to regular negatives
+    val_str = str(val).strip()
+    if val_str.startswith("(") and val_str.endswith(")"):
+        val_str = "-" + val_str[1:-1]
+    
     # First, clean the value by removing non-numeric symbols except . - + e E
-    cleaned_val = re.sub(r"[^\d.\-+eE]", "", val)
+    cleaned_val = re.sub(r"[^\d.\-+eE]", "", val_str)
 
     # Check if the cleaned value is empty or just a symbol
     if cleaned_val in ("", ".", "-", "+"):
@@ -186,9 +202,9 @@ def to_float_if_possible(val):
 
     # Check if the string has a reasonable proportion of numeric characters
     # Count digits in the original value
-    digit_count = sum(c.isdigit() for c in val)
+    digit_count = sum(c.isdigit() for c in val_str)
     # Count total alphanumeric characters in the original value
-    alphanum_count = sum(c.isalnum() for c in val)
+    alphanum_count = sum(c.isalnum() for c in val_str)
 
     if digit_count == 0 or alphanum_count == 0:
         return None
@@ -199,6 +215,7 @@ def to_float_if_possible(val):
         return None
 
     try:
+        # Try to handle scientific notation correctly
         return float(cleaned_val)
     except:
         return None
@@ -365,7 +382,8 @@ def convert_values_to_postgres_type(value: str, target_type: str):
 
     else:
         # TEXT or fallback
-        return val_str
+        # Return the original string value without stripping whitespace
+        return str(value)
 
 
 async def export_df_to_postgres(
