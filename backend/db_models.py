@@ -115,15 +115,6 @@ class GoldenQueries(Base):
     embedding = mapped_column(Vector())
 
 
-class ImportedTables(Base):
-    __tablename__ = "imported_tables"
-    db_name = Column(Text, primary_key=True)
-    table_link = Column(Text, primary_key=True)
-    table_position = Column(Integer, primary_key=True)
-    table_name = Column(Text)
-    table_description = Column(Text)
-
-
 # ANALYSIS DETAILS
 class Analyses(Base):
     __tablename__ = "analyses"

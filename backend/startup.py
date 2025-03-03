@@ -1,7 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 
-from db_models import Base, ImportedTables, Users
+from db_models import Base, Users
 from fastapi import FastAPI
 from sqlalchemy import Engine, insert, text
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -17,12 +17,11 @@ from utils_logging import LOGGER
 ################################################################################
 
 
-async def init_db(engine: AsyncEngine, imported_tables_engine: Engine | None):
+async def init_db(engine: AsyncEngine):
     """
     Initialize database tables
     Args:
         engine: AsyncEngine for main database
-        imported_tables_engine: Engine for imported tables database, None if not using imported tables
     """
     try:
         async with engine.begin() as conn:
@@ -30,17 +29,6 @@ async def init_db(engine: AsyncEngine, imported_tables_engine: Engine | None):
             # that contain vector columns
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             await conn.run_sync(Base.metadata.create_all)
-
-        if imported_tables_engine:
-            try:
-                ImportedTablesBase = automap_base()
-                ImportedTablesBase.prepare(autoload_with=imported_tables_engine)
-                ImportedTablesBase.classes.imported_tables = ImportedTables
-                with imported_tables_engine.begin() as conn:
-                    ImportedTablesBase.metadata.create_all(conn)
-            except Exception as e:
-                LOGGER.error(f"Error creating imported tables: {str(e)}")
-                raise e
 
         LOGGER.info("Database tables created successfully")
     except Exception as e:
@@ -86,12 +74,12 @@ async def lifespan(app: FastAPI):
     """Initialize database tables and admin user on startup"""
     try:
         # Run validation on current llm sdk version to ensure models used are supported
-        from db_config import engine, imported_tables_engine
+        from db_config import engine
 
         LOGGER.info("Running startup events...")
 
         # Initialize database tables
-        await init_db(engine, imported_tables_engine)
+        await init_db(engine)
         LOGGER.info("Database tables initialized")
 
         # Create admin user if doesn't exist

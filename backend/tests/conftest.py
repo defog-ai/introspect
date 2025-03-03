@@ -166,7 +166,7 @@ def cleanup():
             # Delete from all tables where db_name is a column
             tables_with_db_name = [
                 "metadata", "table_info", "instructions", "golden_queries",
-                "imported_tables", "analyses", "oracle_guidelines", 
+                "analyses", "oracle_guidelines", 
                 "oracle_sources", "db_creds"
             ]
             
