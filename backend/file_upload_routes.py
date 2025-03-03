@@ -62,13 +62,15 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
     # Convert array buffer to DataFrame
     if file_name.endswith(".csv"):
         # For CSV files
-        df = pd.read_csv(io.StringIO(buffer.decode("utf-8")))
+        # keep all data types as string at initial read. inferring the actual column types happens later on
+        df = pd.read_csv(io.StringIO(buffer.decode("utf-8")), dtype=str)
         tables = {cleaned_db_name: df}
     elif file_name.endswith((".xls", ".xlsx")):
         # For Excel files
         df = pd.ExcelFile(io.BytesIO(buffer))
         for sheet_name in df.sheet_names:
-            tables[clean_table_name(sheet_name)] = df.parse(sheet_name)
+            # keep all data types as string at initial read. inferring the actual column types happens later on
+            tables[clean_table_name(sheet_name)] = df.parse(sheet_name, dtype=str)
     else:
         return JSONResponse(
             status_code=400,
