@@ -419,6 +419,8 @@ The database schema is below:
 ```
 {pdf_instruction}
 Try to break down your answer clear and understandable categories. Please give your final answer as a descriptive report.
+
+If you include responses from the web search tool to generate your answer, please cite your sources inline and provide a link to them.
 """,
                 },
             ],
