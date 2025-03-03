@@ -54,7 +54,7 @@ POSTGRES_RESERVED_WORDS = {
 }
 
 
-def clean_table_name(table_name: str):
+def clean_table_name(table_name: str, existing=[]):
     """
     Cleans a table name by snake casing it and making it lower case.
     If the table name is not a string, raises a ValueError.
@@ -63,9 +63,12 @@ def clean_table_name(table_name: str):
     """
     if not isinstance(table_name, str):
         raise ValueError("Table name must be a string.")
-        
+
     validated = str(table_name).strip().lower()
     validated = re.sub(r"[^a-zA-Z0-9_]", "_", validated)
+
+    if validated in existing:
+        validated = f"{validated}_{uuid4().hex[:7]}"
 
     if not validated:
         validated = f"table_{uuid4().hex[:7]}"
@@ -80,27 +83,50 @@ def is_date_column_name(col_name):
     """
     if not isinstance(col_name, str):
         return False
-        
+
     # Normalize the column name for better matching
     name_lower = col_name.lower()
-    
+
     # List of date-related terms to check for
     date_terms = [
-        'date', 'time', 'year', 'month', 'day', 'quarter', 'qtr',
-        'yr', 'mm', 'dd', 'yyyy', 'created', 'modified', 'updated',
-        'timestamp', 'dob', 'birth', 'start', 'end', 'period',
-        'calendar', 'fiscal', 'dtm', 'dt', 'ymd', 'mdy', 'dmy'
+        "date",
+        "time",
+        "year",
+        "month",
+        "day",
+        "quarter",
+        "qtr",
+        "yr",
+        "mm",
+        "dd",
+        "yyyy",
+        "created",
+        "modified",
+        "updated",
+        "timestamp",
+        "dob",
+        "birth",
+        "start",
+        "end",
+        "period",
+        "calendar",
+        "fiscal",
+        "dtm",
+        "dt",
+        "ymd",
+        "mdy",
+        "dmy",
     ]
-    
+
     # Check if any date term appears in the column name
     for term in date_terms:
         if term in name_lower:
             return True
-            
+
     # Check for common date patterns (e.g., date_of_birth, create_dt)
-    if re.search(r'(_|^)(dt|date|time)(_|$)', name_lower):
+    if re.search(r"(_|^)(dt|date|time)(_|$)", name_lower):
         return True
-        
+
     return False
 
 
@@ -110,7 +136,7 @@ def can_parse_date(val):
 
     For non-string inputs, we convert to string. If the string is
     purely numeric, we allow four digits (a year), six digits (YYMMDD),
-    or eight digits (a compact date like YYYYMMDD). Otherwise, we require 
+    or eight digits (a compact date like YYYYMMDD). Otherwise, we require
     the presence of a typical date separator.
     """
     if not isinstance(val, str):
@@ -126,17 +152,17 @@ def can_parse_date(val):
     # Common date patterns
     common_date_patterns = [
         # MM/DD/YYYY or DD/MM/YYYY
-        r'^\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}$',
+        r"^\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}$",
         # YYYY/MM/DD
-        r'^\d{4}[/\-\.]\d{1,2}[/\-\.]\d{1,2}$',
+        r"^\d{4}[/\-\.]\d{1,2}[/\-\.]\d{1,2}$",
         # Month name formats: Jan 01, 2020 or January 1, 2020
-        r'^[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{2,4}$',
+        r"^[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{2,4}$",
         # 01-Jan-2020 or 1-January-20
-        r'^\d{1,2}[/\-\.\s]+[A-Za-z]{3,9}\.?[/\-\.\s]+\d{2,4}$',
+        r"^\d{1,2}[/\-\.\s]+[A-Za-z]{3,9}\.?[/\-\.\s]+\d{2,4}$",
         # Formats like 01Jan2023 or 01JAN2023
-        r'^\d{1,2}[A-Za-z]{3,9}\d{2,4}$'
+        r"^\d{1,2}[A-Za-z]{3,9}\d{2,4}$",
     ]
-    
+
     # Check against common date patterns first for efficiency
     for pattern in common_date_patterns:
         if re.match(pattern, val):
@@ -146,7 +172,7 @@ def can_parse_date(val):
             except:
                 # If it matches pattern but fails parsing, continue checking
                 pass
-    
+
     # If the string is all digits, only allow specific lengths
     if re.fullmatch(r"\d+", val):
         if len(val) in (4, 6, 8):  # Added 6 for YYMMDD format
@@ -190,35 +216,35 @@ def to_float_if_possible(val):
     """
     if not val:
         return None
-        
+
     try:
         # Handle accounting negative numbers (123.45) -> -123.45
         # Convert accounting-style negatives to regular negatives
         val_str = str(val).strip()
         if val_str.startswith("(") and val_str.endswith(")"):
             val_str = "-" + val_str[1:-1].strip("$").strip()
-        
+
         # First, clean the value by removing non-numeric symbols except . - + e E
         cleaned_val = re.sub(r"[^\d.\-+eE]", "", val_str)
-    
+
         # Check if the cleaned value is empty or just a symbol
         if cleaned_val in ("", ".", "-", "+"):
             return None
-    
+
         # Check if the string has a reasonable proportion of numeric characters
         # Count digits in the original value
         digit_count = sum(c.isdigit() for c in val_str)
         # Count total alphanumeric characters in the original value
         alphanum_count = sum(c.isalnum() for c in val_str)
-    
+
         if digit_count == 0 or alphanum_count == 0:
             return None
-    
+
         # If the string alphanumcount > digitcount, it's TEXT
         # Example: NDA1, NDA2, 2007AMAN01, etc
         if alphanum_count > digit_count:
             return None
-    
+
         # Try to handle scientific notation correctly
         return float(cleaned_val)
     except:
@@ -243,15 +269,15 @@ def guess_column_type(series, column_name=None, sample_size=50):
 
     # Check if column name suggests a date
     column_suggests_date = column_name is not None and is_date_column_name(column_name)
-    
+
     # Check for percentage values in column
     pct_count = sum(1 for v in sampled_values if str(v).strip().endswith("%"))
     pct_ratio = pct_count / len(sampled_values)
-    
+
     # If many percentage values, use DOUBLE PRECISION or TEXT
     if pct_ratio > 0.3:
         return "DOUBLE PRECISION" if pct_ratio > 0.8 else "TEXT"
-    
+
     # Determine fraction that are valid dates
     date_count = sum(can_parse_date(v) for v in sampled_values)
     date_ratio = date_count / len(sampled_values)
@@ -262,14 +288,16 @@ def guess_column_type(series, column_name=None, sample_size=50):
     numeric_ratio = numeric_count / len(sampled_values)
 
     # Decide on type
-    # Priority: 
+    # Priority:
     # 1. If column name suggests date and some values can be parsed as dates -> TIMESTAMP
     # 2. If enough are numeric -> check int vs float
     # 3. Else if enough are date -> TIMESTAMP
     # 4. Else TEXT
 
     # 1) Date column name check with partial date values
-    if column_suggests_date and date_ratio > 0.4:  # Lower threshold for columns with date-suggesting names
+    if (
+        column_suggests_date and date_ratio > 0.4
+    ):  # Lower threshold for columns with date-suggesting names
         return "TIMESTAMP"
 
     # 2) Check numeric
@@ -313,7 +341,7 @@ def sanitize_column_name(col_name: str):
     """
     if not isinstance(col_name, str):
         col_name = str(col_name)
-    
+
     col_name = col_name.strip().lower()
 
     # replace any `%` characters with `perc`
@@ -368,9 +396,9 @@ def convert_values_to_postgres_type(value: str, target_type: str):
     """
     if value is None or pd.isna(value):
         return None
-        
+
     val_str = str(value).strip()
-    
+
     # Handle common NULL-like string values
     if val_str.lower() in ("", "null", "none", "nan", "   "):
         return None
@@ -379,12 +407,14 @@ def convert_values_to_postgres_type(value: str, target_type: str):
         # Attempt date parsing
         try:
             # Check for invalid date patterns before trying to parse
-            if re.search(r'(\d{4}-\d{2}-\d{2})-[a-zA-Z]', val_str):  # Like "2023-01-01-extra"
+            if re.search(
+                r"(\d{4}-\d{2}-\d{2})-[a-zA-Z]", val_str
+            ):  # Like "2023-01-01-extra"
                 return None
-                
+
             # Set fuzzy=False to be stricter with parsing
             parsed_date = parser.parse(val_str, fuzzy=False)
-            
+
             # Additional validation: check if the parsed date is reasonable
             # (between 1900 and 2100)
             year = parsed_date.year
@@ -394,9 +424,13 @@ def convert_values_to_postgres_type(value: str, target_type: str):
         except:
             # One more attempt with fuzzy=True but only for values with date-like patterns
             try:
-                if re.search(r'\d{1,4}[-/. ]\d{1,2}[-/. ]\d{1,4}', val_str) or \
-                   re.search(r'[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{2,4}', val_str) or \
-                   re.search(r'\d{1,2}[/\-\.\s]+[A-Za-z]{3,9}\.?[/\-\.\s]+\d{2,4}', val_str):
+                if (
+                    re.search(r"\d{1,4}[-/. ]\d{1,2}[-/. ]\d{1,4}", val_str)
+                    or re.search(r"[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{2,4}", val_str)
+                    or re.search(
+                        r"\d{1,2}[/\-\.\s]+[A-Za-z]{3,9}\.?[/\-\.\s]+\d{2,4}", val_str
+                    )
+                ):
                     parsed_date = parser.parse(val_str, fuzzy=True)
                     year = parsed_date.year
                     if 1900 <= year <= 2100:
@@ -407,13 +441,13 @@ def convert_values_to_postgres_type(value: str, target_type: str):
 
     elif target_type in ("BIGINT", "DOUBLE PRECISION"):
         # Skip processing for values that are clearly not numeric
-        if re.search(r'^[a-zA-Z]', val_str):  # Starts with letter
+        if re.search(r"^[a-zA-Z]", val_str):  # Starts with letter
             return None
-            
+
         # Handle accounting negative numbers (123.45) -> -123.45
         if val_str.startswith("(") and val_str.endswith(")"):
             val_str = "-" + val_str[1:-1].strip("$").strip()
-            
+
         # Check for percentage values
         if val_str.endswith("%"):
             if target_type == "BIGINT":
@@ -424,41 +458,47 @@ def convert_values_to_postgres_type(value: str, target_type: str):
                 return float(re.sub(r"[^\d.\-+eE]", "", val_str)) / 100
             except:
                 return None
-            
+
         # Special handling for BIGINT with currency or currency codes
         if target_type == "BIGINT":
             # Handle currency symbol at beginning
-            if val_str.startswith('$'):
+            if val_str.startswith("$"):
                 val_str = val_str[1:].strip()
             # Handle currency code at end like "USD"
-            elif re.search(r'\s+[A-Z]{3}$', val_str):
-                val_str = re.sub(r'\s+[A-Z]{3}$', '', val_str)
-                
+            elif re.search(r"\s+[A-Z]{3}$", val_str):
+                val_str = re.sub(r"\s+[A-Z]{3}$", "", val_str)
+
         # Remove non-numeric chars except '.', '-', '+', 'e', 'E'
         cleaned_val = re.sub(r"[^\d.\-+eE]", "", val_str)
         if cleaned_val in ("", ".", "-", "+"):
             return None
-            
+
         # Check for obviously invalid numeric patterns
-        if cleaned_val.count('.') > 1 or cleaned_val.count('-') > 1 or cleaned_val.count('+') > 1:
+        if (
+            cleaned_val.count(".") > 1
+            or cleaned_val.count("-") > 1
+            or cleaned_val.count("+") > 1
+        ):
             return None
-            
+
         # Check for obviously invalid comma patterns for numbers (like 1,2,3)
-        if re.search(r'\d,\d,\d', val_str):
+        if re.search(r"\d,\d,\d", val_str):
             return None
-            
+
         # Check for specific patterns we want to reject
-        if re.search(r'[0-9a-fA-F]+', val_str) and val_str.startswith("0x"):  # Hex notation
+        if re.search(r"[0-9a-fA-F]+", val_str) and val_str.startswith(
+            "0x"
+        ):  # Hex notation
             return None
-            
+
         # Check for values containing slashes or multiple symbols that indicate mathematical expressions
         if "/" in val_str or "+" in val_str[1:]:
             return None
-            
+
         # For BIGINT, after all the special handling, reject if we still have letters
-        if target_type == "BIGINT" and re.search(r'[a-zA-Z]', val_str):
+        if target_type == "BIGINT" and re.search(r"[a-zA-Z]", val_str):
             return None
-            
+
         try:
             if target_type == "BIGINT":
                 float_val = float(cleaned_val)
@@ -491,20 +531,20 @@ async def export_df_to_postgres(
     """
     # Make a copy of the dataframe to avoid modifying the original
     df = df.copy()
-    
+
     # Handle NaN values before proceeding
     df = df.fillna(value="")
-    
+
     # Store original column names for type inference
     original_cols = list(df.columns)
-    
+
     # Insert data chunk-by-chunk to handle large CSVs
     col_list = list(df.columns)
     safe_col_list = [sanitize_column_name(c) for c in col_list]  # safe col names
-    
+
     # Create a column name mapping for reference
     col_name_mapping = dict(zip(safe_col_list, original_cols))
-    
+
     # Update dataframe with sanitized column names
     df.columns = safe_col_list
 
@@ -549,7 +589,9 @@ async def export_df_to_postgres(
         # We'll insert in batches
         rows_to_insert = []
         # Replace any remaining NaN values with None for database compatibility
-        for idx, row in enumerate(converted_df.replace({np.nan: None}).to_dict("records")):
+        for idx, row in enumerate(
+            converted_df.replace({np.nan: None}).to_dict("records")
+        ):
             rows_to_insert.append(row)
 
             # If we reached the chunk size or the end, do a batch insert

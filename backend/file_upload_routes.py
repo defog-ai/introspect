@@ -1,4 +1,5 @@
 import base64
+import re
 import time
 from auth_utils import validate_user_request
 from fastapi import APIRouter, Depends
@@ -40,7 +41,7 @@ async def upload_files_as_db(files: list[DataFile]) -> DbDetails:
     """
     Takes in a list of DataFiles, and the contents of each file as a base 64 string.
     We then create a database from the file contents, and
-    return the db_name that is used to store this file.
+    return the db_name and db_info that is used to store this file.
     """
     cleaned_db_name = clean_table_name(files[0].file_name)
     db_exists = await get_db_type_creds(cleaned_db_name)
@@ -60,13 +61,17 @@ async def upload_files_as_db(files: list[DataFile]) -> DbDetails:
         if file_name.endswith(".csv"):
             # For CSV files
             df = pd.read_csv(io.StringIO(buffer.decode("utf-8")))
-            table_name = clean_table_name(file_name)
+
+            table_name = clean_table_name(
+                re.sub(r"\.csv$", "", file_name), existing=tables.keys()
+            )
+
             tables[table_name] = df
         elif file_name.endswith((".xls", ".xlsx")):
             # For Excel files
             df = pd.ExcelFile(io.BytesIO(buffer))
             for sheet_name in df.sheet_names:
-                table_name = clean_table_name(sheet_name)
+                table_name = clean_table_name(sheet_name, existing=tables.keys())
                 tables[table_name] = df.parse(sheet_name)
         else:
             raise Exception(
@@ -96,7 +101,7 @@ async def upload_files_as_db(files: list[DataFile]) -> DbDetails:
 
     for table_name, table_df in tables.items():
         start = time.time()
-        LOGGER.info(f"Parsing table:{table_name}")
+        LOGGER.info(f"Parsing table: {table_name}")
         inferred_types = (
             await export_df_to_postgres(
                 table_df, table_name, connection_uri, chunksize=5000
