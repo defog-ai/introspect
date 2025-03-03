@@ -40,6 +40,20 @@ class AnswerQuestionFromDatabaseOutput(BaseModel):
     error: Optional[str] = Field(default=None, description="Error message if any")
 
 
+class InspectHeadInput(BaseModel):
+    table_name: str = Field(..., description="The name of the table to inspect")
+    db_name: str = Field(..., description="The name of the database to inspect")
+
+class InspectHeadOutput(BaseModel):
+    columns: Optional[List[str]] = Field(
+        default=None, description="The columns returned by the SQL query"
+    )
+    rows: Optional[str] = Field(
+        default=None,
+        description="The JSON string representation of the dataframe returned by the SQL query",
+    )
+    error: Optional[str] = Field(default=None, description="Error message if any")
+
 class GenerateReportFromQuestionInput(BaseModel):
     report_id: str = Field(..., description="The report ID")
     question: str = Field(..., description="The initial question to generate SQL for")

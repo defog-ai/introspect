@@ -5,6 +5,8 @@ from tools.analysis_models import (
     AnswerQuestionFromDatabaseInput,
     AnswerQuestionFromDatabaseOutput,
     AnswerQuestionViaPDFCitationsInput,
+    InspectHeadInput,
+    InspectHeadOutput,
     GenerateReportFromQuestionInput,
     GenerateReportFromQuestionOutput,
     SynthesizeReportFromQuestionsOutput,
@@ -219,6 +221,37 @@ async def pdf_citations_tool(
     )
     return [item.to_dict() for item in response.content]
 
+async def inspect_table_head(input: InspectHeadInput) -> InspectHeadOutput:
+    """
+    Given a table name and a database name, this function returns the first five rows of the table. Use it to explore the data structure, format, and contents before performing complex analyses. It can also help debug issues, such as empty dataframes which might occur due to wrong table names, unexpected filters and string matches etc.
+    """
+    LOGGER.info(f"Inspecting head of table {input.table_name} in database {input.db_name}")
+    table_name = input.table_name
+    db_name = input.db_name
+    sql = f"SELECT * FROM {table_name} LIMIT 5"
+    db_type, db_creds = await get_db_type_creds(db_name)
+    try:
+        colnames, rows = await async_execute_query_once(
+            db_type=db_type, db_creds=db_creds, query=sql
+        )
+    except Exception as e:
+        error_msg = f"Error executing SQL: {e}. Rephrase the question by incorporating specific details of the error to address it."
+        LOGGER.error(error_msg)
+        return InspectHeadOutput(
+            columns=None,
+            rows=None,
+            error=error_msg
+        )
+    result_df = pd.DataFrame(rows, columns=colnames)
+    result_json = result_df.to_json(orient="records", double_precision=4, date_format="iso")
+    columns = result_df.columns.astype(str).tolist()
+    LOGGER.info(f"Head of table {input.table_name} in database {input.db_name}:\n{result_json}")
+    return InspectHeadOutput(
+        columns=columns,
+        rows=result_json,
+        error=None
+    )
+
 async def load_custom_tools():
     """
     Load and dynamically import custom tools for a specific database from the database.
@@ -388,7 +421,7 @@ async def generate_report_from_question(
     """
     try:
         # Start with default tools
-        tools = [text_to_sql_tool]
+        tools = [text_to_sql_tool, inspect_table_head]
         pdf_instruction = ""
         if use_websearch:
             tools.append(web_search_tool)
