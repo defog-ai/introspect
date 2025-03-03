@@ -152,7 +152,7 @@ async def web_search_tool(
             contents=input.question + "\nNote: you must **always** use the google search tool to answer questions - no exceptions.",
         )
         
-        LOGGER.info(f"Received response from Gemini API: {response}")
+        LOGGER.info(f"Received response from Gemini API")
         
         # Handle the case where grounding_chunks might be None
         sources = []
