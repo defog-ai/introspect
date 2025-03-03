@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import List, Any, Optional
 import uuid
 
+
 class AnswerQuestionInput(BaseModel):
     question: str = Field(..., description="The question to generate SQL for")
 
@@ -14,8 +15,12 @@ class AnswerQuestionFromDatabaseInput(AnswerQuestionInput):
         "associated with this database.",
     )
 
+
 class AnswerQuestionViaPDFCitationsInput(AnswerQuestionInput):
-    pdf_files: List[int] = Field(..., description="The ids of the PDFs to use for citation")
+    pdf_files: List[int] = Field(
+        ..., description="The ids of the PDFs to use for citation"
+    )
+
 
 class AnswerQuestionFromDatabaseOutput(BaseModel):
 
@@ -44,6 +49,7 @@ class InspectHeadInput(BaseModel):
     table_name: str = Field(..., description="The name of the table to inspect")
     db_name: str = Field(..., description="The name of the database to inspect")
 
+
 class InspectHeadOutput(BaseModel):
     columns: Optional[List[str]] = Field(
         default=None, description="The columns returned by the SQL query"
@@ -53,6 +59,7 @@ class InspectHeadOutput(BaseModel):
         description="The JSON string representation of the dataframe returned by the SQL query",
     )
     error: Optional[str] = Field(default=None, description="Error message if any")
+
 
 class GenerateReportFromQuestionInput(BaseModel):
     report_id: str = Field(..., description="The report ID")

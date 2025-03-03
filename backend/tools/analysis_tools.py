@@ -24,6 +24,7 @@ from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
 from anthropic import AsyncAnthropic
 from utils_oracle import get_pdf_content
 
+
 async def text_to_sql_tool(
     input: AnswerQuestionFromDatabaseInput,
 ) -> AnswerQuestionFromDatabaseOutput:
@@ -111,7 +112,9 @@ async def text_to_sql_tool(
         result_df = result_df.head(max_rows_displayed)
         df_truncated = True
 
-    result_json = result_df.to_json(orient="records", double_precision=4, date_format="iso")
+    result_json = result_df.to_json(
+        orient="records", double_precision=4, date_format="iso"
+    )
     columns = result_df.columns.astype(str).tolist()
     if result_json == "[]":
         error_msg = "No data retrieved. Consider rephrasing the question or generating a new question. Pay close attention to column names and column descriptions in the database schema to ensure you are fetching the right data. If necessary, first retrieve the unique values of the column(s) or first few rows of the table to better understand the data."
@@ -138,12 +141,10 @@ async def web_search_tool(
     It should be used when a question cannot be directly answered by the database, or when additional context can be provided to the user by searching the web.
     """
     LOGGER.info(f"Web search tool called with question: {input.question}")
-    
+
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-    google_search_tool = Tool(
-        google_search = GoogleSearch()
-    )
-    
+    google_search_tool = Tool(google_search=GoogleSearch())
+
     try:
         response = await client.aio.models.generate_content(
             model="gemini-2.0-flash",
@@ -151,31 +152,31 @@ async def web_search_tool(
                 tools=[google_search_tool],
                 response_modalities=["TEXT"],
             ),
-            contents=input.question + "\nNote: you must **always** use the google search tool to answer questions - no exceptions.",
+            contents=input.question
+            + "\nNote: you must **always** use the google search tool to answer questions - no exceptions.",
         )
-        
+
         LOGGER.info(f"Received response from Gemini API")
-        
+
         # Handle the case where grounding_chunks might be None
         sources = []
         if response.candidates:
             for candidate in response.candidates:
-                if candidate.grounding_metadata and candidate.grounding_metadata.grounding_chunks:
+                if (
+                    candidate.grounding_metadata
+                    and candidate.grounding_metadata.grounding_chunks
+                ):
                     for chunk in candidate.grounding_metadata.grounding_chunks:
-                        sources.append({
-                            "source": chunk.web.title,
-                            "url": chunk.web.uri
-                        })
-        return {
-            "answer": response.text,
-            "reference_sources": sources
-        }
+                        sources.append(
+                            {"source": chunk.web.title, "url": chunk.web.uri}
+                        )
+        return {"answer": response.text, "reference_sources": sources}
     except Exception as e:
         LOGGER.error(f"Error calling Gemini API: {e}")
         return {
             "answer": "Error calling Gemini API",
             "error": str(e),
-            "reference_sources": []
+            "reference_sources": [],
         }
 
 
@@ -186,7 +187,9 @@ async def pdf_citations_tool(
     Given a user question and a list of PDF ids, this tool will attempt to answer the question from the information that is available in the PDFs.
     It will return the answer as a JSON.
     """
-    LOGGER.info(f"Calling PDF Citations tool with question: {input.question} and PDF ids: {input.pdf_files}")
+    LOGGER.info(
+        f"Calling PDF Citations tool with question: {input.question} and PDF ids: {input.pdf_files}"
+    )
     client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
     file_content_messages = []
     for file_id in input.pdf_files:
@@ -199,18 +202,19 @@ async def pdf_citations_tool(
                 "source": {
                     "type": "base64",
                     "media_type": "application/pdf",
-                    "data": base_64_pdf
+                    "data": base_64_pdf,
                 },
                 "title": title,
                 "citations": {"enabled": True},
-                "cache_control": {"type": "ephemeral"}
+                "cache_control": {"type": "ephemeral"},
             }
         )
-    
+
     messages = [
         {
             "role": "user",
-            "content": file_content_messages + [{"type": "text", "text": input.question}],
+            "content": file_content_messages
+            + [{"type": "text", "text": input.question}],
         }
     ]
 
@@ -221,11 +225,14 @@ async def pdf_citations_tool(
     )
     return [item.to_dict() for item in response.content]
 
+
 async def inspect_table_head(input: InspectHeadInput) -> InspectHeadOutput:
     """
     Given a table name and a database name, this function returns the first five rows of the table. Use it to explore the data structure, format, and contents before performing complex analyses. It can also help debug issues, such as empty dataframes which might occur due to wrong table names, unexpected filters and string matches etc.
     """
-    LOGGER.info(f"Inspecting head of table {input.table_name} in database {input.db_name}")
+    LOGGER.info(
+        f"Inspecting head of table {input.table_name} in database {input.db_name}"
+    )
     table_name = input.table_name
     db_name = input.db_name
     sql = f"SELECT * FROM {table_name} LIMIT 5"
@@ -237,20 +244,17 @@ async def inspect_table_head(input: InspectHeadInput) -> InspectHeadOutput:
     except Exception as e:
         error_msg = f"Error executing SQL: {e}. Rephrase the question by incorporating specific details of the error to address it."
         LOGGER.error(error_msg)
-        return InspectHeadOutput(
-            columns=None,
-            rows=None,
-            error=error_msg
-        )
+        return InspectHeadOutput(columns=None, rows=None, error=error_msg)
     result_df = pd.DataFrame(rows, columns=colnames)
-    result_json = result_df.to_json(orient="records", double_precision=4, date_format="iso")
-    columns = result_df.columns.astype(str).tolist()
-    LOGGER.info(f"Head of table {input.table_name} in database {input.db_name}:\n{result_json}")
-    return InspectHeadOutput(
-        columns=columns,
-        rows=result_json,
-        error=None
+    result_json = result_df.to_json(
+        orient="records", double_precision=4, date_format="iso"
     )
+    columns = result_df.columns.astype(str).tolist()
+    LOGGER.info(
+        f"Head of table {input.table_name} in database {input.db_name}:\n{result_json}"
+    )
+    return InspectHeadOutput(columns=columns, rows=result_json, error=None)
+
 
 async def load_custom_tools():
     """
@@ -266,21 +270,19 @@ async def load_custom_tools():
     import re
     import ast
     import pydantic
-    
+
     custom_tools = []
-    
+
     # Get custom tools from database
     async with get_defog_internal_session() as session:
         result = await session.execute(
-            select(CustomTools).where(
-                CustomTools.is_enabled == True
-            )
+            select(CustomTools).where(CustomTools.is_enabled == True)
         )
         tools_db = result.all()
-    
+
     if not tools_db:
         return []
-    
+
     # Helper function to validate tool code safely
     def validate_tool_code(code: str) -> bool:
         """
@@ -291,30 +293,48 @@ async def load_custom_tools():
             tree = ast.parse(code)
         except SyntaxError:
             return False
-        
+
         # Check for unsafe operations (imports, eval, exec, etc.)
-        unsafe_calls = ['eval', 'exec', '__import__', 'subprocess', 'os.system', 
-                        'os.popen', 'os.spawn', 'os.fork', 'pty.spawn']
-        
+        unsafe_calls = [
+            "eval",
+            "exec",
+            "__import__",
+            "subprocess",
+            "os.system",
+            "os.popen",
+            "os.spawn",
+            "os.fork",
+            "pty.spawn",
+        ]
+
         for node in ast.walk(tree):
             # Check for import statements
             if isinstance(node, (ast.Import, ast.ImportFrom)):
                 # Check import targets
-                if isinstance(node, ast.ImportFrom) and node.module and any(
-                    unsafe in node.module for unsafe in ['subprocess', 'os', 'sys', 'pty', 'shutil']
+                if (
+                    isinstance(node, ast.ImportFrom)
+                    and node.module
+                    and any(
+                        unsafe in node.module
+                        for unsafe in ["subprocess", "os", "sys", "pty", "shutil"]
+                    )
                 ):
                     return False
-                
+
                 # Check imported names
                 if isinstance(node, ast.ImportFrom) and node.names:
                     for name in node.names:
-                        if name.name in ['system', 'popen', 'spawn', 'eval', 'exec']:
+                        if name.name in ["system", "popen", "spawn", "eval", "exec"]:
                             return False
-            
+
             # Check for unsafe function calls
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ['eval', 'exec']:
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id in ["eval", "exec"]
+            ):
                 return False
-            
+
             # Check for attribute access that could be unsafe
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
                 # Get the full attribute chain
@@ -323,83 +343,99 @@ async def load_custom_tools():
                 while isinstance(obj, ast.Attribute):
                     attr_chain.append(obj.attr)
                     obj = obj.value
-                
+
                 if isinstance(obj, ast.Name):
                     attr_chain.append(obj.id)
-                    attr_path = '.'.join(reversed(attr_chain))
-                    
+                    attr_path = ".".join(reversed(attr_chain))
+
                     # Check if the attribute path contains unsafe operations
                     if any(unsafe in attr_path for unsafe in unsafe_calls):
                         return False
-        
+
         return True
-    
+
     # Process each tool
     for tool_row in tools_db:
         tool_record = tool_row[0]  # Extract the actual ORM object
-        
+
         # Skip if code validation fails
         if not validate_tool_code(tool_record.tool_code):
-            LOGGER.error(f"Tool {tool_record.tool_name} contains unsafe operations and will not be loaded")
+            LOGGER.error(
+                f"Tool {tool_record.tool_name} contains unsafe operations and will not be loaded"
+            )
             continue
-        
+
         try:
             # Create a unique module name for this tool
-            module_name = f"custom_tool_{tool_record.tool_name}_{hash(tool_record.tool_code)}"
-            
+            module_name = (
+                f"custom_tool_{tool_record.tool_name}_{hash(tool_record.tool_code)}"
+            )
+
             # Create a new module
             module = type(sys)(module_name)
-            
+
             # Add required imports to the module's namespace
-            module.__dict__.update({
-                'pd': pd,
-                'LOGGER': LOGGER,
-                'BaseModel': importlib.import_module('pydantic').BaseModel,
-                'Field': importlib.import_module('pydantic').Field,
-                'Optional': importlib.import_module('typing').Optional,
-                'List': importlib.import_module('typing').List,
-                'Dict': importlib.import_module('typing').Dict,
-                'Any': importlib.import_module('typing').Any,
-                'get_metadata': importlib.import_module('utils_md').get_metadata,
-                'mk_create_ddl': importlib.import_module('utils_md').mk_create_ddl,
-                'get_db_type_creds': importlib.import_module('db_utils').get_db_type_creds,
-                'async_execute_query_once': importlib.import_module('defog.query').async_execute_query_once,
-                'uuid': uuid,
-            })
-            
+            module.__dict__.update(
+                {
+                    "pd": pd,
+                    "LOGGER": LOGGER,
+                    "BaseModel": importlib.import_module("pydantic").BaseModel,
+                    "Field": importlib.import_module("pydantic").Field,
+                    "Optional": importlib.import_module("typing").Optional,
+                    "List": importlib.import_module("typing").List,
+                    "Dict": importlib.import_module("typing").Dict,
+                    "Any": importlib.import_module("typing").Any,
+                    "get_metadata": importlib.import_module("utils_md").get_metadata,
+                    "mk_create_ddl": importlib.import_module("utils_md").mk_create_ddl,
+                    "get_db_type_creds": importlib.import_module(
+                        "db_utils"
+                    ).get_db_type_creds,
+                    "async_execute_query_once": importlib.import_module(
+                        "defog.query"
+                    ).async_execute_query_once,
+                    "uuid": uuid,
+                }
+            )
+
             # Add the module to sys.modules
             sys.modules[module_name] = module
-            
+
             # Execute the input model code in the module's namespace
             if tool_record.input_model:
                 exec(tool_record.input_model, module.__dict__)
-            
+
             # Execute the tool code in the module's namespace
             exec(tool_record.tool_code, module.__dict__)
-            
+
             # Get the tool function from the module
             # We expect the function to have the same name as the tool_name
             tool_func = module.__dict__.get(tool_record.tool_name)
-            
+
             if not tool_func or not callable(tool_func):
                 # If the function isn't found by name, look for the first async function in the module
                 for name, obj in module.__dict__.items():
-                    if callable(obj) and hasattr(obj, '__code__') and obj.__code__.co_flags & 0x80:  # Check if async
+                    if (
+                        callable(obj)
+                        and hasattr(obj, "__code__")
+                        and obj.__code__.co_flags & 0x80
+                    ):  # Check if async
                         tool_func = obj
                         break
-            
+
             if tool_func:
                 # Add tool documentation from the database
                 tool_func.__doc__ = tool_record.tool_description
-                
+
                 # Add the tool to the list
                 custom_tools.append(tool_func)
             else:
-                LOGGER.error(f"Could not find callable function in tool {tool_record.tool_name}")
-        
+                LOGGER.error(
+                    f"Could not find callable function in tool {tool_record.tool_name}"
+                )
+
         except Exception as e:
             LOGGER.error(f"Error loading custom tool {tool_record.tool_name}: {e}")
-    
+
     return custom_tools
 
 
@@ -425,11 +461,11 @@ async def generate_report_from_question(
         pdf_instruction = ""
         if use_websearch:
             tools.append(web_search_tool)
-        
+
         if len(pdf_file_ids) > 0:
             tools.append(pdf_citations_tool)
             pdf_instruction = f"\nThe following PDF file ids can be searched through to help generate your answer: {pdf_file_ids}\n"
-        
+
         # Load custom tools for this database
         custom_tools = await load_custom_tools()
         tools.extend(custom_tools)
