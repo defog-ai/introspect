@@ -114,9 +114,8 @@ class ClarifyQuestionRequest(BaseModel):
 @router.post("/oracle/clarify_question")
 async def clarify_question_endpoint(req: ClarifyQuestionRequest):
     """
-    Given the question provided by the user, an optionally a list of answered
-    clarifications, this endpoint will return a list of clarifications that still
-    need to be addressed.
+    Given the question provided by the user, this endpoint will return a
+    list of clarifications.
 
     The response contains the following fields:
         clarifications: list[dict[str, str]] Each clarification dictionary will contain:
@@ -192,7 +191,7 @@ class GenerateReportRequest(BaseModel):
     db_name: str
     token: str
     user_question: str
-    answered_clarifications: List[Clarification] = []
+    clarifications: List[Clarification] = []
     use_websearch: bool = True
 
     model_config = {
@@ -202,7 +201,7 @@ class GenerateReportRequest(BaseModel):
                     "db_name": "db_name",
                     "token": "user_token",
                     "user_question": "User question",
-                    "answered_clarifications": [],
+                    "clarifications": [],
                     "use_websearch": True,
                 }
             ]
@@ -214,14 +213,14 @@ class GenerateReportRequest(BaseModel):
 async def generate_report(req: GenerateReportRequest):
     db_name = req.db_name
     user_question = req.user_question
-    answered_clarifications = req.answered_clarifications
+    clarifications = req.clarifications
     report_id = req.report_id
 
     # convert clarification responses into a single string
     clarification_responses = ""
-    if answered_clarifications:
+    if clarifications:
         clarification_responses = "\nFor additional context: after the user asked this question, they provided the following clarifications:"
-        for clarification in answered_clarifications:
+        for clarification in clarifications:
             clarification_responses += (
                 f" {clarification.clarification} (Answer: {clarification.answer})\n"
             )
