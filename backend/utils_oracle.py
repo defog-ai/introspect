@@ -51,7 +51,7 @@ async def clarify_question(
 
     response = await chat_async(
         messages=messages,
-        model="claude-3-7-sonnet-latest",
+        model="gpt-4o",
         response_format=ClarificationOutput,
     )
 
@@ -60,6 +60,7 @@ async def clarify_question(
         {
             "clarification": "Any other context you would like to give us?",
             "input_type": "text",
+            "options": [],
         }
     )
 
