@@ -1,0 +1,39 @@
+name: Frontend Build and Deploy
+
+on:
+  # Allow manual triggering
+  workflow_dispatch:
+  # Run when changes are pushed to the frontend folder
+  push:
+    paths:
+      - "frontend/**"
+
+jobs:
+  build-and-deploy:
+    name: Build Frontend and Commit Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install Dependencies and Export
+        working-directory: ./frontend
+        run: pnpm i && pnpm export
+
+      - name: GitHub Commit & Push
+        uses: actions-js/push@master
+        with:
+          github_token: ${{ secrets.ACTION_PAT }}
