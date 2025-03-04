@@ -1,6 +1,9 @@
 import base64
 import re
 import time
+import traceback
+
+from pandas.errors import ParserError
 from auth_utils import validate_user_request
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
@@ -54,43 +57,61 @@ async def upload_files_as_db(files: list[DataFile]) -> DbDetails:
 
     # convert to dfs
     for f in files:
-        file_name = f.file_name
-        buffer = base64.b64decode(f.base64_content)
+        try:
+            file_name = f.file_name
+            buffer = base64.b64decode(f.base64_content)
 
-        # Convert array buffer to DataFrame
-        if file_name.endswith(".csv"):
-            # For CSV files
-            df = pd.read_csv(io.StringIO(buffer.decode("utf-8")))
-            
-            # Drop rows and columns that are all NaN
-            df = df.dropna(how='all')  # Drop rows where all values are NaN
-            df = df.dropna(axis=1, how='all')  # Drop columns where all values are NaN
-            
-            LOGGER.info(f"After dropping NaN rows/columns: {df.shape[0]} rows, {df.shape[1]} columns")
+            # Convert array buffer to DataFrame
+            if file_name.endswith(".csv"):
+                # For CSV files
+                df = pd.read_csv(io.StringIO(buffer.decode("utf-8")))
 
-            table_name = clean_table_name(
-                re.sub(r"\.csv$", "", file_name), existing=tables.keys()
-            )
-
-            tables[table_name] = df
-        elif file_name.endswith((".xls", ".xlsx")):
-            # For Excel files
-            excel_file = pd.ExcelFile(io.BytesIO(buffer))
-            for sheet_name in excel_file.sheet_names:
-                df = excel_file.parse(sheet_name)
-                
                 # Drop rows and columns that are all NaN
-                df = df.dropna(how='all')  # Drop rows where all values are NaN
-                df = df.dropna(axis=1, how='all')  # Drop columns where all values are NaN
-                
-                LOGGER.info(f"Sheet {sheet_name} after dropping NaN rows/columns: {df.shape[0]} rows, {df.shape[1]} columns")
-                
-                table_name = clean_table_name(sheet_name, existing=tables.keys())
+                df = df.dropna(how="all")  # Drop rows where all values are NaN
+                df = df.dropna(
+                    axis=1, how="all"
+                )  # Drop columns where all values are NaN
+
+                LOGGER.info(
+                    f"After dropping NaN rows/columns: {df.shape[0]} rows, {df.shape[1]} columns"
+                )
+
+                table_name = clean_table_name(
+                    re.sub(r"\.csv$", "", file_name), existing=tables.keys()
+                )
+
                 tables[table_name] = df
-        else:
-            raise Exception(
-                f"Unsupported file format for file: {file_name}. Please upload a CSV or Excel file."
-            )
+            elif file_name.endswith((".xls", ".xlsx")):
+                # For Excel files
+                excel_file = pd.ExcelFile(io.BytesIO(buffer))
+                for sheet_name in excel_file.sheet_names:
+                    df = excel_file.parse(sheet_name)
+
+                    # Drop rows and columns that are all NaN
+                    df = df.dropna(how="all")  # Drop rows where all values are NaN
+                    df = df.dropna(
+                        axis=1, how="all"
+                    )  # Drop columns where all values are NaN
+
+                    LOGGER.info(
+                        f"Sheet {sheet_name} after dropping NaN rows/columns: {df.shape[0]} rows, {df.shape[1]} columns"
+                    )
+
+                    table_name = clean_table_name(sheet_name, existing=tables.keys())
+                    tables[table_name] = df
+            else:
+                raise Exception(
+                    f"Unsupported file format for file: {file_name}. Please upload a CSV or Excel file."
+                )
+
+        except ParserError as e:
+            traceback.print_exc()
+            LOGGER.error(f"Error parsing file {file_name}: {e}")
+            raise Exception(f"Error parsing file {file_name}: {e}")
+        except Exception as e:
+            traceback.print_exc()
+            LOGGER.error(f"Error processing file {file_name}: {e}")
+            raise Exception(f"Error processing file {file_name}: {e}")
 
     # create the database
     # NOTE: It seems like we cannot use asyncpg in the database_exists and create_database functions, so we are using sync

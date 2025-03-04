@@ -133,28 +133,28 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
     ts = save_timing(ts, "validate_user", timings)
     guidelines = ""
 
-    if req.clarification_guidelines:
-        guidelines = req.clarification_guidelines
-        await set_oracle_guidelines(
-            db_name=db_name,
-            guideline_type="clarification",
-            guidelines=guidelines,
-        )
-    else:
-        guidelines = await get_oracle_guidelines(db_name)
-
-    pdf_file_ids = []
-    if len(req.pdf_files) > 0:
-        pdf_file_ids = await upload_pdf_files(req.pdf_files)
-
-    new_db = None
-    if len(req.data_files) > 0:
-        new_db = await upload_files_as_db(req.data_files)
-
-        # set the db name to this new db that was created
-        db_name = new_db.db_name
-
     try:
+        if req.clarification_guidelines:
+            guidelines = req.clarification_guidelines
+            await set_oracle_guidelines(
+                db_name=db_name,
+                guideline_type="clarification",
+                guidelines=guidelines,
+            )
+        else:
+            guidelines = await get_oracle_guidelines(db_name)
+
+        pdf_file_ids = []
+        if len(req.pdf_files) > 0:
+            pdf_file_ids = await upload_pdf_files(req.pdf_files)
+
+        new_db = None
+        if len(req.data_files) > 0:
+            new_db = await upload_files_as_db(req.data_files)
+
+            # set the db name to this new db that was created
+            db_name = new_db.db_name
+
         clarify_response = await clarify_question(
             user_question=req.user_question,
             db_name=db_name,
@@ -185,13 +185,7 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
         clarify_response["report_id"] = report_id
     except Exception as e:
         LOGGER.error(f"Error getting clarifications: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error": "Internal Server Error",
-                "message": "Unable to generate clarifications",
-            },
-        )
+        return JSONResponse(status_code=500, content=str(e).strip())
     save_and_log(ts, "get_clarifications", timings)
     return JSONResponse(content=clarify_response)
 
