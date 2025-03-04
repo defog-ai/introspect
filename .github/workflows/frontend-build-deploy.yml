@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
   # Run when changes are pushed to the frontend folder
   push:
+    branches: [main]
     paths:
       - "frontend/**"
 
