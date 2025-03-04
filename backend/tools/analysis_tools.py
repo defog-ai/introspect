@@ -208,7 +208,7 @@ async def pdf_citations_tool(
     messages = [
         {
             "role": "user",
-            "content": file_content_messages + [{"type": "text", "text": input.question}],
+            "content": file_content_messages + [{"type": "text", "text": input.question + "\nUse citations to back up your answer"}],
         }
     ]
 
