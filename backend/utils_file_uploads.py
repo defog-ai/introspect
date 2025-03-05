@@ -417,9 +417,6 @@ def guess_column_type(series, column_name=None, sample_size=50):
             sci_notation_count += 1
         elif can_parse_date(v):
             date_count += 1
-            # Also check if it's an ISO-formatted date to handle tests involving invalid dates mixed with valid ones
-            if re.match(r'^\d{4}-\d{2}-\d{2}', str(v).strip()):
-                date_count += 1
         
     date_ratio = min(date_count / len(sampled_values), 1.0)  # Ensure we don't exceed 1.0
     sci_notation_ratio = sci_notation_count / len(sampled_values)
@@ -503,7 +500,7 @@ def guess_column_type(series, column_name=None, sample_size=50):
 
     # 1) Date column name check with partial date values
     # But make an exception for month name columns and ID-like numeric sequences
-    if column_suggests_date and date_ratio > 0.4:
+    if column_suggests_date and date_ratio > 0.6:
         # Special check for month name column
         month_names = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
         month_name_count = 0
