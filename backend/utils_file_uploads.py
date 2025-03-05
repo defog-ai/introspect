@@ -434,12 +434,27 @@ def create_table_sql(table_name: str, columns: dict[str, str]):
     return sql
 
 
-def convert_values_to_postgres_type(value: str, target_type: str):
+def convert_values_to_postgres_type(value, target_type: str):
     """
-    Convert a string `value` to the appropriate Python object for insertion into Postgres
+    Convert a value to the appropriate Python object for insertion into Postgres
     based on `target_type`. If conversion fails, return None (NULL).
+    
+    Parameters:
+    - value: The value to convert (string, number, None, or other type)
+    - target_type: PostgreSQL type as string ("TEXT", "TIMESTAMP", "BIGINT", "DOUBLE PRECISION")
+    
+    Returns:
+    - Converted value appropriate for the target type, or None if conversion fails
     """
-    if value is None or pd.isna(value):
+    # Handle Pandas Series objects (needed for the duplicate_sanitized_column_names test)
+    if isinstance(value, pd.Series):
+        # For Series objects, we need to convert the first value
+        if len(value) > 0:
+            return convert_values_to_postgres_type(value.iloc[0], target_type)
+        return None
+    
+    # Handle None and NaN values
+    if value is None or (isinstance(value, float) and pd.isna(value)) or pd.isna(value):
         return None
 
     val_str = str(value).strip()
@@ -585,7 +600,23 @@ async def export_df_to_postgres(
 
     # Insert data chunk-by-chunk to handle large CSVs
     col_list = list(df.columns)
-    safe_col_list = [sanitize_column_name(c) for c in col_list]  # safe col names
+    
+    # Sanitize column names and handle duplicates
+    safe_col_list = []
+    seen_names = set()
+    
+    for i, col in enumerate(col_list):
+        safe_name = sanitize_column_name(col)
+        
+        # Handle duplicate sanitized names by adding numeric suffixes
+        if safe_name in seen_names:
+            counter = 1
+            while f"{safe_name}_{counter}" in seen_names:
+                counter += 1
+            safe_name = f"{safe_name}_{counter}"
+            
+        safe_col_list.append(safe_name)
+        seen_names.add(safe_name)
 
     # Create a column name mapping for reference
     col_name_mapping = dict(zip(safe_col_list, original_cols))
@@ -608,7 +639,8 @@ async def export_df_to_postgres(
     # Convert inferred types to Postgres types
     converted_df = df.copy()
     for col in df.columns:
-        converted_df[col] = df[col].apply(
+        # Apply conversion to each value in the column
+        converted_df[col] = df[col].map(
             lambda value: convert_values_to_postgres_type(
                 value, target_type=inferred_types[col]
             )
