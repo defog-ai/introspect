@@ -45,6 +45,21 @@ For development workflows and more detailed instructions, see the README files i
 
 Defog supports most database connectors including PostgreSQL, MySQL, SQLite, BigQuery, Redshift, Snowflake, and Databricks – and also includes support for CSV and Excel files.
 
+## Build/Test/Lint Commands
+
+### Backend (Python)
+- Run all tests: `docker exec introspect-backend pytest`
+- Run single test: `docker exec introspect-backend pytest tests/test_file.py::test_function -v`
+- Tests use the `agents-postgres` service for database operations
+- Create admin user: `docker exec introspect-backend python create_admin_user.py`
+
+### Frontend (JavaScript/TypeScript)
+- Development server: `cd frontend && npm run dev`
+- Build production: `cd frontend && npm run build`
+- Export static site: `cd frontend && npm run export`
+- Run frontend tests: `cd frontend && npx playwright test`
+- Lint (Prettier): `cd frontend && npm run format`
+
 ## Docs
 Coming soon
 

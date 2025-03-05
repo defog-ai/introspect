@@ -1,6 +1,7 @@
 version: "3"
 services:
   agents-postgres:
+    container_name: introspect-postgres
     image: pgvector/pgvector:pg17
     networks:
       - agents-network
@@ -19,6 +20,7 @@ services:
       start_period: 1s
 
   agents-python-server:
+    container_name: introspect-backend
     environment:
       - SALT=${SALT:-default_salt}
       - DBHOST=${DEFOG_DBHOST:-agents-postgres}
@@ -61,6 +63,7 @@ services:
       - agents-network
 
   agents-nginx:
+    container_name: introspect-nginx
     build:
       context: .
       dockerfile: dockerfile.agents-nginx
@@ -73,6 +76,7 @@ services:
       - agents-network
 
   agents-redis:
+    container_name: introspect-redis
     image: redis:7-alpine
     networks:
       - agents-network
