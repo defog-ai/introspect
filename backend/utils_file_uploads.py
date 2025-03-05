@@ -654,10 +654,8 @@ def convert_values_to_postgres_type(value, target_type: str):
     """
     # Handle Pandas Series objects (needed for the duplicate_sanitized_column_names test)
     if isinstance(value, pd.Series):
-        # For Series objects, we need to convert the first value
-        if len(value) > 0:
-            return convert_values_to_postgres_type(value.iloc[0], target_type)
-        return None
+        # For Series objects, we need to convert all values
+        return value.apply(lambda x: convert_values_to_postgres_type(x, target_type))
     
     # Handle None and NaN values
     if value is None or (isinstance(value, float) and pd.isna(value)) or pd.isna(value):
@@ -709,10 +707,6 @@ def convert_values_to_postgres_type(value, target_type: str):
                 return None
 
     elif target_type in ("BIGINT", "DOUBLE PRECISION"):
-        # Skip processing for values that are clearly not numeric
-        if re.search(r"[a-zA-Z]", val_str) and not re.search(r'[eE][-+]?\d+', val_str):  # Contains letters (except scientific notation)
-            return None
-
         # Handle accounting negative numbers (123.45) -> -123.45
         if val_str.startswith("(") and val_str.endswith(")"):
             val_str = "-" + val_str[1:-1].strip("$").strip()
@@ -733,6 +727,13 @@ def convert_values_to_postgres_type(value, target_type: str):
             # Handle currency code at end like "USD", "EUR", etc.
             if re.search(r"\s+[A-Za-z]{3}$", val_str):
                 val_str = re.sub(r"\s+[A-Za-z]{3}$", "", val_str)
+            # Handle currency code at beginning like "USD 1234"
+            elif re.search(r"^[A-Za-z]{3}\s+", val_str):
+                val_str = re.sub(r"^[A-Za-z]{3}\s+", "", val_str)
+                
+        # Skip processing for values that are clearly not numeric
+        if re.search(r"[a-zA-Z]", val_str) and not re.search(r'[eE][-+]?\d+', val_str):  # Contains letters (except scientific notation)
+            return None
 
         # Special handling for scientific notation
         if re.search(r'^-?\d*\.?\d+[eE][+-]?\d+$', val_str.strip()):
