@@ -227,7 +227,7 @@ def can_parse_date(val):
 
     # Finally, try to parse it with dateutil.
     try:
-        parsed_date = parser.parse(val, fuzzy=True)
+        parsed_date = parser.parse(val, fuzzy=False)
         # Additional validation: check if the parsed date is reasonable
         # (between 1900 and 2100)
         year = parsed_date.year
@@ -679,15 +679,19 @@ def convert_values_to_postgres_type(value, target_type: str):
         if not can_parse_date(val_str):
             return None
 
-        # Attempt date parsing
+        # Check for invalid date patterns before trying to parse
+        if re.search(r"(\d{4}-\d{2}-\d{2})-[a-zA-Z]", val_str):  # Like "2023-01-01-extra"
+            return None
+            
+        # Parse the date using dateutil parser
         try:
-            # Check for invalid date patterns before trying to parse
-            if re.search(
-                r"(\d{4}-\d{2}-\d{2})-[a-zA-Z]", val_str
-            ):  # Like "2023-01-01-extra"
-                return None
-        except:
-            # One more attempt with fuzzy=True but only for values with date-like patterns
+            parsed_date = parser.parse(val_str)
+            year = parsed_date.year
+            # Verify the year is reasonable
+            if 1900 <= year <= 2100:
+                return parsed_date
+            return None
+        except Exception:
             try:
                 if (
                     re.search(r"\d{1,4}[-/. ]\d{1,2}[-/. ]\d{1,4}", val_str)
@@ -696,7 +700,7 @@ def convert_values_to_postgres_type(value, target_type: str):
                         r"\d{1,2}[/\-\.\s]+[A-Za-z]{3,9}\.?[/\-\.\s]+\d{2,4}", val_str
                     )
                 ):
-                    parsed_date = parser.parse(val_str, fuzzy=True)
+                    parsed_date = parser.parse(val_str, fuzzy=False)
                     year = parsed_date.year
                     if 1900 <= year <= 2100:
                         return parsed_date
@@ -725,13 +729,10 @@ def convert_values_to_postgres_type(value, target_type: str):
                 return None
 
         # Special handling for BIGINT with currency or currency codes
-        if target_type == "BIGINT":
-            # Handle currency symbol at beginning
-            if val_str.startswith("$"):
-                val_str = val_str[1:].strip()
-            # Handle currency code at end like "USD"
-            elif re.search(r"\s+[A-Z]{3}$", val_str):
-                val_str = re.sub(r"\s+[A-Z]{3}$", "", val_str)
+        if target_type == "BIGINT" or target_type == "DOUBLE PRECISION":
+            # Handle currency code at end like "USD", "EUR", etc.
+            if re.search(r"\s+[A-Za-z]{3}$", val_str):
+                val_str = re.sub(r"\s+[A-Za-z]{3}$", "", val_str)
 
         # Special handling for scientific notation
         if re.search(r'^-?\d*\.?\d+[eE][+-]?\d+$', val_str.strip()):
