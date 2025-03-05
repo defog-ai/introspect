@@ -327,16 +327,34 @@ class TestGuessColumnType(unittest.TestCase):
             pd.Series(["1,234", "5,678", "9,012"]),  # Formatted integers
             pd.Series(["-1", "0", "+1"]),  # Signs
             pd.Series(["01", "02", "03"]),  # Leading zeros
-            pd.Series(["1", " 2 ", " 3"]),  # With whitespace
-            pd.Series(["2020", "2021", "2022"])  # Years (could be dates)
+            pd.Series(["1", " 2 ", " 3"])  # With whitespace
         ]
         
         # For these, we expect BIGINT for integer data
         for series in int_series:
             result = guess_column_type(series)
-            # Integer columns should be BIGINT or TIMESTAMP (for year-like values)
-            self.assertIn(result, ["BIGINT", "TIMESTAMP"], 
-                         f"Expected BIGINT or TIMESTAMP for {list(series)}, got {result}")
+            # Integer columns should be BIGINT
+            self.assertEqual(result, "BIGINT", 
+                         f"Expected BIGINT for {list(series)}, got {result}")
+        
+        # Years are treated as BIGINT when no column name is provided
+        # or as TIMESTAMP if the column name suggests a date
+        year_series = pd.Series(["2020", "2021", "2022"])
+        
+        # Without column name hint, should be BIGINT
+        result = guess_column_type(year_series)
+        self.assertEqual(result, "BIGINT", 
+                     f"Expected BIGINT for {list(year_series)}, got {result}")
+        
+        # With date column name hint, should be TIMESTAMP
+        result = guess_column_type(year_series, column_name="created_date")
+        self.assertEqual(result, "TIMESTAMP", 
+                     f"Expected TIMESTAMP for {list(year_series)} with column_name='created_date', got {result}")
+        
+        # With year column name, should be BIGINT (special case in the code)
+        result = guess_column_type(year_series, column_name="year")
+        self.assertEqual(result, "BIGINT", 
+                     f"Expected BIGINT for {list(year_series)} with column_name='year', got {result}")
 
     def test_decimal_column(self):
         # Test decimal/float columns
@@ -352,23 +370,31 @@ class TestGuessColumnType(unittest.TestCase):
         
         for series in float_series:
             result = guess_column_type(series)
-            # Accept either DOUBLE PRECISION or specific exceptions
-            self.assertIn(result, ["DOUBLE PRECISION", "TEXT", "TIMESTAMP"], 
-                         f"Expected floating type for {list(series)}, got {result}")
+            # Decimal values should be detected as DOUBLE PRECISION
+            self.assertEqual(result, "DOUBLE PRECISION", 
+                          f"Expected DOUBLE PRECISION for {list(series)}, got {result}")
 
     def test_percentage_column(self):
-        # Test percentage values - might be detected as DOUBLE PRECISION or TEXT
-        percent_series = [
+        # Test percentage values with high percentage ratio (> 0.8) should be DOUBLE PRECISION
+        high_pct_series = [
             pd.Series(["10%", "20%", "30%"]),
             pd.Series(["10.5%", "20.5%", "30.5%"]),
             pd.Series(["-10%", "+20%", "0%"]),
             pd.Series(["10 %", " 20% ", "30%"])  # With varying spaces
         ]
         
-        for series in percent_series:
+        for series in high_pct_series:
             result = guess_column_type(series)
-            # Don't assert specific type - just ensure it returns a valid type
-            self.assertIn(result, ["TEXT", "DOUBLE PRECISION"])
+            # High percentage ratio should be detected as DOUBLE PRECISION
+            self.assertEqual(result, "DOUBLE PRECISION", 
+                          f"Expected DOUBLE PRECISION for {list(series)}, got {result}")
+            
+        # Test mixed percentage and non-percentage values (ratio <= 0.8)
+        mixed_pct_series = pd.Series(["10%", "20%", "text"])
+        result = guess_column_type(mixed_pct_series)
+        # Mixed percentage/text should be detected as TEXT
+        self.assertEqual(result, "TEXT", 
+                      f"Expected TEXT for {list(mixed_pct_series)}, got {result}")
             
     def test_date_column(self):
         # Test date columns with various formats
@@ -395,123 +421,191 @@ class TestGuessColumnType(unittest.TestCase):
             # Compact formats
             pd.Series(["20230101", "20230102"]),
             
-            # Just years
-            pd.Series(["2020", "2021", "2022"]),
-            
             # Short years
             pd.Series(["01/01/23", "01/02/23"])
         ]
         
         for series in date_series_list:
             result = guess_column_type(series)
-            # For pure date columns, expect TIMESTAMP, but allow flexibility
-            self.assertIn(result, ["TIMESTAMP", "TEXT", "BIGINT"], 
-                         f"Expected date type for {list(series)}, got {result}")
+            # For pure date columns, expect TIMESTAMP
+            self.assertEqual(result, "TIMESTAMP", 
+                         f"Expected TIMESTAMP for {list(series)}, got {result}")
+            
+        # Year values are a special case - should be BIGINT (not TIMESTAMP) when without context
+        year_series = pd.Series(["2020", "2021", "2022"])
+        result = guess_column_type(year_series)
+        self.assertEqual(result, "BIGINT", 
+                     f"Expected BIGINT for {list(year_series)}, got {result}")
+        
+        # Year values with date column name should be TIMESTAMP
+        result = guess_column_type(year_series, column_name="created_date")
+        self.assertEqual(result, "TIMESTAMP", 
+                     f"Expected TIMESTAMP for {list(year_series)} with column_name='created_date', got {result}")
 
     def test_mixed_column(self):
         # Test columns with mixed data types
-        mixed_series = [
-            # Mostly numeric but some text
-            pd.Series(["1", "2", "3", "four", "5"]),
-            
-            # Mostly dates but some text
-            pd.Series(["2023-01-01", "2023-01-02", "not a date", "2023-01-04"]),
-            
-            # Mix of integers and floats
-            pd.Series(["1", "2", "3.5", "4", "5"]),
-            
-            # Mix of dates and numbers
-            pd.Series(["2023-01-01", "123", "2023-01-03"]),
-            
-            # Real mix of everything
-            pd.Series(["text", "123", "1.23", "2023-01-01", "true", None])
-        ]
         
-        for series in mixed_series:
-            result = guess_column_type(series)
-            # For truly mixed columns, we expect TEXT, but allow other reasonable types
-            self.assertIn(result, ["TEXT", "TIMESTAMP", "BIGINT", "DOUBLE PRECISION"])
+        # Mostly numeric but some text - expected to be TEXT
+        mostly_numeric_series = pd.Series(["1", "2", "3", "four", "5"])
+        result = guess_column_type(mostly_numeric_series)
+        self.assertEqual(result, "TEXT", 
+                       f"Expected TEXT for mixed series with some text: {list(mostly_numeric_series)}, got {result}")
+        
+        # Mostly dates but some text - expected to be TEXT
+        mostly_dates_series = pd.Series(["2023-01-01", "2023-01-02", "not a date", "2023-01-04"])
+        result = guess_column_type(mostly_dates_series)
+        self.assertEqual(result, "TEXT", 
+                       f"Expected TEXT for mixed dates/text: {list(mostly_dates_series)}, got {result}")
+        
+        # Mix of integers and floats - should be DOUBLE PRECISION (can handle all values)
+        mixed_numbers_series = pd.Series(["1", "2", "3.5", "4", "5"])
+        result = guess_column_type(mixed_numbers_series)
+        self.assertEqual(result, "DOUBLE PRECISION", 
+                       f"Expected DOUBLE PRECISION for ints/floats: {list(mixed_numbers_series)}, got {result}")
+        
+        # Mix of dates and numbers - expected to be TEXT
+        dates_and_numbers = pd.Series(["2023-01-01", "123", "2023-01-03"])
+        result = guess_column_type(dates_and_numbers)
+        self.assertEqual(result, "TEXT", 
+                       f"Expected TEXT for dates/numbers: {list(dates_and_numbers)}, got {result}")
+        
+        # Real mix of everything - must be TEXT
+        mixed_everything = pd.Series(["text", "123", "1.23", "2023-01-01", "true", None])
+        result = guess_column_type(mixed_everything)
+        self.assertEqual(result, "TEXT", 
+                       f"Expected TEXT for mixed everything: {list(mixed_everything)}, got {result}")
+        
+        # Test date column name hint with mixed content - should force TIMESTAMP
+        # according to implementation despite mixed content (lines 336-339)
+        mostly_dates_with_hint = pd.Series(["2023-01-01", "2023-01-02", "not a date", "2023-01-04"])
+        result = guess_column_type(mostly_dates_with_hint, column_name="created_date")
+        self.assertEqual(result, "TIMESTAMP", 
+                       f"Expected TIMESTAMP for mixed dates with name hint: {list(mostly_dates_with_hint)}, got {result}")
             
     def test_with_column_name_hint(self):
         # Test how column names influence type detection
-        date_name_tests = [
-            # Date column name hint with some valid dates
-            (pd.Series(["2023-01-01", "not a date", "2023-01-03"]), "created_date"),
-            
-            # Date column name hint with year numbers
-            (pd.Series(["2020", "2021", "2022", "2023"]), "fiscal_year"),
-            
-            # Date column name with mixed content
-            (pd.Series(["Jan", "Feb", "Mar"]), "month"),
-            
-            # Date column name with non-date numbers
-            (pd.Series(["001", "002", "003"]), "date_id"),
-            
-            # Date column name with percentage values
-            (pd.Series(["10%", "20%", "30%"]), "growth_rate_month"),
-            
-            # Ambiguous columns with date column name
-            (pd.Series(["Q1", "Q2", "Q3", "Q4"]), "fiscal_quarter"),
-            
-            # Date column names with non-date strings
-            (pd.Series(["apple", "banana", "cherry"]), "date_created"),
-            
-            # Numeric columns with date names
-            (pd.Series(["1.23", "4.56", "7.89"]), "update_date")
-        ]
         
-        for series, col_name in date_name_tests:
-            result = guess_column_type(series, column_name=col_name)
-            # For columns with date-suggesting names, don't assert specific outcomes
-            # Just verify it returns a valid type
-            self.assertIn(result, ["TEXT", "TIMESTAMP", "BIGINT", "DOUBLE PRECISION"])
+        # Date column name hint with some valid dates (>40% dates) -> TIMESTAMP
+        series1 = pd.Series(["2023-01-01", "not a date", "2023-01-03"])
+        result = guess_column_type(series1, column_name="created_date")
+        self.assertEqual(result, "TIMESTAMP",
+                       f"Expected TIMESTAMP for date column with valid dates, got {result}")
+        
+        # Date column name hint with year numbers (fiscal_year) -> BIGINT (special case for years)
+        series2 = pd.Series(["2020", "2021", "2022", "2023"])
+        result = guess_column_type(series2, column_name="fiscal_year")
+        self.assertEqual(result, "BIGINT",
+                       f"Expected BIGINT for fiscal_year column with years, got {result}")
+        
+        # Date column name with month names -> TEXT (not enough actual dates)
+        series3 = pd.Series(["Jan", "Feb", "Mar"])
+        result = guess_column_type(series3, column_name="month")
+        self.assertEqual(result, "TEXT",
+                       f"Expected TEXT for month column with month abbreviations, got {result}")
+        
+        # Date column name with non-date numbers -> TIMESTAMP (date column name hint)
+        series4 = pd.Series(["001", "002", "003"])
+        result = guess_column_type(series4, column_name="date_id")
+        self.assertEqual(result, "TIMESTAMP",
+                       f"Expected TIMESTAMP for date_id column, got {result}")
+        
+        # Column with percentages and month in name -> DOUBLE PRECISION (percentage > 80%)
+        series5 = pd.Series(["10%", "20%", "30%"])
+        result = guess_column_type(series5, column_name="growth_rate_month")
+        self.assertEqual(result, "DOUBLE PRECISION",
+                       f"Expected DOUBLE PRECISION for percentage column, got {result}")
+        
+        # Fiscal quarter column -> TEXT (not enough date-like values)
+        series6 = pd.Series(["Q1", "Q2", "Q3", "Q4"])
+        result = guess_column_type(series6, column_name="fiscal_quarter")
+        self.assertEqual(result, "TEXT",
+                       f"Expected TEXT for fiscal_quarter column with quarter values, got {result}")
+        
+        # Date column with fruit names -> TEXT (nothing date-like)
+        series7 = pd.Series(["apple", "banana", "cherry"])
+        result = guess_column_type(series7, column_name="date_created")
+        self.assertEqual(result, "TEXT",
+                       f"Expected TEXT for date_created with no dates, got {result}")
+        
+        # Numeric columns with date names -> TIMESTAMP (Date column name hint takes precedence)
+        series8 = pd.Series(["1.23", "4.56", "7.89"])
+        result = guess_column_type(series8, column_name="update_date")
+        self.assertEqual(result, "TIMESTAMP",
+                       f"Expected TIMESTAMP for update_date column with numbers, got {result}")
             
     def test_border_cases(self):
         # Test border cases that could be interpreted multiple ways
-        border_cases = [
-            # Could be integer or date (YYYYMMDD)
-            (pd.Series(["20230101", "20230102", "20230103"]), None),
-            
-            # Could be decimal or date with formatting
-            (pd.Series(["01-02", "03-04", "05-06"]), None),
-            
-            # Years could be integers or dates
-            (pd.Series(["2020", "2021", "2022"]), None),
-            
-            # Ambiguous format
-            (pd.Series(["01/02", "03/04", "05/06"]), None),
-            
-            # Mostly valid dates with some invalid ones
-            (pd.Series(["2023-01-01", "2023-01-02", "2023-13-01"]), None),
-            
-            # Series with integer-like values that aren't pure digits
-            (pd.Series(["1a", "2b", "3c"]), None),
-            
-            # Very large integers that might cause overflow
-            (pd.Series(["9" * 20, "1" + "0" * 19]), None)
-        ]
         
-        for series, col_name in border_cases:
-            result = guess_column_type(series, column_name=col_name)
-            # Just ensure it returns a valid type without crashing
-            self.assertIn(result, ["TEXT", "TIMESTAMP", "BIGINT", "DOUBLE PRECISION"])
+        # YYYYMMDD format should be recognized as a date -> TIMESTAMP
+        series1 = pd.Series(["20230101", "20230102", "20230103"])
+        result = guess_column_type(series1)
+        self.assertEqual(result, "TIMESTAMP", 
+                       f"Expected TIMESTAMP for YYYYMMDD format dates, got {result}")
+        
+        # Short date format (MM-DD) is ambiguous but could be a date with enough pattern -> TIMESTAMP
+        series2 = pd.Series(["01-02", "03-04", "05-06"])
+        result = guess_column_type(series2)
+        self.assertEqual(result, "TIMESTAMP", 
+                       f"Expected TIMESTAMP for MM-DD format, got {result}")
+        
+        # Year values -> BIGINT by default
+        series3 = pd.Series(["2020", "2021", "2022"])
+        result = guess_column_type(series3)
+        self.assertEqual(result, "BIGINT", 
+                       f"Expected BIGINT for year values, got {result}")
+        
+        # Short date format (MM/DD) is ambiguous but could be a date with separators -> TIMESTAMP
+        series4 = pd.Series(["01/02", "03/04", "05/06"])
+        result = guess_column_type(series4)
+        self.assertEqual(result, "TIMESTAMP", 
+                       f"Expected TIMESTAMP for MM/DD format, got {result}")
+        
+        # Mostly valid dates with one invalid (2023-13-01) -> TIMESTAMP (>70% are dates)
+        series5 = pd.Series(["2023-01-01", "2023-01-02", "2023-13-01"])
+        result = guess_column_type(series5)
+        self.assertEqual(result, "TIMESTAMP", 
+                       f"Expected TIMESTAMP for mostly valid dates, got {result}")
+        
+        # Integer-like values with letters (1a, 2b, 3c) -> TEXT
+        series6 = pd.Series(["1a", "2b", "3c"])
+        result = guess_column_type(series6)
+        self.assertEqual(result, "TEXT", 
+                       f"Expected TEXT for alphanumeric values, got {result}")
+        
+        # Very large integers that might cause overflow -> BIGINT
+        series7 = pd.Series(["9" * 20, "1" + "0" * 19])
+        result = guess_column_type(series7)
+        self.assertEqual(result, "BIGINT", 
+                       f"Expected BIGINT for very large integers, got {result}")
     
     def test_sample_size_impact(self):
         # Test how the sample_size parameter affects type detection
+        # Create a series with 300 integers and 1 text value at the end
         large_series = pd.Series(["1", "2", "3"] * 100 + ["text"])  # Mostly integers with one text
         
-        # With default sample size, might detect as TEXT if text is in sample
-        result1 = guess_column_type(large_series)
+        # With default sample size (50), should detect as BIGINT if text is not in sample
+        # Force text to be outside the sample using sample_size
+        result1 = guess_column_type(large_series, sample_size=50)
+        self.assertEqual(result1, "BIGINT", 
+                       "With default sample size (50), expected BIGINT when text is outside sample")
         
-        # With explicit large sample size
-        result2 = guess_column_type(large_series, sample_size=300)
+        # With explicit large sample size that includes the text value
+        result2 = guess_column_type(large_series, sample_size=301)
+        self.assertEqual(result2, "TEXT", 
+                       "With large sample size (301), expected TEXT when text is included in sample")
         
-        # With explicit small sample size
+        # With explicit small sample size that doesn't include the text
         result3 = guess_column_type(large_series, sample_size=3)
+        self.assertEqual(result3, "BIGINT", 
+                       "With small sample size (3), expected BIGINT when text is outside sample")
         
-        # Just ensure all results are valid types
-        for result in [result1, result2, result3]:
-            self.assertIn(result, ["TEXT", "BIGINT"])
+        # Create a series that has text within first few elements
+        mixed_first_series = pd.Series(["text", "1", "2", "3"] * 75)
+        
+        # Any sample size should detect this as TEXT since text is in the first elements
+        result4 = guess_column_type(mixed_first_series, sample_size=10)
+        self.assertEqual(result4, "TEXT", 
+                       "With text in first elements, expected TEXT regardless of sample size")
 
 
 # Test for sanitize_column_name function
@@ -1693,7 +1787,8 @@ class TestExportDfToPostgres(unittest.TestCase):
             if col == 'text_col':
                 self.assertEqual(inferred_type, 'TEXT')
             elif col == 'int_col':
-                self.assertIn(inferred_type, ['BIGINT', 'DOUBLE PRECISION'])
+                # Even with nulls, should still be detected as BIGINT
+                self.assertEqual(inferred_type, 'BIGINT')
             elif col == 'float_col':
                 self.assertEqual(inferred_type, 'DOUBLE PRECISION')
             elif col == 'date_col':
@@ -1718,9 +1813,13 @@ class TestExportDfToPostgres(unittest.TestCase):
         self.assertEqual(inferred_types['mostly_int'], 'TEXT')
         
         # mostly_date has dates and a non-date
-        # Because the column name suggests a date, it will be TIMESTAMP
-        # This is by design - column name hints take priority over mixed content
-        self.assertEqual(inferred_types['mostly_date'], "TIMESTAMP")
+        # Without column name hint, it should be TEXT
+        self.assertEqual(inferred_types['mostly_date'], "TEXT")
+        
+        # With date column name hint, it should become TIMESTAMP despite mixed content
+        date_col_hint_result = guess_column_type(df['mostly_date'], column_name='created_date')
+        self.assertEqual(date_col_hint_result, "TIMESTAMP", 
+                       "With date column name hint, mixed date/text should be TIMESTAMP")
 
     def test_formatted_values_inference(self):
         """Test type inference for formatted values like currency, percentages, dates"""
@@ -1789,19 +1888,19 @@ class TestExportDfToPostgres(unittest.TestCase):
         for col in df.columns:
             inferred_types[col] = guess_column_type(df[col], column_name=col)
         
-        # Columns with date-suggesting names may get special treatment
+        # Columns with date-suggesting names get special treatment
         
         # created_date should be TIMESTAMP due to column name hint,
         # even though the values are just numbers
         self.assertEqual(inferred_types['created_date'], 'TIMESTAMP')
         
-        # year column can be TIMESTAMP or BIGINT depending on implementation
-        # both are reasonable interpretations for year values
-        self.assertIn(inferred_types['year'], ['TIMESTAMP', 'BIGINT'])
+        # year column should be BIGINT according to implementation (lines 318-334)
+        # which has a special case for year columns
+        self.assertEqual(inferred_types['year'], 'BIGINT')
         
         # regular_col has no date hint in the name and contains numbers,
-        # so should be numeric or TEXT
-        self.assertIn(inferred_types['regular_col'], ['BIGINT', 'TEXT'])
+        # should be BIGINT
+        self.assertEqual(inferred_types['regular_col'], 'BIGINT')
 
     def test_extreme_values(self):
         """Test handling of extreme values like very large numbers or long strings"""
@@ -1811,27 +1910,23 @@ class TestExportDfToPostgres(unittest.TestCase):
         for col in df.columns:
             inferred_types[col] = guess_column_type(df[col], column_name=col)
         
-        # Verify type inference handles extreme values reasonably
-        valid_types = {"TEXT", "BIGINT", "DOUBLE PRECISION", "TIMESTAMP"}
-        for col, inferred_type in inferred_types.items():
-            self.assertIn(inferred_type, valid_types,
-                         f"Column {col} has invalid type: {inferred_type}")
-            
-            # Very large integers might be BIGINT or TEXT depending on implementation
-            if col == 'big_int':
-                self.assertIn(inferred_type, ['BIGINT', 'TEXT', 'DOUBLE PRECISION'])
-            
-            # Very large/small floats should be DOUBLE PRECISION
-            elif col == 'big_float':
-                self.assertIn(inferred_type, ['DOUBLE PRECISION', 'TEXT'])
-            
-            # Very long strings should be TEXT
-            elif col == 'big_string':
-                self.assertEqual(inferred_type, 'TEXT')
-            
-            # Scientific notation should be DOUBLE PRECISION
-            elif col == 'scientific':
-                self.assertIn(inferred_type, ['DOUBLE PRECISION', 'TEXT'])
+        # Verify type inference handles extreme values with specific expected types
+        
+        # Very large integers should be BIGINT
+        self.assertEqual(inferred_types['big_int'], 'BIGINT',
+                        f"Expected BIGINT for large integers, got {inferred_types['big_int']}")
+        
+        # Very large/small floats should be DOUBLE PRECISION
+        self.assertEqual(inferred_types['big_float'], 'DOUBLE PRECISION',
+                        f"Expected DOUBLE PRECISION for extreme floats, got {inferred_types['big_float']}")
+        
+        # Very long strings should be TEXT
+        self.assertEqual(inferred_types['big_string'], 'TEXT',
+                        f"Expected TEXT for long strings, got {inferred_types['big_string']}")
+        
+        # Scientific notation should be DOUBLE PRECISION
+        self.assertEqual(inferred_types['scientific'], 'DOUBLE PRECISION',
+                        f"Expected DOUBLE PRECISION for scientific notation, got {inferred_types['scientific']}")
 
     def test_value_conversion(self):
         """Test conversion of values to appropriate PostgreSQL types"""
@@ -2365,23 +2460,52 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             # mostly_int has mostly numbers but one text value - should be TEXT
             self.assertEqual(inferred_types["mostly_int"], "TEXT")
             
-            # mostly_date has mostly dates but one non-date
-            # Column name suggests date, so our algorithm prefers TIMESTAMP
-            self.assertEqual(inferred_types["mostly_date"], "TIMESTAMP")
+            # mostly_date has mostly dates but one non-date - should be TEXT
+            # Without column name hint, mixed content should be TEXT
+            self.assertEqual(inferred_types["mostly_date"], "TEXT")
             
             # Check conversion of values
             first_row = self.inserted_rows[0]
             self.assertEqual(first_row["mixed_col"], "apple")
             self.assertEqual(first_row["mostly_int"], "1")
             
-            # Check that valid dates are converted to datetime objects
-            from datetime import datetime
-            self.assertIsInstance(first_row["mostly_date"], datetime)
+            # Values should be preserved as strings since column is TEXT
+            self.assertEqual(first_row["mostly_date"], "2023-01-01")
             
-            # Second row with non-date in mostly_date column
-            # Since column is detected as TIMESTAMP, invalid dates are converted to None
+            # Second row's value should also be preserved as string
             second_row = self.inserted_rows[1]
-            self.assertIsNone(second_row["mostly_date"])
+            self.assertEqual(second_row["mostly_date"], "not a date")
+            
+            # Now test with column name hint
+            # Create a new dataframe with date column name
+            df_with_date_hint = pd.DataFrame({
+                "mixed_col": ["apple", "2", "3.3", "2023-01-01"],
+                "mostly_int": ["1", "2", "three", "4"],
+                "created_date": ["2023-01-01", "not a date", "2023-01-03", "2023-01-04"]
+            })
+            
+            # Test with date column name hint
+            result2 = await export_df_to_postgres(
+                df_with_date_hint, table_name + "_2", self.db_conn_string
+            )
+            
+            inferred_types2 = result2["inferred_types"]
+            # With date column name hint, the column should be TIMESTAMP
+            self.assertEqual(inferred_types2["created_date"], "TIMESTAMP",
+                           "With date column name hint, even mixed content should be TIMESTAMP")
+            
+            # Check that first and third row values are converted to datetime
+            rows2 = self.inserted_rows[-4:]  # Get the rows for the second test
+            
+            # First row should be datetime
+            from datetime import datetime
+            self.assertIsInstance(rows2[0]["created_date"], datetime)
+            
+            # Second row with "not a date" should be None
+            self.assertIsNone(rows2[1]["created_date"])
+            
+            # Third row should be datetime
+            self.assertIsInstance(rows2[2]["created_date"], datetime)
         
         self.run_async_test(test())
     
@@ -2406,22 +2530,22 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             self.assertEqual(inferred_types["modified_at"], "TIMESTAMP")
             
             # year is a special case for date columns with year values
-            self.assertIn(inferred_types["year"], ["TIMESTAMP", "BIGINT"])
+            # According to implementation, it should be BIGINT
+            self.assertEqual(inferred_types["year"], "BIGINT")
             
             # First row checks
             first_row = self.inserted_rows[0]
             
-            # created_date can sometimes parse '001' as a date (like 2025-03-01 or similar)
-            # so accept either None or a datetime object
-            from datetime import datetime
-            self.assertTrue(first_row["created_date"] is None or 
-                           isinstance(first_row["created_date"], datetime))
+            # created_date with '001' value should be None since it can't be parsed as a date
+            self.assertIsNone(first_row["created_date"])
             
             # modified_at has valid date '2023-01-01'
+            from datetime import datetime
             self.assertIsInstance(first_row["modified_at"], datetime)
             
-            # Year can be either TIMESTAMP (datetime) or BIGINT (int) depending on implementation
-            self.assertTrue(isinstance(first_row["year"], (datetime, int)))
+            # Year should be an integer since column is BIGINT
+            self.assertIsInstance(first_row["year"], int)
+            self.assertEqual(first_row["year"], 2020)
         
         self.run_async_test(test())
     
@@ -2438,35 +2562,25 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             # Check inferred types for extreme values
             inferred_types = result["inferred_types"]
             
-            # Direct assertions for inferred types
-            # Big numbers like '9' * 18 can be inferred as either BIGINT or DOUBLE PRECISION
-            # depending on how the internal algorithm evaluates them
-            self.assertIn(inferred_types["big_numbers"], ["BIGINT", "DOUBLE PRECISION"])
+            # Big numbers should be inferred as BIGINT
+            self.assertEqual(inferred_types["big_numbers"], "BIGINT")
             
-            # Scientific notation values should ideally be DOUBLE PRECISION, but the current
-            # implementation may infer them as TEXT depending on the specific patterns
-            self.assertIn(inferred_types["scientific"], ["TEXT", "DOUBLE PRECISION"])
+            # Scientific notation values should be DOUBLE PRECISION
+            self.assertEqual(inferred_types["scientific"], "DOUBLE PRECISION")
             
+            # Long text should be TEXT
             self.assertEqual(inferred_types["long_text"], "TEXT")
             
             # Check first row values with direct assertions
             first_row = self.inserted_rows[0]
             
-            # big_numbers should be a very large number (original string was '9' * 18)
-            # This could be an integer or float depending on inference
-            self.assertTrue(isinstance(first_row["big_numbers"], (int, float)))
-            if isinstance(first_row["big_numbers"], int):
-                self.assertGreater(first_row["big_numbers"], 1e17)
-            else:
-                self.assertGreater(first_row["big_numbers"], 1e17)
+            # big_numbers should be a very large integer
+            self.assertIsInstance(first_row["big_numbers"], int)
+            self.assertGreater(first_row["big_numbers"], 1e17)
             
-            # scientific values might be floats or strings based on inference
-            if inferred_types["scientific"] == "DOUBLE PRECISION":
-                self.assertIsInstance(first_row["scientific"], float)
-                self.assertAlmostEqual(first_row["scientific"], 1.23e20)
-            else:
-                # If parsed as TEXT, we should still find the original value
-                self.assertEqual(first_row["scientific"], "1.23e+20")
+            # scientific values should be float
+            self.assertIsInstance(first_row["scientific"], float)
+            self.assertAlmostEqual(first_row["scientific"], 1.23e20)
             
             # long_text should be the original string
             self.assertEqual(first_row["long_text"], "a" * 1000)
@@ -2474,34 +2588,24 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             # Check second row values
             second_row = self.inserted_rows[1]
             
-            # Negative big number should be a large negative number
-            self.assertTrue(isinstance(second_row["big_numbers"], (int, float)))
-            if isinstance(second_row["big_numbers"], int):
-                self.assertLess(second_row["big_numbers"], -1e17)
-            else:
-                self.assertLess(second_row["big_numbers"], -1e17)
+            # Negative big number should be a large negative integer
+            self.assertIsInstance(second_row["big_numbers"], int)
+            self.assertLess(second_row["big_numbers"], -1e17)
             
-            # Very small scientific notation - could be float or text
-            if inferred_types["scientific"] == "DOUBLE PRECISION":
-                self.assertIsInstance(second_row["scientific"], float)
-                self.assertAlmostEqual(second_row["scientific"], 4.56e-20)
-            else:
-                self.assertEqual(second_row["scientific"], "4.56e-20")
+            # Very small scientific notation - should be float
+            self.assertIsInstance(second_row["scientific"], float)
+            self.assertAlmostEqual(second_row["scientific"], 4.56e-20)
             
             # Check third row values
             third_row = self.inserted_rows[2]
             
             # Zero big number
-            if isinstance(third_row["big_numbers"], int):
-                self.assertEqual(third_row["big_numbers"], 0)
-            else:
-                self.assertEqual(third_row["big_numbers"], 0.0)
+            self.assertIsInstance(third_row["big_numbers"], int)
+            self.assertEqual(third_row["big_numbers"], 0)
             
-            # Simple scientific notation - could be float or text
-            if inferred_types["scientific"] == "DOUBLE PRECISION":
-                self.assertAlmostEqual(third_row["scientific"], 7.89)
-            else:
-                self.assertEqual(third_row["scientific"], "7.89e+0")
+            # Simple scientific notation - should be float
+            self.assertIsInstance(third_row["scientific"], float)
+            self.assertAlmostEqual(third_row["scientific"], 7.89)
             
             # Third character in long string
             self.assertEqual(third_row["long_text"], "c" * 1000)
