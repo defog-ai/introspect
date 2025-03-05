@@ -160,6 +160,10 @@ def can_parse_date(val):
     # Quick reject for obviously non-date values
     if val.lower() in ("invalid date", "not a date", "na", "n/a"):
         return False
+        
+    # Quick reject for short strings that can't be dates (like IDs: "001", "002", etc.)
+    if len(val) <= 4:
+        return False
 
     # Common date patterns
     common_date_patterns = [
@@ -189,7 +193,8 @@ def can_parse_date(val):
 
     # If the string is all digits, only allow specific lengths
     if re.fullmatch(r"\d+", val):
-        if len(val) in (4, 6, 8):  # Added 6 for YYMMDD format
+        # We already rejected anything with 4 or fewer chars above
+        if len(val) in (6, 8):  # Only allow 6 (YYMMDD) or 8 (YYYYMMDD) format
             try:
                 parser.parse(val)
                 return True
