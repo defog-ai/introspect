@@ -2478,9 +2478,10 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             # Update the mixed DataFrame to ensure the ratio of date values is below 70%
             # for the mostly_date column to be classified as TEXT, per the implementation
             self.df_mixed = pd.DataFrame({
-                "mixed_col": ["apple", "2", "3.3", "2023-01-01"],
-                "mostly_int": ["1", "2", "three", "4"],
-                "mostly_date": ["2023-01-01", "not a date", "text value", "2023-01-04", "another text"]
+                "mixed_col": ["apple", "2", "3.3", "2023-01-01", "note 1"],
+                "mostly_int": ["1", "2", "three", "4", "5"],
+                "mostly_date": ["2023-01-01", "2023-01-02", "2023-01-03", "2023-01-04", "another text"],
+                "few_dates": ["some text", "more text", "2023-01-03", "2023-01-04", "another text"]
             })
             
             table_name = "mixed_data_test"
@@ -2499,20 +2500,29 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             # mostly_int has mostly numbers but one text value - should be TEXT
             self.assertEqual(inferred_types["mostly_int"], "TEXT")
             
-            # mostly_date has dates but multiple non-date values (less than 70% dates) - should be TEXT
-            self.assertEqual(inferred_types["mostly_date"], "TEXT")
+            # mostly_date has dates but multiple non-date values (more than 80% dates) - should be TIMESTAMP
+            self.assertEqual(inferred_types["mostly_date"], "TIMESTAMP")
+
+            # mostly_date has dates but multiple non-date values (less than 80% dates) - should be TEXT
+            self.assertEqual(inferred_types["few_dates"], "TEXT")
             
             # Check conversion of values
             first_row = self.inserted_rows[0]
             self.assertEqual(first_row["mixed_col"], "apple")
             self.assertEqual(first_row["mostly_int"], "1")
             
-            # Values should be preserved as strings since column is TEXT
-            self.assertEqual(first_row["mostly_date"], "2023-01-01")
+            from datetime import datetime
+
+            # mostly_date has dates but multiple non-date values (less than 80% dates) - should be TIMESTAMP
+            self.assertEqual(first_row["mostly_date"], datetime(2023, 1, 1))
             
-            # Second row's value should also be preserved as string
+            # Second row's value should also be a timestamp
             second_row = self.inserted_rows[1]
-            self.assertEqual(second_row["mostly_date"], "not a date")
+            self.assertEqual(second_row["mostly_date"], datetime(2023, 1, 2))
+
+            # fifth row is not a date, so it should be converted to None
+            fifth_row = self.inserted_rows[4]
+            self.assertEqual(fifth_row["mostly_date"], None)
             
             # Now test with column name hint
             # Create a new dataframe with date column name
