@@ -58,7 +58,7 @@ Defog supports most database connectors including PostgreSQL, MySQL, SQLite, Big
 - Build production: `cd frontend && npm run build`
 - Export static site: `cd frontend && npm run export`
 - Run frontend tests: `cd frontend && npx playwright test`
-- Lint (Prettier): `cd frontend && npm run format`
+- Lint (Prettier): `cd frontend && npm run lint`
 
 ## Docs
 Coming soon
