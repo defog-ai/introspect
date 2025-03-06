@@ -86,11 +86,15 @@ async def upload_files_as_db(files: list[DataFile]) -> DbDetails:
                 excel_file = io.BytesIO(buffer)
                 tables = await ExcelUtils.clean_excel_pd(excel_file)
 
-                # Further clean Excel sheets with OpenAI Code Interpreter
+                # Further clean Excel sheets with OpenAI Code Interpreter if needed
                 tasks = []
+                table_names = []
                 for table_name, df in tables.items():
+                    # Each sheet's dataframe will only be cleaned if it's detected as "dirty"
+                    # The clean_excel_openai function handles this check internally
                     tasks.append(ExcelUtils.clean_excel_openai(table_name, df))
-                tables = dict(zip(tables.keys(), await asyncio.gather(*tasks)))
+                    table_names.append(table_name)
+                tables = dict(zip(table_names, await asyncio.gather(*tasks)))
             else:
                 raise Exception(
                     f"Unsupported file format for file: {file_name}. Please upload a CSV or Excel file."
