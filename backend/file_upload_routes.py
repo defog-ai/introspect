@@ -202,7 +202,7 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
     except Exception as e:
         LOGGER.error(f"Error uploading file as db: {e}")
         return JSONResponse(
-            status_code=500, content={"error": "Error uploading file as db"}
+            status_code=500, content=f"Error uploading file as db: {str(e)}"
         )
 
     db_info = new_db.db_info
@@ -229,7 +229,7 @@ async def upload_multiple_files_as_db_endpoint(
     except Exception as e:
         LOGGER.error(f"Error uploading file as db: {e}")
         return JSONResponse(
-            status_code=500, content={"error": "Error uploading file as db"}
+            status_code=500, content=f"Error uploading file as db: {str(e)}"
         )
 
     db_info = new_db.db_info
