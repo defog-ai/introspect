@@ -14,16 +14,20 @@ from request_models import (
     DataFile,
 )
 from utils_logging import LOGGER
-from utils_file_uploads import clean_table_name
 from db_utils import get_db_info, get_db_type_creds
 import random
 import os
 import pandas as pd
-from utils_file_uploads import export_df_to_postgres, clean_table_name
+from utils_file_uploads import (
+    export_df_to_postgres,
+    clean_table_name,
+    ExcelUtils
+)
 from utils_md import set_metadata
 from db_utils import update_db_type_creds
 from sqlalchemy_utils import database_exists, create_database, drop_database
 import io
+import asyncio
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
@@ -83,22 +87,14 @@ async def upload_files_as_db(files: list[DataFile]) -> DbDetails:
                 tables[table_name] = df
             elif file_name.endswith((".xls", ".xlsx")):
                 # For Excel files
-                excel_file = pd.ExcelFile(io.BytesIO(buffer))
-                for sheet_name in excel_file.sheet_names:
-                    df = excel_file.parse(sheet_name)
+                excel_file = io.BytesIO(buffer)
+                tables = await ExcelUtils.clean_excel_pd(excel_file)
 
-                    # Drop rows and columns that are all NaN
-                    df = df.dropna(how="all")  # Drop rows where all values are NaN
-                    df = df.dropna(
-                        axis=1, how="all"
-                    )  # Drop columns where all values are NaN
-
-                    LOGGER.info(
-                        f"Sheet {sheet_name} after dropping NaN rows/columns: {df.shape[0]} rows, {df.shape[1]} columns"
-                    )
-
-                    table_name = clean_table_name(sheet_name, existing=tables.keys())
-                    tables[table_name] = df
+                # Further clean Excel sheets with OpenAI Code Interpreter
+                tasks = []
+                for table_name, df in tables.items():
+                    tasks.append(ExcelUtils.clean_excel_openai(table_name, df))
+                tables = dict(zip(tables.keys(), await asyncio.gather(*tasks)))
             else:
                 raise Exception(
                     f"Unsupported file format for file: {file_name}. Please upload a CSV or Excel file."
