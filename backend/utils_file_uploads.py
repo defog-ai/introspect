@@ -985,10 +985,100 @@ class ExcelUtils:
         return tables
 
     @staticmethod
+    async def is_excel_dirty(table_name: str, df: pd.DataFrame) -> bool:
+        """
+        Checks if an Excel dataframe needs additional cleaning with OpenAI.
+        Returns True if the dataframe appears to need cleaning.
+        
+        Criteria for "dirty" Excel files:
+        1. Headers/titles at the top that aren't part of the data
+        2. Footnotes or notes at the bottom
+        3. Rows where all values are the same (potential section headers)
+        4. Rows with aggregate statistics (like "Total", "Sum", etc.)
+        5. Wide format tables that should be transformed to long format
+        """
+        if df.empty or len(df) < 3:
+            return False
+            
+        try:
+            # Check for potential header/title rows at the top
+            # Headers often have merged cells shown as the same value repeated
+            head_rows = df.head(3)
+            has_repeated_headers = head_rows.apply(
+                lambda row: len(set(row.astype(str))) < len(row) * 0.5, axis=1
+            ).any()
+            
+            # Check for potential footer rows
+            tail_rows = df.tail(3)
+            # Check for repeated values in footer rows (similar to headers)
+            has_repeated_footers = tail_rows.apply(
+                lambda row: len(set(row.astype(str))) < len(row) * 0.5, axis=1
+            ).any()
+            has_footer_notes = has_repeated_footers
+            for _, row in tail_rows.iterrows():
+                # Look for rows with few distinct values or text indicators
+                text_values = [str(x).lower() for x in row if isinstance(x, str)]
+                if text_values and any(note in " ".join(text_values) 
+                                      for note in ["note", "source", "*", "total", "sum"]):
+                    has_footer_notes = True
+                    break
+            
+            # Check for rows where all non-null values are the same (section headers)
+            same_value_rows = df[df.apply(
+                lambda row: len(set(row.dropna())) == 1 and len(row.dropna()) > 1, axis=1
+            )]
+            has_section_headers = not same_value_rows.empty
+            
+            # Check for aggregate statistics rows (containing "total", "sum", etc.)
+            has_aggregate_rows = False
+            for _, row in df.iterrows():
+                row_str = " ".join([str(x).lower() for x in row])
+                if any(agg in row_str for agg in ["total", "sum", "subtotal", "average", "mean"]):
+                    has_aggregate_rows = True
+                    break
+            
+            # Check if it's in wide format (many columns with similar naming patterns)
+            # Wide format often has repeated column name patterns
+            col_names = [str(col).lower() for col in df.columns]
+            repeated_patterns = []
+            for i in range(len(col_names)):
+                for j in range(i+1, len(col_names)):
+                    # Check if columns follow patterns like "X 2020", "X 2021" or "Q1 X", "Q2 X"
+                    pattern = re.findall(r'[a-z]+', col_names[i])
+                    if pattern and any(p in col_names[j] for p in pattern):
+                        repeated_patterns.append((col_names[i], col_names[j]))
+            has_wide_format = len(repeated_patterns) > len(df.columns) * 0.3
+            
+            # Return True if any of the criteria are met
+            is_dirty = has_repeated_headers or has_footer_notes or has_section_headers or has_aggregate_rows or has_wide_format
+            
+            if is_dirty:
+                LOGGER.info(f"Excel sheet {table_name} requires further cleaning with OpenAI. Reasons: " +
+                           f"repeated headers: {has_repeated_headers}, " +
+                           f"footer notes: {has_footer_notes}, " +
+                           f"section headers: {has_section_headers}, " +
+                           f"aggregate rows: {has_aggregate_rows}, " +
+                           f"wide format: {has_wide_format}")
+            else:
+                LOGGER.info(f"Excel sheet {table_name} is clean, skipping OpenAI cleaning")
+            
+            return is_dirty
+            
+        except Exception as e:
+            LOGGER.error(f"Error checking if Excel is dirty: {e}")
+            # If we encounter an error during checking, default to cleaning
+            return True
+    
+    @staticmethod
     async def clean_excel_openai(table_name: str, df: pd.DataFrame) -> pd.DataFrame:
         """
         Further cleans a dataframe (from an Excel sheet) using OpenAI's Code Interpreter. Dynamically generates and executes code to remove columns and rows that do not contribute to the data (e.g. headers and footnotes). Also if necessary, changes the dataframe from wide to long format that's suitable for PostgreSQL.
         """
+        # Check if the dataframe actually needs cleaning
+        needs_cleaning = await ExcelUtils.is_excel_dirty(table_name, df)
+        if not needs_cleaning:
+            return df
+            
         # Save CSV file in docker for upload to OpenAI
         file_path = f"./{table_name}.csv"
         df.to_csv(file_path, index=False)
