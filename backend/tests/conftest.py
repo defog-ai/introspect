@@ -62,7 +62,7 @@ def setup_test_database():
     local_db_creds = {
         "user": "postgres",
         "password": "postgres",
-        "host": "host.docker.internal",
+        "host": "agents-postgres",
         "port": "5432",
         "database": "postgres",
     }

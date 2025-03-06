@@ -109,7 +109,7 @@ def mock_postgres_connection():
 @pytest.fixture
 def db_conn_string():
     """Provides a mock database connection string."""
-    return "postgresql+asyncpg://user:password@localhost:5432/testdb"
+    return "postgresql+asyncpg://postgres:postgres@agents-postgres:5432/testdb"
 
 
 @pytest.fixture
