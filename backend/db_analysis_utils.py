@@ -14,6 +14,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from utils_logging import LOGGER
 
 
+async def get_all_analyses(db_name: str):
+    """
+    Get all analyses for a given db_name.
+    """
+    err = None
+    analyses = None
+    try:
+        async with AsyncSession(engine) as session:
+            async with session.begin():
+                stmt = select(Analyses).where(Analyses.db_name == db_name)
+                result = await session.execute(stmt)
+                analyses = result.scalars().all()
+                # create dict from these rows
+                for i, analysis in enumerate(analyses):
+                    analysis_dict = analysis_dict_from_row(analysis)
+                    analyses[i] = analysis_dict
+
+    except Exception as e:
+        LOGGER.error(f"Error getting all analyses: {e}")
+        err = str(e)
+        analyses = None
+    finally:
+        return err, analyses
+
+
 async def initialise_analysis(
     user_question, token, db_name, custom_id=None, initialisation_details={}
 ):
@@ -215,7 +240,7 @@ def analysis_dict_from_row(row: Analyses) -> dict:
     return {
         "analysis_id": analysis_id,
         "user_question": user_question,
-        "timestamp": str(timestamp),
+        "timestamp": timestamp.isoformat(),
         "data": data,
         "db_name": db_name,
         "follow_up_analyses": follow_up_analyses,

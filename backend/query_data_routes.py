@@ -2,11 +2,20 @@ import os
 import re
 import traceback
 import logging
+from typing import List, Optional
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from file_upload_routes import upload_files_as_db
+from request_models import DataFile, UserRequest
 from tool_code_utilities import fetch_query_into_df
 from query_data.data_fetching import data_fetcher_and_aggregator
-from query_data_models import AnalysisData, DataFetcherInputs, RerunRequest
+from query_data_models import (
+    AnalysisData,
+    DataFetcherInputs,
+    PreviousContextItem,
+    RerunRequest,
+)
 from utils_sql import deduplicate_columns
 from utils_clarification import (
     generate_clarification,
@@ -17,6 +26,7 @@ from utils_question_related import generate_follow_on_questions
 from utils_chart import edit_chart
 import pandas as pd
 from db_analysis_utils import (
+    get_all_analyses,
     get_analysis,
     get_assignment_understanding,
     initialise_analysis,
@@ -29,6 +39,23 @@ router = APIRouter(
     tags=["Query data"],
 )
 LOGGER = logging.getLogger("server")
+
+
+@router.post("/query-data/get_all_analyses")
+async def get_all_analyses_route(request: UserRequest):
+    try:
+        db_name = request.db_name
+
+        err, analyses = await get_all_analyses(db_name)
+
+        if err is not None or analyses is None:
+            raise Exception(err or "Error getting all analyses")
+
+        return JSONResponse(content=analyses)
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content=str(e))
 
 
 @router.post("/query-data/get_analysis")
@@ -243,8 +270,31 @@ async def generate_follow_on_questions_route(request: Request):
         return {"success": False, "error_message": str(e) or "Incorrect request"}
 
 
+class QueryDataClarifyRequest(BaseModel):
+    db_name: str
+    analysis_id: str = None
+    token: str
+    user_question: str
+    clarification_guidelines: Optional[str] = None
+    data_files: Optional[List[DataFile]] = []
+    previous_context: Optional[List[PreviousContextItem]] = []
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "key_name": "my_api_key",
+                    "token": "user_token",
+                    "user_question": "What are the sales trends?",
+                    "clarification_guidelines": "If unspecified, trends should be cover the last 3 years on a monthly basis.",
+                }
+            ]
+        }
+    }
+
+
 @router.post("/query-data/clarify")
-async def clarify(request: Request):
+async def clarify(request: QueryDataClarifyRequest):
     """
     Function that returns clarifying questions, if any, for a given question.
 
@@ -258,12 +308,11 @@ async def clarify(request: Request):
     """
     try:
         LOGGER.info("Generating clarification questions")
-        params = await request.json()
-        db_name = params.get("db_name")
-        question = params.get("user_question")
-        analysis_id = params.get("analysis_id")
+        db_name = request.db_name
+        question = request.user_question
+        analysis_id = request.analysis_id
 
-        previous_context = params.get("previous_context", [])
+        previous_context = request.previous_context
         # if key name or question is none or blank, return error
         if not db_name or db_name == "":
             raise Exception("Invalid request. Must have database name.")
@@ -272,6 +321,13 @@ async def clarify(request: Request):
             raise Exception("Invalid request. Must have a question.")
 
         clarification_questions = []
+
+        new_db = None
+        if len(request.data_files) > 0:
+            new_db = await upload_files_as_db(request.data_files)
+
+            # set the db name to this new db that was created
+            db_name = new_db.db_name
 
         if len(previous_context) <= 1:
             clarification_questions = await generate_clarification(
@@ -301,9 +357,9 @@ async def clarify(request: Request):
 
         return JSONResponse(content=updated_analysis)
     except Exception as e:
-        LOGGER.error(e)
         traceback.print_exc()
-        return {"success": False, "error_message": str(e) or "Incorrect request"}
+        LOGGER.error(f"Error getting clarifications: {e}")
+        return JSONResponse(status_code=500, content=str(e).strip())
 
 
 @router.post("/query-data/rerun")
