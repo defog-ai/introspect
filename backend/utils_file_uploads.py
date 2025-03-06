@@ -27,22 +27,22 @@ POSTGRES_RESERVED_WORDS = {
 
 class NameUtils:
     """Utilities for handling table and column names."""
-    
+
     @staticmethod
     def clean_table_name(table_name: str, existing=None):
         """
         Cleans a table name by snake casing it and making it lower case.
-        
+
         Args:
             table_name: Table name to clean
             existing: List of existing table names to avoid duplicates
-            
+
         Returns:
             Cleaned table name
         """
         if existing is None:
             existing = []
-            
+
         if not isinstance(table_name, str):
             raise ValueError("Table name must be a string.")
 
@@ -56,15 +56,15 @@ class NameUtils:
             validated = f"table_{uuid4().hex[:7]}"
 
         return validated
-    
+
     @staticmethod
     def sanitize_column_name(col_name: str):
         """
         Convert a column name into a "safe" Postgres identifier.
-        
+
         Args:
             col_name: Column name to sanitize
-            
+
         Returns:
             Sanitized column name
         """
@@ -103,7 +103,7 @@ class NameUtils:
 
 class DateTimeUtils:
     """Utilities for handling date and time operations."""
-    
+
     # Common terms that indicate date columns
     DATE_TERMS = [
         "date", "time", "year", "month", "day", "quarter", "qtr", 
@@ -111,13 +111,13 @@ class DateTimeUtils:
         "timestamp", "dob", "birth", "start", "end", "period", 
         "calendar", "fiscal", "dtm", "dt", "ymd", "mdy", "dmy",
     ]
-    
+
     # Common terms that indicate time-only columns
     TIME_TERMS = [
         "time", "hour", "minute", "second", "hr", "min", "sec",
         "am", "pm", "duration", "interval"
     ]
-    
+
     # Common date patterns for regex matching
     COMMON_DATE_PATTERNS = [
         # MM/DD/YYYY or DD/MM/YYYY
@@ -133,7 +133,7 @@ class DateTimeUtils:
         # Short date format like MM/DD or MM-DD
         r"^\d{1,2}[/\-\.]\d{1,2}$",
     ]
-    
+
     # Common time patterns for regex matching
     TIME_PATTERNS = [
         # HH:MM or HH:MM:SS (24-hour format)
@@ -143,17 +143,17 @@ class DateTimeUtils:
         # HH:MM AM/PM or HH:MM:SS AM/PM (12-hour format)
         r"^(0?[1-9]|1[0-2]):[0-5]\d(:[0-5]\d)?\s*[AaPp][Mm]$",
         # Military time (0000-2359)
-        r"^([01]\d|2[0-3])([0-5]\d)$"
+        r"^([01]\d|2[0-3])([0-5]\d)$",
     ]
-    
+
     @classmethod
     def is_date_column_name(cls, col_name):
         """
         Check if a column name indicates it might contain date/time data.
-        
+
         Args:
             col_name: Column name to check
-            
+
         Returns:
             True if the column name suggests date content
         """
@@ -164,10 +164,12 @@ class DateTimeUtils:
         name_lower = col_name.lower()
 
         # Check for ID patterns - don't treat as dates
-        if (name_lower == "id" or 
-            name_lower.endswith("_id") or 
-            name_lower.startswith("id_") or 
-            "_id_" in name_lower):
+        if (
+            name_lower == "id"
+            or name_lower.endswith("_id")
+            or name_lower.startswith("id_")
+            or "_id_" in name_lower
+        ):
             return False
 
         # Check if any date term appears in the column name
@@ -180,65 +182,74 @@ class DateTimeUtils:
             return True
 
         return False
-    
+
     @classmethod
     def is_time_column_name(cls, col_name):
         """
         Check if a column name indicates it might contain time-only data.
-        
+
         Args:
             col_name: Column name to check
-            
+
         Returns:
             True if the column name suggests time content
         """
         if not isinstance(col_name, str):
             return False
-        
+
         # Normalize the column name for better matching
         name_lower = col_name.lower()
-        
+
         # Check for ID patterns
-        if (name_lower == "id" or 
-            name_lower.endswith("_id") or 
-            name_lower.startswith("id_") or 
-            "_id_" in name_lower):
+        if (
+            name_lower == "id"
+            or name_lower.endswith("_id")
+            or name_lower.startswith("id_")
+            or "_id_" in name_lower
+        ):
             return False
-        
+
         # Simple direct check for common time column patterns
-        if ('_time' in name_lower or 
-            name_lower.startswith('time_') or 
-            name_lower == 'time' or
-            name_lower in ['hour', 'minute', 'second']):
-            
+        if (
+            "_time" in name_lower
+            or name_lower.startswith("time_")
+            or name_lower == "time"
+            or name_lower in ["hour", "minute", "second"]
+        ):
+
             # Exclude patterns that suggest datetime rather than just time
-            if not any(date_term in name_lower for date_term in ['date', 'timestamp', 'datetime']):
+            if not any(
+                date_term in name_lower
+                for date_term in ["date", "timestamp", "datetime"]
+            ):
                 return True
-        
+
         # Date terms that would indicate this is a full date/timestamp, not just time
         for term in cls.DATE_TERMS:
             if term in name_lower and term not in cls.TIME_TERMS:
                 return False
-        
+
         # Check if any time-specific term appears in the name
         for term in cls.TIME_TERMS:
             # Match whole words or components with word boundaries
-            if (re.search(fr"(^|_){term}($|_)", name_lower) or 
-                name_lower == term or 
-                name_lower.endswith(f"_{term}") or 
-                name_lower.startswith(f"{term}_")):
+            if (
+                re.search(rf"(^|_){term}($|_)", name_lower)
+                or name_lower == term
+                or name_lower.endswith(f"_{term}")
+                or name_lower.startswith(f"{term}_")
+            ):
                 return True
-        
+
         return False
-    
+
     @classmethod
     def can_parse_date(cls, val):
         """
         Check if a value can be parsed as a date.
-        
+
         Args:
             val: Value to check
-            
+
         Returns:
             True if the value appears to be a date
         """
@@ -248,12 +259,17 @@ class DateTimeUtils:
         val = val.strip()
 
         # Quick rejections
-        if not val or val.lower() in ("invalid date", "not a date", "na", "n/a") or len(val) <= 4:
+        if (
+            not val
+            or val.lower() in ("invalid date", "not a date", "na", "n/a")
+            or len(val) <= 4
+        ):
             return False
-            
+
         # Detect date ranges like "Feb 14-21" or "Feb 26 - Mar 4" and exclude them
-        if re.search(r'([A-Za-z]{3,9}\.?\s+\d{1,2}\s*[-–]\s*\d{1,2})', val) or \
-           re.search(r'([A-Za-z]{3,9}\.?\s+\d{1,2}\s*[-–]\s*[A-Za-z]{3,9})', val):
+        if re.search(
+            r"([A-Za-z]{3,9}\.?\s+\d{1,2}\s*[-–]\s*\d{1,2})", val
+        ) or re.search(r"([A-Za-z]{3,9}\.?\s+\d{1,2}\s*[-–]\s*[A-Za-z]{3,9})", val):
             return False
 
         # Check against common date patterns
@@ -284,7 +300,7 @@ class DateTimeUtils:
                 return False
 
         # Special handling for US-style dates
-        if re.match(r'^\d{1,2}/\d{1,2}/\d{2,4}$', val):
+        if re.match(r"^\d{1,2}/\d{1,2}/\d{2,4}$", val):
             try:
                 parsed_date = parser.parse(val, fuzzy=False)
                 return 1900 <= parsed_date.year <= 2100
@@ -297,43 +313,43 @@ class DateTimeUtils:
             return 1900 <= parsed_date.year <= 2100
         except Exception:
             return False
-    
+
     @classmethod
     def can_parse_time(cls, val):
         """
         Check if a value can be parsed as a time-only value.
-        
+
         Args:
             val: Value to check
-            
+
         Returns:
             True if the value appears to be a time
         """
         if not isinstance(val, str):
             val = str(val)
-        
+
         val = val.strip()
-        
+
         # Quick rejections
-        if not val or len(val) < 3 or re.match(r'^(19|20)\d{2}$', val):
+        if not val or len(val) < 3 or re.match(r"^(19|20)\d{2}$", val):
             return False
-        
+
         # Check against time patterns
         for pattern in cls.TIME_PATTERNS:
             if re.match(pattern, val):
                 try:
                     # Special handling for military time
                     if len(val) == 4 and val.isdigit():
-                        return bool(re.match(r'^([01]\d|2[0-3])([0-5]\d)$', val))
+                        return bool(re.match(r"^([01]\d|2[0-3])([0-5]\d)$", val))
                     _ = parser.parse(val).time()
                     return True
                 except Exception:
                     pass
-        
+
         # Try more general time parsing
         try:
             parsed = parser.parse(val)
-            
+
             # Check if this looks like a time-only value:
             # 1. Has colon (common in time)
             # 2. Doesn't have date separators
@@ -349,7 +365,7 @@ class DateTimeUtils:
                 
                 if time_str in val and not any(x in val.lower() for x in month_day_terms):
                     return True
-                    
+
             return False
         except Exception:
             return False
@@ -357,15 +373,15 @@ class DateTimeUtils:
 
 class TypeUtils:
     """Utilities for type detection and conversion."""
-    
+
     @staticmethod
     def to_float_if_possible(val):
         """
         Attempt to parse a value to numeric after cleaning.
-        
+
         Args:
             val: Value to convert
-            
+
         Returns:
             Float value if conversion is possible, None otherwise
         """
@@ -384,7 +400,7 @@ class TypeUtils:
             # Basic validations
             if cleaned_val in ("", ".", "-", "+"):
                 return None
-                
+
             digit_count = sum(c.isdigit() for c in val_str)
             alphanum_count = sum(c.isalnum() for c in val_str)
 
@@ -395,17 +411,17 @@ class TypeUtils:
             return float(cleaned_val)
         except:
             return None
-    
+
     @staticmethod
     def guess_column_type(series, column_name=None, sample_size=50):
         """
         Guess the most appropriate Postgres column type for a data series.
-        
+
         Args:
             series: Pandas Series to analyze
             column_name: Original column name for heuristics
             sample_size: Number of samples to take for analysis
-            
+
         Returns:
             PostgreSQL data type as string
         """
@@ -417,27 +433,39 @@ class TypeUtils:
             return "TEXT"
 
         # Sample values to limit computational overhead
-        sampled_values = non_null_values[:sample_size] if len(non_null_values) > sample_size else non_null_values
+        sampled_values = (
+            non_null_values[:sample_size]
+            if len(non_null_values) > sample_size
+            else non_null_values
+        )
 
         # Check column name heuristics
-        column_suggests_date = column_name is not None and DateTimeUtils.is_date_column_name(column_name)
-        column_suggests_time = column_name is not None and DateTimeUtils.is_time_column_name(column_name)
-        
+        column_suggests_date = (
+            column_name is not None and DateTimeUtils.is_date_column_name(column_name)
+        )
+        column_suggests_time = (
+            column_name is not None and DateTimeUtils.is_time_column_name(column_name)
+        )
+
         # Check if column is ID or suggests numeric values
         column_is_id = False
         column_suggests_numeric = False
-        
+
         if column_name is not None:
             column_name = str(column_name)
             name_lower = column_name.lower()
             # Check for ID patterns
-            if (name_lower == "id" or name_lower.endswith("_id") or 
-                name_lower.startswith("id_") or "_id_" in name_lower):
+            if (
+                name_lower == "id"
+                or name_lower.endswith("_id")
+                or name_lower.startswith("id_")
+                or "_id_" in name_lower
+            ):
                 column_is_id = True
                 column_suggests_date = False
                 column_suggests_time = False
                 column_suggests_numeric = True
-            
+
             # Check for numeric indicator terms
             numeric_terms = [
                 "amount", "total", "sum", "value", "price", "cost", "revenue", "income",
@@ -447,7 +475,7 @@ class TypeUtils:
                 "interest", "count", "number", "quantity", "weight", "height", "width",
                 "length", "volume", "area", "size", "measurement", "percentage", "percent"
             ]
-            
+
             col_lower = name_lower.replace("_", " ")
             for term in numeric_terms:
                 if term in col_lower:
@@ -456,9 +484,9 @@ class TypeUtils:
 
         # Check for obvious text values
         has_obvious_text = any(
-            re.search(r'[a-df-zA-DF-Z]', v) and 
-            not DateTimeUtils.can_parse_date(v) and 
-            not DateTimeUtils.can_parse_time(v)
+            re.search(r"[a-df-zA-DF-Z]", v)
+            and not DateTimeUtils.can_parse_date(v)
+            and not DateTimeUtils.can_parse_time(v)
             for v in sampled_values
         )
 
@@ -466,13 +494,31 @@ class TypeUtils:
         pct_count = sum(1 for v in sampled_values if str(v).strip().endswith("%"))
         time_count = sum(1 for v in sampled_values if DateTimeUtils.can_parse_time(v))
         date_count = sum(1 for v in sampled_values if DateTimeUtils.can_parse_date(v))
-        us_date_count = sum(1 for v in sampled_values if re.match(r'^(\d{1,2}|\d{4})/\d{1,2}/(\d{2}|\d{4})$', v.strip()))
-        decimal_count = sum(1 for v in sampled_values if re.match(r'^-?\$?[0-9,]+\.\d+$', v.strip()))
-        short_date_count = sum(1 for v in sampled_values if re.match(r'^\d{1,2}[/\-\.]\d{1,2}$', v.strip()))
-        sci_notation_count = sum(1 for v in sampled_values if re.search(r'^-?\d*\.?\d+[eE][+-]?\d+$', v.strip()))
-        yyyymmdd_count = sum(1 for v in sampled_values if re.fullmatch(r'\d{8}', v) and DateTimeUtils.can_parse_date(v))
-        iso_date_count = sum(1 for v in sampled_values if re.match(r'^\d{4}-\d{2}-\d{2}', v.strip()))
-        
+        us_date_count = sum(
+            1
+            for v in sampled_values
+            if re.match(r"^(\d{1,2}|\d{4})/\d{1,2}/(\d{2}|\d{4})$", v.strip())
+        )
+        decimal_count = sum(
+            1 for v in sampled_values if re.match(r"^-?\$?[0-9,]+\.\d+$", v.strip())
+        )
+        short_date_count = sum(
+            1 for v in sampled_values if re.match(r"^\d{1,2}[/\-\.]\d{1,2}$", v.strip())
+        )
+        sci_notation_count = sum(
+            1
+            for v in sampled_values
+            if re.search(r"^-?\d*\.?\d+[eE][+-]?\d+$", v.strip())
+        )
+        yyyymmdd_count = sum(
+            1
+            for v in sampled_values
+            if re.fullmatch(r"\d{8}", v) and DateTimeUtils.can_parse_date(v)
+        )
+        iso_date_count = sum(
+            1 for v in sampled_values if re.match(r"^\d{4}-\d{2}-\d{2}", v.strip())
+        )
+
         # Calculate ratios
         total_samples = len(sampled_values)
         pct_ratio = pct_count / total_samples
@@ -489,80 +535,93 @@ class TypeUtils:
         float_parsed = [TypeUtils.to_float_if_possible(v) for v in sampled_values]
         numeric_count = sum(x is not None for x in float_parsed)
         numeric_ratio = numeric_count / total_samples
-        
+
         # Decision tree for type inference
-        
+
         # Percentage check
         if pct_ratio > 0.3:
             return "DOUBLE PRECISION" if pct_ratio > 0.8 else "TEXT"
-            
+
         # Time check
         if time_ratio > 0.7 or (column_suggests_time and time_ratio > 0.5):
             return "TIME"
-            
+
         # US-style date check
         if us_date_ratio > 0.7:
             return "TIMESTAMP"
-            
+
         # Decimal check
         if decimal_ratio > 0.7:
             return "DOUBLE PRECISION"
-            
+
         # Short date check
         if short_date_ratio > 0.7:
             return "TIMESTAMP"
-            
+
         # Scientific notation check
         if sci_notation_ratio > 0.2:
             return "DOUBLE PRECISION"
-            
+
         # YYYYMMDD format date check
         if yyyymmdd_ratio > 0.7:
             return "TIMESTAMP"
-            
+
         # ISO8601 date check
         if iso_date_ratio > 0.7:
             return "TIMESTAMP"
-            
+
         # Check for text values in full dataset
         has_any_text_in_full = False
         text_value_count = 0
         for value in non_null_values:
-            if (re.search(r'[a-zA-Z]', value) and 
-                not re.search(r'[eE][-+]?\d+', value) and 
-                not DateTimeUtils.can_parse_date(value) and
-                not DateTimeUtils.can_parse_time(value)):
+            if (
+                re.search(r"[a-zA-Z]", value)
+                and not re.search(r"[eE][-+]?\d+", value)
+                and not DateTimeUtils.can_parse_date(value)
+                and not DateTimeUtils.can_parse_time(value)
+            ):
                 has_any_text_in_full = True
                 text_value_count += 1
-        
+
         # If significant text values and not date/time column, use TEXT
-        if (has_any_text_in_full and 
-            not (column_suggests_date or column_suggests_time) and 
-            (text_value_count / len(non_null_values)) > 0.05):
+        if (
+            has_any_text_in_full
+            and not (column_suggests_date or column_suggests_time)
+            and (text_value_count / len(non_null_values)) > 0.05
+        ):
             return "TEXT"
-            
+
         # If obvious text values, prefer TEXT
         if (has_obvious_text or has_any_text_in_full) and not (
-            numeric_ratio > 0.95 or date_ratio > 0.95 or time_ratio > 0.95 or 
-            column_suggests_date or column_suggests_time):
+            numeric_ratio > 0.95
+            or date_ratio > 0.95
+            or time_ratio > 0.95
+            or column_suggests_date
+            or column_suggests_time
+        ):
             return "TEXT"
 
         # Special case for year columns
-        if (column_name and 
-            (column_name.lower() == "year" or 
-             re.match(r"^(fiscal_|calendar_)?years?(_\d+)?$", column_name.lower()) or
-             "year" in column_name.lower()) and 
-            numeric_ratio > 0.8):
-            
+        if (
+            column_name
+            and (
+                column_name.lower() == "year"
+                or re.match(r"^(fiscal_|calendar_)?years?(_\d+)?$", column_name.lower())
+                or "year" in column_name.lower()
+            )
+            and numeric_ratio > 0.8
+        ):
+
             # Check if values appear to be years
             are_years = all(
                 val is None or (val.is_integer() and 1000 <= val <= 2100)
-                for val in float_parsed if val is not None
+                for val in float_parsed
+                if val is not None
             )
-            
+
             if are_years and any(float_parsed):
                 return "BIGINT"
-                
+
         # Time columns with confirmed time values
         if column_suggests_time and time_ratio > 0.7:
             return "TIME"
@@ -575,27 +634,30 @@ class TypeUtils:
                 "january", "february", "march", "april", "may", "june", "july", "august",
                 "september", "october", "november", "december"
             ]
-            
+
             month_name_count = sum(
-                1 for val in sampled_values 
-                if str(val).lower().strip() in month_names
+                1 for val in sampled_values if str(val).lower().strip() in month_names
             )
-            
+
             month_ratio = month_name_count / total_samples
-            
+
             # If only month names, they should be TEXT
             if month_ratio > 0.7 and month_name_count == total_samples:
                 return "TEXT"
-                
+
             # Check for "invalid date" text
-            invalid_text_ratio = sum(
-                1 for v in sampled_values 
-                if re.search(r'invalid|not\s+a\s+date', str(v).lower())
-            ) / total_samples
-            
+            invalid_text_ratio = (
+                sum(
+                    1
+                    for v in sampled_values
+                    if re.search(r"invalid|not\s+a\s+date", str(v).lower())
+                )
+                / total_samples
+            )
+
             if invalid_text_ratio > 0.25 and column_name != "created_date":
                 return "TEXT"
-                    
+
             # Otherwise, use TIMESTAMP
             return "TIMESTAMP"
 
@@ -604,26 +666,40 @@ class TypeUtils:
         if numeric_ratio >= numeric_threshold:
             # Check if all numeric values are integers
             are_ints = [val is not None and val.is_integer() for val in float_parsed]
-            
+
             if all(are_ints) and are_ints:
                 # Date or time column check with numeric values
                 if column_suggests_date and "year" not in str(column_name).lower():
-                    if sum(1 for v in sampled_values if DateTimeUtils.can_parse_date(v)) / total_samples > 0.6:
+                    if (
+                        sum(
+                            1 for v in sampled_values if DateTimeUtils.can_parse_date(v)
+                        )
+                        / total_samples
+                        > 0.6
+                    ):
                         return "TIMESTAMP"
-                    
+
                 if column_suggests_time:
-                    if sum(1 for v in sampled_values if DateTimeUtils.can_parse_time(v)) / total_samples > 0.6:
+                    if (
+                        sum(
+                            1 for v in sampled_values if DateTimeUtils.can_parse_time(v)
+                        )
+                        / total_samples
+                        > 0.6
+                    ):
                         return "TIME"
-                
+
                 # Short date patterns check
                 if short_date_count > 0 and short_date_ratio > 0.5:
                     return "TIMESTAMP"
-                    
+
                 # Final text check
-                if any(re.search(r'[a-zA-Z]', val) and not re.search(r'[eE][-+]?\d+', val) 
-                       for val in non_null_values):
+                if any(
+                    re.search(r"[a-zA-Z]", val) and not re.search(r"[eE][-+]?\d+", val)
+                    for val in non_null_values
+                ):
                     return "TEXT"
-                    
+
                 return "BIGINT"
             else:
                 return "DOUBLE PRECISION"
@@ -637,25 +713,31 @@ class TypeUtils:
 
         # Default to TEXT
         return "TEXT"
-    
+
     @staticmethod
     def convert_values_to_postgres_type(value, target_type: str):
         """
         Convert a value to the appropriate Python object for insertion into Postgres.
-        
+
         Args:
             value: Value to convert
             target_type: PostgreSQL type string
-            
+
         Returns:
             Converted value appropriate for the target type, or None if conversion fails
         """
         # Handle Pandas Series objects
         if isinstance(value, pd.Series):
-            return value.apply(lambda x: TypeUtils.convert_values_to_postgres_type(x, target_type))
-        
+            return value.apply(
+                lambda x: TypeUtils.convert_values_to_postgres_type(x, target_type)
+            )
+
         # Handle None and NaN values
-        if value is None or (isinstance(value, float) and pd.isna(value)) or pd.isna(value):
+        if (
+            value is None
+            or (isinstance(value, float) and pd.isna(value))
+            or pd.isna(value)
+        ):
             return None
 
         val_str = str(value).strip()
@@ -663,17 +745,17 @@ class TypeUtils:
         # Handle common NULL-like string values
         if val_str.lower() in ("", "null", "none", "nan", "   "):
             return None
-            
+
         if target_type == "TIME":
             if not DateTimeUtils.can_parse_time(val_str):
                 return None
-                
+
             # Parse military time format directly
-            if re.match(r'^([01]\d|2[0-3])([0-5]\d)$', val_str):
+            if re.match(r"^([01]\d|2[0-3])([0-5]\d)$", val_str):
                 hour = int(val_str[:2])
                 minute = int(val_str[2:])
                 return datetime.time(hour, minute)
-                
+
             try:
                 # Try various time parsing approaches
                 parsed_time = parser.parse(val_str).time()
@@ -681,27 +763,32 @@ class TypeUtils:
             except Exception:
                 try:
                     # HH:MM(:SS) format
-                    if re.match(r'^([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$', val_str):
-                        parts = val_str.split(':')
+                    if re.match(
+                        r"^([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$", val_str
+                    ):
+                        parts = val_str.split(":")
                         hour = int(parts[0])
                         minute = int(parts[1])
                         second = int(parts[2]) if len(parts) > 2 else 0
                         return datetime.time(hour, minute, second)
-                    
+
                     # AM/PM times
-                    if re.match(r'^([0-9]|1[0-2]):([0-5][0-9])(?::([0-5][0-9]))?\s*([AaPp][Mm])$', val_str):
-                        is_pm = val_str.lower().endswith('pm')
+                    if re.match(
+                        r"^([0-9]|1[0-2]):([0-5][0-9])(?::([0-5][0-9]))?\s*([AaPp][Mm])$",
+                        val_str,
+                    ):
+                        is_pm = val_str.lower().endswith("pm")
                         time_part = val_str[:-2].strip()
-                        parts = time_part.split(':')
+                        parts = time_part.split(":")
                         hour = int(parts[0])
                         minute = int(parts[1])
                         second = int(parts[2]) if len(parts) > 2 else 0
-                        
+
                         if is_pm and hour < 12:
                             hour += 12
                         elif not is_pm and hour == 12:
                             hour = 0
-                            
+
                         return datetime.time(hour, minute, second)
                 except:
                     pass
@@ -709,9 +796,9 @@ class TypeUtils:
 
         elif target_type == "TIMESTAMP":
             # Don't parse scientific notation as dates
-            if re.search(r'^-?\d*\.?\d+[eE][+-]?\d+$', val_str.strip()):
+            if re.search(r"^-?\d*\.?\d+[eE][+-]?\d+$", val_str.strip()):
                 return None
-                
+
             # Check if it can be parsed as a date
             if not DateTimeUtils.can_parse_date(val_str):
                 return None
@@ -719,7 +806,7 @@ class TypeUtils:
             # Check for invalid date patterns
             if re.search(r"(\d{4}-\d{2}-\d{2})-[a-zA-Z]", val_str):
                 return None
-                
+
             try:
                 parsed_date = parser.parse(val_str)
                 # Verify the year is reasonable
@@ -747,20 +834,28 @@ class TypeUtils:
                 val_str = re.sub(r"\s+[A-Za-z]{3}$", "", val_str)
             elif re.search(r"^[A-Za-z]{3}\s+", val_str):
                 val_str = re.sub(r"^[A-Za-z]{3}\s+", "", val_str)
-                
+
             # Skip processing for values with letters (except scientific notation)
-            if re.search(r"[a-zA-Z]", val_str) and not re.search(r'[eE][-+]?\d+', val_str):
+            if re.search(r"[a-zA-Z]", val_str) and not re.search(
+                r"[eE][-+]?\d+", val_str
+            ):
                 return None
 
             # Scientific notation handling
-            if re.search(r'^-?\d*\.?\d+[eE][+-]?\d+$', val_str.strip()):
+            if re.search(r"^-?\d*\.?\d+[eE][+-]?\d+$", val_str.strip()):
                 try:
                     float_val = float(val_str)
                     if target_type == "BIGINT":
-                        if pd.isna(float_val) or float_val in (float("inf"), float("-inf")):
+                        if pd.isna(float_val) or float_val in (
+                            float("inf"),
+                            float("-inf"),
+                        ):
                             return None
                         # Check PostgreSQL BIGINT range
-                        if float_val < -9223372036854775808 or float_val > 9223372036854775807:
+                        if (
+                            float_val < -9223372036854775808
+                            or float_val > 9223372036854775807
+                        ):
                             return None
                         return int(float_val)
                     else:  # DOUBLE PRECISION
@@ -774,13 +869,15 @@ class TypeUtils:
                 return None
 
             # Validate numeric format
-            if (cleaned_val.count(".") > 1 or
-                cleaned_val.count("-") > 1 or
-                cleaned_val.count("+") > 1 or
-                re.search(r"\d,\d,\d", val_str) or
-                "/" in val_str or 
-                "+" in val_str[1:] or
-                (target_type == "BIGINT" and re.search(r"[a-df-zA-DF-Z]", val_str))):
+            if (
+                cleaned_val.count(".") > 1
+                or cleaned_val.count("-") > 1
+                or cleaned_val.count("+") > 1
+                or re.search(r"\d,\d,\d", val_str)
+                or "/" in val_str
+                or "+" in val_str[1:]
+                or (target_type == "BIGINT" and re.search(r"[a-df-zA-DF-Z]", val_str))
+            ):
                 return None
 
             try:
@@ -789,7 +886,10 @@ class TypeUtils:
                     if pd.isna(float_val) or float_val in (float("inf"), float("-inf")):
                         return None
                     # Check PostgreSQL BIGINT range
-                    if float_val < -9223372036854775808 or float_val > 9223372036854775807:
+                    if (
+                        float_val < -9223372036854775808
+                        or float_val > 9223372036854775807
+                    ):
                         return None
                     return int(float_val)
                 else:  # DOUBLE PRECISION
@@ -800,6 +900,7 @@ class TypeUtils:
         else:
             # TEXT or fallback
             return str(value)
+
 
 class ExcelUtils:
     """Utilities for Excel file cleaning."""
@@ -840,7 +941,9 @@ class ExcelUtils:
 
             # Use Pandas to forward-fill merged cell values
             for (row, col), value in merged_cells_map.items():
-                if pd.isna(df.iloc[row - 1, col - 1]):  # Adjust index for Pandas (0-based)
+                if pd.isna(
+                    df.iloc[row - 1, col - 1]
+                ):  # Adjust index for Pandas (0-based)
                     df.iloc[row - 1, col - 1] = value
 
             # Remove rows that are empty
@@ -942,7 +1045,9 @@ class ExcelUtils:
         try:
             LOGGER.info(f"Executing excel cleaning run on {table_name}")
             run = await client.beta.threads.runs.create_and_poll(
-                thread_id=thread.id, assistant_id=assistant.id, instructions=instructions
+                thread_id=thread.id,
+                assistant_id=assistant.id,
+                instructions=instructions,
             )
         except Exception as e:
             LOGGER.error(f"Failed to create and poll excel cleaning run: {e}")
@@ -1011,18 +1116,19 @@ class ExcelUtils:
         LOGGER.info(f"Run cost in cents: {cost}")
         return df
 
+
 class DbUtils:
     """Utilities for database operations."""
-    
+
     @staticmethod
     def create_table_sql(table_name: str, columns: dict[str, str]):
         """
         Build a CREATE TABLE statement.
-        
+
         Args:
             table_name: Name of the table to create
             columns: Dictionary mapping column names to data types
-            
+
         Returns:
             SQL statement for creating the table
         """
@@ -1030,26 +1136,26 @@ class DbUtils:
         for col_name, col_type in columns.items():
             safe_col_name = NameUtils.sanitize_column_name(col_name)
             cols.append(f'"{safe_col_name}" {col_type}')
-            
+
         cols_str = ", ".join(cols)
         return f'CREATE TABLE "{table_name}" ({cols_str});'
-    
+
     @staticmethod
     async def export_df_to_postgres(
-        df: pd.DataFrame, 
-        table_name: str, 
-        db_connection_string: str, 
-        chunksize: int = 5000
+        df: pd.DataFrame,
+        table_name: str,
+        db_connection_string: str,
+        chunksize: int = 5000,
     ):
         """
         Export a pandas DataFrame to PostgreSQL.
-        
+
         Args:
             df: DataFrame to export
             table_name: Name of the target table
             db_connection_string: Database connection string
             chunksize: Number of rows to insert at once
-            
+
         Returns:
             Dictionary with success status and inferred types
         """
@@ -1062,17 +1168,17 @@ class DbUtils:
         # Sanitize column names and handle duplicates
         safe_col_list = []
         seen_names = set()
-        
+
         for col in df.columns:
             safe_name = NameUtils.sanitize_column_name(col)
-            
+
             # Handle duplicate sanitized names
             if safe_name in seen_names:
                 counter = 1
                 while f"{safe_name}_{counter}" in seen_names:
                     counter += 1
                 safe_name = f"{safe_name}_{counter}"
-                
+
             safe_col_list.append(safe_name)
             seen_names.add(safe_name)
 
@@ -1090,7 +1196,9 @@ class DbUtils:
         for col in df.columns:
             original_name = col_name_mapping.get(col, col)
             try:
-                inferred_types[col] = TypeUtils.guess_column_type(df[col], column_name=original_name)
+                inferred_types[col] = TypeUtils.guess_column_type(
+                    df[col], column_name=original_name
+                )
             except Exception as e:
                 raise Exception(
                     f"Failed to infer type for column {original_name} in table {table_name}: {e}"
@@ -1117,8 +1225,8 @@ class DbUtils:
             create_stmt = DbUtils.create_table_sql(table_name, inferred_types)
         except Exception as e:
             raise Exception(
-            f"Failed to create CREATE TABLE statements for {table_name}: {e}"
-        )
+                f"Failed to create CREATE TABLE statements for {table_name}: {e}"
+            )
         async with engine.begin() as conn:
             await conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}";'))
             await conn.execute(text(create_stmt))
@@ -1126,11 +1234,15 @@ class DbUtils:
         # Prepare and execute INSERT statements
         insert_cols = ", ".join(f'"{c}"' for c in safe_col_list)
         placeholders = ", ".join([f":{c}" for c in safe_col_list])
-        insert_sql = f'INSERT INTO "{table_name}" ({insert_cols}) VALUES ({placeholders})'
+        insert_sql = (
+            f'INSERT INTO "{table_name}" ({insert_cols}) VALUES ({placeholders})'
+        )
 
         async with engine.begin() as conn:
             rows_to_insert = []
-            for idx, row in enumerate(converted_df.replace({np.nan: None}).to_dict("records")):
+            for idx, row in enumerate(
+                converted_df.replace({np.nan: None}).to_dict("records")
+            ):
                 rows_to_insert.append(row)
 
                 # Batch insert when chunk size reached or at the end
@@ -1147,47 +1259,56 @@ def clean_table_name(table_name: str, existing=None):
     """Legacy wrapper for NameUtils.clean_table_name"""
     return NameUtils.clean_table_name(table_name, existing or [])
 
+
 def sanitize_column_name(col_name: str):
     """Legacy wrapper for NameUtils.sanitize_column_name"""
     return NameUtils.sanitize_column_name(col_name)
+
 
 def is_date_column_name(col_name):
     """Legacy wrapper for DateTimeUtils.is_date_column_name"""
     return DateTimeUtils.is_date_column_name(col_name)
 
+
 def is_time_column_name(col_name):
     """Legacy wrapper for DateTimeUtils.is_time_column_name"""
     return DateTimeUtils.is_time_column_name(col_name)
+
 
 def can_parse_date(val):
     """Legacy wrapper for DateTimeUtils.can_parse_date"""
     return DateTimeUtils.can_parse_date(val)
 
+
 def can_parse_time(val):
     """Legacy wrapper for DateTimeUtils.can_parse_time"""
     return DateTimeUtils.can_parse_time(val)
+
 
 def to_float_if_possible(val):
     """Legacy wrapper for TypeUtils.to_float_if_possible"""
     return TypeUtils.to_float_if_possible(val)
 
+
 def guess_column_type(series, column_name=None, sample_size=50):
     """Legacy wrapper for TypeUtils.guess_column_type"""
     return TypeUtils.guess_column_type(series, column_name, sample_size)
+
 
 def convert_values_to_postgres_type(value, target_type: str):
     """Legacy wrapper for TypeUtils.convert_values_to_postgres_type"""
     return TypeUtils.convert_values_to_postgres_type(value, target_type)
 
+
 def create_table_sql(table_name: str, columns: dict[str, str]):
     """Legacy wrapper for DbUtils.create_table_sql"""
     return DbUtils.create_table_sql(table_name, columns)
 
+
 async def export_df_to_postgres(
-    df: pd.DataFrame, 
-    table_name: str, 
-    db_connection_string: str, 
-    chunksize: int = 5000
+    df: pd.DataFrame, table_name: str, db_connection_string: str, chunksize: int = 5000
 ):
     """Legacy wrapper for DbUtils.export_df_to_postgres"""
-    return await DbUtils.export_df_to_postgres(df, table_name, db_connection_string, chunksize)
+    return await DbUtils.export_df_to_postgres(
+        df, table_name, db_connection_string, chunksize
+    )

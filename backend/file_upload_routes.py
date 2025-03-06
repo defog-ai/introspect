@@ -18,11 +18,7 @@ from db_utils import get_db_info, get_db_type_creds
 import random
 import os
 import pandas as pd
-from utils_file_uploads import (
-    export_df_to_postgres,
-    clean_table_name,
-    ExcelUtils
-)
+from utils_file_uploads import export_df_to_postgres, clean_table_name, ExcelUtils
 from utils_md import set_metadata
 from db_utils import update_db_type_creds
 from sqlalchemy_utils import database_exists, create_database, drop_database
