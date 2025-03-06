@@ -294,6 +294,49 @@ class TestExcelCleaningOpenAI:
             mock_openai_client.files.create.assert_not_called()
             mock_openai_client.beta.assistants.create.assert_not_called()
             mock_openai_client.beta.threads.create.assert_not_called()
+            
+    @pytest.mark.asyncio
+    async def test_temporary_file_removal(self, mock_openai_client):
+        """Test that temporary files are properly created and removed."""
+        import tempfile
+        import os
+        
+        # Create a dataframe that would need cleaning
+        df = pd.DataFrame([
+            ['Quarterly Report', 'Quarterly Report', 'Quarterly Report'],  # Repeated header
+            ['ID', 'Name', 'Price'],
+            [1, 'Item A', 10.5],
+            [2, 'Item B', 20.5],
+            ['Total', '', 31.0]  # Total row
+        ])
+        
+        # Track created temporary files
+        created_temp_files = []
+        
+        # Mock the NamedTemporaryFile to track the created file path
+        original_named_temp_file = tempfile.NamedTemporaryFile
+        
+        def mock_named_temp_file(**kwargs):
+            temp_file = original_named_temp_file(**kwargs)
+            created_temp_files.append(temp_file.name)
+            return temp_file
+        
+        # Mock is_excel_dirty to ensure cleaning is attempted
+        with patch('utils_file_uploads.ExcelUtils.is_excel_dirty', return_value=True), \
+             patch('tempfile.NamedTemporaryFile', side_effect=mock_named_temp_file):
+            
+            # Call the function that creates and should remove the temp file
+            await ExcelUtils.clean_excel_openai("test_table", df)
+            
+            # Verify that the temporary file was created
+            assert len(created_temp_files) == 1
+            temp_file_path = created_temp_files[0]
+            
+            # Verify that the temporary file was removed
+            assert not os.path.exists(temp_file_path), f"Temporary file {temp_file_path} was not removed"
+            
+            # Verify that OpenAI client was used (temp file was uploaded)
+            mock_openai_client.files.create.assert_called_once()
         
     @pytest.mark.asyncio
     async def test_excel_sheet_count_preserved(self):
