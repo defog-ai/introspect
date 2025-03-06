@@ -6,7 +6,13 @@ import datetime
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from dateutil import parser
-
+from io import BytesIO
+import openpyxl
+import asyncio
+import os
+import concurrent.futures
+from openai import AsyncOpenAI
+from defog.llm.utils import LLM_COSTS_PER_TOKEN
 from utils_logging import LOGGER
 
 # PostgreSQL reserved words for column name sanitization
@@ -422,6 +428,7 @@ class TypeUtils:
         column_suggests_numeric = False
         
         if column_name is not None:
+            column_name = str(column_name)
             name_lower = column_name.lower()
             # Check for ID patterns
             if (name_lower == "id" or name_lower.endswith("_id") or 
@@ -794,6 +801,215 @@ class TypeUtils:
             # TEXT or fallback
             return str(value)
 
+class ExcelUtils:
+    """Utilities for Excel file cleaning."""
+
+    @staticmethod
+    async def clean_excel_pd(excel_file: BytesIO) -> dict[str, pd.DataFrame]:
+        """
+        This function cleans all sheets in an Excel file with pandas by:
+        - forward-filling merged cells
+        - removing empty rows and columns
+        - filling NaN values with empty strings
+
+        Returns a dictionary of dataframes with sheet names as keys.
+        """
+        wb = openpyxl.load_workbook(excel_file)
+        tables = {}
+
+        async def process_sheet(sheet_name: str):
+            sheet = wb[sheet_name]
+
+            # Create a dictionary to store merged cell values
+            merged_cells_map = {}
+
+            # Identify merged cells and store only the top-left value
+            for merged_range in sheet.merged_cells.ranges:
+                min_col, min_row, max_col, max_row = merged_range.bounds
+                top_left_value = sheet.cell(
+                    row=min_row, column=min_col
+                ).value  # Get top-left cell value
+
+                # Store top-left value for all merged cells (but only modify in Pandas)
+                for row in range(min_row, max_row + 1):
+                    for col in range(min_col, max_col + 1):
+                        merged_cells_map[(row, col)] = top_left_value
+
+            # Convert worksheet data into Pandas DataFrame
+            df = pd.DataFrame(sheet.values)
+
+            # Use Pandas to forward-fill merged cell values
+            for (row, col), value in merged_cells_map.items():
+                if pd.isna(df.iloc[row - 1, col - 1]):  # Adjust index for Pandas (0-based)
+                    df.iloc[row - 1, col - 1] = value
+
+            # Remove rows that are empty
+            df.dropna(inplace=True, how="all")
+
+            # Drop columns where all values are NaN
+            df = df.dropna(axis=1, how="all")
+
+            # Fill NaN values with empty strings for better readability
+            df = df.fillna("")
+
+            # Clean sheet name
+            table_name = clean_table_name(sheet_name, existing=tables.keys())
+
+            LOGGER.info(
+                f"Sheet {sheet_name} after dropping NaN rows/columns: {df.shape[0]} rows, {df.shape[1]} columns"
+            )
+
+            return table_name, df
+
+        async def main():
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                loop = asyncio.get_event_loop()
+                tasks = [
+                    loop.run_in_executor(
+                        executor,
+                        lambda sheet_name=sheet_name: asyncio.run(
+                            process_sheet(sheet_name)
+                        ),
+                    )
+                    for sheet_name in wb.sheetnames
+                ]
+                results = await asyncio.gather(*tasks)
+                for table_name, df in results:
+                    tables[table_name] = df
+
+        await main()
+
+        return tables
+
+    @staticmethod
+    async def clean_excel_openai(table_name: str, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Further cleans a dataframe (from an Excel sheet) using OpenAI's Code Interpreter. Dynamically generates and executes code to remove columns and rows that do not contribute to the data (e.g. headers and footnotes). Also if necessary, changes the dataframe from wide to long format that's suitable for PostgreSQL.
+        """
+        # Save CSV file in docker for upload to OpenAI
+        file_path = f"./{table_name}.csv"
+        df.to_csv(file_path, index=False)
+        client = AsyncOpenAI()
+
+        # Upload file using the File API
+        try:
+            csv_file = await client.files.create(
+                file=open(file_path, "rb"), purpose="assistants"
+            )
+            LOGGER.info(
+                f"Uploaded {table_name}.csv file to OpenAI for cleaning: {csv_file.id} "
+            )
+        except Exception as e:
+            LOGGER.error(f"Failed to upload {table_name}.csv file to OpenAI: {e}")
+            return df
+        finally:
+            # Delete file in docker
+            os.remove(file_path)
+
+        # Set up instructions and prompt
+        instructions = "You are an expert in cleaning and transforming CSV files. Write and run code to execute transformations on CSV files."
+        prompt = f"""Generate and execute a python script to clean and transform the provided CSV file that's been parsed from an Excel file.
+
+    The script should perform the following tasks:
+    0. Load the csv file as a dataframe
+    1. Remove column indexes.
+    2. Remove rows with titles or other plain text cells (e.g footnotes) that do not constitute the data. 
+        - Inspect head and tail of dataframe.
+        - Also inspect rows where all non-null values are the same with `df[df.apply(lambda row: len(set(row.dropna())) == 1, axis=1)]` to see if they are relevant data.
+    3. Remove rows with aggregate statistics (i.e. Inspect rows with the word "total",” case-insensitively.)
+    4. If table is in a wide format, change it to a long format so that it's suitable for a PostgreSQL database. Ensure no data is lost and that all columns are accounted for in the transformation. 
+    5. Define meaningful column names for new columns.
+    6. Generate a new CSV file with the cleaned and transformed data.
+
+    Work with all the information you have. DO NOT ask further questions. Continue until the task is complete.
+    """
+
+        # Set up assistant, thread, message
+        model = "gpt-4o"  # o3-mini currently doesn't support code interpreter
+        assistant = await client.beta.assistants.create(
+            instructions=instructions,
+            model=model,
+            tools=[{"type": "code_interpreter"}],
+            tool_resources={"code_interpreter": {"file_ids": [csv_file.id]}},
+        )
+        thread = await client.beta.threads.create()
+
+        message = await client.beta.threads.messages.create(
+            thread_id=thread.id, role="user", content=prompt
+        )
+
+        # Run the code
+        try:
+            LOGGER.info(f"Executing excel cleaning run on {table_name}")
+            run = await client.beta.threads.runs.create_and_poll(
+                thread_id=thread.id, assistant_id=assistant.id, instructions=instructions
+            )
+        except Exception as e:
+            LOGGER.error(f"Failed to create and poll excel cleaning run: {e}")
+            return df
+
+        # Keep checking status of run
+        if run.status == "completed":
+            LOGGER.info(f"Excel cleaning run on {table_name} completed")
+            messages = await client.beta.threads.messages.list(thread_id=thread.id)
+        else:
+            LOGGER.error(
+                f"Excel cleaning run on {table_name} did not complete successfully. Run status: {run.status}"
+            )
+            return df
+
+        # Extract file to download
+        file_to_download = None
+        for m in messages.data:
+            for content_block in m.content:
+                if hasattr(content_block, "text") and hasattr(
+                    content_block.text, "annotations"
+                ):
+                    for annotation in content_block.text.annotations:
+                        if hasattr(annotation, "file_path") and hasattr(
+                            annotation.file_path, "file_id"
+                        ):
+                            file_to_download = annotation.file_path.file_id
+                            break
+
+        # Download the file and convert to dataframe
+        if file_to_download is not None:
+            try:
+                file_data = await client.files.content(file_to_download)
+            except Exception as e:
+                LOGGER.error(f"Failed to download {file_to_download}: {e}")
+                return df
+
+            try:
+                file_data_bytes = file_data.read()
+                df = pd.read_csv(BytesIO(file_data_bytes))
+                LOGGER.info(f"Downloaded {file_to_download}")
+            except Exception as e:
+                LOGGER.error(f"Failed to read {file_to_download} as CSV: {e}")
+                return df
+
+            # Delete file in client
+            await client.files.delete(file_to_download)
+            LOGGER.info(f"Deleted {file_to_download} in client")
+        else:
+            LOGGER.info(f"No file to download.")
+
+        # Calculate run cost
+        LOGGER.info(f"Run usage: {run.usage}")
+        output_tokens = run.usage.completion_tokens
+        cached_input_tokens = run.usage.prompt_token_details.get("cached_tokens", 0)
+        input_tokens = run.usage.prompt_tokens - cached_input_tokens
+
+        cost = input_tokens / 1000 * LLM_COSTS_PER_TOKEN[model]["input_cost_per1k"]
+        cost += output_tokens / 1000 * LLM_COSTS_PER_TOKEN[model]["output_cost_per1k"]
+        cost += (
+            cached_input_tokens
+            / 1000
+            * LLM_COSTS_PER_TOKEN[model]["cached_input_cost_per1k"]
+        )
+        cost *= 100
+        LOGGER.info(f"Run cost in cents: {cost}")
+        return df
 
 class DbUtils:
     """Utilities for database operations."""
@@ -873,21 +1089,36 @@ class DbUtils:
         inferred_types = {}
         for col in df.columns:
             original_name = col_name_mapping.get(col, col)
-            inferred_types[col] = TypeUtils.guess_column_type(df[col], column_name=original_name)
+            try:
+                inferred_types[col] = TypeUtils.guess_column_type(df[col], column_name=original_name)
+            except Exception as e:
+                raise Exception(
+                    f"Failed to infer type for column {original_name} in table {table_name}: {e}"
+                )
 
         LOGGER.info(inferred_types)
 
         # Convert values to appropriate PostgreSQL types
         converted_df = df.copy()
         for col in df.columns:
-            converted_df[col] = df[col].map(
-                lambda value: TypeUtils.convert_values_to_postgres_type(
-                    value, target_type=inferred_types[col]
+            try:
+                converted_df[col] = df[col].map(
+                    lambda value: TypeUtils.convert_values_to_postgres_type(
+                        value, target_type=inferred_types[col]
+                    )
                 )
-            )
+            except Exception as e:
+                raise Exception(
+                    f"Failed to convert values to PostgreSQL type for column {col} in table {table_name}: {e}"
+                )
 
         # Create table in PostgreSQL
-        create_stmt = DbUtils.create_table_sql(table_name, inferred_types)
+        try:
+            create_stmt = DbUtils.create_table_sql(table_name, inferred_types)
+        except Exception as e:
+            raise Exception(
+            f"Failed to create CREATE TABLE statements for {table_name}: {e}"
+        )
         async with engine.begin() as conn:
             await conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}";'))
             await conn.execute(text(create_stmt))
