@@ -3,7 +3,7 @@ FROM python:3.12-slim
 
 WORKDIR /backend
 
-RUN apt-get update && apt-get install -y python3-pip
+RUN apt-get update && apt-get install -y python3-pip dos2unix
 
 # expose python server port
 EXPOSE 1235
@@ -42,6 +42,14 @@ COPY ./backend/requirements.txt /root/requirements.txt
 # Use uv to install dependencies system-wide
 RUN uv pip install --system --upgrade setuptools && \
     uv pip install --system -r /root/requirements.txt
+
+# Copy startup script
+COPY ./backend/startup.sh /backend/
+
+# Convert from DOS/Windows line endings to Unix
+# This is useful in case the startup script is copied from a Windows machine not using WSL
+# It has no effect on Linux/Mac
+RUN dos2unix /backend/startup.sh && chmod +x /backend/startup.sh
 
 # run start_docker.sh file as entrypoint to run as PID 1
 ENTRYPOINT ["/backend/startup.sh"]
