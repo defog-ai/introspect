@@ -35,6 +35,7 @@ export function DbUpload({
           showIcon={true}
           rootClassNames={twMerge("h-full", loading ? "hidden" : "")}
           label="Drag and drop your file here, or"
+          acceptedFileTypes={[".csv", ".xlsx", ".xls"]}
           onFileSelect={async (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
