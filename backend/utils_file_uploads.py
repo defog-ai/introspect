@@ -14,6 +14,7 @@ import concurrent.futures
 from openai import AsyncOpenAI
 from defog.llm.utils import LLM_COSTS_PER_TOKEN
 from utils_logging import LOGGER
+import tempfile
 
 # PostgreSQL reserved words for column name sanitization
 POSTGRES_RESERVED_WORDS = {
@@ -1078,13 +1079,14 @@ class ExcelUtils:
         needs_cleaning = await ExcelUtils.is_excel_dirty(table_name, df)
         if not needs_cleaning:
             return df
-            
-        # Save CSV file in docker for upload to OpenAI
-        file_path = f"./{table_name}.csv"
-        df.to_csv(file_path, index=False)
+        
+        # Create a temporary file for upload to OpenaAI. Will be automatically deleted after uploading
+        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as temp_file:
+            df.to_csv(temp_file.name, index=False)
+            file_path = temp_file.name
+        
         client = AsyncOpenAI()
 
-        # Upload file using the File API
         try:
             csv_file = await client.files.create(
                 file=open(file_path, "rb"), purpose="assistants"
@@ -1096,8 +1098,9 @@ class ExcelUtils:
             LOGGER.error(f"Failed to upload {table_name}.csv file to OpenAI: {e}")
             return df
         finally:
-            # Delete file in docker
-            os.remove(file_path)
+            # Clean up the temporary file
+            if os.path.exists(file_path):
+                os.remove(file_path)
 
         # Set up instructions and prompt
         instructions = "You are an expert in cleaning and transforming CSV files. Write and run code to execute transformations on CSV files."
