@@ -262,3 +262,23 @@ async def get_pdf_content(file_id: int):
                 }
     
     return None
+
+async def update_project_files(db_name: str, file_ids: list[int]):
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            project = await session.execute(
+                select(Project).where(
+                    Project.db_name == db_name
+                )
+            )
+            project = project.scalar_one_or_none()
+            if not project:
+                return
+            associated_files = project.associated_files
+            if associated_files is None or len(associated_files) == 0:
+                project.associated_files = file_ids
+            else:
+                project.associated_files.extend(file_ids)
+            flag_modified(project, "associated_files")
+
+            return

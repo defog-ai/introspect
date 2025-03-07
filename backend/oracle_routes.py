@@ -16,6 +16,7 @@ from utils_oracle import (
     post_tool_call_func,
     upload_pdf_files,
     get_project_pdf_files,
+    update_project_files,
 )
 from db_models import OracleGuidelines
 from db_config import engine
@@ -147,6 +148,8 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
         pdf_file_ids = []
         if len(req.pdf_files) > 0:
             pdf_file_ids = await upload_pdf_files(req.pdf_files)
+            # update files in Project
+            await update_project_files(db_name, pdf_file_ids)
 
         new_db = None
         if len(req.data_files) > 0:
