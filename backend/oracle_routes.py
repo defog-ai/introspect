@@ -6,22 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import json
 import time
-from file_upload_routes import upload_files_as_db
-from request_models import File
 from utils_oracle import (
     clarify_question,
     get_oracle_guidelines,
     set_oracle_guidelines,
     set_oracle_report,
     post_tool_call_func,
-    upload_pdf_files,
     get_project_pdf_files,
-    update_project_files,
 )
 from db_models import OracleGuidelines
 from db_config import engine
 from auth_utils import validate_user_request
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from functools import partial
@@ -87,26 +83,6 @@ async def get_guidelines(req: GetGuidelinesRequest):
 
         column_name = req.guideline_type.value + "_guidelines"
         return JSONResponse(content={"guidelines": getattr(result, column_name)})
-
-
-class UploadFilesRequest(BaseModel):
-    db_name: str
-    token: str
-    data_files: Optional[List[File]] = [] # these are data files, typically ending with .csv or .xlsx
-    pdf_files: Optional[List[File]] = []
-
-
-@router.post("/oracle/upload_files")
-async def upload_files(req: UploadFilesRequest):
-    db_name = req.db_name
-    
-    if len(req.data_files) > 0:
-        new_db = await upload_files_as_db(req.data_files)
-    if len(req.pdf_files) > 0:
-        pdf_file_ids = await upload_pdf_files(req.pdf_files)
-        await update_project_files(db_name, pdf_file_ids)
-
-    return JSONResponse(status_code=200, content={"message": "Success"})
 
 
 class ClarifyQuestionRequest(BaseModel):

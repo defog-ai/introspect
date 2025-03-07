@@ -4,14 +4,10 @@ import time
 import traceback
 
 from pandas.errors import ParserError
-from auth_utils import validate_user_request
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import JSONResponse
 from request_models import (
     DbDetails,
-    UploadFileAsDBRequest,
-    UploadMultipleFilesAsDBRequest,
-    File,
 )
 from utils_logging import LOGGER
 from db_utils import get_db_info, get_db_type_creds
@@ -20,13 +16,13 @@ import os
 import pandas as pd
 from utils_file_uploads import export_df_to_postgres, clean_table_name, ExcelUtils
 from utils_md import set_metadata
+from utils_oracle import upload_pdf_files, update_project_files
 from db_utils import update_db_type_creds
-from sqlalchemy_utils import database_exists, create_database, drop_database
+from sqlalchemy_utils import database_exists, create_database
 import io
 import asyncio
 
 router = APIRouter(
-    dependencies=[Depends(validate_user_request)],
     tags=["File Upload"],
 )
 
@@ -40,26 +36,28 @@ INTERNAL_DB_CREDS = {
 }
 
 
-async def upload_files_as_db(files: list[File]) -> DbDetails:
+async def upload_files_as_db(files, db_name: str | None = None) -> DbDetails:
     """
     Takes in a list of Files, and the contents of each file as a base 64 string.
     We then create a database from the file contents, and
     return the db_name and db_info that is used to store this file.
     """
-    cleaned_db_name = clean_table_name(files[0].file_name)
-    db_exists = await get_db_type_creds(cleaned_db_name)
-
-    if db_exists:
-        # add a random 3 digit integer to the end of the file name
-        cleaned_db_name = f"{cleaned_db_name}_{random.randint(1, 9999)}"
+    if db_name is None:
+        cleaned_db_name = clean_table_name(files[0].filename)
+        db_exists = await get_db_type_creds(cleaned_db_name)
+        if db_exists:
+            # add a random 3 digit integer to the end of the file name
+            cleaned_db_name = f"{cleaned_db_name}_{random.randint(1, 9999)}"
+    else:
+        cleaned_db_name = db_name
 
     tables = {}
 
     # convert to dfs
     for f in files:
         try:
-            file_name = f.file_name
-            buffer = base64.b64decode(f.base64_content)
+            file_name = f.filename
+            buffer = f.file.read()
 
             # Convert array buffer to DataFrame
             if file_name.endswith(".csv"):
@@ -117,12 +115,11 @@ async def upload_files_as_db(files: list[File]) -> DbDetails:
         LOGGER.info(
             f"Database already exists: {cleaned_db_name}, but is not added to db creds. Dropping it."
         )
-        drop_database(connection_uri)
         LOGGER.info(f"Database dropped: {cleaned_db_name}")
-
-    LOGGER.info(f"Creating database: {cleaned_db_name}")
-    create_database(connection_uri)
-    LOGGER.info(f"Database created: {cleaned_db_name}")
+    else:
+        LOGGER.info(f"Creating database: {cleaned_db_name}")
+        create_database(connection_uri)
+        LOGGER.info(f"Database created: {cleaned_db_name}")
 
     # now that the DB is created
     # we will use asyncpg version so we don't block requests
@@ -172,63 +169,35 @@ async def upload_files_as_db(files: list[File]) -> DbDetails:
     return DbDetails(db_name=cleaned_db_name, db_info=db_info)
 
 
-@router.post("/upload_file_as_db")
-async def upload_file_as_db(request: UploadFileAsDBRequest):
+@router.post("/upload_files")
+async def upload_files(
+    request: Request
+):
     """
-    Takes in a CSV or Excel file, and the contents of the file as a dict,
-    which maps the tables in the file to their contents.
-    We then create a database from the file contents, and
-    return the db_name that is used to store this file.
+    Upload files to the database.
+    Args:
+        - db_name: what database to associate the files with? can be blank (new db will be created)
+        - files: list of files to upload
     """
-    file_name = request.file_name
-    base64_content = request.base64_content
+    form_data = await request.form()
+    token = form_data.get("token")
+    db_name = form_data.get("db_name")
+    files = form_data.getlist("files")
+    LOGGER.info("Received request to upload files")
+    # data_files are all those that end with .csv, .xls, or .xlsx
+    data_files = [f for f in files if f.filename.endswith(('.csv', '.xls', '.xlsx'))]
+    pdf_files = [f for f in files if f.filename.endswith(('.pdf'))]
+    
+    if len(data_files) > 0:
+        if db_name is None:
+            new_db = await upload_files_as_db(files=data_files)
+            db_name = new_db.db_name
+        else:
+            await upload_files_as_db(files=data_files, db_name=db_name)
+    if len(pdf_files) > 0:
+        pdf_file_ids = await upload_pdf_files(pdf_files)
+        await update_project_files(db_name, pdf_file_ids)
 
-    LOGGER.info(f"file_name: {file_name}")
-    LOGGER.info(f"base64_content length: {len(base64_content)}")
-
-    try:
-        new_db = await upload_files_as_db(
-            [
-                File(
-                    file_name=file_name,
-                    base64_content=base64_content,
-                )
-            ]
-        )
-    except Exception as e:
-        LOGGER.error(f"Error uploading file as db: {e}")
-        return JSONResponse(
-            status_code=500, content=f"Error uploading file as db: {str(e)}"
-        )
-
-    db_info = new_db.db_info
-    cleaned_db_name = new_db.db_name
-
-    return JSONResponse(content={"db_info": db_info, "db_name": cleaned_db_name})
+    return JSONResponse(status_code=200, content={"message": "Success", "db_name": db_name})
 
 
-@router.post("/upload_multiple_files_as_db")
-async def upload_multiple_files_as_db_endpoint(
-    request: UploadMultipleFilesAsDBRequest,
-) -> DbDetails:
-    """
-    Loads of DRY code from upload_file_as_db.
-
-    Takes in a list of CSV or Excel files, and the contents of each file as a base 64 string.
-    We pick the first file, create a db_name from it, and upload the rest of the files to that db as tables.
-    Dealing with csvs and excels is similar to the upload_file_as_db endpoint, just the db_name calculation is slightly different.
-    """
-    files = request.files
-
-    try:
-        new_db = await upload_files_as_db(files)
-    except Exception as e:
-        LOGGER.error(f"Error uploading file as db: {e}")
-        return JSONResponse(
-            status_code=500, content=f"Error uploading file as db: {str(e)}"
-        )
-
-    db_info = new_db.db_info
-    cleaned_db_name = new_db.db_name
-
-    return JSONResponse(content={"db_info": db_info, "db_name": cleaned_db_name})

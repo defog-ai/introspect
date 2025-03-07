@@ -1,5 +1,4 @@
 import logging
-import os
 import traceback
 
 from db_utils import get_db_names
@@ -12,7 +11,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from startup import lifespan
 from auth_utils import validate_user
 from query_data.core_functions import analyse_data_streaming
-
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger("server")

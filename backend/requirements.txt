@@ -10,6 +10,7 @@ openai
 openpyxl
 pandas==2.2.3
 pgvector==0.3.6
+python-multipart
 pyyaml
 redis
 requests
