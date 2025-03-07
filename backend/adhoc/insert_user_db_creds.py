@@ -4,7 +4,7 @@ import hashlib
 import os
 
 from auth_utils import get_hashed_username
-from db_models import DbCreds, Users
+from db_models import Project, Users
 from sqlalchemy import create_engine, insert, select, update
 
 
@@ -152,28 +152,28 @@ with engine.begin() as conn:
         database = db["database"]
         # check if db_creds exists and update
         db_creds = conn.execute(
-            select(DbCreds.db_creds).where(DbCreds.db_name == db_name)
+            select(Project.db_creds).where(Project.db_name == db_name)
         ).fetchone()
         if db_creds:
             db_creds = copy.deepcopy(DB_CREDS)
             db_creds["database"] = database
             conn.execute(
-                update(DbCreds)
-                .where(DbCreds.db_name == db_name)
+                update(Project)
+                .where(Project.db_name == db_name)
                 .values(
                     db_creds=db_creds,
                     db_type="postgres",
                 )
             )
-            print(f"DbCreds for db_name={db_name} updated.")
+            print(f"Project for db_name={db_name} updated.")
         else:
             db_creds = copy.deepcopy(DB_CREDS)
             db_creds["database"] = database
             conn.execute(
-                insert(DbCreds).values(
+                insert(Project).values(
                     db_name=db_name,
                     db_creds=db_creds,
                     db_type="postgres",
                 )
             )
-            print(f"DbCreds for db_name={db_name} created.")
+            print(f"Project for db_name={db_name} created.")

@@ -15,7 +15,7 @@ from utils_oracle import (
     set_oracle_report,
     post_tool_call_func,
     upload_pdf_files,
-    get_report_pdf_files,
+    get_project_pdf_files,
 )
 from db_models import OracleGuidelines
 from db_config import engine
@@ -180,7 +180,6 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
             db_name=db_name,
             report_name=req.user_question,
             status="INITIALIZED",
-            pdf_file_ids=pdf_file_ids,
         )
         clarify_response["report_id"] = report_id
     except Exception as e:
@@ -245,7 +244,7 @@ async def generate_report(req: GenerateReportRequest):
     )
 
     # get pdf files
-    pdf_file_ids = await get_report_pdf_files(report_id)
+    pdf_file_ids = await get_project_pdf_files(db_name)
 
     # generate the report
     analysis_response = await generate_report_from_question(

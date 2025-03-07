@@ -5,7 +5,7 @@ from defog.query import async_execute_query_once
 from sqlalchemy import delete, select, update, insert
 from utils_md import get_metadata
 from db_config import engine
-from db_models import DbCreds
+from db_models import Project
 from utils_logging import LOGGER
 from defog import Defog
 import os
@@ -19,7 +19,7 @@ defog_path = os.path.join(home_dir, ".defog")
 async def get_db_type_creds(db_name: str) -> Tuple[str, Dict[str, str]] | None:
     async with engine.begin() as conn:
         row = await conn.execute(
-            select(DbCreds.db_type, DbCreds.db_creds).where(DbCreds.db_name == db_name)
+            select(Project.db_type, Project.db_creds).where(Project.db_name == db_name)
         )
         row = row.fetchone()
     return row
@@ -27,7 +27,7 @@ async def get_db_type_creds(db_name: str) -> Tuple[str, Dict[str, str]] | None:
 
 async def get_db_names() -> list[str]:
     async with engine.begin() as conn:
-        result = await conn.execute(select(DbCreds.db_name))
+        result = await conn.execute(select(Project.db_name))
         db_names = result.scalars().all()
     return db_names
 
@@ -35,19 +35,19 @@ async def get_db_names() -> list[str]:
 async def update_db_type_creds(db_name, db_type, db_creds):
     async with engine.begin() as conn:
         # first, check if the record exists
-        record = await conn.execute(select(DbCreds).where(DbCreds.db_name == db_name))
+        record = await conn.execute(select(Project).where(Project.db_name == db_name))
 
         record = record.fetchone()
 
         if record:
             await conn.execute(
-                update(DbCreds)
-                .where(DbCreds.db_name == db_name)
+                update(Project)
+                .where(Project.db_name == db_name)
                 .values(db_type=db_type, db_creds=db_creds)
             )
         else:
             await conn.execute(
-                insert(DbCreds).values(
+                insert(Project).values(
                     db_name=db_name, db_type=db_type, db_creds=db_creds
                 )
             )
@@ -138,4 +138,4 @@ async def get_db_info(db_name):
 
 async def delete_db_info(db_name):
     async with engine.begin() as conn:
-        await conn.execute(delete(DbCreds).where(DbCreds.db_name == db_name))
+        await conn.execute(delete(Project).where(Project.db_name == db_name))

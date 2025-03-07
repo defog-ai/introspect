@@ -164,7 +164,7 @@ async def upload_files_as_db(files: list[DataFile]) -> DbDetails:
         "port": INTERNAL_DB_CREDS["port"],
         "database": cleaned_db_name,
     }
-    LOGGER.info(f"Creating DbCreds entry for {cleaned_db_name}")
+    LOGGER.info(f"Creating Project entry for {cleaned_db_name}")
     await update_db_type_creds(cleaned_db_name, "postgres", user_db_creds)
 
     db_info = await get_db_info(cleaned_db_name)

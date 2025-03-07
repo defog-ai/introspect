@@ -17,7 +17,7 @@ import pytest
 import requests
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from db_models import DbCreds
+from db_models import Project
 
 # Add the backend directory to the Python path
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,7 +41,7 @@ TEST_DB = {
     "database": "test_db",
     "db_type": "postgres",
     "db_creds": {
-        "host": "host.docker.internal",
+        "host": "agents-postgres",
         "port": 5432,
         "database": "test_db",
         "user": "postgres",
@@ -102,20 +102,20 @@ def setup_test_database():
 
 
 def setup_test_db_name():
-    """Setup test database name in DbCreds table using SQLAlchemy ORM."""
+    """Setup test database name in Project table using SQLAlchemy ORM."""
     
-    # Connect to the database where DbCreds table exists
+    # Connect to the database where Project table exists
     docker_uri = f"postgresql://{DOCKER_DB_CREDS['user']}:{DOCKER_DB_CREDS['password']}@{DOCKER_DB_CREDS['host']}:{DOCKER_DB_CREDS['port']}/{DOCKER_DB_CREDS['database']}"
     engine = create_engine(docker_uri)
     Session = sessionmaker(bind=engine)
     
     with Session() as session:
         # Check if db_name already exists
-        existing_db = session.query(DbCreds).filter_by(db_name=TEST_DB["db_name"]).first()
+        existing_db = session.query(Project).filter_by(db_name=TEST_DB["db_name"]).first()
         
         if not existing_db:
-            # Create new DbCreds entry
-            new_db_cred = DbCreds(db_name=TEST_DB["db_name"])
+            # Create new Project entry
+            new_db_cred = Project(db_name=TEST_DB["db_name"])
             session.add(new_db_cred)
             session.commit()
 
@@ -167,7 +167,7 @@ def cleanup():
             tables_with_db_name = [
                 "metadata", "table_info", "instructions", "golden_queries",
                 "analyses", "oracle_guidelines", 
-                "oracle_sources", "db_creds"
+                "projects"
             ]
             
             for table in tables_with_db_name:

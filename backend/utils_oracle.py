@@ -1,7 +1,7 @@
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from oracle_models import Clarification
-from db_models import OracleGuidelines, OracleReports, PDFFiles
+from db_models import OracleGuidelines, OracleReports, PDFFiles, Project
 from db_config import engine
 from utils_md import get_metadata, mk_create_ddl
 from defog.llm.utils import chat_async
@@ -124,7 +124,6 @@ async def set_oracle_report(
     analyses: list = None,
     thinking_steps: list = None,
     status: Literal["INITIALIZED", "THINKING", "ERRORED", "DONE"] = None,
-    pdf_file_ids: list[int] = [],
 ) -> str:
     async with AsyncSession(engine) as session:
         async with session.begin():
@@ -138,7 +137,6 @@ async def set_oracle_report(
                         mdx=mdx,
                         analyses=analyses,
                         status=status,
-                        pdf_file_ids=pdf_file_ids,
                     ).returning(OracleReports.report_id)
                 )
                 report_id = report_id.scalar_one()
@@ -170,8 +168,6 @@ async def set_oracle_report(
                     flag_modified(report, "thinking_steps")
                 if status:
                     report.status = status
-                if pdf_file_ids and len(pdf_file_ids) > 0:
-                    report.pdf_file_ids = pdf_file_ids
 
     return report_id
 
@@ -232,14 +228,14 @@ async def upload_pdf_files(pdf_files: list) -> list[int]:
     
     return pdf_file_ids
 
-async def get_report_pdf_files(report_id: int) -> list[int]:
+async def get_project_pdf_files(db_name: str) -> list[int]:
     async with AsyncSession(engine) as session:
         async with session.begin():
             pdf_file_ids = await session.execute(
-                select(OracleReports.pdf_file_ids).where(
-                    OracleReports.report_id == report_id
+                select(Project.associated_files).where(
+                    Project.db_name == db_name
                 )
-        )
+            )
             pdf_file_ids = pdf_file_ids.scalar_one_or_none()
     
     if pdf_file_ids is None:

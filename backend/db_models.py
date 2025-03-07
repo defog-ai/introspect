@@ -53,18 +53,20 @@ class Users(Base):
     created_at = Column(DateTime)
 
 
-# DATABASE DETAILS
-class DbCreds(Base):
+# PROJECT DETAILS
+class Project(Base):
     """
-    Table to store the database credentials for the user.
-    Each db_name is associated with a single user profile's database.
-    Note that db_name is an orthogonal concept to username/token.
+    Table to store the database credentials and other project details.
+    Each db_name is associated with a single project. Think of "db_name" as an alias for project name
     """
-
-    __tablename__ = "db_creds"
+    __tablename__ = "project"
     db_name = Column(Text, primary_key=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    project_description = Column(Text)
     db_type = Column(Text)
     db_creds = Column(JSON)
+    associated_files = Column(JSON) # this is a list of file_ids, links to PDFFiles.file_id
 
 
 class Metadata(Base):
@@ -167,21 +169,6 @@ class OracleReports(Base):
     general_comments = Column(Text, default=None)
     comments = Column(JSON, default=None)
     thinking_steps = Column(JSON, default=None) # this is a list of all tool inputs and outputs, including all non-SQL tools.
-    pdf_file_ids = Column(JSON, default=None) # list of int file_ids, links to PDFFiles.file_id
-
-
-class OracleSources(Base):
-    __tablename__ = "oracle_sources"
-    db_name = Column(Text, primary_key=True)
-    link = Column(Text, primary_key=True)
-    title = Column(Text)
-    position = Column(Integer)
-    source_type = Column(Text)
-    attributes = Column(Text)
-    snippet = Column(Text)
-    text_parsed = Column(Text)
-    text_summary = Column(Text)
-
 
 # CUSTOM TOOLS
 class CustomTools(Base):
