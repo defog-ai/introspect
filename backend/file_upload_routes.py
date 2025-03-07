@@ -18,7 +18,7 @@ from db_utils import get_db_info, get_db_type_creds
 import random
 import os
 import pandas as pd
-from utils_file_uploads import export_df_to_postgres, clean_table_name, ExcelUtils
+from utils_file_uploads import export_df_to_postgres, clean_table_name, ExcelUtils, CSVUtils
 from utils_md import set_metadata
 from db_utils import update_db_type_creds
 from sqlalchemy_utils import database_exists, create_database, drop_database
@@ -64,18 +64,13 @@ async def upload_files_as_db(files: list[DataFile]) -> DbDetails:
             # Convert array buffer to DataFrame
             if file_name.endswith(".csv"):
                 # For CSV files
-                df = pd.read_csv(io.StringIO(buffer.decode("utf-8")))
+                df = await CSVUtils.clean_csv_pd(buffer)
 
-                # Drop rows and columns that are all NaN
-                df = df.dropna(how="all")  # Drop rows where all values are NaN
-                df = df.dropna(
-                    axis=1, how="all"
-                )  # Drop columns where all values are NaN
-
-                LOGGER.info(
-                    f"After dropping NaN rows/columns: {df.shape[0]} rows, {df.shape[1]} columns"
-                )
-
+                # Further clean dataframe with OpenAI Code Interpreter if needed
+                # Dataframe will only be cleaned if it's detected as "dirty"
+                # The clean_csv_openai function handles this check internally
+                df = await CSVUtils.clean_csv_openai(file_name, df)
+                
                 table_name = clean_table_name(
                     re.sub(r"\.csv$", "", file_name), existing=tables.keys()
                 )
