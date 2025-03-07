@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from file_upload_routes import upload_files_as_db
-from request_models import DataFile, UserRequest
+from request_models import File, UserRequest
 from tool_code_utilities import fetch_query_into_df
 from query_data.data_fetching import data_fetcher_and_aggregator
 from query_data_models import (
@@ -276,7 +276,7 @@ class QueryDataClarifyRequest(BaseModel):
     token: str
     user_question: str
     clarification_guidelines: Optional[str] = None
-    data_files: Optional[List[DataFile]] = []
+    data_files: Optional[List[File]] = []
     previous_context: Optional[List[PreviousContextItem]] = []
 
     model_config = {

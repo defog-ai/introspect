@@ -11,7 +11,7 @@ from request_models import (
     DbDetails,
     UploadFileAsDBRequest,
     UploadMultipleFilesAsDBRequest,
-    DataFile,
+    File,
 )
 from utils_logging import LOGGER
 from db_utils import get_db_info, get_db_type_creds
@@ -40,9 +40,9 @@ INTERNAL_DB_CREDS = {
 }
 
 
-async def upload_files_as_db(files: list[DataFile]) -> DbDetails:
+async def upload_files_as_db(files: list[File]) -> DbDetails:
     """
-    Takes in a list of DataFiles, and the contents of each file as a base 64 string.
+    Takes in a list of Files, and the contents of each file as a base 64 string.
     We then create a database from the file contents, and
     return the db_name and db_info that is used to store this file.
     """
@@ -189,7 +189,7 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
     try:
         new_db = await upload_files_as_db(
             [
-                DataFile(
+                File(
                     file_name=file_name,
                     base64_content=base64_content,
                 )

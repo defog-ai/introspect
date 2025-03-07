@@ -226,7 +226,7 @@ class DbDetails(BaseModel):
     db_info: dict[str, Any]
 
 
-class DataFile(BaseModel):
+class File(BaseModel):
     file_name: str
     base64_content: str  # File as base 64 encoded string
 
@@ -236,7 +236,7 @@ class UploadMultipleFilesAsDBRequest(UserRequest):
     Request model for uploading multiple files as databases.
     """
 
-    files: list[DataFile]
+    files: list[File]
 
 
 class UploadFileAsDBRequest(UserRequest):
