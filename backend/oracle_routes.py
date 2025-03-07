@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import json
 import time
 from file_upload_routes import upload_files_as_db
-from request_models import DataFile
+from request_models import File
 from utils_oracle import (
     clarify_question,
     get_oracle_guidelines,
@@ -89,9 +89,24 @@ async def get_guidelines(req: GetGuidelinesRequest):
         return JSONResponse(content={"guidelines": getattr(result, column_name)})
 
 
-class PDFFile(BaseModel):
-    file_name: str
-    base64_content: str
+class UploadFilesRequest(BaseModel):
+    db_name: str
+    token: str
+    data_files: Optional[List[File]] = [] # these are data files, typically ending with .csv or .xlsx
+    pdf_files: Optional[List[File]] = []
+
+
+@router.post("/oracle/upload_files")
+async def upload_files(req: UploadFilesRequest):
+    db_name = req.db_name
+    
+    if len(req.data_files) > 0:
+        new_db = await upload_files_as_db(req.data_files)
+    if len(req.pdf_files) > 0:
+        pdf_file_ids = await upload_pdf_files(req.pdf_files)
+        await update_project_files(db_name, pdf_file_ids)
+
+    return JSONResponse(status_code=200, content={"message": "Success"})
 
 
 class ClarifyQuestionRequest(BaseModel):
@@ -99,8 +114,6 @@ class ClarifyQuestionRequest(BaseModel):
     token: str
     user_question: str
     clarification_guidelines: Optional[str] = None
-    pdf_files: Optional[List[PDFFile]] = []
-    data_files: Optional[List[DataFile]] = []
 
     model_config = {
         "json_schema_extra": {
@@ -145,19 +158,6 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
         else:
             guidelines = await get_oracle_guidelines(db_name)
 
-        pdf_file_ids = []
-        if len(req.pdf_files) > 0:
-            pdf_file_ids = await upload_pdf_files(req.pdf_files)
-            # update files in Project
-            await update_project_files(db_name, pdf_file_ids)
-
-        new_db = None
-        if len(req.data_files) > 0:
-            new_db = await upload_files_as_db(req.data_files)
-
-            # set the db name to this new db that was created
-            db_name = new_db.db_name
-
         clarify_response = await clarify_question(
             user_question=req.user_question,
             db_name=db_name,
@@ -165,10 +165,6 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
         )
 
         LOGGER.info(f"Clarify response: {clarify_response}")
-
-        if new_db:
-            clarify_response["new_db_name"] = new_db.db_name
-            clarify_response["new_db_info"] = new_db.db_info
 
         for clarification in clarify_response["clarifications"]:
             if (
