@@ -14,7 +14,6 @@ from db_utils import (
 )
 from db_config import redis_client
 from auth_utils import validate_user, validate_user_request
-from defog import Defog
 from defog.query import async_execute_query_once
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
@@ -61,6 +60,9 @@ async def update_db_creds(request: Request):
     db_creds = params.get("db_creds")
     for k in ["api_key", "db_type"]:
         if k in db_creds:
+            del db_creds[k]
+    for k in db_creds:
+        if db_creds[k] is None or db_creds[k] == "":
             del db_creds[k]
 
     if db_type == "bigquery":

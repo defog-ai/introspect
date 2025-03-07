@@ -5,7 +5,7 @@ import os
 import pandas as pd
 from auth_utils import validate_user_request
 from db_utils import get_db_info, get_db_type_creds
-from defog import Defog
+from defog import AsyncDefog as Defog
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from generic_utils import convert_nested_dict_to_list
@@ -119,8 +119,7 @@ async def generate_metadata(req: MetadataGenerateRequest):
     defog = Defog(api_key=db_name, db_type=db_type, db_creds=db_creds)
     LOGGER.info(f"Generated {len(tables)} tables: {tables}")
 
-    metadata_dict = await asyncio.to_thread(
-        defog.generate_db_schema,
+    metadata_dict = await defog.generate_db_schema(
         tables=tables,
         upload=False,
         scan=False,
