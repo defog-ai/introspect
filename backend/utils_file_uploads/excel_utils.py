@@ -61,6 +61,25 @@ class ExcelUtils:
                     df.iloc[row - 1, col - 1]
                 ):  # Adjust index for Pandas (0-based)
                     df.iloc[row - 1, col - 1] = value
+                    
+            # Define common NULL/NA string representations
+            null_values = [
+                "NULL", "null", 
+                "NA", "N/A", "n/a", "N.A.", "n.a.",
+                "-", "--", "---",
+                "#N/A", "#NA", "#NULL",
+                "NaN", "nan",
+                "None", "none",
+                "", " ", "  "
+            ]
+            
+            # Replace NULL string representations with NaN
+            df = df.replace(null_values, pd.NA)
+            
+            # Trim trailing whitespace from string columns
+            for col in df.columns:
+                if df[col].dtype == 'object':  # String columns in pandas are 'object' type
+                    df[col] = df[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
 
             # Remove rows that are empty
             df.dropna(inplace=True, how="all")
@@ -101,12 +120,12 @@ class ExcelUtils:
         return tables
 
     @staticmethod
-    async def is_excel_dirty(table_name: str, df: pd.DataFrame) -> bool:
+    async def is_table_dirty(table_name: str, df: pd.DataFrame) -> bool:
         """
         Checks if an Excel dataframe needs additional cleaning with OpenAI.
         Returns True if the dataframe appears to need cleaning.
         
-        Criteria for "dirty" Excel files:
+        Criteria for "dirty" Excel/CSV files:
         1. Headers/titles at the top that aren't part of the data
         2. Footnotes or notes at the bottom
         3. Rows where all values are the same (potential section headers)
@@ -169,29 +188,29 @@ class ExcelUtils:
             is_dirty = has_repeated_headers or has_footer_notes or has_section_headers or has_aggregate_rows or has_wide_format
             
             if is_dirty:
-                LOGGER.info(f"Excel sheet {table_name} requires further cleaning with OpenAI. Reasons: " +
+                LOGGER.info(f"Table {table_name} requires further cleaning with OpenAI. Reasons: " +
                            f"repeated headers: {has_repeated_headers}, " +
                            f"footer notes: {has_footer_notes}, " +
                            f"section headers: {has_section_headers}, " +
                            f"aggregate rows: {has_aggregate_rows}, " +
                            f"wide format: {has_wide_format}")
             else:
-                LOGGER.info(f"Excel sheet {table_name} is clean, skipping OpenAI cleaning")
+                LOGGER.info(f"Table {table_name} is clean, skipping OpenAI cleaning")
             
             return is_dirty
             
         except Exception as e:
-            LOGGER.error(f"Error checking if Excel is dirty: {e}")
-            # If we encounter an error during checking, default to cleaning
+            LOGGER.error(f"Error checking if table is dirty. Defaulting to further cleaning by OpenAI: {e}")
+            # If we encounter an error during checking, default to further cleaning
             return True
     
     @staticmethod
     async def clean_excel_openai(table_name: str, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Further cleans a dataframe (from an Excel sheet) using OpenAI's Code Interpreter. Dynamically generates and executes code to remove columns and rows that do not contribute to the data (e.g. headers and footnotes). Also if necessary, changes the dataframe from wide to long format that's suitable for PostgreSQL.
+        Further cleans a dataframe using OpenAI's Code Interpreter. Dynamically generates and executes code to remove columns and rows that do not contribute to the data (e.g. headers and footnotes). Also if necessary, changes the dataframe from wide to long format that's suitable for PostgreSQL.
         """
         # Check if the dataframe actually needs cleaning
-        needs_cleaning = await ExcelUtils.is_excel_dirty(table_name, df)
+        needs_cleaning = await ExcelUtils.is_table_dirty(table_name, df)
         if not needs_cleaning:
             return df
         
@@ -251,23 +270,23 @@ class ExcelUtils:
 
         # Run the code
         try:
-            LOGGER.info(f"Executing excel cleaning run on {table_name}")
+            LOGGER.info(f"Executing cleaning run on {table_name}")
             run = await client.beta.threads.runs.create_and_poll(
                 thread_id=thread.id,
                 assistant_id=assistant.id,
                 instructions=instructions,
             )
         except Exception as e:
-            LOGGER.error(f"Failed to create and poll excel cleaning run: {e}")
+            LOGGER.error(f"Failed to create and poll cleaning run: {e}")
             return df
 
         # Keep checking status of run
         if run.status == "completed":
-            LOGGER.info(f"Excel cleaning run on {table_name} completed")
+            LOGGER.info(f"Cleaning run on {table_name} completed")
             messages = await client.beta.threads.messages.list(thread_id=thread.id)
         else:
             LOGGER.error(
-                f"Excel cleaning run on {table_name} did not complete successfully. Run status: {run.status}"
+                f"Cleaning run on {table_name} did not complete successfully. Run status: {run.status}"
             )
             return df
 

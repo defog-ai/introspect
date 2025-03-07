@@ -22,7 +22,7 @@ class TestExcelCleaningOpenAI:
             [3, 'Item C', 15.25]
         ])
         
-        # Ensure cleaning is performed using the real is_excel_dirty function
+        # Ensure cleaning is performed using the real is_table_dirty function
         # Call the function with the real OpenAI client
         result = await ExcelUtils.clean_excel_openai("test_table", df)
         
@@ -41,8 +41,8 @@ class TestExcelCleaningOpenAI:
             'Price': [10.5, 20.75, 15.25, 30.00, 25.50]
         })
         
-        # Mock is_excel_dirty to return False to skip cleaning
-        with patch('utils_file_uploads.ExcelUtils.is_excel_dirty', return_value=False):
+        # Mock is_table_dirty to return False to skip cleaning
+        with patch('utils_file_uploads.ExcelUtils.is_table_dirty', return_value=False):
             # Call the function
             result = await ExcelUtils.clean_excel_openai("clean_table", clean_df)
             
@@ -123,8 +123,8 @@ class TestExcelCleaningOpenAI:
             created_temp_files.append(temp_file.name)
             return temp_file
         
-        # Mock is_excel_dirty to ensure cleaning is attempted
-        with patch('utils_file_uploads.ExcelUtils.is_excel_dirty', return_value=True), \
+        # Mock is_table_dirty to ensure cleaning is attempted
+        with patch('utils_file_uploads.ExcelUtils.is_table_dirty', return_value=True), \
              patch('tempfile.NamedTemporaryFile', side_effect=mock_named_temp_file):
             
             # Call the function that creates and should remove the temp file
@@ -173,14 +173,14 @@ class TestExcelCleaningOpenAI:
             'sheet3': sheet3_df
         }
         
-        # For deterministic testing, we'll mock is_excel_dirty
+        # For deterministic testing, we'll mock is_table_dirty
         # This way we control which sheets get cleaned
         async def mock_is_dirty(table_name, df):
             # Only sheets 1 and 3 need cleaning
             return table_name in ['sheet1', 'sheet3']
             
         # Create tasks for each table (similar to file_upload_routes.py)
-        with patch('utils_file_uploads.ExcelUtils.is_excel_dirty', side_effect=mock_is_dirty):
+        with patch('utils_file_uploads.ExcelUtils.is_table_dirty', side_effect=mock_is_dirty):
             tasks = []
             table_names = []
             for table_name, df in original_tables.items():

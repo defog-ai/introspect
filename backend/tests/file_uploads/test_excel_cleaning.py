@@ -233,8 +233,124 @@ class TestExcelCleaning:
         assert df.empty
         assert df.shape[0] == 0  # No rows
         
+    @pytest.fixture
+    def sample_excel_with_null_values(self):
+        """Create a sample Excel file with various null value representations."""
+        output = io.BytesIO()
+        wb = openpyxl.Workbook()
+        sheet = wb.active
+        sheet.title = "NullValues"
+        
+        # Create column headers
+        sheet['A1'] = 'ID'
+        sheet['B1'] = 'Name'
+        sheet['C1'] = 'Value'
+        sheet['D1'] = 'Status'
+        
+        # Add data with various null representations
+        data = [
+            [1, 'Item 1', 10.5, 'Active'],
+            [2, 'Item 2', 'NULL', 'N/A'],
+            ['N/A', 'Item 3', 30.5, 'Inactive'],
+            [4, 'Item 4', '-', 'Active'],
+            ['--', 'Item 5', 50.5, 'Pending'],
+        ]
+        
+        for row_idx, row_data in enumerate(data, start=2):
+            for col_idx, cell_value in enumerate(row_data, start=1):
+                sheet.cell(row=row_idx, column=col_idx, value=cell_value)
+        
+        # Save to BytesIO
+        wb.save(output)
+        output.seek(0)
+        return output
+        
+    @pytest.fixture
+    def sample_excel_with_trailing_spaces(self):
+        """Create a sample Excel file with trailing spaces in text fields."""
+        output = io.BytesIO()
+        wb = openpyxl.Workbook()
+        sheet = wb.active
+        sheet.title = "TrailingSpaces"
+        
+        # Create column headers
+        sheet['A1'] = 'ID'
+        sheet['B1'] = 'Name'
+        sheet['C1'] = 'Value'
+        sheet['D1'] = 'Category'
+        
+        # Add data with trailing spaces
+        data = [
+            [1, 'Product A  ', 10.5, 'Electronics  '],
+            [2, 'Product B', 20.5, '  Office Supplies'],
+            [3, 'Product C   ', 30.5, 'Furniture'],
+        ]
+        
+        for row_idx, row_data in enumerate(data, start=2):
+            for col_idx, cell_value in enumerate(row_data, start=1):
+                sheet.cell(row=row_idx, column=col_idx, value=cell_value)
+        
+        # Save to BytesIO
+        wb.save(output)
+        output.seek(0)
+        return output
+        
     @pytest.mark.asyncio
-    async def test_is_excel_dirty_clean(self):
+    async def test_clean_excel_pd_null_values(self, sample_excel_with_null_values):
+        """Test cleaning Excel with various NULL value representations."""
+        # Process the excel file
+        result = await ExcelUtils.clean_excel_pd(sample_excel_with_null_values)
+        
+        # Get the sheet data
+        sheet_name = next(iter(result))
+        df = result[sheet_name]
+        
+        # Check the dimensions
+        assert len(df) == 6  # Header + 5 data rows
+        assert df.shape[1] == 4
+        
+        # The NULL values should have been replaced with empty strings
+        # Check specific cells (remember to account for header row)
+        assert df.iloc[2, 2] == ""  # Value column, row 2 (NULL)
+        assert df.iloc[2, 3] == ""  # Status column, row 2 (N/A)
+        assert df.iloc[3, 0] == ""  # ID column, row 3 (N/A)
+        assert df.iloc[4, 2] == ""  # Value column, row 4 (-)
+        assert df.iloc[5, 0] == ""  # ID column, row 5 (--)
+        
+        # Non-null values should be preserved
+        assert df.iloc[1, 0] == 1
+        assert df.iloc[1, 1] == "Item 1"
+        assert df.iloc[1, 2] == 10.5 # Note that the type remains as float since reading it with openpyxl preserves the type and different cells in the same column may have different types
+        assert df.iloc[1, 3] == "Active"
+        
+    @pytest.mark.asyncio
+    async def test_clean_excel_pd_trailing_spaces(self, sample_excel_with_trailing_spaces):
+        """Test cleaning Excel with trailing spaces in text fields."""
+        # Process the excel file
+        result = await ExcelUtils.clean_excel_pd(sample_excel_with_trailing_spaces)
+        
+        # Get the sheet data
+        sheet_name = next(iter(result))
+        df = result[sheet_name]
+        
+        # Check dimensions
+        assert len(df) == 4  # Header + 3 data rows
+        assert df.shape[1] == 4
+        
+        # Check that trailing spaces were removed from text values
+        # Add 1 to account for header row
+        assert df.iloc[1, 1] == "Product A"  # Was "Product A  "
+        assert df.iloc[1, 3] == "Electronics"  # Was "Electronics  "
+        assert df.iloc[2, 3] == "Office Supplies"  # Was "  Office Supplies"
+        assert df.iloc[3, 1] == "Product C"  # Was "Product C   "
+        
+        # Number values should remain unchanged
+        assert df.iloc[1, 2] == 10.5
+        assert df.iloc[2, 2] == 20.5
+        assert df.iloc[3, 2] == 30.5
+        
+    @pytest.mark.asyncio
+    async def test_is_table_dirty_clean(self):
         """Test detecting clean Excel data that doesn't need OpenAI cleaning."""
         # Create a simple clean dataframe
         df = pd.DataFrame({
@@ -244,13 +360,13 @@ class TestExcelCleaning:
         })
         
         # Check if the dataframe is dirty
-        is_dirty = await ExcelUtils.is_excel_dirty("clean_table", df)
+        is_dirty = await ExcelUtils.is_table_dirty("clean_table", df)
         
         # Should be clean
         assert not is_dirty
         
     @pytest.mark.asyncio
-    async def test_is_excel_dirty_with_headers(self):
+    async def test_is_table_dirty_with_headers(self):
         """Test detecting Excel data with repeated headers that need cleaning."""
         # Create a dataframe with repeated headers
         df = pd.DataFrame([
@@ -263,13 +379,13 @@ class TestExcelCleaning:
         ])
         
         # Check if the dataframe is dirty
-        is_dirty = await ExcelUtils.is_excel_dirty("header_table", df)
+        is_dirty = await ExcelUtils.is_table_dirty("header_table", df)
         
         # Should be dirty due to repeated headers
         assert is_dirty
         
     @pytest.mark.asyncio
-    async def test_is_excel_dirty_with_footers(self):
+    async def test_is_table_dirty_with_footers(self):
         """Test detecting Excel data with footer notes that need cleaning."""
         # Create a dataframe with footer notes
         df = pd.DataFrame([
@@ -282,13 +398,13 @@ class TestExcelCleaning:
         ])
         
         # Check if the dataframe is dirty
-        is_dirty = await ExcelUtils.is_excel_dirty("footer_table", df)
+        is_dirty = await ExcelUtils.is_table_dirty("footer_table", df)
         
         # Should be dirty due to footer notes
         assert is_dirty
         
     @pytest.mark.asyncio
-    async def test_is_excel_dirty_with_totals(self):
+    async def test_is_table_dirty_with_totals(self):
         """Test detecting Excel data with aggregate statistics that need cleaning."""
         # Create a dataframe with totals
         df = pd.DataFrame([
@@ -300,13 +416,13 @@ class TestExcelCleaning:
         ])
         
         # Check if the dataframe is dirty
-        is_dirty = await ExcelUtils.is_excel_dirty("totals_table", df)
+        is_dirty = await ExcelUtils.is_table_dirty("totals_table", df)
         
         # Should be dirty due to totals
         assert is_dirty
         
     @pytest.mark.asyncio
-    async def test_is_excel_dirty_wide_format(self):
+    async def test_is_table_dirty_wide_format(self):
         """Test detecting Excel data in wide format that needs cleaning."""
         # Create a dataframe in wide format
         df = pd.DataFrame({
@@ -322,7 +438,7 @@ class TestExcelCleaning:
         })
         
         # Check if the dataframe is dirty
-        is_dirty = await ExcelUtils.is_excel_dirty("wide_format_table", df)
+        is_dirty = await ExcelUtils.is_table_dirty("wide_format_table", df)
         
         # Should be dirty due to wide format
         assert is_dirty
