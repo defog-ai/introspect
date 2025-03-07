@@ -12,6 +12,7 @@ import { DbInfo, DbType, DbCreds } from "$utils/utils";
 
 const dbCredOptions: { [dbType in DbType]: Array<keyof DbCreds[dbType]> } = {
   postgres: ["host", "port", "user", "password", "database"],
+  mysql: ["host", "user", "password", "database"],
   redshift: ["host", "port", "user", "password", "database", "schema"],
   snowflake: ["account", "warehouse", "user", "password"],
   databricks: ["server_hostname", "access_token", "http_path", "schema"],
@@ -56,6 +57,7 @@ const DbCredentialsForm = ({
 
   const dbOptions = [
     { value: "postgres", label: "PostgreSQL" },
+    { value: "mysql", label: "MySQL" },
     { value: "redshift", label: "Amazon Redshift" },
     { value: "snowflake", label: "Snowflake" },
     { value: "databricks", label: "Databricks" },

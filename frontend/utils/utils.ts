@@ -94,12 +94,19 @@ export type DbType =
   | "snowflake"
   | "databricks"
   | "bigquery"
-  | "sqlserver";
+  | "sqlserver"
+  | "mysql";
 
 export interface DbCreds {
   postgres: {
     host: string;
     port: string;
+    user: string;
+    password: string;
+    database: string;
+  };
+  mysql: {
+    host: string;
     user: string;
     password: string;
     database: string;
