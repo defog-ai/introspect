@@ -16,11 +16,11 @@ redis
 requests
 resend
 slack_sdk
-sqlalchemy
 sqlalchemy[asyncio]
 sqlalchemy-utils
 sqlglot
 sqlparse
+uvloop
 
 # sync db connectors
 databricks-sql-connector
