@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 from enum import Enum
 
 from sqlalchemy import select
@@ -14,10 +14,10 @@ from utils_oracle import (
     post_tool_call_func,
     get_project_pdf_files,
 )
-from db_models import OracleGuidelines
+from db_models import OracleGuidelines, OracleReports
 from db_config import engine
 from auth_utils import validate_user_request
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from functools import partial
@@ -112,10 +112,11 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
     list of clarifications.
 
     The response contains the following fields:
-        clarifications: list[dict[str, str]] Each clarification dictionary will contain:
-            - clarification: str
-            - input_type: str (one of single_choice, multiple_choice, number, text)
-            - options: list[str]
+    - report_id: int (A new report id will be created and returned here)
+    - clarifications: list[dict[str, str]] Each clarification dictionary will contain:
+        - clarification: str
+        - input_type: str (one of single_choice, multiple_choice, number, text)
+        - options: list[str]
     """
 
     ts, timings = time.time(), []
@@ -194,11 +195,31 @@ class GenerateReportRequest(BaseModel):
 
 @router.post("/oracle/generate_report")
 async def generate_report(req: GenerateReportRequest):
+    """
+    Given a report id, this endpoint will generate a report.
+
+    The response contains the following fields:
+    - mdx: str
+    - sql_answers: list[dict[str, Any]]
+    """
     db_name = req.db_name
     user_question = req.user_question
     clarifications = req.clarifications
     report_id = req.report_id
 
+    # Check if the report exists
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            stmt = select(OracleReports).where(
+                OracleReports.db_name == db_name,
+                OracleReports.report_id == report_id,
+            )
+            result = await session.execute(stmt)
+            report = result.scalar_one_or_none()
+            
+            if not report:
+                return JSONResponse(status_code=404, content={"error": f"Report with ID {report_id} not found"})
+    
     # convert clarification responses into a single string
     clarification_responses = ""
     if clarifications:
