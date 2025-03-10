@@ -134,11 +134,16 @@ class ExcelUtils:
         """
         if df.empty or len(df) < 3:
             return False
-            
+        
+        # this is a threshold for header checks
+        HEADERS_CHECK_THRESHOLD = 20
         try:
             # Check for potential header/title rows at the top
             # Headers often have merged cells shown as the same value repeated
-            head_rows = df.head(3)
+            # if there are more than 10 rows, check the first 3 rows
+            # else just check the first row
+            # not the most logical of ifs but prevents unnecessary checks in really small csvs (restaurants is a good example)
+            head_rows = df.head(3 if len(df) > HEADERS_CHECK_THRESHOLD else 1)
             has_repeated_headers = head_rows.apply(
                 lambda row: len(set(row.astype(str))) < len(row) * 0.5, axis=1
             ).any()
@@ -159,30 +164,109 @@ class ExcelUtils:
                     break
             
             # Check for rows where all non-null values are the same (section headers)
-            same_value_rows = df[df.apply(
-                lambda row: len(set(row.dropna())) == 1 and len(row.dropna()) > 1, axis=1
-            )]
-            has_section_headers = not same_value_rows.empty
+            if len(df) > HEADERS_CHECK_THRESHOLD:
+                same_value_rows = df[df.apply(
+                    lambda row: len(set(row.dropna())) == 1 and len(row.dropna()) > 1, axis=1
+                )]
+                has_section_headers = not same_value_rows.empty
+            else:
+                has_section_headers = False
             
             # Check for aggregate statistics rows (containing "total", "sum", etc.)
             has_aggregate_rows = False
-            for _, row in df.iterrows():
-                row_str = " ".join([str(x).lower() for x in row])
-                if any(agg in row_str for agg in ["total", "sum", "subtotal", "average", "mean"]):
-                    has_aggregate_rows = True
-                    break
+            if len(df) > HEADERS_CHECK_THRESHOLD:
+                # Pre-compute columns to check
+                # we only check the first and last three columns
+                num_cols = len(df.columns)
+                # Handle cases with fewer than 6 columns
+                if num_cols <= 6:
+                    # If fewer than 6 columns, just check all columns
+                    columns_to_check = list(range(num_cols))
+                else:
+                    # Otherwise check first and last three
+                    columns_to_check = [0, 1, 2, num_cols - 3, num_cols - 2, num_cols - 1]
+                
+                agg_words = ["total", "sum", "subtotal", "average", "mean"]
+                
+                # Filter to only the columns we need to check
+                subset_df = df.iloc[:, columns_to_check]
+                
+                # Convert all values to lowercase strings
+                subset_df = subset_df.astype(str).apply(lambda x: x.str.lower())
+                
+                # Check if any cell exactly matches one of the aggregate words
+                # This creates a DataFrame of boolean values where True means a match
+                matches = subset_df.isin(agg_words)
+                
+                # Check if any row has at least one match
+                has_aggregate_rows = matches.any(axis=1).any()
             
             # Check if it's in wide format (many columns with similar naming patterns)
             # Wide format often has repeated column name patterns
-            col_names = [str(col).lower() for col in df.columns]
-            repeated_patterns = []
+            col_names = df.columns
+            def detect_repeating_pattern(str1, str2):
+                # Convert to lowercase for comparison
+                str1, str2 = str1.lower(), str2.lower()
+                
+                # To avoid false positives like 'average' and 'regionalaveragerecord',
+                # require a common prefix at the start that's significant
+                
+                # Find common prefix
+                common_prefix_len = 0
+                common_prefix = ""
+                for a, b in zip(str1, str2):
+                    if a == b:
+                        common_prefix += a
+                        common_prefix_len += 1
+                    else:
+                        break
+                
+
+                if common_prefix_len == 0:
+                    return False, None
+
+                
+                # Now check if only the ending parts differ
+                suffix1 = str1[common_prefix_len:]
+                suffix2 = str2[common_prefix_len:]
+                
+                # print(str1, str2, common_prefix, suffix1, suffix2, common_prefix_len)
+                # Full column names should be similar (we want 'sales2020', 'sales2021', not 'sales', 'salesreport')
+                if abs(len(str1) - len(str2)) > 3:
+                    return False, common_prefix
+                
+                # If both suffixes are numeric, they could be sequential (like years)
+                # just return true without putting any condition on the suffixes
+                if suffix1.isdigit() and suffix2.isdigit():
+                    return True, common_prefix
+                
+                # For non-numeric suffixes, only allow small variations at the end
+                # Ensure the variation is small relative to the overall string length
+                return len(suffix1) <= 3 and len(suffix2) <= 3, common_prefix
+
+            prefixes = {}
+
             for i in range(len(col_names)):
                 for j in range(i+1, len(col_names)):
-                    # Check if columns follow patterns like "X 2020", "X 2021" or "Q1 X", "Q2 X"
-                    pattern = re.findall(r'[a-z]+', col_names[i])
-                    if pattern and any(p in col_names[j] for p in pattern):
-                        repeated_patterns.append((col_names[i], col_names[j]))
-            has_wide_format = len(repeated_patterns) > len(df.columns) * 0.3
+                    # Enhanced check for repeating patterns with small variations
+                    # like "1991", "1992", "1993" or "Jan-22", "Feb-22", "Mar-22"
+                    is_repeating, common_prefix = detect_repeating_pattern(col_names[i], col_names[j])
+                    
+                    if is_repeating:
+                        if common_prefix not in prefixes:
+                            prefixes[common_prefix] = set()
+                        prefixes[common_prefix].add(col_names[i])
+                        prefixes[common_prefix].add(col_names[j])
+
+
+            # if prefix has keys, and all keys have more than 2 columns
+            # then wide format is True
+            has_wide_format = False
+            for key in prefixes.keys():
+                if len(prefixes[key]) > 2:
+                    LOGGER.info(f"Prefixes found that qualify this db for wide format: {prefixes}")
+                    has_wide_format = True
+                    break
             
             # Return True if any of the criteria are met
             is_dirty = has_repeated_headers or has_footer_notes or has_section_headers or has_aggregate_rows or has_wide_format
