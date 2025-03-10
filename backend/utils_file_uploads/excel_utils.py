@@ -340,5 +340,6 @@ class ExcelUtils:
             * LLM_COSTS_PER_TOKEN[model]["cached_input_cost_per1k"]
         )
         cost *= 100
+        cost += 3 # cost of code interpreter session
         LOGGER.info(f"Run cost in cents: {cost}")
         return df
