@@ -533,96 +533,160 @@ async def generate_sql_query(
     """
     t_start, timings = time.time(), []
 
+    if not question or not question.strip():
+        return {"sql": None, "error": "Question cannot be empty"}
+    
+    if not db_name and not db_type:
+        return {"sql": None, "error": "Either db_name or db_type must be provided"}
+
     using_db_metadata = metadata is None or len(metadata) == 0
 
-    if not db_type:
-        db_type, _ = await get_db_type_creds(db_name)
-        t_start = save_timing(t_start, "Retrieved db type", timings)
+    try:
+        if not db_type:
+            db_creds_result = await get_db_type_creds(db_name)
+            if not db_creds_result:
+                return {"sql": None, "error": f"Database '{db_name}' not found or credentials not configured"}
+            db_type, _ = db_creds_result
+            t_start = save_timing(t_start, "Retrieved db type", timings)
+    except Exception as e:
+        LOGGER.error(f"Error retrieving database credentials: {str(e)}")
+        return {"sql": None, "error": f"Failed to retrieve database credentials: {str(e)}"}
 
-    if using_db_metadata:
-        metadata = await get_metadata(db_name)
-        t_start = save_timing(t_start, "Retrieved metadata", timings)
-
-    if not table_descriptions:
-        table_descriptions = await get_all_table_descriptions(db_name)
-        t_start = save_timing(t_start, "Retrieved table descriptions", timings)
-        LOGGER.info(f"Table descriptions: {table_descriptions}")
-    if not instructions:
+    try:
         if using_db_metadata:
-            instructions = await get_instructions(db_name)
-            t_start = save_timing(t_start, "Retrieved instructions", timings)
+            metadata = await get_metadata(db_name)
+            if not metadata:
+                return {"sql": None, "error": f"No metadata found for database '{db_name}'"}
+            t_start = save_timing(t_start, "Retrieved metadata", timings)
+    except Exception as e:
+        LOGGER.error(f"Error retrieving metadata: {str(e)}")
+        return {"sql": None, "error": f"Failed to retrieve metadata: {str(e)}"}
+
+    try:
+        if not table_descriptions:
+            table_descriptions = await get_all_table_descriptions(db_name)
+            t_start = save_timing(t_start, "Retrieved table descriptions", timings)
+            LOGGER.info(f"Table descriptions: {table_descriptions}")
+    except Exception as e:
+        LOGGER.error(f"Error retrieving table descriptions: {str(e)}")
+        return {"sql": None, "error": f"Failed to retrieve table descriptions: {str(e)}"}
+
+    try:
+        if not instructions:
+            if using_db_metadata:
+                instructions = await get_instructions(db_name)
+                t_start = save_timing(t_start, "Retrieved instructions", timings)
+    except Exception as e:
+        LOGGER.error(f"Error retrieving instructions: {str(e)}")
+        instructions = ""
+        # Continue without instructions
 
     golden_queries_prompt = ""
 
     if using_db_metadata:
-        question_embedding = await get_embedding(question)
-        t_start = save_timing(t_start, "Embedded question", timings)
+        try:
+            question_embedding = await get_embedding(question)
+            t_start = save_timing(t_start, "Embedded question", timings)
+        except Exception as e:
+            LOGGER.error(f"Error generating question embedding: {str(e)}")
+            return {"sql": None, "error": f"Failed to generate embedding for question: {str(e)}"}
 
-        golden_queries = await get_closest_golden_queries(
-            db_name=db_name,
-            question_embedding=question_embedding,
-            num_queries=num_golden_queries,
-        )
-        t_start = save_timing(t_start, "Retrieved golden queries", timings)
-
-        for i, golden_query in enumerate(golden_queries):
-            golden_queries_prompt += f"Example question {i+1}: {golden_query.question}\nExample query {i+1}:\n```sql\n{golden_query.sql}\n```\n\n"
-
-        if golden_queries_prompt != "":
-            golden_queries_prompt = (
-                "The following are some potentially relevant questions and their corresponding SQL queries:\n\n"
-                + golden_queries_prompt
+        try:
+            golden_queries = await get_closest_golden_queries(
+                db_name=db_name,
+                question_embedding=question_embedding,
+                num_queries=num_golden_queries,
             )
+            t_start = save_timing(t_start, "Retrieved golden queries", timings)
 
-    combined_metadata_ddl = mk_create_ddl(metadata, table_descriptions)
-    t_start = save_timing(t_start, "Created metadata DDL", timings)
+            for i, golden_query in enumerate(golden_queries):
+                golden_queries_prompt += f"Example question {i+1}: {golden_query.question}\nExample query {i+1}:\n```sql\n{golden_query.sql}\n```\n\n"
 
-    messages = get_messages(
-        db_type=db_type,
-        date_today=datetime.now().strftime("%Y-%m-%d"),
-        instructions=instructions,
-        user_question=question,
-        table_metadata_ddl=combined_metadata_ddl,
-        system_prompt=GENERATE_SQL_SYSTEM_PROMPT,
-        user_prompt=GENERATE_SQL_USER_PROMPT,
-        previous_context=previous_context,
-        golden_queries_prompt=golden_queries_prompt,
-    )
+            if golden_queries_prompt != "":
+                golden_queries_prompt = (
+                    "The following are some potentially relevant questions and their corresponding SQL queries:\n\n"
+                    + golden_queries_prompt
+                )
+        except Exception as e:
+            LOGGER.warning(f"Error retrieving golden queries: {str(e)}")
+            # Continue without golden queries
 
-    query = await chat_async(
-        model=model_name,
-        messages=messages,
-        # if model_name is a reasoning model, the temperature param will automatically be deleted in the request
-        # else, we want to use temperature=0
-        temperature=0.0,
-        # for reasoning models, we want to use low reasoning effort
-        # for non-reasoning models, this param will be ignored
-        reasoning_effort="low",
-    )
+    try:
+        combined_metadata_ddl = mk_create_ddl(metadata, table_descriptions)
+        t_start = save_timing(t_start, "Created metadata DDL", timings)
+    except Exception as e:
+        LOGGER.error(f"Error creating metadata DDL: {str(e)}")
+        return {"sql": None, "error": f"Failed to create metadata DDL: {str(e)}"}
 
-    LOGGER.info(
-        "latency of query generation in seconds: " + "{:.2f}".format(query.time) + "s"
-    )
-    LOGGER.info("cost of query in cents: " + "{:.2f}".format(query.cost_in_cents) + "¢")
+    try:
+        messages = get_messages(
+            db_type=db_type,
+            date_today=datetime.now().strftime("%Y-%m-%d"),
+            instructions=instructions,
+            user_question=question,
+            table_metadata_ddl=combined_metadata_ddl,
+            system_prompt=GENERATE_SQL_SYSTEM_PROMPT,
+            user_prompt=GENERATE_SQL_USER_PROMPT,
+            previous_context=previous_context,
+            golden_queries_prompt=golden_queries_prompt,
+        )
+    except Exception as e:
+        LOGGER.error(f"Error formatting messages: {str(e)}")
+        return {"sql": None, "error": f"Failed to format messages: {str(e)}"}
 
-    sql_generated = query.content
-    sql_generated = (
-        sql_generated.split("```sql", 1)[-1].split(";", 1)[0].replace("```", "").strip()
-    )
-    sql_generated = add_hard_filters(sql_generated, hard_filters)
-    sql_generated = clean_generated_query(sql_generated)
+    try:
+        query = await chat_async(
+            model=model_name,
+            messages=messages,
+            # if model_name is a reasoning model, the temperature param will automatically be deleted in the request
+            # else, we want to use temperature=0
+            temperature=0.0,
+            # for reasoning models, we want to use low reasoning effort
+            # for non-reasoning models, this param will be ignored
+            reasoning_effort="low",
+        )
+
+        LOGGER.info(
+            "latency of query generation in seconds: " + "{:.2f}".format(query.time) + "s"
+        )
+        LOGGER.info("cost of query in cents: " + "{:.2f}".format(query.cost_in_cents) + "¢")
+    except Exception as e:
+        LOGGER.error(f"Error generating query with LLM: {str(e)}")
+        return {"sql": None, "error": f"Failed to generate SQL query with LLM: {str(e)}"}
+
+    try:
+        sql_generated = query.content
+        sql_generated = (
+            sql_generated.split("```sql", 1)[-1].split(";", 1)[0].replace("```", "").strip()
+        )
+    except Exception as e:
+        LOGGER.error(f"Error extracting SQL from LLM response: {str(e)}")
+        return {"sql": None, "error": f"Failed to extract SQL from LLM response: {str(e)}"}
+
+    try:
+        sql_generated = add_hard_filters(sql_generated, hard_filters)
+    except Exception as e:
+        LOGGER.error(f"Error adding hard filters: {str(e)}")
+        return {"sql": None, "error": f"Failed to add hard filters to SQL: {str(e)}"}
+
+    try:
+        sql_generated = clean_generated_query(sql_generated)
+    except Exception as e:
+        LOGGER.error(f"Error cleaning generated query: {str(e)}")
+        return {"sql": None, "error": f"Failed to clean generated SQL: {str(e)}"}
 
     log_timings(timings)
 
-    if not safe_sql(sql_generated):
-        LOGGER.error("Unsafe SQL query")
-        LOGGER.info(sql_generated)
-        response = {"sql": None, "error": "Unsafe SQL query"}
-    else:
-        response = {"sql": sql_generated, "error": None}
-
-    return response
-
+    try:
+        if not safe_sql(sql_generated):
+            LOGGER.error(f"Unsafe SQL query: {sql_generated}")
+            error_msg = "Unsafe SQL query"
+            return {"sql": None, "error": error_msg}
+        else:
+            return {"sql": sql_generated, "error": None}
+    except Exception as e:
+        LOGGER.error(f"Error validating SQL safety: {str(e)}")
+        return {"sql": None, "error": f"Failed to validate SQL safety: {str(e)}"}
 
 async def retry_query_after_error(
     question: str,

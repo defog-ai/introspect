@@ -36,13 +36,12 @@ async def text_to_sql_tool(
 
     LOGGER.info(f"Question to answer from database ({db_name}):\n{question}\n")
 
-    try:
-        sql_response = await generate_sql_query(
-            question=question,
-            db_name=db_name,
-        )
-    except Exception as e:
-        error_msg = f"Error generating SQL: {e}. Rephrase the question by incorporating specific details of the error to address it."
+    sql_response = await generate_sql_query(
+        question=question,
+        db_name=db_name,
+    )
+    if sql_response.get("error"):
+        error_msg = f"Error generating SQL: {sql_response['error']}."
         LOGGER.error(error_msg)
         return AnswerQuestionFromDatabaseOutput(question=question, error=error_msg)
     sql = sql_response["sql"]
@@ -73,18 +72,22 @@ async def text_to_sql_tool(
             + f" Aggregate or limit the data appropriately or place the data in meaningful buckets such that the result is within a reasonable size (max {max_rows_displayed} rows) and useful for analysis."
         )
 
-        try:
-            agg_sql_response = await generate_sql_query(
-                question=agg_question,
-                db_name=db_name,
-            )
-        except Exception as e:
-            error_msg = f"Error generating aggregate SQL: {e}. Rephrase the question by incorporating specific details of the error to address it."
+        agg_sql_response = await generate_sql_query(
+            question=agg_question,
+            db_name=db_name,
+        )
+        if agg_sql_response.get("error"):
+            error_msg = f"Error generating aggregate SQL: {agg_sql_response['error']}."
             LOGGER.error(error_msg)
             return AnswerQuestionFromDatabaseOutput(question=question, error=error_msg)
         agg_sql = agg_sql_response["sql"]
 
-        db_type, db_creds = await get_db_type_creds(db_name)
+        res = await get_db_type_creds(db_name)
+        if not res:
+            error_msg = f"Database '{db_name}' not found. Check if the database name is correct or if credentials have been configured."
+            LOGGER.error(error_msg)
+            return AnswerQuestionFromDatabaseOutput(question=question, sql=agg_sql, error=error_msg)
+        db_type, db_creds = res
         try:
             colnames, rows = await async_execute_query_once(
                 db_type=db_type, db_creds=db_creds, query=agg_sql

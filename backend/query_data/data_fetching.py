@@ -41,7 +41,10 @@ async def data_fetcher_and_aggregator(
         if question == "" or question is None:
             raise ValueError("Question cannot be empty")
 
-        db_type, _ = await get_db_type_creds(db_name)
+        db_creds_result = await get_db_type_creds(db_name)
+        if not db_creds_result:
+            raise ValueError(f"Database '{db_name}' not found or credentials not configured")
+        db_type, db_creds = db_creds_result
         err = None
 
         print(f"Previous context: {previous_context}", flush=True)
