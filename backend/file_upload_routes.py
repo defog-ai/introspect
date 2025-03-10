@@ -44,12 +44,13 @@ async def upload_files_as_db(files, db_name: str | None = None) -> DbDetails:
     """
     if db_name is None:
         cleaned_db_name = clean_table_name(files[0].filename)
-        db_exists = await get_db_type_creds(cleaned_db_name)
-        if db_exists:
-            # add a random 3 digit integer to the end of the file name
-            cleaned_db_name = f"{cleaned_db_name}_{random.randint(1, 9999)}"
     else:
         cleaned_db_name = db_name
+
+    db_exists = await get_db_type_creds(cleaned_db_name)
+    if db_exists:
+        # add a random 3 digit integer to the end of the file name
+        cleaned_db_name = f"{cleaned_db_name}_{random.randint(1, 9999)}"
 
     tables = {}
 
