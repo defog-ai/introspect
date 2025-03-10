@@ -9,6 +9,7 @@ from utils_logging import LOGGER
 from typing import Literal, Any
 from datetime import datetime
 from sqlalchemy.orm.attributes import flag_modified
+import base64
 
 
 # read in prompts
@@ -217,10 +218,12 @@ async def upload_pdf_files(pdf_files: list) -> list[int]:
     async with AsyncSession(engine) as session:
         async with session.begin():
             for pdf_file in pdf_files:
+                file_content = await pdf_file.read()
+                encoded_content = base64.b64encode(file_content).decode('utf-8')
                 pdf_file_id = await session.execute(
                     insert(PDFFiles).values(
-                        file_name=pdf_file.file_name,
-                        base64_data=pdf_file.base64_content
+                        file_name=pdf_file.filename,
+                        base64_data=encoded_content
                     ).returning(PDFFiles.file_id)
                 )
                 pdf_file_id = pdf_file_id.scalar_one()
