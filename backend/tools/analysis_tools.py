@@ -17,8 +17,7 @@ from defog.llm.utils import chat_async
 from defog.query import async_execute_query_once
 import uuid
 from typing import Any, Callable
-from google import genai
-from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
+from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 from utils_oracle import get_pdf_content
 
@@ -140,41 +139,37 @@ async def web_search_tool(
     """
     LOGGER.info(f"Web search tool called with question: {input.question}")
     
-    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-    google_search_tool = Tool(
-        google_search = GoogleSearch()
-    )
-    
+    client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     try:
-        response = await client.aio.models.generate_content(
-            model="gemini-2.0-flash",
-            config=GenerateContentConfig(
-                tools=[google_search_tool],
-                response_modalities=["TEXT"],
-            ),
-            contents=input.question + "\nNote: you must **always** use the google search tool to answer questions - no exceptions.",
+        response = await client.chat.completions.create(
+            model="gpt-4o-search-preview",
+            web_search_options={
+                "search_context_size": "high",
+            },
+            messages=[
+                {"role": "user", "content": input.question},
+            ],
         )
         
-        LOGGER.info(f"Received response from Gemini API")
+        LOGGER.info(f"Received response from OpenAI API")
         
+        message = response.choices[0].message
         # Handle the case where grounding_chunks might be None
         sources = []
-        if response.candidates:
-            for candidate in response.candidates:
-                if candidate.grounding_metadata and candidate.grounding_metadata.grounding_chunks:
-                    for chunk in candidate.grounding_metadata.grounding_chunks:
-                        sources.append({
-                            "source": chunk.web.title,
-                            "url": chunk.web.uri
-                        })
+        for annotation in message.annotations:
+            if annotation.type == "url_citation":
+                sources.append({
+                    "source": annotation.url_citation.title,
+                    "url": annotation.url_citation.url
+                })
         return {
-            "answer": response.text,
+            "answer": message.content,
             "reference_sources": sources
         }
     except Exception as e:
-        LOGGER.error(f"Error calling Gemini API: {e}")
+        LOGGER.error(f"Error calling OpenAI API: {e}")
         return {
-            "answer": "Error calling Gemini API",
+            "answer": "Error calling OpenAI API",
             "error": str(e),
             "reference_sources": []
         }
