@@ -33,7 +33,8 @@ We use a simple AI agent with tool use. An LLM attempts to answer a user questio
 
 The model then recursively asks questions using one of these tools until it is satisfied that it has enough context to answer the users question. By default, we use `o3-mini` for text to SQL, `gemini-2.0-flash` for web search, and `claude-3-7-sonnet` for both PDF analysis and orchestration.
 
-<img width="730" alt="image" src="https://github.com/user-attachments/assets/32fd8573-7428-4b6a-8bdb-f033c49d9a5c" />
+<img width="730" alt="image" src="https://github.com/user-attachments/assets/1b719e12-e4ea-4e85-82ee-5ac09f07f27a" />
+
 
 
 
