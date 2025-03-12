@@ -194,9 +194,17 @@ export const FILE_TYPES = {
   CSV: "text/csv",
 };
 
+export const PDF_FILE_TYPE = { PDF: "application/pdf" };
+
 /**
  * Simple function to check if given gile type exists in the FILE_TYPES object
  */
-export function isValidFileType(fileType: string) {
-  return Object.values(FILE_TYPES).find((f) => f === fileType);
+export function isValidFileType(fileType: string, includePdf = false) {
+  if (!includePdf) {
+    return Object.values(FILE_TYPES).includes(fileType);
+  } else {
+    return Object.values({ ...FILE_TYPES, ...PDF_FILE_TYPE }).includes(
+      fileType
+    );
+  }
 }
