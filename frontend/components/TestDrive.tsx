@@ -74,7 +74,7 @@ export function TestDrive({
 
   return !loading && !error && initialTrees ? (
     <QueryDataEmbed
-      initialDbList={dbs}
+      initialProjectList={dbs}
       hiddenCharts={["boxplot", "histogram"]}
       token={token}
       searchBarDraggable={false}

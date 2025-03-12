@@ -8,7 +8,7 @@ import {
 import { useContext, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
-export function DbUpload({
+export function ProjectCreationViaFiles({
   uploadFiles = () => {},
   fileUploading,
 }: {
@@ -22,7 +22,7 @@ export function DbUpload({
     <div className="h-96 relative">
       <DropFiles
         disabled={fileUploading}
-        acceptedFileTypes={[".csv", ".xls", ".xlsx"]}
+        acceptedFileTypes={[".csv", ".xls", ".xlsx", ".pdf"]}
         showIcon={true}
         allowMultiple={true}
         selectedFiles={selectedFiles}
@@ -41,7 +41,7 @@ export function DbUpload({
             let files = ev.target.files;
 
             for (let file of files) {
-              if (!file || !isValidFileType(file.type)) {
+              if (!file || !isValidFileType(file.type, true)) {
                 throw new Error("Only CSV or Excel files are accepted");
               }
             }
@@ -73,8 +73,8 @@ export function DbUpload({
                 throw new Error("Invalid file");
               }
 
-              if (!isValidFileType(dataTransferObject.type)) {
-                throw new Error("Only CSV or Excel files are accepted");
+              if (!isValidFileType(dataTransferObject.type, true)) {
+                throw new Error("Only CSV, Excel or PDF files are accepted");
               }
 
               let file = dataTransferObject.getAsFile();

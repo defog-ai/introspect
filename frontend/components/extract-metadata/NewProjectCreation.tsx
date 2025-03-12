@@ -3,9 +3,12 @@ import DbCredentialsForm from "./DBCredentialsForm";
 import { DbInfo } from "$utils/utils";
 import { Tabs } from "@defogdotai/agents-ui-components/core-ui";
 import { useMemo } from "react";
-import { DbUpload } from "./DbUpload";
+import { ProjectCreationViaFiles } from "./ProjectCreationViaFiles";
 
-export function NewDbCreation({
+/**
+ * Allows for project creation via both db creds and file uploads.
+ */
+export function NewProjectCreation({
   token,
   fileUploading,
   uploadFiles = () => {},
@@ -56,11 +59,21 @@ export function NewDbCreation({
         headerContent: (
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="w-4" />
-            Upload CSV/Excel
+            Upload CSV/Excel/PDFs
           </div>
         ),
         content: (
-          <DbUpload fileUploading={fileUploading} uploadFiles={uploadFiles} />
+          <div className="prose dark:prose-invert max-w-none">
+            <h3>Upload your files here</h3>
+            <p>
+              You can upload CSV/Excel for analysing them. You can upload PDFs
+              to provide more context to the model when generating insights.
+            </p>
+            <ProjectCreationViaFiles
+              fileUploading={fileUploading}
+              uploadFiles={uploadFiles}
+            />
+          </div>
         ),
       },
     ];

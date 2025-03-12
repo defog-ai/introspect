@@ -12,7 +12,7 @@ import {
 import { DbInfo, deleteDbInfo, getDbInfo } from "$utils/utils";
 import DbCredentialsForm from "$components/extract-metadata/DBCredentialsForm";
 import SetupStatus from "$components/extract-metadata/SetupStatus";
-import { NewDbCreation } from "$components/extract-metadata/NewDbCreation";
+import { NewProjectCreation } from "$components/extract-metadata/NewProjectCreation";
 import { Database, Plus, Trash } from "lucide-react";
 
 const ExtractMetadata = () => {
@@ -163,7 +163,7 @@ const ExtractMetadata = () => {
     options = [
       {
         value: newDbOption,
-        label: "Add new database",
+        label: "Start a new project",
       },
       ...options,
     ];
@@ -174,7 +174,7 @@ const ExtractMetadata = () => {
           <>
             <SingleSelect
               disabled={fileUploading}
-              label="Select database"
+              label="Select a project"
               labelClassNames="font-bold text-sm"
               allowClear={false}
               allowCreateNewOption={false}
@@ -188,7 +188,7 @@ const ExtractMetadata = () => {
                   return (
                     <div className="flex items-center gap-2">
                       <Plus className="w-4" />
-                      Add new database
+                      Start a new project
                     </div>
                   );
                 }
@@ -338,7 +338,7 @@ const ExtractMetadata = () => {
                   </p>
                 </div>
               )}
-              <NewDbCreation
+              <NewProjectCreation
                 fileUploading={fileUploading}
                 token={token.current}
                 uploadFiles={(files) => {

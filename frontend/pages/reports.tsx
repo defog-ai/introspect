@@ -15,12 +15,14 @@ export default function OracleDashboard() {
   const [loading, setLoading] = useState<boolean>(true);
 
   const getApiKeyNames = async () => {
-    const token = localStorage.getItem("defogToken") || "4adaf64ff68cd84fb8f3aa6366812cb8aa20a8cd8d1abd156d15d578bea6680a";
+    const token =
+      localStorage.getItem("defogToken") ||
+      "4adaf64ff68cd84fb8f3aa6366812cb8aa20a8cd8d1abd156d15d578bea6680a";
     if (!token) {
       setLoading(false);
       return;
     }
-    
+
     try {
       const res = await fetch(
         (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_db_names",
@@ -49,21 +51,23 @@ export default function OracleDashboard() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("defogToken") || "4adaf64ff68cd84fb8f3aa6366812cb8aa20a8cd8d1abd156d15d578bea6680a";
+    const token =
+      localStorage.getItem("defogToken") ||
+      "4adaf64ff68cd84fb8f3aa6366812cb8aa20a8cd8d1abd156d15d578bea6680a";
     const userType = localStorage.getItem("defogUserType");
-    
+
     if (!token) {
       // Redirect to login page after a short delay
       setTimeout(() => {
         // Capture current URL with all query parameters
         const returnUrl = window.location.pathname + window.location.search;
-        
+
         router.push({
           pathname: "/log-in",
-          query: { 
+          query: {
             message: "You are not logged in. Please log in to access reports.",
-            returnUrl
-          }
+            returnUrl,
+          },
         });
       }, 1500);
     } else {
@@ -79,17 +83,18 @@ export default function OracleDashboard() {
         <Meta />
         <div className="text-center p-6">
           <h2 className="text-xl font-semibold mb-2">Not Logged In</h2>
-          <p className="mb-4">You are not logged in. Redirecting to login page...</p>
+          <p className="mb-4">
+            You are not logged in. Redirecting to login page...
+          </p>
           <SpinningLoader />
         </div>
       </div>
     );
   }
 
-  return (
-    (loading === true) ? 
-    <SpinningLoader/>
-    :
+  return loading === true ? (
+    <SpinningLoader />
+  ) : (
     <div className="h-screen">
       <Meta />
       <Scaffolding
@@ -101,9 +106,9 @@ export default function OracleDashboard() {
         <OracleEmbed
           apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
           token={token}
-          initialDbNames={dbNames}
+          initialProjectNames={dbNames}
         />
       </Scaffolding>
     </div>
-  )
+  );
 }
