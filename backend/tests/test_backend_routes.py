@@ -2,9 +2,12 @@
 Tests database setup, configuration, user management, query execution, and cleanup, requires Docker on localhost:1235."""
 
 import json
+import os
+import random
 
 import requests
-from conftest import BASE_URL, TEST_DB
+import pytest
+from conftest import BASE_URL, TEST_DB, cleanup_test_database
 
 
 def test_admin_login(admin_token):
@@ -1299,3 +1302,481 @@ async def ticket_summary_tool(input: TicketSummaryInput):
     except Exception as e:
         print(f"\nTest failed with error: {str(e)}")
         raise e
+
+
+def test_upload_single_csv_file(admin_token):
+    """Test uploading a CSV file through the /upload_files endpoint"""
+    try:
+        # Create a simple CSV for testing
+        csv_content = """Name,Age,City
+John Doe,30,New York
+Jane Smith,25,Los Angeles
+Bob Johnson,40,Chicago"""
+        
+        # Create CSV file with our desired name
+        import os
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        temp_file_path = os.path.join(temp_dir, 'test_single_csv_file.csv')
+        
+        # Write content to the file
+        with open(temp_file_path, 'w') as temp_file:
+            temp_file.write(csv_content)
+        
+        # Open the file for upload
+        with open(temp_file_path, 'rb') as file:
+            # Use multipart form data to upload the file
+            files = {'files': (os.path.basename(temp_file_path), file, 'text/csv')}
+            form_data = {'token': admin_token}
+            
+            # Send the upload request
+            response = requests.post(
+                f"{BASE_URL}/upload_files",
+                files=files,
+                data=form_data
+            )
+        
+        # Cleanup the temp file
+        os.unlink(temp_file_path)
+        
+        # Verify the response
+        assert response.status_code == 200, f"Failed to upload CSV file: {response.text}"
+        data = response.json()
+        assert "db_name" in data, "No db_name in response"
+        assert "db_info" in data, "No db_info in response"
+        
+        db_name = data["db_name"]
+        db_info = data["db_info"]
+        
+        # Verify the database was created and contains our table
+        assert "tables" in db_info, "No tables in db_info"
+        assert len(db_info["tables"]) == 1, f"Expected 1 table, got {len(db_info['tables'])}"
+        
+        # Get the table name (should be based on the CSV filename)
+        table_name = db_info["tables"][0]
+        assert table_name == "test_single_csv_file", f"Table name '{table_name}' does not match expected 'test_single_csv_file'"
+        
+        # Verify the table has the correct columns by querying it
+        get_metadata_response = requests.post(
+            f"{BASE_URL}/integration/get_metadata",
+            json={"token": admin_token, "db_name": db_name, "format": "json"},
+            headers={"Content-Type": "application/json"},
+        )
+        
+        assert get_metadata_response.status_code == 200, f"Failed to get metadata: {get_metadata_response.text}"
+        metadata = get_metadata_response.json()["metadata"]
+        
+        # Extract column names from metadata
+        columns = {m["column_name"] for m in metadata if m["table_name"] == table_name}
+        expected_columns = {"name", "age", "city"}
+        
+        # Verify all columns exist (case-insensitive comparison)
+        for col in expected_columns:
+            assert any(col.lower() == c.lower() for c in columns), f"Column '{col}' not found in uploaded CSV table"
+            
+    except Exception as e:
+        print(f"\nTest failed with error: {str(e)}")
+        raise e
+
+
+def test_upload_single_excel_sheet(admin_token):
+    """Test uploading an Excel file with a single sheet through the /upload_files endpoint"""
+    try:
+        # Skip if pandas or openpyxl are not installed
+        try:
+            import pandas as pd
+        except ImportError:
+            pytest.skip("pandas not installed")
+        
+        # Create a simple Excel file for testing
+        data = {
+            'Product': ['Widget A', 'Widget B', 'Widget C'],
+            'Price': [19.99, 29.99, 39.99],
+            'Quantity': [100, 200, 300]
+        }
+        df = pd.DataFrame(data)
+        
+        # Create Excel file with our desired name
+        import os
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        temp_file_path = os.path.join(temp_dir, 'test_single_excel_sheet.xlsx')
+        
+        # Write the dataframe to the Excel file with our desired sheet name
+        with pd.ExcelWriter(temp_file_path) as writer:
+            df.to_excel(writer, sheet_name='test_single_excel_sheet', index=False)
+        
+        # Open the file for upload
+        with open(temp_file_path, 'rb') as file:
+            # Use multipart form data to upload the file
+            files = {'files': (os.path.basename(temp_file_path), file, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+            form_data = {'token': admin_token}
+            
+            # Send the upload request
+            response = requests.post(
+                f"{BASE_URL}/upload_files",
+                files=files,
+                data=form_data
+            )
+        
+        # Cleanup the temp file
+        os.unlink(temp_file_path)
+        
+        # Verify the response
+        assert response.status_code == 200, f"Failed to upload Excel file: {response.text}"
+        data = response.json()
+        assert "db_name" in data, "No db_name in response"
+        assert "db_info" in data, "No db_info in response"
+        
+        db_name = data["db_name"]
+        db_info = data["db_info"]
+        
+        # Verify the database was created and contains our table(s)
+        assert "tables" in db_info, "No tables in db_info"
+        assert len(db_info["tables"]) >= 1, f"Expected at least 1 table, got {len(db_info['tables'])}"
+        
+        # Get first table name (should be based on the Excel filename)
+        table_name = db_info["tables"][0]
+        assert table_name == "test_single_excel_sheet", f"Table name '{table_name}' does not match expected 'test_single_excel_sheet'. Note: For Excel files, the table name comes from the sheet name, not the file name."
+        
+        # Verify the table has the correct columns by querying the metadata
+        get_metadata_response = requests.post(
+            f"{BASE_URL}/integration/get_metadata",
+            json={"token": admin_token, "db_name": db_name, "format": "json"},
+            headers={"Content-Type": "application/json"},
+        )
+        
+        assert get_metadata_response.status_code == 200, f"Failed to get metadata: {get_metadata_response.text}"
+        metadata = get_metadata_response.json()["metadata"]
+        
+        # Print current columns for debugging
+        print("\nAvailable columns in Excel table:")
+        columns = {m["column_name"] for m in metadata if m["table_name"] == table_name}
+        for col in columns:
+            print(f"- {col}")
+        
+        # Column names are sanitized in system (converted to lowercase, special chars replaced)
+        expected_column_prefixes = {"product", "price", "quantity"}
+        
+        # Verify all expected columns exist with more flexible matching (prefix matching)
+        for expected_prefix in expected_column_prefixes:
+            matching_columns = [c for c in columns if c.startswith(expected_prefix)]
+            assert matching_columns, f"No column starting with '{expected_prefix}' found in uploaded Excel table"
+        
+    except Exception as e:
+        print(f"\nTest failed with error: {str(e)}")
+        raise e
+
+
+def test_upload_multiple_csv_files(admin_token):
+    """Test uploading multiple CSV files in a single request"""
+    test_db_name = f"multi_csv_{random.randint(1000, 9999)}"
+    
+    try:
+        # Create two CSV files with different data
+        csv_content1 = """Customer,Email,Orders
+Alice Johnson,alice@example.com,5
+Bob Williams,bob@example.com,3
+Charlie Davis,charlie@example.com,8"""
+        
+        csv_content2 = """Product,Category,Price
+Laptop,Electronics,999.99
+Phone,Electronics,499.99
+Tablet,Electronics,299.99"""
+        
+        # Create temporary files
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as csv_file1:
+            csv_file1.write(csv_content1.encode('utf-8'))
+            csv_file_path1 = csv_file1.name
+            
+        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as csv_file2:
+            csv_file2.write(csv_content2.encode('utf-8'))
+            csv_file_path2 = csv_file2.name
+        
+        # Upload both CSV files in a single request
+        with open(csv_file_path1, 'rb') as file1, open(csv_file_path2, 'rb') as file2:
+            # Use multipart form data to upload both files
+            files = [
+                ('files', (os.path.basename(csv_file_path1), file1, 'text/csv')),
+                ('files', (os.path.basename(csv_file_path2), file2, 'text/csv'))
+            ]
+            form_data = {
+                'token': admin_token,
+                'db_name': test_db_name
+            }
+            
+            # Send the upload request with both files
+            response = requests.post(
+                f"{BASE_URL}/upload_files",
+                files=files,
+                data=form_data
+            )
+        
+        # Cleanup the temp files
+        os.unlink(csv_file_path1)
+        os.unlink(csv_file_path2)
+        
+        # Verify the response
+        assert response.status_code == 200, f"Failed to upload files: {response.text}"
+        data = response.json()
+        assert data["db_name"] == test_db_name, f"Expected db_name to be {test_db_name}, got {data['db_name']}"
+        
+        # Get metadata to verify columns from both files exist
+        get_metadata_response = requests.post(
+            f"{BASE_URL}/integration/get_metadata",
+            json={"token": admin_token, "db_name": test_db_name, "format": "json"},
+            headers={"Content-Type": "application/json"},
+        )
+        
+        assert get_metadata_response.status_code == 200, f"Failed to get metadata: {get_metadata_response.text}"
+        metadata = get_metadata_response.json()["metadata"]
+        
+        # Extract all column names
+        all_columns = set()
+        for m in metadata:
+            all_columns.add(m["column_name"].lower())
+        
+        # Check if we have columns from each file
+        first_file_columns = any(col in {"customer", "email", "orders"} for col in all_columns)
+        second_file_columns = any(col in {"product", "category", "price"} for col in all_columns)
+        
+        assert first_file_columns, "No columns from first CSV file found"
+        assert second_file_columns, "No columns from second CSV file found"
+        
+    except Exception as e:
+        print(f"\nTest failed with error: {str(e)}")
+        raise e
+    finally:
+        # Always clean up the test database, even if the test fails
+        cleanup_test_database(test_db_name)
+
+
+def test_upload_excel_file_with_multiple_sheets(admin_token):
+    """Test uploading an Excel file with multiple sheets"""
+    # Create a unique database name for this test
+    test_db_name = f"excel_sheets_{random.randint(1000, 9999)}"
+    
+    try:
+        # Skip if pandas or openpyxl are not installed
+        try:
+            import pandas as pd
+        except ImportError:
+            pytest.skip("pandas not installed")
+        
+        # Create Excel data with multiple sheets
+        excel_data = {
+            'Users': pd.DataFrame({
+                'UserID': [1, 2, 3],
+                'Username': ['user1', 'user2', 'user3'],
+                'Role': ['admin', 'user', 'user']
+            }),
+            'Logins': pd.DataFrame({
+                'UserID': [1, 2, 3],
+                'LastLogin': ['2023-01-01', '2023-01-02', '2023-01-03']
+            })
+        }
+        
+        # Create temporary Excel file
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as excel_file:
+            excel_path = excel_file.name
+        
+        # Write data to Excel file with multiple sheets
+        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+            for sheet_name, df in excel_data.items():
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+        
+        # Create a unique database name for this test
+        test_db_name = f"excel_sheets_{random.randint(1000, 9999)}"
+        
+        # Upload the Excel file
+        with open(excel_path, 'rb') as file:
+            # Use multipart form data to upload the file
+            files = {'files': (os.path.basename(excel_path), file, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+            form_data = {
+                'token': admin_token,
+                'db_name': test_db_name
+            }
+            
+            # Send the upload request
+            response = requests.post(
+                f"{BASE_URL}/upload_files",
+                files=files,
+                data=form_data
+            )
+        
+        # Cleanup the temp file
+        os.unlink(excel_path)
+        
+        # Verify the response
+        assert response.status_code == 200, f"Failed to upload Excel file: {response.text}"
+        data = response.json()
+        assert data["db_name"] == test_db_name, f"Expected db_name to be {test_db_name}, got {data['db_name']}"
+        
+        # Get metadata to verify sheets were processed
+        get_metadata_response = requests.post(
+            f"{BASE_URL}/integration/get_metadata",
+            json={"token": admin_token, "db_name": test_db_name, "format": "json"},
+            headers={"Content-Type": "application/json"},
+        )
+        
+        assert get_metadata_response.status_code == 200, f"Failed to get metadata: {get_metadata_response.text}"
+        metadata = get_metadata_response.json()["metadata"]
+        
+        # Extract tables and their columns
+        tables_columns = {}
+        for m in metadata:
+            table = m["table_name"]
+            column = m["column_name"].lower()
+            
+            if table not in tables_columns:
+                tables_columns[table] = set()
+            tables_columns[table].add(column)
+        
+        # Verify we have data from both sheets
+        users_sheet_found = False
+        logins_sheet_found = False
+        
+        for table, columns in tables_columns.items():
+            if any(col in {"userid", "username", "role"} for col in columns):
+                users_sheet_found = True
+            if any(col in {"userid", "lastlogin"} for col in columns):
+                logins_sheet_found = True
+        
+        assert users_sheet_found, "Users sheet data not found"
+        assert logins_sheet_found, "Logins sheet data not found"
+        
+    except Exception as e:
+        print(f"\nTest failed with error: {str(e)}")
+        raise e
+    finally:
+        # Always clean up the test database, even if the test fails
+        cleanup_test_database(test_db_name)
+
+
+def test_upload_mixed_files(admin_token):
+    """Test uploading a mix of CSV and Excel files in a single request"""
+    # Create a unique database name for this test
+    test_db_name = f"mixed_files_{random.randint(1000, 9999)}"
+    
+    try:
+        # Skip if pandas is not installed
+        try:
+            import pandas as pd
+        except ImportError:
+            pytest.skip("pandas not installed")
+        
+        # Create CSV content
+        csv_content = """Department,Manager,Budget
+Sales,John Smith,100000
+Marketing,Jane Doe,150000
+Engineering,Bob Johnson,200000"""
+        
+        # Create Excel data with a sheet
+        excel_df = pd.DataFrame({
+            'EmployeeID': [1, 2, 3],
+            'Name': ['Alice', 'Bob', 'Charlie'],
+            'Department': ['Sales', 'Marketing', 'Engineering']
+        })
+        
+        # Create temporary files
+        import tempfile
+        
+        # Create CSV file
+        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as csv_file:
+            csv_file.write(csv_content.encode('utf-8'))
+            csv_path = csv_file.name
+        
+        # Create Excel file
+        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as excel_file:
+            excel_path = excel_file.name
+        
+        # Write data to Excel file
+        excel_df.to_excel(excel_path, index=False)
+        
+        
+        # Upload both files in a single request as the endpoint supports
+        with open(csv_path, 'rb') as csv_f, open(excel_path, 'rb') as excel_f:
+            # Use multipart form data to upload both files
+            files = [
+                ('files', (os.path.basename(csv_path), csv_f, 'text/csv')),
+                ('files', (os.path.basename(excel_path), excel_f, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'))
+            ]
+            form_data = {
+                'token': admin_token,
+                'db_name': test_db_name
+            }
+            
+            # Send the upload request with both files
+            response = requests.post(
+                f"{BASE_URL}/upload_files",
+                files=files,
+                data=form_data
+            )
+        
+        # Cleanup the temp files
+        os.unlink(csv_path)
+        os.unlink(excel_path)
+        
+        # Verify the response
+        assert response.status_code == 200, f"Failed to upload files: {response.text}"
+        data = response.json()
+        assert data["db_name"] == test_db_name, f"Expected db_name to be {test_db_name}, got {data['db_name']}"
+        
+        # Get metadata to verify columns from both files exist
+        get_metadata_response = requests.post(
+            f"{BASE_URL}/integration/get_metadata",
+            json={"token": admin_token, "db_name": test_db_name, "format": "json"},
+            headers={"Content-Type": "application/json"},
+        )
+        
+        assert get_metadata_response.status_code == 200, f"Failed to get metadata: {get_metadata_response.text}"
+        metadata = get_metadata_response.json()["metadata"]
+        
+        # Extract tables and their columns for better debugging
+        tables_columns = {}
+        for m in metadata:
+            table = m["table_name"]
+            column = m["column_name"].lower()
+            
+            if table not in tables_columns:
+                tables_columns[table] = set()
+            tables_columns[table].add(column)
+        
+        # Print all tables and columns for debugging
+        print("\nTables and columns in database:")
+        for table, columns in tables_columns.items():
+            print(f"Table: {table}")
+            for col in columns:
+                print(f"  - {col}")
+        
+        # Extract all column names as a flattened set
+        all_columns = set()
+        for columns in tables_columns.values():
+            all_columns.update(columns)
+        
+        # Check for presence of CSV and Excel columns with more flexible matching
+        csv_columns = {"department", "manager", "budget"}
+        excel_columns = {"employeeid", "name", "department"}
+        
+        # Find any matches
+        csv_matches = [col for col in all_columns if any(csv_col in col for csv_col in csv_columns)]
+        excel_matches = [col for col in all_columns if any(excel_col in col for excel_col in excel_columns)]
+        
+        print(f"\nFound CSV column matches: {csv_matches}")
+        print(f"Found Excel column matches: {excel_matches}")
+        
+        # Check if we found any matches
+        csv_column_found = len(csv_matches) > 0
+        excel_column_found = len(excel_matches) > 0
+        
+        assert csv_column_found, "No columns from CSV file found"
+        assert excel_column_found, "No columns from Excel file found"
+        
+    except Exception as e:
+        print(f"\nTest failed with error: {str(e)}")
+        raise e
+    finally:
+        # Always clean up the test database, even if the test fails
+        cleanup_test_database(test_db_name)
