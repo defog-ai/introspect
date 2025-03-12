@@ -32,20 +32,11 @@ export function ProjectCreationViaFiles({
           setSelectedFiles(selectedFiles.filter((_, i) => i !== index));
           console.timeEnd("OracleNewDb:onRemoveFile");
         }}
-        onFileSelect={async (ev) => {
+        onFileSelect={async (ev, files) => {
           console.time("OracleNewDb:onFileSelect");
           ev.preventDefault();
           ev.stopPropagation();
           try {
-            // this is when the user selects a file from the file dialog
-            let files = ev.target.files;
-
-            for (let file of files) {
-              if (!file || !isValidFileType(file.type, true)) {
-                throw new Error("Only CSV or Excel files are accepted");
-              }
-            }
-
             setSelectedFiles([...selectedFiles, ...files]);
           } catch (e) {
             console.error(e);
@@ -53,34 +44,15 @@ export function ProjectCreationViaFiles({
           }
           console.timeEnd("OracleNewDb:onFileSelect");
         }}
-        onDrop={async (ev) => {
-          console.time("OracleNewDb:onDrop");
+        onInvalidFiles={(e, invalidFiles, errorStr) => {
+          message.error(errorStr);
+        }}
+        onDrop={async (ev, files) => {
           ev.preventDefault();
           ev.stopPropagation();
 
+          console.time("OracleNewDb:onDrop");
           try {
-            let dataTransferObjects: DataTransferItemList =
-              ev?.dataTransfer?.items;
-
-            let files: File[] = [];
-
-            for (let dataTransferObject of dataTransferObjects) {
-              if (
-                !dataTransferObject ||
-                !dataTransferObject.kind ||
-                dataTransferObject.kind !== "file"
-              ) {
-                throw new Error("Invalid file");
-              }
-
-              if (!isValidFileType(dataTransferObject.type, true)) {
-                throw new Error("Only CSV, Excel or PDF files are accepted");
-              }
-
-              let file = dataTransferObject.getAsFile();
-
-              files.push(file);
-            }
             setSelectedFiles([...selectedFiles, ...files]);
           } catch (e) {
             message.error(e.message || "Failed to parse the file");

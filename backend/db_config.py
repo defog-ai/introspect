@@ -17,7 +17,7 @@ redis_client = redis.Redis(
 
 INTERNAL_DB = os.environ.get("INTERNAL_DB", None)
 
-def get_db_engine() -> tuple[AsyncEngine, Engine | None, Engine | None]:
+def get_db_engine() -> AsyncEngine:
     """
     Returns a tuple of the 
     - async engine for querying the user's database,

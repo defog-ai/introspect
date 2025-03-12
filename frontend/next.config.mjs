@@ -10,7 +10,7 @@ export default {
     return config;
   },
   // experimental: {
-  // If you’re on Next 12 or 13, this often helps
+  // If you're on Next 12 or 13, this often helps
   // esmExternals: false,
   // },
   images: {

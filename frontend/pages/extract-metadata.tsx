@@ -13,6 +13,7 @@ import { DbInfo, deleteDbInfo, getDbInfo } from "$utils/utils";
 import DbCredentialsForm from "$components/extract-metadata/DBCredentialsForm";
 import SetupStatus from "$components/extract-metadata/SetupStatus";
 import { NewProjectCreation } from "$components/extract-metadata/NewProjectCreation";
+import ProjectFiles from "$components/extract-metadata/ProjectFiles";
 import { Database, Plus, Trash } from "lucide-react";
 
 const ExtractMetadata = () => {
@@ -257,6 +258,31 @@ const ExtractMetadata = () => {
               token={token.current}
               dbInfo={dbInfo[selectedDbName]}
               onUpdate={(dbName, newDbInfo) => {
+                setDbInfo((prev) => ({ ...prev, [dbName]: newDbInfo }));
+              }}
+            />
+          </>
+        ),
+      },
+      {
+        name: "project-files",
+        headerContent: (
+          <div className="flex items-center">
+            Project Files
+            {dbInfo[selectedDbName]?.associated_files?.length > 0 && (
+              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">
+                {dbInfo[selectedDbName]?.associated_files?.length}
+              </span>
+            )}
+          </div>
+        ),
+        content: (
+          <>
+            <ProjectFiles
+              files={dbInfo[selectedDbName]?.associated_files || []}
+              token={token.current}
+              dbName={selectedDbName}
+              onFilesUploaded={(dbName, newDbInfo) => {
                 setDbInfo((prev) => ({ ...prev, [dbName]: newDbInfo }));
               }}
             />

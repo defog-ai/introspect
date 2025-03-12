@@ -1,16 +1,18 @@
 """Database credential utility functions."""
 
+import traceback
 from typing import Dict, Tuple
 from defog.query import async_execute_query_once
 from sqlalchemy import delete, select, update, insert
 from utils_md import get_metadata
 from db_config import engine
-from db_models import Project
+from db_models import Project, PDFFiles
 from utils_logging import LOGGER
 from defog import Defog
 import os
 import asyncio
 import json
+from sqlalchemy.ext.asyncio import AsyncSession
 
 home_dir = os.path.expanduser("~")
 defog_path = os.path.join(home_dir, ".defog")
@@ -114,6 +116,9 @@ async def get_db_info(db_name):
             selected_tables = table_names
 
         metadata = await get_metadata(db_name)
+        
+        # Get associated PDF files
+        associated_files = await get_project_associated_files(db_name)
 
         return {
             "db_name": db_name,
@@ -123,8 +128,10 @@ async def get_db_info(db_name):
             "selected_tables": selected_tables,
             "can_connect": can_connect,
             "metadata": metadata,
+            "associated_files": associated_files
         }
-    except:
+    except Exception as e:
+        LOGGER.error(f"Error getting DB info: {str(e)}")
         return {
             "db_name": db_name,
             "can_connect": False,
@@ -133,9 +140,48 @@ async def get_db_info(db_name):
             "db_type": None,
             "selected_tables": [],
             "metadata": [],
+            "associated_files": []
         }
 
 
 async def delete_db_info(db_name):
     async with engine.begin() as conn:
         await conn.execute(delete(Project).where(Project.db_name == db_name))
+        
+        
+async def get_project_associated_files(db_name):
+    """
+    Get file information associated with a project.
+    Returns a list of dictionaries with file_id and file_name for each associated file.
+    """
+    pdf_files = []
+    
+    try:
+        async with AsyncSession(engine) as session:
+            project = await session.execute(
+                select(Project).where(Project.db_name == db_name)
+            )
+            project = project.scalar_one_or_none()
+
+            if not project:
+                return []
+
+            if not project.associated_files:
+                return []
+
+        
+            associated_files = project.associated_files
+
+            # Get file names for associated files
+            pdf_files = await session.execute(
+                select(PDFFiles).where(
+                    PDFFiles.file_id.in_(associated_files)
+                )
+            )
+            pdf_files = pdf_files.scalars().all()
+            pdf_files = [{"file_id": row.file_id, "file_name": row.file_name} for row in pdf_files]
+    except Exception as e:
+        traceback.print_exc()
+        LOGGER.error(f"Error getting associated files: {str(e)}")
+        
+    return pdf_files

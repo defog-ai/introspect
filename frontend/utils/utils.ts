@@ -149,6 +149,11 @@ export type DbMetadata = Array<{
   column_description: string;
 }>;
 
+export interface PdfFile {
+  file_id: number;
+  file_name: string;
+}
+
 export interface DbInfo {
   db_name?: string;
   db_type?: DbType;
@@ -157,6 +162,7 @@ export interface DbInfo {
   metadata?: DbMetadata;
   selected_tables?: string[];
   tables?: string[];
+  associated_files?: PdfFile[];
 }
 
 export const getDbInfo = async (
