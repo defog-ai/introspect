@@ -120,6 +120,43 @@ def setup_test_db_name():
             session.commit()
 
 
+def cleanup_test_database(db_name):
+    """
+    Clean up a test database and its related metadata.
+    
+    This function:
+    1. Removes database entries from metadata tables
+    2. Drops the actual database
+    
+    Args:
+        db_name: Name of the database to clean up
+    """
+    try:
+        print(f"\n--- Running cleanup for database: {db_name} ---")
+        
+        # 1. Connect to postgres to clean up metadata entries
+        docker_uri = f"postgresql://{DOCKER_DB_CREDS['user']}:{DOCKER_DB_CREDS['password']}@{DOCKER_DB_CREDS['host']}:{DOCKER_DB_CREDS['port']}/{DOCKER_DB_CREDS['database']}"
+        docker_engine = create_engine(docker_uri)
+
+        with docker_engine.begin() as conn:
+            # Delete from metadata tables
+            tables_with_db_name = [
+                "metadata", "table_info", "instructions", "golden_queries",
+                "analyses", "oracle_guidelines", "project"
+            ]
+            
+            for table in tables_with_db_name:
+                conn.execute(text(f"DELETE FROM {table} WHERE db_name = :db_name"), {"db_name": db_name})
+            
+            # Delete from oracle_reports where db_name is in a JSON column
+            conn.execute(text("DELETE FROM oracle_reports WHERE db_name = :db_name"), {"db_name": db_name})
+            
+        print(f"--- Cleanup completed for database: {db_name} ---")
+        
+    except Exception as e:
+        print(f"Warning: Failed to clean up test database {db_name}: {str(e)}")
+
+
 @pytest.fixture
 def admin_token():
     """Get admin token for authentication reusable across all the integration API tests as a fixture"""
@@ -167,7 +204,7 @@ def cleanup():
             tables_with_db_name = [
                 "metadata", "table_info", "instructions", "golden_queries",
                 "analyses", "oracle_guidelines", 
-                "projects"
+                "project" 
             ]
             
             for table in tables_with_db_name:
@@ -196,7 +233,7 @@ def cleanup():
         local_db_creds = {
             "user": "postgres",
             "password": "postgres",
-            "host": "host.docker.internal",
+            "host": "agents-postgres",
             "port": "5432",
             "database": "postgres",
         }
