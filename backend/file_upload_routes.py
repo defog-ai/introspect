@@ -5,7 +5,7 @@ import traceback
 
 from pandas.errors import ParserError
 from fastapi import APIRouter, File, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from request_models import (
     DbDetails,
 )
@@ -16,7 +16,7 @@ import os
 import pandas as pd
 from utils_file_uploads import export_df_to_postgres, clean_table_name, ExcelUtils, CSVUtils
 from utils_md import set_metadata
-from utils_oracle import upload_pdf_files, update_project_files
+from utils_oracle import upload_pdf_files, update_project_files, get_pdf_content, delete_pdf_file
 from db_utils import update_db_type_creds
 from sqlalchemy_utils import database_exists, create_database
 import io
@@ -197,5 +197,74 @@ async def upload_files(
     db_info = await get_db_info(db_name)
 
     return JSONResponse(status_code=200, content={"message": "Success", "db_name": db_name, "db_info": db_info})
+
+
+@router.get("/download_pdf/{file_id}")
+async def download_pdf(file_id: int):
+    """
+    Download a PDF file by its ID
+    """
+    try:
+        pdf_data = await get_pdf_content(file_id)
+        if not pdf_data:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "PDF file not found"}
+            )
+        
+        # Decode base64 data
+        binary_data = base64.b64decode(pdf_data["base64_data"])
+        
+        # Set the appropriate headers for PDF download
+        headers = {
+            "Content-Disposition": f"attachment; filename={pdf_data['file_name']}",
+            "Content-Type": "application/pdf"
+        }
+        
+        return Response(content=binary_data, headers=headers)
+    except Exception as e:
+        LOGGER.error(f"Error downloading PDF: {str(e)}")
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error downloading PDF: {str(e)}"}
+        )
+
+
+@router.delete("/delete_pdf/{file_id}")
+async def delete_pdf(file_id: int, token: str, db_name: str):
+    """
+    Delete a PDF file by its ID and remove it from the project's associated files
+    
+    Args:
+        file_id: ID of the PDF file to delete
+        token: Authentication token
+        db_name: Name of the project the file is associated with
+    """
+    try:
+        LOGGER.info(f"Deleting PDF file {file_id} from project {db_name}")
+        success = await delete_pdf_file(db_name, file_id)
+        
+        if not success:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Failed to delete PDF file"}
+            )
+        
+        # Get updated project info with the new files list
+        from db_utils import get_db_info
+        db_info = await get_db_info(db_name)
+        
+        return JSONResponse(
+            status_code=200,
+            content={"message": "PDF file deleted successfully", "db_info": db_info}
+        )
+    except Exception as e:
+        LOGGER.error(f"Error deleting PDF: {str(e)}")
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error deleting PDF: {str(e)}"}
+        )
 
 

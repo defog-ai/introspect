@@ -245,6 +245,47 @@ async def get_project_pdf_files(db_name: str) -> list[int]:
         pdf_file_ids = []
     return pdf_file_ids
 
+async def delete_pdf_file(db_name: str, file_id: int) -> bool:
+    """
+    Deletes a PDF file from the database and removes it from the project.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        async with AsyncSession(engine) as session:
+            async with session.begin():
+                # First, remove the file from the project's associated files
+                project = await session.execute(
+                    select(Project).where(
+                        Project.db_name == db_name
+                    )
+                )
+                project = project.scalar_one_or_none()
+                
+                if not project:
+                    LOGGER.error(f"Project {db_name} not found")
+                    return False
+                
+                # If project has associated files, remove the specified file ID
+                if project.associated_files and file_id in project.associated_files:
+                    project.associated_files.remove(file_id)
+                    flag_modified(project, "associated_files")
+                
+                # Delete the file from PDF Files table
+                pdf_file = await session.execute(
+                    select(PDFFiles).where(
+                        PDFFiles.file_id == file_id
+                    )
+                )
+                pdf_file = pdf_file.scalar_one_or_none()
+                
+                if pdf_file:
+                    await session.delete(pdf_file)
+                    
+        return True
+    except Exception as e:
+        LOGGER.error(f"Error deleting PDF file: {str(e)}")
+        return False
+
 async def get_pdf_content(file_id: int):
     async with AsyncSession(engine) as session:
         async with session.begin():
