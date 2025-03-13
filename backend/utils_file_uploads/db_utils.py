@@ -16,6 +16,71 @@ class DbUtils:
     """Utilities for database operations."""
 
     @staticmethod
+    def deduplicate_column_names(column_names, max_length=59):
+        """
+        Ensures all column names are unique by appending a counter if needed.
+        Also truncates column names to fit PostgreSQL's limit.
+        
+        Args:
+            column_names: List or array of column names
+            max_length: Maximum allowed length for column names
+            
+        Returns:
+            List of unique column names that fit within the max_length constraint
+        """
+        # Convert all column names to strings and handle empty values
+        safe_cols = []
+        seen = set()
+        
+        for i, col_name in enumerate(column_names):
+            # Convert to string and sanitize
+            col_name = str(col_name).strip()
+            if not col_name:
+                col_name = f"col_{i+1}"
+            
+            # Truncate long column names to fit PostgreSQL's limit
+            # But keep the last part which usually contains the most specific information
+            if len(col_name) > max_length - 3:
+                # For names with underscores (like those from multi-level headers),
+                # try to keep the last parts which are most specific
+                parts = col_name.split('_')
+                if len(parts) > 1 and len(parts[-1]) < max_length - 10:  # If last part is reasonably short
+                    # Start with the most specific part (last one)
+                    preserved_parts = [parts[-1]]
+                    remaining_length = max_length - 3 - len(parts[-1])
+                    
+                    # Try to include as many preceding parts as possible, from right to left
+                    for part in reversed(parts[:-1]):
+                        # +1 for the underscore
+                        if len(part) + 1 <= remaining_length:
+                            preserved_parts.insert(0, part)
+                            remaining_length -= (len(part) + 1)
+                        else:
+                            # If we can't fit the whole part, add a prefix indicator
+                            if remaining_length > 3:
+                                preserved_parts.insert(0, "...")
+                            break
+                    
+                    col_name = "_".join(preserved_parts)
+                else:
+                    # Simple case - just keep the rightmost characters which tend to be most specific
+                    col_name = "..." + col_name[-(max_length - 6):]
+                
+            # Start with potentially truncated name
+            safe_name = col_name
+            
+            # If it's already seen, add numbers until unique
+            counter = 1
+            while safe_name in seen:
+                safe_name = f"{col_name[:max_length - len(str(counter)) - 1]}_{counter}"
+                counter += 1
+                
+            safe_cols.append(safe_name)
+            seen.add(safe_name)
+        
+        return safe_cols
+
+    @staticmethod
     def create_table_sql(table_name: str, columns: dict[str, str]):
         """
         Build a CREATE TABLE statement.
@@ -60,7 +125,11 @@ class DbUtils:
         # Store original column names for type inference
         original_cols = list(df.columns)
 
-        # Sanitize column names and handle duplicates
+        # First ensure we have unique column names using our dedicated function
+        unique_cols = DbUtils.deduplicate_column_names(df.columns)
+        df.columns = unique_cols
+        
+        # Then sanitize column names for SQL use
         safe_col_list = []
         seen_names = set()
 

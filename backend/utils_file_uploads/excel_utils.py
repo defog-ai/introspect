@@ -16,6 +16,7 @@ from openai import AsyncOpenAI
 from defog.llm.utils import LLM_COSTS_PER_TOKEN
 
 from .name_utils import NameUtils
+from .db_utils import DbUtils
 from utils_logging import LOGGER
 
 
@@ -26,82 +27,142 @@ class ExcelUtils:
     async def clean_excel_pd(excel_file: BytesIO) -> dict[str, pd.DataFrame]:
         """
         This function cleans all sheets in an Excel file with pandas by:
-        - forward-filling merged cells
-        - removing empty rows and columns
+        - handling complex Excel file structures with multi-level headers
+        - preserving merged cells
+        - handling hierarchical or grouped column names
+        - removing only completely empty rows
         - filling NaN values with empty strings
 
         Returns a dictionary of dataframes with sheet names as keys.
         """
-        wb = openpyxl.load_workbook(excel_file)
         tables = {}
-
+        
+        # Define common NULL/NA string representations to standardize handling
+        null_values = [
+            "NULL", "null", 
+            "NA", "N/A", "n/a", "N.A.", "n.a.",
+            "#N/A", "#NA", "#NULL",
+            "NaN", "nan",
+            "None", "none",
+            "", " ", "  "
+        ]
+        
+        # Get all sheet names to process
+        excel_file.seek(0)  # Reset file position to beginning
+        xlsx = pd.ExcelFile(excel_file)
+        sheet_names = xlsx.sheet_names
+        
         async def process_sheet(sheet_name: str):
-            sheet = wb[sheet_name]
-
-            # Create a dictionary to store merged cell values
-            merged_cells_map = {}
-
-            # Identify merged cells and store only the top-left value
-            for merged_range in sheet.merged_cells.ranges:
-                min_col, min_row, max_col, max_row = merged_range.bounds
-                top_left_value = sheet.cell(
-                    row=min_row, column=min_col
-                ).value  # Get top-left cell value
-
-                # Store top-left value for all merged cells (but only modify in Pandas)
-                for row in range(min_row, max_row + 1):
-                    for col in range(min_col, max_col + 1):
-                        merged_cells_map[(row, col)] = top_left_value
+            # Reset file position
+            excel_file.seek(0)
             
-            # use the first row as column names
-            columns = [cell.value for cell in sheet[1]]
-            # Convert worksheet data into Pandas DataFrame
-            df = pd.DataFrame(sheet.values, columns=columns)
-
-            # Use Pandas to forward-fill merged cell values
-            for (row, col), value in merged_cells_map.items():
-                if pd.isna(
-                    df.iloc[row - 1, col - 1]
-                ):  # Adjust index for Pandas (0-based)
-                    df.iloc[row - 1, col - 1] = value
+            # First try to determine if we have a complex multi-level header structure
+            # Load a small preview to check
+            preview_df = pd.read_excel(
+                excel_file,
+                sheet_name=sheet_name,
+                nrows=10  # Just read first 10 rows to analyze
+            )
+            
+            # Check for evidence of multi-level header structure
+            # 1. Look for rows that have the same value repeated across multiple columns
+            has_title_rows = False
+            potential_header_row = 0
+            
+            for i in range(min(5, len(preview_df))):  # Check first 5 rows at most
+                row_values = preview_df.iloc[i].astype(str)
+                # If >40% of cells have the same value, it might be a title/header row
+                if len(row_values.unique()) < len(row_values) * 0.6:
+                    has_title_rows = True
+                    potential_header_row = i + 1  # Skip this row and consider next as header
+            
+            # Reset file position
+            excel_file.seek(0)
+            
+            # If we detected title rows, try to handle them
+            if has_title_rows:
+                # Use the detected header row or rows
+                # We'll try to use multiple rows as headers
+                try:
+                    df = pd.read_excel(
+                        excel_file,
+                        sheet_name=sheet_name,
+                        header=[potential_header_row, potential_header_row+1] 
+                        if potential_header_row < len(preview_df) - 1 
+                        else potential_header_row
+                    )
                     
-            # Define common NULL/NA string representations
-            null_values = [
-                "NULL", "null", 
-                "NA", "N/A", "n/a", "N.A.", "n.a.",
-                "-", "--", "---",
-                "#N/A", "#NA", "#NULL",
-                "NaN", "nan",
-                "None", "none",
-                "", " ", "  "
-            ]
+                    # Check if we have tuple column names from multi-level headers
+                    if isinstance(df.columns[0], tuple):
+                        # Create better column names by joining levels
+                        new_cols = []
+                        for i, col in enumerate(df.columns):
+                            # Filter out None/NaN/empty values
+                            parts = [str(part).strip() for part in col 
+                                     if part is not None and str(part).strip() != ""]
+                            # Join with underscore
+                            if parts:
+                                new_cols.append("_".join(parts))
+                            else:
+                                # Use col_N instead of unnamed
+                                new_cols.append(f"col_{i+1}")
+                        
+                        # Use centralized deduplication function
+                        safe_cols = DbUtils.deduplicate_column_names(new_cols)
+                        
+                        # Log all column names to help debug
+                        LOGGER.info(f"Original tuple columns: {df.columns}")
+                        LOGGER.info(f"Created column names: {safe_cols}")
+                        
+                        df.columns = safe_cols
+                except Exception as e:
+                    # If multi-header approach fails, fall back to simpler method
+                    LOGGER.warning(f"Multi-header detection failed: {e}. Using default.")
+                    excel_file.seek(0)
+                    df = pd.read_excel(
+                        excel_file,
+                        sheet_name=sheet_name,
+                        na_values=null_values
+                    )
+            else:
+                # Standard approach for simpler Excel files
+                df = pd.read_excel(
+                    excel_file,
+                    sheet_name=sheet_name,
+                    na_values=null_values
+                )
+                
+                # Ensure column uniqueness even for simple headers
+                if len(df.columns) != len(set(df.columns)):
+                    # Use centralized deduplication function
+                    safe_cols = DbUtils.deduplicate_column_names(df.columns)
+                    LOGGER.info(f"Deduplicated columns: {safe_cols}")
+                    df.columns = safe_cols
             
-            # Replace NULL string representations with NaN
-            df = df.replace(null_values, pd.NA)
+            # Remove rows that are entirely empty
+            df.dropna(how='all', inplace=True)
+            
+            # Don't drop columns that might appear empty due to merged cells/formatting
+            df.dropna(axis=1, how='all', inplace=True)
             
             # Trim trailing whitespace from string columns
             for col in df.columns:
                 if df[col].dtype == 'object':  # String columns in pandas are 'object' type
                     df[col] = df[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
-
-            # Remove rows that are empty
-            df.dropna(inplace=True, how="all")
-
-            # Drop columns where all values are NaN
-            df = df.dropna(axis=1, how="all")
-
+            
             # Fill NaN values with empty strings for better readability
             df = df.fillna("")
-
+            
             # Clean sheet name
             table_name = NameUtils.clean_table_name(sheet_name, existing=tables.keys())
-
+            
             LOGGER.info(
-                f"Sheet {sheet_name} after dropping NaN rows/columns: {df.shape[0]} rows, {df.shape[1]} columns"
+                f"Sheet {sheet_name} after cleaning: {df.shape[0]} rows, {df.shape[1]} columns"
             )
-
+            LOGGER.info(f"Columns: {df.columns}")
+            
             return table_name, df
-
+        
         async def main():
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 loop = asyncio.get_event_loop()
@@ -112,14 +173,14 @@ class ExcelUtils:
                             process_sheet(sheet_name)
                         ),
                     )
-                    for sheet_name in wb.sheetnames
+                    for sheet_name in sheet_names
                 ]
                 results = await asyncio.gather(*tasks)
                 for table_name, df in results:
                     tables[table_name] = df
-
+        
         await main()
-
+        
         return tables
 
     @staticmethod
