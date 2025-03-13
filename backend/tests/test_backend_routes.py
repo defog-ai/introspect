@@ -1464,6 +1464,9 @@ def test_delete_pdf_from_project(admin_token):
 
 def test_upload_single_csv_file(admin_token):
     """Test uploading a CSV file through the /upload_files endpoint"""
+    # Create a unique database name for this test
+    test_db_name = f"csv_single_{random.randint(1000, 9999)}"
+    
     try:
         # Create a simple CSV for testing
         csv_content = """Name,Age,City
@@ -1485,7 +1488,10 @@ Bob Johnson,40,Chicago"""
         with open(temp_file_path, 'rb') as file:
             # Use multipart form data to upload the file
             files = {'files': (os.path.basename(temp_file_path), file, 'text/csv')}
-            form_data = {'token': admin_token}
+            form_data = {
+                'token': admin_token,
+                'db_name': test_db_name  # Specify the database name
+            }
             
             # Send the upload request
             response = requests.post(
@@ -1505,6 +1511,9 @@ Bob Johnson,40,Chicago"""
         
         db_name = data["db_name"]
         db_info = data["db_info"]
+        
+        # Make sure we got the right database name back
+        assert db_name == test_db_name, f"Expected db_name to be {test_db_name}, got {db_name}"
         
         # Verify the database was created and contains our table
         assert "tables" in db_info, "No tables in db_info"
@@ -1535,10 +1544,16 @@ Bob Johnson,40,Chicago"""
     except Exception as e:
         print(f"\nTest failed with error: {str(e)}")
         raise e
+    finally:
+        # Always clean up the test database, even if the test fails
+        cleanup_test_database(test_db_name)
 
 
 def test_upload_single_excel_sheet(admin_token):
     """Test uploading an Excel file with a single sheet through the /upload_files endpoint"""
+    # Create a unique database name for this test
+    test_db_name = f"excel_single_{random.randint(1000, 9999)}"
+    
     try:
         # Skip if pandas or openpyxl are not installed
         try:
@@ -1568,7 +1583,10 @@ def test_upload_single_excel_sheet(admin_token):
         with open(temp_file_path, 'rb') as file:
             # Use multipart form data to upload the file
             files = {'files': (os.path.basename(temp_file_path), file, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
-            form_data = {'token': admin_token}
+            form_data = {
+                'token': admin_token,
+                'db_name': test_db_name  # Specify the database name
+            }
             
             # Send the upload request
             response = requests.post(
@@ -1588,6 +1606,9 @@ def test_upload_single_excel_sheet(admin_token):
         
         db_name = data["db_name"]
         db_info = data["db_info"]
+        
+        # Make sure we got the right database name back
+        assert db_name == test_db_name, f"Expected db_name to be {test_db_name}, got {db_name}"
         
         # Verify the database was created and contains our table(s)
         assert "tables" in db_info, "No tables in db_info"
@@ -1624,6 +1645,9 @@ def test_upload_single_excel_sheet(admin_token):
     except Exception as e:
         print(f"\nTest failed with error: {str(e)}")
         raise e
+    finally:
+        # Always clean up the test database, even if the test fails
+        cleanup_test_database(test_db_name)
 
 
 def test_upload_multiple_csv_files(admin_token):
