@@ -1555,7 +1555,7 @@ def test_upload_single_excel_sheet(admin_token):
     test_db_name = f"excel_single_{random.randint(1000, 9999)}"
     
     try:
-        # Skip if pandas or openpyxl are not installed
+        # Skip if pandas is not installed
         try:
             import pandas as pd
         except ImportError:
@@ -1740,7 +1740,7 @@ def test_upload_excel_file_with_multiple_sheets(admin_token):
     test_db_name = f"excel_sheets_{random.randint(1000, 9999)}"
     
     try:
-        # Skip if pandas or openpyxl are not installed
+        # Skip if pandas is not installed
         try:
             import pandas as pd
         except ImportError:
