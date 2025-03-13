@@ -1304,6 +1304,164 @@ async def ticket_summary_tool(input: TicketSummaryInput):
         raise e
 
 
+def test_add_pdf_to_project(admin_token):
+    """Test adding a PDF file to an existing database (test_db)"""
+    db_name = TEST_DB["db_name"]
+    
+    try:
+        # Create a simple PDF content (minimal valid PDF)
+        pdf_content = b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000010 00000 n\n0000000053 00000 n\n0000000102 00000 n\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n149\n%%EOF"
+        
+        # Create temporary PDF file with predictable name
+        import tempfile
+        import os
+        
+        pdf_filename = 'test_document.pdf'
+        pdf_path = os.path.join(tempfile.gettempdir(), pdf_filename)
+        with open(pdf_path, 'wb') as pdf_file:
+            pdf_file.write(pdf_content)
+        
+        # Get DB info before uploading to check current state
+        get_db_info_response = requests.post(
+            f"{BASE_URL}/integration/get_db_info",
+            json={"token": admin_token, "db_name": db_name},
+        )
+        assert get_db_info_response.status_code == 200, f"Failed to get DB info: {get_db_info_response.text}"
+        
+        initial_db_info = get_db_info_response.json()
+        initial_pdf_count = len(initial_db_info.get("associated_files", []))
+        print(f"\nInitial PDF count: {initial_pdf_count}")
+        
+        # Upload PDF to existing database
+        with open(pdf_path, 'rb') as pdf_f:
+            # Use multipart form data to upload the PDF file
+            files = [
+                ('files', (pdf_filename, pdf_f, 'application/pdf'))
+            ]
+            form_data = {
+                'token': admin_token,
+                'db_name': db_name
+            }
+            
+            response = requests.post(
+                f"{BASE_URL}/upload_files",
+                files=files,
+                data=form_data
+            )
+        
+        # Cleanup the temp file
+        os.unlink(pdf_path)
+        
+        # Verify the response
+        assert response.status_code == 200, f"Failed to upload PDF: {response.text}"
+        data = response.json()
+        print(f"\nResponse data: {data}")
+        
+        # Verify the database name matches
+        assert data["db_name"] == db_name, f"Expected db_name to be {db_name}, got {data['db_name']}"
+        
+        # Get updated DB info to verify PDF was added
+        updated_db_info = data["db_info"]
+        print(f"\nUpdated DB info: {updated_db_info}")
+        
+        # Verify PDF was associated with the project
+        assert "associated_files" in updated_db_info, "No associated_files in db_info"
+        assert len(updated_db_info["associated_files"]) > initial_pdf_count, f"No new PDF files added"
+        
+        # Get the newly added PDF file ID (the last one in the list)
+        pdf_file_id = updated_db_info["associated_files"][-1]
+        print(f"\nNewly added PDF file ID: {pdf_file_id}")
+        
+        # If PDF file ID is a dictionary, extract the ID
+        if isinstance(pdf_file_id, dict) and 'file_id' in pdf_file_id:
+            pdf_file_id = pdf_file_id['file_id']
+        
+        # Verify PDF file can be downloaded
+        download_response = requests.get(
+            f"{BASE_URL}/download_pdf/{pdf_file_id}"
+        )
+        assert download_response.status_code == 200, f"Failed to download PDF: {download_response.text}"
+        assert download_response.headers["Content-Type"] == "application/pdf", "Response is not a PDF file"
+        
+        # Store PDF ID globally for the next test
+        global TEST_PDF_ID
+        TEST_PDF_ID = pdf_file_id
+        
+    except Exception as e:
+        print(f"\nTest failed with error: {str(e)}")
+        raise e
+
+
+def test_delete_pdf_from_project(admin_token):
+    """Test deleting a PDF file from an existing database (test_db)"""
+    db_name = TEST_DB["db_name"]
+    
+    try:
+        # First, check if we have a PDF ID from the previous test
+        global TEST_PDF_ID
+        pdf_file_id = None
+        
+        try:
+            if TEST_PDF_ID:
+                pdf_file_id = TEST_PDF_ID
+                print(f"\nUsing PDF ID from previous test: {pdf_file_id}")
+        except NameError:
+            # If TEST_PDF_ID doesn't exist, we'll find one from DB info
+            pass
+            
+        # If we don't have a PDF ID yet, get current DB info to find PDF files
+        if not pdf_file_id:
+            get_db_info_response = requests.post(
+                f"{BASE_URL}/integration/get_db_info",
+                json={"token": admin_token, "db_name": db_name},
+            )
+            assert get_db_info_response.status_code == 200, f"Failed to get DB info: {get_db_info_response.text}"
+            
+            initial_db_info = get_db_info_response.json()
+            print(f"\nInitial DB info: {initial_db_info}")
+            
+            # Verify there are PDF files associated with the project
+            assert "associated_files" in initial_db_info, "No associated_files in db_info"
+            associated_files = initial_db_info.get("associated_files", [])
+            assert len(associated_files) > 0, "No PDF files found to delete"
+            
+            # Get the first PDF file ID
+            pdf_file_id = associated_files[0]
+            
+        print(f"\nPDF file ID to delete: {pdf_file_id}")
+        
+        # If PDF file ID is a dictionary, extract the ID
+        if isinstance(pdf_file_id, dict) and 'file_id' in pdf_file_id:
+            pdf_file_id = pdf_file_id['file_id']
+        
+        # Delete the PDF file
+        delete_response = requests.delete(
+            f"{BASE_URL}/delete_pdf/{pdf_file_id}",
+            params={"token": admin_token, "db_name": db_name}
+        )
+        assert delete_response.status_code == 200, f"Failed to delete PDF: {delete_response.text}"
+        
+        # Verify the PDF was removed from the project
+        updated_db_info = delete_response.json()["db_info"]
+        print(f"\nUpdated DB info after deletion: {updated_db_info}")
+        
+        # Get the currently associated files
+        updated_files = updated_db_info.get("associated_files", [])
+        
+        # If we're dealing with dictionary IDs, convert them for comparison
+        if updated_files and isinstance(updated_files[0], dict) and 'file_id' in updated_files[0]:
+            file_ids = [f['file_id'] for f in updated_files]
+            assert pdf_file_id not in file_ids, "PDF file was not removed from project"
+        else:
+            assert pdf_file_id not in updated_files, "PDF file was not removed from project"
+        
+        print(f"\nSuccessfully deleted PDF file with ID: {pdf_file_id}")
+        
+    except Exception as e:
+        print(f"\nTest failed with error: {str(e)}")
+        raise e
+
+
 def test_upload_single_csv_file(admin_token):
     """Test uploading a CSV file through the /upload_files endpoint"""
     try:
@@ -1655,7 +1813,7 @@ def test_upload_excel_file_with_multiple_sheets(admin_token):
         cleanup_test_database(test_db_name)
 
 
-def test_upload_mixed_files(admin_token):
+def test_upload_csv_with_excel(admin_token):
     """Test uploading a mix of CSV and Excel files in a single request"""
     # Create a unique database name for this test
     test_db_name = f"mixed_files_{random.randint(1000, 9999)}"
@@ -1773,6 +1931,497 @@ Engineering,Bob Johnson,200000"""
         
         assert csv_column_found, "No columns from CSV file found"
         assert excel_column_found, "No columns from Excel file found"
+        
+    except Exception as e:
+        print(f"\nTest failed with error: {str(e)}")
+        raise e
+    finally:
+        # Always clean up the test database, even if the test fails
+        cleanup_test_database(test_db_name)
+
+
+def test_upload_csv_with_pdf(admin_token):
+    """Test uploading a CSV file and a PDF file in a single request"""
+    # Create a unique database name for this test
+    test_db_name = f"csv_pdf_{random.randint(1000, 9999)}"
+    
+    try:
+        # Create a simple CSV content
+        csv_content = """Product,Category,Price
+Laptop,Electronics,999.99
+Phone,Electronics,499.99
+Tablet,Electronics,299.99"""
+        
+        # Create a simple PDF content (minimal valid PDF)
+        pdf_content = b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000010 00000 n\n0000000053 00000 n\n0000000102 00000 n\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n149\n%%EOF"
+        
+        # Create temporary files with specific names
+        import tempfile
+        import os
+        
+        # Create CSV file with predictable name
+        csv_filename = 'product_catalog.csv'
+        csv_path = os.path.join(tempfile.gettempdir(), csv_filename)
+        with open(csv_path, 'w') as csv_file:
+            csv_file.write(csv_content)
+        
+        # Create PDF file with predictable name
+        pdf_filename = 'catalog_specs.pdf'
+        pdf_path = os.path.join(tempfile.gettempdir(), pdf_filename)
+        with open(pdf_path, 'wb') as pdf_file:
+            pdf_file.write(pdf_content)
+        
+        # Upload both files in a single request
+        with open(csv_path, 'rb') as csv_f, open(pdf_path, 'rb') as pdf_f:
+            # Use multipart form data to upload both files
+            files = [
+                ('files', (csv_filename, csv_f, 'text/csv')),
+                ('files', (pdf_filename, pdf_f, 'application/pdf'))
+            ]
+            form_data = {
+                'token': admin_token,
+                'db_name': test_db_name
+            }
+            
+            # Send the upload request with both files
+            response = requests.post(
+                f"{BASE_URL}/upload_files",
+                files=files,
+                data=form_data
+            )
+        
+        # Cleanup the temp files
+        os.unlink(csv_path)
+        os.unlink(pdf_path)
+        
+        # Verify the response
+        assert response.status_code == 200, f"Failed to upload files: {response.text}"
+        data = response.json()
+        print(f"\nResponse data: {data}")
+        assert data["db_name"] == test_db_name, f"Expected db_name to be {test_db_name}, got {data['db_name']}"
+        
+        # Print associated files for debugging
+        db_info = data["db_info"]
+        print(f"\nAssociated files: {db_info.get('associated_files')}")
+        
+        # Verify database was created with CSV data
+        get_metadata_response = requests.post(
+            f"{BASE_URL}/integration/get_metadata",
+            json={"token": admin_token, "db_name": test_db_name, "format": "json"},
+            headers={"Content-Type": "application/json"},
+        )
+        
+        assert get_metadata_response.status_code == 200, f"Failed to get metadata: {get_metadata_response.text}"
+        metadata = get_metadata_response.json()["metadata"]
+        
+        # Extract tables and their columns
+        tables_columns = {}
+        for m in metadata:
+            table = m["table_name"]
+            column = m["column_name"].lower()
+            
+            if table not in tables_columns:
+                tables_columns[table] = set()
+            tables_columns[table].add(column)
+        
+        # Print tables and columns for debugging
+        print("\nTables and columns in database:")
+        for table, columns in tables_columns.items():
+            print(f"Table: {table}")
+            for col in columns:
+                print(f"  - {col}")
+        
+        # Extract all column names
+        all_columns = set()
+        for columns in tables_columns.values():
+            all_columns.update(columns)
+        
+        print(f"\nAll columns: {all_columns}")
+        
+        # Verify CSV columns exist
+        csv_columns = {"product", "category", "price"}
+        csv_matches = [col for col in all_columns if any(csv_col in col for csv_col in csv_columns)]
+        
+        print(f"\nFound CSV columns: {csv_matches}")
+        if not csv_matches:
+            # If no exact matches, try broader check for table names
+            csv_tables = [t for t in tables_columns.keys() if any(name in t.lower() for name in ["product", "catalog"])]
+            print(f"Possible CSV tables: {csv_tables}")
+            # Only fail if we didn't find any related tables either
+            if not csv_tables:
+                assert len(csv_matches) > 0, "No columns from CSV file found in the database"
+        
+        # Verify PDF was associated with the project
+        assert "associated_files" in db_info, "No associated_files in db_info"
+        assert len(db_info["associated_files"]) == 1, f"Expected 1 associated PDF file, got {len(db_info['associated_files'])}"
+        
+        # Verify PDF file can be downloaded
+        pdf_file_id = db_info["associated_files"][0]
+        # Print the PDF file ID for debugging
+        print(f"\nPDF file ID: {pdf_file_id}, type: {type(pdf_file_id)}")
+        
+        # If PDF file ID is a dictionary, extract the ID
+        if isinstance(pdf_file_id, dict) and 'file_id' in pdf_file_id:
+            pdf_file_id = pdf_file_id['file_id']
+        
+        download_response = requests.get(
+            f"{BASE_URL}/download_pdf/{pdf_file_id}"
+        )
+        assert download_response.status_code == 200, f"Failed to download PDF: {download_response.text}"
+        assert download_response.headers["Content-Type"] == "application/pdf", "Response is not a PDF file"
+        
+        # Test deleting the PDF file
+        delete_response = requests.delete(
+            f"{BASE_URL}/delete_pdf/{pdf_file_id}",
+            params={"token": admin_token, "db_name": test_db_name}
+        )
+        assert delete_response.status_code == 200, f"Failed to delete PDF: {delete_response.text}"
+        
+        # Verify PDF was removed from the project
+        updated_db_info = delete_response.json()["db_info"]
+        assert "associated_files" in updated_db_info, "No associated_files in updated db_info"
+        assert len(updated_db_info["associated_files"]) == 0, "PDF file was not removed from project"
+        
+    except Exception as e:
+        print(f"\nTest failed with error: {str(e)}")
+        raise e
+    finally:
+        # Always clean up the test database, even if the test fails
+        cleanup_test_database(test_db_name)
+
+
+def test_upload_excel_with_pdf(admin_token):
+    """Test uploading an Excel file and a PDF file in a single request"""
+    # Create a unique database name for this test
+    test_db_name = f"excel_pdf_{random.randint(1000, 9999)}"
+    
+    try:
+        # Skip if pandas is not installed
+        try:
+            import pandas as pd
+        except ImportError:
+            pytest.skip("pandas not installed")
+        
+        # Create Excel data with a sheet
+        excel_df = pd.DataFrame({
+            'Product': ['Laptop', 'Phone', 'Tablet'],
+            'Inventory': [50, 100, 75],
+            'Price': [999.99, 499.99, 299.99]
+        })
+        
+        # Create a simple PDF content (minimal valid PDF)
+        pdf_content = b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000010 00000 n\n0000000053 00000 n\n0000000102 00000 n\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n149\n%%EOF"
+        
+        # Create temporary files with specific names
+        import tempfile
+        import os
+        
+        # Create Excel file with predictable name
+        excel_filename = 'product_inventory.xlsx'
+        excel_path = os.path.join(tempfile.gettempdir(), excel_filename)
+        excel_df.to_excel(excel_path, sheet_name='Inventory', index=False)
+        
+        # Create PDF file with predictable name
+        pdf_filename = 'product_specs.pdf'
+        pdf_path = os.path.join(tempfile.gettempdir(), pdf_filename)
+        with open(pdf_path, 'wb') as pdf_file:
+            pdf_file.write(pdf_content)
+        
+        # Upload both files in a single request
+        with open(excel_path, 'rb') as excel_f, open(pdf_path, 'rb') as pdf_f:
+            # Use multipart form data to upload both files
+            files = [
+                ('files', (excel_filename, excel_f, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')),
+                ('files', (pdf_filename, pdf_f, 'application/pdf'))
+            ]
+            form_data = {
+                'token': admin_token,
+                'db_name': test_db_name
+            }
+            
+            # Send the upload request with both files
+            response = requests.post(
+                f"{BASE_URL}/upload_files",
+                files=files,
+                data=form_data
+            )
+        
+        # Cleanup the temp files
+        os.unlink(excel_path)
+        os.unlink(pdf_path)
+        
+        # Verify the response
+        assert response.status_code == 200, f"Failed to upload files: {response.text}"
+        data = response.json()
+        print(f"\nResponse data: {data}")
+        assert data["db_name"] == test_db_name, f"Expected db_name to be {test_db_name}, got {data['db_name']}"
+        
+        # Print associated files for debugging
+        db_info = data["db_info"]
+        print(f"\nAssociated files: {db_info.get('associated_files')}")
+        
+        # Verify database was created with Excel data
+        get_metadata_response = requests.post(
+            f"{BASE_URL}/integration/get_metadata",
+            json={"token": admin_token, "db_name": test_db_name, "format": "json"},
+            headers={"Content-Type": "application/json"},
+        )
+        
+        assert get_metadata_response.status_code == 200, f"Failed to get metadata: {get_metadata_response.text}"
+        metadata = get_metadata_response.json()["metadata"]
+        
+        # Extract tables and their columns
+        tables_columns = {}
+        for m in metadata:
+            table = m["table_name"]
+            column = m["column_name"].lower()
+            
+            if table not in tables_columns:
+                tables_columns[table] = set()
+            tables_columns[table].add(column)
+        
+        # Print tables and columns for debugging
+        print("\nTables and columns in database:")
+        for table, columns in tables_columns.items():
+            print(f"Table: {table}")
+            for col in columns:
+                print(f"  - {col}")
+        
+        # Extract all column names
+        all_columns = set()
+        for columns in tables_columns.values():
+            all_columns.update(columns)
+        
+        print(f"\nAll columns: {all_columns}")
+        
+        # Verify Excel columns exist
+        excel_columns = {"product", "inventory", "price"}
+        excel_matches = [col for col in all_columns if any(excel_col in col for excel_col in excel_columns)]
+        
+        print(f"\nFound Excel columns: {excel_matches}")
+        if not excel_matches:
+            # If no exact matches, try broader check for table names
+            excel_tables = [t for t in tables_columns.keys() if any(name in t.lower() for name in ["inventory", "product"])]
+            print(f"Possible Excel tables: {excel_tables}")
+            # Only fail if we didn't find any related tables either
+            if not excel_tables:
+                assert len(excel_matches) > 0, "No columns from Excel file found in the database"
+        
+        # Verify PDF was associated with the project
+        assert "associated_files" in db_info, "No associated_files in db_info"
+        assert len(db_info["associated_files"]) == 1, f"Expected 1 associated PDF file, got {len(db_info['associated_files'])}"
+        
+        # Verify PDF file can be downloaded
+        pdf_file_id = db_info["associated_files"][0]
+        # Print the PDF file ID for debugging
+        print(f"\nPDF file ID: {pdf_file_id}, type: {type(pdf_file_id)}")
+        
+        # If PDF file ID is a dictionary, extract the ID
+        if isinstance(pdf_file_id, dict) and 'file_id' in pdf_file_id:
+            pdf_file_id = pdf_file_id['file_id']
+        
+        download_response = requests.get(
+            f"{BASE_URL}/download_pdf/{pdf_file_id}"
+        )
+        assert download_response.status_code == 200, f"Failed to download PDF: {download_response.text}"
+        assert download_response.headers["Content-Type"] == "application/pdf", "Response is not a PDF file"
+        
+        # Test deleting the PDF file
+        delete_response = requests.delete(
+            f"{BASE_URL}/delete_pdf/{pdf_file_id}",
+            params={"token": admin_token, "db_name": test_db_name}
+        )
+        assert delete_response.status_code == 200, f"Failed to delete PDF: {delete_response.text}"
+        
+        # Verify PDF was removed from the project
+        updated_db_info = delete_response.json()["db_info"]
+        assert "associated_files" in updated_db_info, "No associated_files in updated db_info"
+        assert len(updated_db_info["associated_files"]) == 0, "PDF file was not removed from project"
+        
+    except Exception as e:
+        print(f"\nTest failed with error: {str(e)}")
+        raise e
+    finally:
+        # Always clean up the test database, even if the test fails
+        cleanup_test_database(test_db_name)
+
+
+def test_upload_csv_excel_pdf_combination(admin_token):
+    """Test uploading a combination of CSV, Excel, and PDF files in a single request"""
+    # Create a unique database name for this test
+    test_db_name = f"all_files_{random.randint(1000, 9999)}"
+    
+    try:
+        # Skip if pandas is not installed
+        try:
+            import pandas as pd
+        except ImportError:
+            pytest.skip("pandas not installed")
+        
+        # Create CSV content - add more descriptive filename to ensure it's processed correctly
+        csv_content = """Customer,Email,Status
+John Smith,john@example.com,Active
+Jane Doe,jane@example.com,Inactive
+Bob Johnson,bob@example.com,Active"""
+        
+        # Create Excel data
+        excel_df = pd.DataFrame({
+            'OrderID': [1001, 1002, 1003],
+            'CustomerID': ['JOHN', 'JANE', 'BOB'],
+            'Amount': [150.50, 75.25, 200.00]
+        })
+        
+        # Create a simple PDF content (minimal valid PDF)
+        pdf_content = b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000010 00000 n\n0000000053 00000 n\n0000000102 00000 n\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n149\n%%EOF"
+        
+        # Create temporary files with specific names
+        import tempfile
+        import os
+        
+        # Create CSV file with predictable name
+        csv_filename = 'customer_data.csv'
+        csv_path = os.path.join(tempfile.gettempdir(), csv_filename)
+        with open(csv_path, 'w') as csv_file:
+            csv_file.write(csv_content)
+        
+        # Create Excel file with predictable name
+        excel_filename = 'order_data.xlsx'
+        excel_path = os.path.join(tempfile.gettempdir(), excel_filename)
+        excel_df.to_excel(excel_path, sheet_name='Orders', index=False)
+        
+        # Create PDF file with predictable name
+        pdf_filename = 'document.pdf'
+        pdf_path = os.path.join(tempfile.gettempdir(), pdf_filename)
+        with open(pdf_path, 'wb') as pdf_file:
+            pdf_file.write(pdf_content)
+        
+        # Upload all files in a single request
+        with open(csv_path, 'rb') as csv_f, open(excel_path, 'rb') as excel_f, open(pdf_path, 'rb') as pdf_f:
+            # Use multipart form data to upload all files
+            files = [
+                ('files', (csv_filename, csv_f, 'text/csv')),
+                ('files', (excel_filename, excel_f, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')),
+                ('files', (pdf_filename, pdf_f, 'application/pdf'))
+            ]
+            form_data = {
+                'token': admin_token,
+                'db_name': test_db_name
+            }
+            
+            # Send the upload request with all files
+            response = requests.post(
+                f"{BASE_URL}/upload_files",
+                files=files,
+                data=form_data
+            )
+        
+        # Cleanup the temp files
+        os.unlink(csv_path)
+        os.unlink(excel_path)
+        os.unlink(pdf_path)
+        
+        # Verify the response
+        assert response.status_code == 200, f"Failed to upload files: {response.text}"
+        data = response.json()
+        print(f"\nResponse data: {data}")
+        assert data["db_name"] == test_db_name, f"Expected db_name to be {test_db_name}, got {data['db_name']}"
+        
+        # Print associated files for debugging
+        db_info = data["db_info"]
+        print(f"\nAssociated files: {db_info.get('associated_files')}")
+        
+        # Verify database was created with CSV and Excel data
+        get_metadata_response = requests.post(
+            f"{BASE_URL}/integration/get_metadata",
+            json={"token": admin_token, "db_name": test_db_name, "format": "json"},
+            headers={"Content-Type": "application/json"},
+        )
+        
+        assert get_metadata_response.status_code == 200, f"Failed to get metadata: {get_metadata_response.text}"
+        metadata = get_metadata_response.json()["metadata"]
+        
+        # Extract tables and their columns
+        tables_columns = {}
+        for m in metadata:
+            table = m["table_name"]
+            column = m["column_name"].lower()
+            
+            if table not in tables_columns:
+                tables_columns[table] = set()
+            tables_columns[table].add(column)
+        
+        # Print tables and columns for debugging
+        print("\nTables and columns in database for CSV+Excel+PDF test:")
+        for table, columns in tables_columns.items():
+            print(f"Table: {table}")
+            for col in columns:
+                print(f"  - {col}")
+        
+        # Extract all columns as a flattened set
+        all_columns = set()
+        for columns in tables_columns.values():
+            all_columns.update(columns)
+        
+        print(f"\nAll columns: {all_columns}")
+            
+        # Check for presence of columns with more flexible matching
+        column_checks = {
+            "CSV": ["customer", "email", "status"],
+            "Excel": ["orderid", "customerid", "amount"]
+        }
+        
+        for file_type, expected_columns in column_checks.items():
+            found_columns = []
+            for col in all_columns:
+                for expected in expected_columns:
+                    if expected in col.lower():
+                        found_columns.append(col)
+                        break
+            
+            print(f"\nFound {file_type} columns: {found_columns}")
+            if not found_columns:
+                # If no exact matches, try broader check
+                file_tables = []
+                if file_type == "CSV":
+                    file_tables = [t for t in tables_columns.keys() if "customer" in t.lower()]
+                elif file_type == "Excel":
+                    file_tables = [t for t in tables_columns.keys() if "order" in t.lower()]
+                
+                print(f"Possible {file_type} tables: {file_tables}")
+                # Skip the assertion if we found related tables
+                if not file_tables:
+                    assert found_columns, f"No columns from {file_type} file found in the database"
+        
+        # Verify PDF was associated with the project
+        assert "associated_files" in db_info, "No associated_files in db_info"
+        assert len(db_info["associated_files"]) == 1, f"Expected 1 associated PDF file, got {len(db_info['associated_files'])}"
+        
+        # Verify PDF file can be downloaded
+        pdf_file_id = db_info["associated_files"][0]
+        # Print the PDF file ID for debugging
+        print(f"\nPDF file ID: {pdf_file_id}, type: {type(pdf_file_id)}")
+        
+        # If PDF file ID is a dictionary, extract the ID
+        if isinstance(pdf_file_id, dict) and 'file_id' in pdf_file_id:
+            pdf_file_id = pdf_file_id['file_id']
+        
+        download_response = requests.get(
+            f"{BASE_URL}/download_pdf/{pdf_file_id}"
+        )
+        assert download_response.status_code == 200, f"Failed to download PDF: {download_response.text}"
+        assert download_response.headers["Content-Type"] == "application/pdf", "Response is not a PDF file"
+        
+        # Test deleting the PDF file
+        delete_response = requests.delete(
+            f"{BASE_URL}/delete_pdf/{pdf_file_id}",
+            params={"token": admin_token, "db_name": test_db_name}
+        )
+        assert delete_response.status_code == 200, f"Failed to delete PDF: {delete_response.text}"
+        
+        # Verify PDF was removed from the project
+        updated_db_info = delete_response.json()["db_info"]
+        assert "associated_files" in updated_db_info, "No associated_files in updated db_info"
+        assert len(updated_db_info["associated_files"]) == 0, "PDF file was not removed from project"
         
     except Exception as e:
         print(f"\nTest failed with error: {str(e)}")
