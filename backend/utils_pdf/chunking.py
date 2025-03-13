@@ -214,10 +214,11 @@ def process_pdf_to_chunks(
     for page_number, page_text in enumerate(pdf_pages):
         page_chunks = chunk_text(page_text, chunk_size, chunk_overlap)
         
-        for i, chunk_text in enumerate(page_chunks):
+        for i, text_chunk in enumerate(page_chunks):
             chunk = {
                 "pdf_id": pdf_id,
-                "chunk_text": chunk_text,
+                "text_chunk": text_chunk,
+                "pdf_name": pdf_name,
                 "page_number": page_number + 1,  # 1-indexed for human readability
                 "chunk_index": i
             }

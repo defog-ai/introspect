@@ -9,6 +9,7 @@ numpy
 openai
 openai-agents
 openpyxl
+pymupdf==1.24.10
 pandas==2.2.3
 pgvector==0.3.6
 python-multipart
