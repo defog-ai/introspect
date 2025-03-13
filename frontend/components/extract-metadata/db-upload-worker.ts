@@ -46,12 +46,17 @@ export const uploadMultipleFilesAsDb = async (
           reject(new Error("Failed to parse response"));
         }
       } else {
-        reject(
-          new Error(
-            xhr.responseText ||
-              "Failed to create new db name - are you sure your network is working?"
-          )
-        );
+        try {
+          // Try to parse the error response as JSON
+          const errorData = JSON.parse(xhr.responseText);
+          const errorMessage = typeof errorData.detail === 'object' ? 
+            JSON.stringify(errorData.detail) : 
+            (errorData.detail || errorData.message || "Unknown error occurred");
+          reject(new Error(errorMessage));
+        } catch {
+          // If parsing fails, use the raw response text
+          reject(new Error(xhr.responseText || "Failed to create new db name - are you sure your network is working?"));
+        }
       }
     });
 
@@ -91,7 +96,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessageData>) => {
       // Send error response back to main thread
       const response: WorkerResponseData = {
         type: "UPLOAD_ERROR",
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message.replace(/^Error: /, '') : String(error),
       };
       self.postMessage(response);
     }

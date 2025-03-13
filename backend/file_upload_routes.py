@@ -4,7 +4,7 @@ import time
 import traceback
 
 from pandas.errors import ParserError
-from fastapi import APIRouter, File, Request, UploadFile
+from fastapi import APIRouter, File, Request, UploadFile, HTTPException
 from fastapi.responses import JSONResponse, Response
 from request_models import (
     DbDetails,
@@ -191,6 +191,11 @@ async def upload_files(
         else:
             await upload_files_as_db(files=data_files, db_name=db_name)
     if len(pdf_files) > 0:
+        if db_name is None and len(data_files) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="To upload PDF files, you must either provide a database name or include at least one CSV/Excel file to create a new database"
+            )
         pdf_file_ids = await upload_pdf_files(pdf_files)
         await update_project_files(db_name, pdf_file_ids)
 
