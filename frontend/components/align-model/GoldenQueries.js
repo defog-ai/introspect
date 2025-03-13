@@ -252,7 +252,7 @@ const GoldenQueries = ({
 
       {isModalVisible && (
         <AddQueryModal
-          handleOk={() => handleOk(newQuestion, newSql)}
+          handleOk={handleOk}
           handleCancel={handleCancel}
           newQuestion={newQuestion}
           setNewQuestion={setNewQuestion}

@@ -6,7 +6,6 @@ import {
   Button,
 } from "@defogdotai/agents-ui-components/core-ui";
 import { Star } from "lucide-react";
-import LineBlock from "$components/layout/LineBlock";
 
 const AddQueryModal = ({
   handleOk,
@@ -18,19 +17,11 @@ const AddQueryModal = ({
   generateSqlQuery,
 }) => {
   const [loading, setLoading] = useState(false);
-
-  // Track if we need to generate SQL for a new question
   const [shouldGenerateSQL, setShouldGenerateSQL] = useState(false);
-
-  // Handle question updates
-  const onUpdate = (questionValue) => {
-    setNewQuestion(questionValue);
-    setShouldGenerateSQL(true);
-  };
 
   // Generate SQL whenever question changes
   useEffect(() => {
-    if (shouldGenerateSQL && newQuestion) {
+    if (shouldGenerateSQL && newQuestion && generateSqlQuery) {
       const fetchSQL = async () => {
         setLoading(true);
         setNewSql("Generating SQL...");
@@ -57,7 +48,11 @@ const AddQueryModal = ({
           <Button variant="secondary" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleOk}>
+          <Button 
+            variant="primary" 
+            onClick={() => handleOk(newQuestion, newSql)}
+            disabled={!newQuestion || !newSql}
+          >
             Ok
           </Button>
         </div>
@@ -73,14 +68,18 @@ const AddQueryModal = ({
       }
       contentClassNames="w-full max-w-3xl"
     >
-      <LineBlock
-        helperText="Question: "
-        mainText={newQuestion}
-        onUpdate={onUpdate}
-        isEditable={true}
-        inputModeOn={true}
-      />
-
+      <div className="mb-4">
+        <label className="block text-gray-700 dark:text-gray-300 mb-2">Question:</label>
+        <Input
+          placeholder="Enter your question"
+          value={newQuestion}
+          onChange={(e) => {
+            setNewQuestion(e.target.value);
+            setShouldGenerateSQL(true);
+          }}
+          inputClassNames="w-full bg-white dark:bg-dark-bg-secondary border border-gray-300 dark:border-dark-border dark:text-dark-text-primary"
+        />
+      </div>
 
       <div className="relative mt-4">
         {loading && (
@@ -92,6 +91,7 @@ const AddQueryModal = ({
           </div>
         )}
 
+        <label className="block text-gray-700 dark:text-gray-300 mb-2">SQL Query:</label>
         <Input
           textArea
           placeholder="SQL Query"
