@@ -8,6 +8,7 @@ import asyncio
 import concurrent.futures
 import tempfile
 from io import BytesIO
+import traceback
 
 import pandas as pd
 import openpyxl
@@ -51,9 +52,11 @@ class ExcelUtils:
                 for row in range(min_row, max_row + 1):
                     for col in range(min_col, max_col + 1):
                         merged_cells_map[(row, col)] = top_left_value
-
+            
+            # use the first row as column names
+            columns = [cell.value for cell in sheet[1]]
             # Convert worksheet data into Pandas DataFrame
-            df = pd.DataFrame(sheet.values)
+            df = pd.DataFrame(sheet.values, columns=columns)
 
             # Use Pandas to forward-fill merged cell values
             for (row, col), value in merged_cells_map.items():
@@ -250,7 +253,7 @@ class ExcelUtils:
                 for j in range(i+1, len(col_names)):
                     # Enhanced check for repeating patterns with small variations
                     # like "1991", "1992", "1993" or "Jan-22", "Feb-22", "Mar-22"
-                    is_repeating, common_prefix = detect_repeating_pattern(col_names[i], col_names[j])
+                    is_repeating, common_prefix = detect_repeating_pattern(str(col_names[i]), str(col_names[j]))
                     
                     if is_repeating:
                         if common_prefix not in prefixes:
@@ -284,6 +287,7 @@ class ExcelUtils:
             return is_dirty
             
         except Exception as e:
+            traceback.print_exc()
             LOGGER.error(f"Error checking if table is dirty. Defaulting to further cleaning by OpenAI: {e}")
             # If we encounter an error during checking, default to further cleaning
             return True
