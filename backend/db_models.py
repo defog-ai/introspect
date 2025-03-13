@@ -4,6 +4,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    ForeignKey,
     Index,
     Integer,
     JSON,
@@ -203,6 +204,23 @@ class CustomTools(Base):
 class PDFFiles(Base):
     __tablename__ = "pdf_files"
     file_id = Column(Integer, primary_key=True, autoincrement=True)
-    file_name = Column(Text, primary_key=True)
+    file_name = Column(Text, primary_key=True)  # Restored primary_key=True
     base64_data = Column(Text)
     created_at = Column(DateTime, default=datetime.now)
+
+# PDF Embeddings
+class PDFEmbeddings(Base):
+    __tablename__ = "pdf_embeddings"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    pdf_id = Column(Integer, nullable=False)  # Removed the ForeignKey constraint
+    pdf_name = Column(Text, nullable=False)  # Added to store the PDF file name
+    text_chunk = Column(Text, nullable=False)
+    page_number = Column(Integer)
+    chunk_index = Column(Integer)
+    embedding = Column(Vector(1536))  # OpenAI's embedding dimensions
+    created_at = Column(DateTime, default=datetime.now)
+    
+    __table_args__ = (
+        # Instead of a foreign key constraint, we'll create an index for performance
+        Index("idx_pdf_embeddings_pdf_id", "pdf_id"),
+    )
