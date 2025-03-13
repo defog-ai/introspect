@@ -17,6 +17,7 @@ import pandas as pd
 from utils_file_uploads import export_df_to_postgres, clean_table_name, ExcelUtils, CSVUtils
 from utils_md import set_metadata
 from utils_oracle import upload_pdf_files, update_project_files, get_pdf_content, delete_pdf_file
+from utils_pdf.embedding import process_pdf_for_embedding
 from db_utils import update_db_type_creds
 from sqlalchemy_utils import database_exists, create_database
 import io
@@ -193,6 +194,23 @@ async def upload_files(
             )
         pdf_file_ids = await upload_pdf_files(pdf_files)
         await update_project_files(db_name, pdf_file_ids)
+        
+        # Process each PDF for embedding
+        for i, pdf_file in enumerate(pdf_files):
+            pdf_id = pdf_file_ids[i]
+            pdf_name = pdf_file.filename
+            
+            # Get the base64 content
+            file_content = await pdf_file.read()
+            # Rewind the file after reading
+            await pdf_file.seek(0)
+            base64_pdf = base64.b64encode(file_content).decode('utf-8')
+            
+            # Process asynchronously (don't await to avoid blocking upload response)
+            asyncio.create_task(
+                process_pdf_for_embedding(pdf_id, pdf_name, base64_pdf)
+            )
+            LOGGER.info(f"Started async embedding processing for PDF {pdf_id} ({pdf_name})")
 
     db_info = await get_db_info(db_name)
 
