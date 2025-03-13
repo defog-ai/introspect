@@ -5,7 +5,7 @@ from db_utils import get_db_names
 import instructions_routes
 import admin_routes, auth_routes, file_upload_routes, golden_queries_routes, \
     integration_routes, metadata_routes, oracle_report_routes, oracle_routes, oracle_streaming_routes, \
-        query_routes, query_data_routes, tools.tool_routes, user_history_routes
+        query_routes, query_data_routes, query_data_pdf_routes, tools.tool_routes, user_history_routes
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from startup import lifespan
@@ -29,6 +29,7 @@ app.include_router(oracle_routes.router)
 app.include_router(oracle_streaming_routes.router)
 app.include_router(query_routes.router)
 app.include_router(query_data_routes.router)
+app.include_router(query_data_pdf_routes.router)
 # app.include_router(slack_routes.router)
 app.include_router(tools.tool_routes.router)
 app.include_router(user_history_routes.router)
