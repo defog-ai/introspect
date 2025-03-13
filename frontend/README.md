@@ -13,7 +13,7 @@ pnpm install
 2. Configure environment:
 ```bash
 # Create a .env.local file with these variables
-NEXT_PUBLIC_API_URL=http://localhost
+NEXT_PUBLIC_AGENTS_ENDPOINT=http://localhost
 ```
 
 ## Running the Frontend
