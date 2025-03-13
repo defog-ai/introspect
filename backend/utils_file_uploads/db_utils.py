@@ -125,11 +125,11 @@ class DbUtils:
         # Store original column names for type inference
         original_cols = list(df.columns)
 
-        # First ensure we have unique column names using our dedicated function
+        # Deduplicate column names
         unique_cols = DbUtils.deduplicate_column_names(df.columns)
         df.columns = unique_cols
         
-        # Then sanitize column names for SQL use
+        # Sanitize column names for SQL use
         safe_col_list = []
         seen_names = set()
 
