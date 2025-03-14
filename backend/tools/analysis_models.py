@@ -72,7 +72,7 @@ class GenerateReportFromQuestionOutput(BaseModel):
 
 
 class GenerateReportWithAgentsInput(GenerateReportFromQuestionInput):
-    pdf_file_ids: list[int] = Field(
+    pdf_file_ids: List[int] = Field(
         default=[],
         description="The ids of the PDFs to use for citation"
     )
@@ -93,7 +93,7 @@ class EvaluatorAgentOutput(BaseModel):
     explanation: str = Field(
         ..., description="Explanation of why further research is or isn't needed"
     )
-    follow_up_questions: list[str] = Field(
+    follow_up_questions: List[str] = Field(
         ...,
         description="List of follow-up questions. Empty if further_research_need is false",
     )
@@ -102,7 +102,7 @@ class EvaluatorAgentOutput(BaseModel):
 class GenerateReportOpenAIAgentsOutput(BaseModel):
     final_report: str
     n_tool_calls: int
-    intermediate_tool_calls: Any
+    intermediate_tool_calls: List[Dict[str, Any]]
 
 
 class SynthesizeReportFromQuestionsOutput(BaseModel):
