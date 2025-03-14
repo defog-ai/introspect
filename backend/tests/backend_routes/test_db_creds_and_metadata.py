@@ -2,13 +2,8 @@
 
 import json
 import requests
-import sys
-import os
 
-# Get the conftest directly from the current directory
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, current_dir)
-from conftest import BASE_URL, TEST_DB, cleanup_test_database
+from .conftest import BASE_URL, TEST_DB
 
 
 def test_add_db_creds(admin_token):
