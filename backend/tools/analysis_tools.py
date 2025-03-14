@@ -379,7 +379,7 @@ async def generate_report_with_agents(
     model: str,
     question: str,
     clarification_responses: str,
-    post_tool_func: Callable, #TODO: add hooks
+    post_tool_func: Callable = None, #TODO: add hooks
     pdf_file_ids: list[int] = [],
     use_websearch: bool = False,
 ) -> GenerateReportOpenAIAgentsOutput:
@@ -421,17 +421,18 @@ async def generate_report_with_agents(
         {clarification_responses}
         """
 
-        max_loops = 3
+        max_loops = 20
         loop_count = 0
         # Clone analysis agent and set tools
         analysis_agent_tools = analysis_agent.clone(tools=tools)
+        input_items = []
 
         while loop_count < max_loops:
             loop_count += 1
             LOGGER.info(f"Analysis loop {loop_count}...")
             analysis_output = await Runner.run(analysis_agent_tools, input=initial_user_prompt, context=context)
 
-            input_items = analysis_output.to_input_list()
+            input_items.extend(analysis_output.to_input_list())
             evaluator_output = await Runner.run(evaluator_agent, input=input_items, context=context)
             evaluator_result = evaluator_output.final_output
             LOGGER.info(f"Evaluation: {evaluator_result}")
