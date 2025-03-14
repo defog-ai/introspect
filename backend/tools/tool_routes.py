@@ -14,12 +14,14 @@ from request_models import (
 )
 from tools.analysis_models import (
     GenerateReportFromQuestionInput,
+    GenerateReportWithAgentsInput,
     AnswerQuestionInput,
 )
 from tools.analysis_tools import (
     generate_report_from_question,
     synthesize_report_from_questions,
-    web_search_tool
+    web_search_tool,
+    generate_report_with_agents,
 )
 from datetime import datetime
 from sqlalchemy.future import select
@@ -52,6 +54,30 @@ async def answer_question_from_database_route(
         model=model,
         clarification_responses="",
         post_tool_func=None
+    )
+
+
+@router.post("/generate_report_with_agents")
+async def generate_report_with_agents_route(
+    request: GenerateReportWithAgentsInput,
+):
+    """
+    Generates a comprehensive analysis report using multiple OpenAI agents.
+    This route uses a multi-agent approach where:
+    1. An analyst agent generates initial data analysis
+    2. An evaluator agent determines if more research is needed
+    3. A report agent synthesizes findings into a final report
+    
+    The pipeline can loop up to 3 times to refine the analysis based on evaluator feedback.
+    """
+    return await generate_report_with_agents(
+        db_name=request.db_name,
+        model=request.model,
+        question=request.question,
+        clarification_responses=request.clarification_responses,
+        post_tool_func=request.post_tool_func,
+        pdf_file_ids=request.pdf_file_ids,
+        use_websearch=request.use_websearch
     )
 
 

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Callable, Dict
 import uuid
 
 class AnswerQuestionInput(BaseModel):
@@ -69,6 +69,40 @@ class GenerateReportFromQuestionOutput(BaseModel):
     tool_outputs: List[Any] = Field(
         ..., description="The tool outputs used to generate the report"
     )
+
+
+class GenerateReportWithAgentsInput(GenerateReportFromQuestionInput):
+    pdf_file_ids: list[int] = Field(
+        default=[],
+        description="The ids of the PDFs to use for citation"
+    )
+    use_websearch: bool = Field(
+        default=False,
+        description="Whether to use web search to generate SQL"
+    )
+    post_tool_func: Optional[Callable] = Field(
+        default=None,
+        description="A function to be called after each tool call"
+    )
+
+
+class EvaluatorAgentOutput(BaseModel):
+    further_research_needed: bool = Field(
+        ..., description="Whether further research is needed."
+    )
+    explanation: str = Field(
+        ..., description="Explanation of why further research is or isn't needed"
+    )
+    follow_up_questions: list[str] = Field(
+        ...,
+        description="List of follow-up questions. Empty if further_research_need is false",
+    )
+
+
+class GenerateReportOpenAIAgentsOutput(BaseModel):
+    final_report: str
+    n_tool_calls: int
+    intermediate_tool_calls: Any
 
 
 class SynthesizeReportFromQuestionsOutput(BaseModel):

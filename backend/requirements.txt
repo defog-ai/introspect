@@ -7,6 +7,7 @@ httpx
 hypercorn
 numpy
 openai
+openai-agents
 openpyxl
 pandas==2.2.3
 pgvector==0.3.6
