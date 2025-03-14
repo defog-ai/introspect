@@ -204,7 +204,7 @@ class CustomTools(Base):
 class PDFFiles(Base):
     __tablename__ = "pdf_files"
     file_id = Column(Integer, primary_key=True, autoincrement=True)
-    file_name = Column(Text, primary_key=True)  # Restored primary_key=True
+    file_name = Column(Text, primary_key=True)
     base64_data = Column(Text)
     created_at = Column(DateTime, default=datetime.now)
 
@@ -212,8 +212,8 @@ class PDFFiles(Base):
 class PDFEmbeddings(Base):
     __tablename__ = "pdf_embeddings"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    pdf_id = Column(Integer, nullable=False)  # Removed the ForeignKey constraint
-    pdf_name = Column(Text, nullable=False)  # Added to store the PDF file name
+    pdf_id = Column(Integer, nullable=False)
+    pdf_name = Column(Text, nullable=False)
     text_chunk = Column(Text, nullable=False)
     page_number = Column(Integer)
     chunk_index = Column(Integer)

@@ -165,6 +165,7 @@ async def process_pdf_for_embedding(pdf_id: int, pdf_name: str, base64_pdf: str)
         True if successful, False otherwise
     """
     try:
+        LOGGER.info(f"Processing PDF {pdf_id} ({pdf_name}) for embedding")
         # Check if this PDF has already been processed
         async with AsyncSession(engine) as session:
             result = await session.execute(
@@ -234,6 +235,8 @@ async def check_and_process_all_pdfs() -> Dict[str, Any]:
                 if embedding_result.scalar_one_or_none():
                     # Already processed
                     continue
+
+                print(f"Processing PDF {pdf.file_id} ({pdf.file_name}) for embedding from db_name: ")
                 
                 # Process this PDF
                 success = await process_pdf_for_embedding(

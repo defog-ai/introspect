@@ -153,6 +153,8 @@ def chunk_text(
     chunks = []
     start = 0
     text_length = len(text)
+
+    LOGGER.info(f"Chunking text with length:: {text_length}")
     
     while start < text_length:
         # Find the end of this chunk
@@ -213,6 +215,8 @@ def process_pdf_to_chunks(
     
     for page_number, page_text in enumerate(pdf_pages):
         page_chunks = chunk_text(page_text, chunk_size, chunk_overlap)
+
+        LOGGER.info(f"Generated {len(page_chunks)} chunks for page {page_number + 1}")
         
         for i, text_chunk in enumerate(page_chunks):
             chunk = {

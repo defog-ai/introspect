@@ -6,7 +6,6 @@ from fastapi import FastAPI
 from sqlalchemy import insert, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 from utils_logging import LOGGER
-import asyncio
 
 ################################################################################
 # This file is used to consolidate all the startup and shutdown events into a
@@ -206,16 +205,6 @@ async def lifespan(app: FastAPI):
         
         # Create admin user if doesn't exist
         await create_admin_user()
-        
-        # Process PDFs for embedding (optional - won't block startup if it fails)
-        try:
-            from utils_pdf.startup import process_pdfs_on_startup
-            LOGGER.info("Starting PDF embedding processing...")
-            # Run as a background task so it doesn't block startup
-            asyncio.create_task(process_pdfs_on_startup())
-        except Exception as e:
-            LOGGER.warning(f"PDF embedding processing initialization failed: {str(e)}")
-            LOGGER.warning("This is non-critical and the application will continue to start")
         
         LOGGER.info("All startup events completed successfully")
 
