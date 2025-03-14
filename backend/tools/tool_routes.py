@@ -75,7 +75,6 @@ async def generate_report_with_agents_route(
         model=request.model,
         question=request.question,
         clarification_responses=request.clarification_responses,
-        post_tool_func=request.post_tool_func,
         pdf_file_ids=request.pdf_file_ids,
         use_websearch=request.use_websearch
     )

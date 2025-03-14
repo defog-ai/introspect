@@ -80,10 +80,6 @@ class GenerateReportWithAgentsInput(GenerateReportFromQuestionInput):
         default=False,
         description="Whether to use web search to generate SQL"
     )
-    post_tool_func: Optional[Callable] = Field(
-        default=None,
-        description="A function to be called after each tool call"
-    )
 
 
 class EvaluatorAgentOutput(BaseModel):
