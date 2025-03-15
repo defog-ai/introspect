@@ -232,6 +232,19 @@ async def upload_pdf_files(pdf_files: list) -> list[int]:
     return pdf_file_ids
 
 async def get_project_pdf_files(db_name: str) -> list[int]:
+    """Legacy function, use get_project_files instead"""
+    return await get_project_files(db_name)
+
+async def get_project_files(db_name: str) -> list[int]:
+    """
+    Get the list of file IDs associated with a project
+    
+    Args:
+        db_name: Name of the project
+        
+    Returns:
+        List of file IDs
+    """
     async with AsyncSession(engine) as session:
         async with session.begin():
             pdf_file_ids = await session.execute(

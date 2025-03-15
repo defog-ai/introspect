@@ -208,6 +208,28 @@ class PDFFiles(Base):
     base64_data = Column(Text)
     created_at = Column(DateTime, default=datetime.now)
 
+# PDF Processing Status
+class PDFProcessingStatus(enum.Enum):
+    PENDING = "PENDING"       # PDF uploaded but processing not started
+    PROCESSING = "PROCESSING" # PDF is currently being processed
+    COMPLETED = "COMPLETED"   # Processing completed successfully
+    FAILED = "FAILED"         # Processing failed
+
+class PDFProcessingTask(Base):
+    __tablename__ = "pdf_processing_tasks"
+    task_id = Column(Text, primary_key=True)  # Celery task ID
+    pdf_id = Column(Integer, nullable=False)
+    pdf_name = Column(Text, nullable=False)
+    status = Column(Enum(PDFProcessingStatus), default=PDFProcessingStatus.PENDING)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    __table_args__ = (
+        # Index for quick lookup by PDF ID
+        Index("idx_pdf_tasks_pdf_id", "pdf_id"),
+    )
+
 # PDF Embeddings
 class PDFEmbeddings(Base):
     __tablename__ = "pdf_embeddings"

@@ -2,6 +2,7 @@ import base64
 import re
 import time
 import traceback
+from typing import Optional
 
 from pandas.errors import ParserError
 from fastapi import APIRouter, File, Request, UploadFile, HTTPException
@@ -195,7 +196,10 @@ async def upload_files(
         pdf_file_ids = await upload_pdf_files(pdf_files)
         await update_project_files(db_name, pdf_file_ids)
         
-        # Process each PDF for embedding
+        # Process each PDF for embedding using Celery
+        from celery_tasks.pdf_tasks import process_pdf
+        from utils_pdf.task_status import create_task_record
+        
         for i, pdf_file in enumerate(pdf_files):
             pdf_id = pdf_file_ids[i]
             pdf_name = pdf_file.filename
@@ -206,11 +210,13 @@ async def upload_files(
             await pdf_file.seek(0)
             base64_pdf = base64.b64encode(file_content).decode('utf-8')
             
-            # Process asynchronously (don't await to avoid blocking upload response)
-            asyncio.create_task(
-                process_pdf_for_embedding(pdf_id, pdf_name, base64_pdf)
-            )
-            LOGGER.info(f"Started async embedding processing for PDF {pdf_id} ({pdf_name})")
+            # Submit task to Celery
+            task = process_pdf.delay(pdf_id, pdf_name, base64_pdf)
+            
+            # Record task in database for status tracking
+            await create_task_record(task.id, pdf_id, pdf_name)
+            
+            LOGGER.info(f"Submitted Celery task {task.id} for PDF {pdf_id} ({pdf_name})")
 
     db_info = await get_db_info(db_name)
 
@@ -283,6 +289,69 @@ async def delete_pdf(file_id: int, token: str, db_name: str):
         return JSONResponse(
             status_code=500,
             content={"error": f"Error deleting PDF: {str(e)}"}
+        )
+
+
+@router.get("/pdf_processing_status/{pdf_id}")
+async def get_pdf_status(pdf_id: int, token: str):
+    """
+    Get the processing status of a PDF file
+    
+    Args:
+        pdf_id: ID of the PDF file
+        token: Authentication token
+    """
+    try:
+        from utils_pdf.task_status import get_pdf_processing_status
+        
+        status = await get_pdf_processing_status(pdf_id)
+        return JSONResponse(
+            status_code=200,
+            content=status
+        )
+    except Exception as e:
+        LOGGER.error(f"Error getting PDF processing status: {str(e)}")
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error getting PDF processing status: {str(e)}"}
+        )
+
+
+@router.get("/pdf_processing_statuses")
+async def get_all_pdf_statuses(token: str, db_name: Optional[str] = None):
+    """
+    Get processing status for all PDFs or PDFs associated with a specific project
+    
+    Args:
+        token: Authentication token
+        db_name: Optional project name to filter by
+    """
+    try:
+        from utils_pdf.task_status import get_all_pdf_processing_statuses
+        
+        statuses = await get_all_pdf_processing_statuses()
+        
+        # Filter by db_name if provided
+        if db_name:
+            # Get the PDF IDs associated with this project
+            from utils_oracle import get_project_files
+            project_files = await get_project_files(db_name)
+            project_pdf_ids = set(project_files)
+            
+            # Filter statuses to only include PDFs associated with this project
+            statuses = [status for status in statuses if status["pdf_id"] in project_pdf_ids]
+        
+        return JSONResponse(
+            status_code=200,
+            content={"statuses": statuses}
+        )
+    except Exception as e:
+        LOGGER.error(f"Error getting PDF processing statuses: {str(e)}")
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error getting PDF processing statuses: {str(e)}"}
         )
 
 

@@ -19,10 +19,7 @@ INTERNAL_DB = os.environ.get("INTERNAL_DB", None)
 
 def get_db_engine() -> AsyncEngine:
     """
-    Returns a tuple of the 
-    - async engine for querying the user's database,
-    - engine for querying the imported tables database, and
-    - engine for querying the temp tables database.
+    Returns an async engine for querying the internal database.
     """
     if INTERNAL_DB == "sqlite":
         print("using sqlite as our internal db")
@@ -57,6 +54,40 @@ def get_db_engine() -> AsyncEngine:
         engine = create_async_engine(connection_uri)
 
         return engine
+
+
+def get_sync_engine() -> Engine:
+    """
+    Returns a synchronous SQLAlchemy engine for use in Celery tasks.
+    Celery workers use synchronous code, so we need a non-async engine.
+    """
+    if INTERNAL_DB == "sqlite":
+        connection_uri = "sqlite:///defog_local.db"
+        return create_engine(connection_uri, connect_args={"timeout": 3})
+
+    elif INTERNAL_DB == "postgres":
+        db_creds = {
+            "user": os.environ.get("DBUSER", "postgres"),
+            "password": os.environ.get("DBPASSWORD", "postgres"),
+            "host": os.environ.get("DBHOST", "agents-postgres"),
+            "port": os.environ.get("DBPORT", "5432"),
+            "database": os.environ.get("DATABASE", "postgres"),
+        }
+
+        connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
+        return create_engine(connection_uri, pool_size=30)
+
+    elif INTERNAL_DB == "sqlserver":
+        db_creds = {
+            "user": os.environ.get("DBUSER", "sa"),
+            "password": os.environ.get("DBPASSWORD", "Password1"),
+            "host": os.environ.get("DBHOST", "localhost"),
+            "database": os.environ.get("DATABASE", "defog"),
+            "port": os.environ.get("DBPORT", "1433"),
+        }
+
+        connection_uri = f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server"
+        return create_engine(connection_uri)
 
 
 engine = get_db_engine()

@@ -96,6 +96,39 @@ services:
       timeout: 1s
       retries: 5
       start_period: 1s
+      
+  agents-celery-worker:
+    container_name: introspect-celery-worker
+    build:
+      context: .
+      dockerfile: dockerfile.agents-python-server
+    environment:
+      - SALT=${SALT:-default_salt}
+      - DBHOST=${DEFOG_DBHOST:-agents-postgres}
+      - DBPORT=${DEFOG_DBPORT:-5432}
+      - DATABASE=${DEFOG_DATABASE:-postgres}
+      - DBUSER=${DEFOG_DBUSER:-postgres}
+      - DBPASSWORD=${DEFOG_DBPASSWORD:-postgres}
+      - REDIS_HOST=${REDIS_INTERNAL_HOST:-agents-redis}
+      - REDIS_PORT=${REDIS_INTERNAL_PORT:-6379}
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONPATH=/backend
+      - INTERNAL_DB=${INTERNAL_DB:-postgres}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    command: celery -A celery_worker.celery_app worker --loglevel=info
+    volumes:
+      - ./backend:/backend
+    depends_on:
+      agents-postgres:
+        condition: service_healthy
+      agents-redis:
+        condition: service_healthy
+    networks:
+      - agents-network
 
 volumes:
   agents-postgres:
