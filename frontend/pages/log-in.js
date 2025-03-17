@@ -100,7 +100,7 @@ const LogIn = () => {
                     id="username"
                     name="username"
                     type="text"
-                    defaultValue={"ADMIN"}
+                    defaultValue={"admin"}
                     required
                     autoComplete="username"
                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 dark:text-dark-text-primary shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-dark-border dark:bg-dark-bg-secondary placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
@@ -133,7 +133,7 @@ const LogIn = () => {
                     required
                     autoComplete="current-password"
                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 dark:text-dark-text-primary shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-dark-border dark:bg-dark-bg-secondary placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
-                    defaultValue={"ADMIN"}
+                    defaultValue={"admin"}
                   />
                 </div>
               </div>
