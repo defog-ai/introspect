@@ -1,10 +1,10 @@
 """
-Integration tests for PostgreSQL export functionality in utils_file_uploads module.
+Integration tests for database export functionality in utils_file_uploads module.
 """
 import pytest
 import datetime
 import pandas as pd
-from utils_file_uploads import export_df_to_postgres
+from utils_file_uploads import export_df_to_postgres, export_df_to_db
 
 
 class TestExportDfToPostgres:
@@ -295,3 +295,107 @@ class TestExportDfToPostgres:
         
         # No rows should have been inserted
         assert len(mock_data['inserted_rows']) == 0
+        
+        
+class TestExportDfToDb:
+    """Integration tests for export_df_to_db function."""
+    
+    @pytest.mark.asyncio
+    async def test_postgres_export(self, mock_postgres_connection, sample_dataframes, db_conn_string):
+        """Test export to PostgreSQL database."""
+        df = sample_dataframes['basic']
+        table_name = "postgres_test_table"
+        
+        # Get connection mocks
+        mock_data = mock_postgres_connection
+        
+        # Run the export function
+        result = await export_df_to_db(df, table_name, db_conn_string, "postgres")
+        
+        # Verify the function returned success
+        assert result["success"]
+        
+        # Verify the types were inferred correctly
+        inferred_types = result["inferred_types"]
+        assert inferred_types["text_col"] == "TEXT"
+        assert inferred_types["int_col"] in ["BIGINT", "DOUBLE PRECISION"]
+        assert inferred_types["float_col"] == "DOUBLE PRECISION"
+        assert inferred_types["date_col"] == "TIMESTAMP"
+        
+        # Check SQL operations
+        # 1. First should be DROP TABLE
+        assert f'DROP TABLE IF EXISTS "{table_name}"' in mock_data['executed_sql'][0]
+        
+        # 2. Second should be CREATE TABLE
+        create_sql = mock_data['executed_sql'][1]
+        assert f'CREATE TABLE "{table_name}"' in create_sql
+        
+        # Check that all columns are in the CREATE TABLE statement
+        for col in inferred_types.keys():
+            assert f'"{col}"' in create_sql
+    
+    @pytest.mark.asyncio
+    async def test_mysql_export(self, mock_postgres_connection, sample_dataframes, db_conn_string):
+        """Test export to MySQL database."""
+        # Since we're using mocks, we can simulate MySQL by changing db_type
+        df = sample_dataframes['basic']
+        table_name = "mysql_test_table"
+        
+        # Get connection mocks
+        mock_data = mock_postgres_connection
+        
+        # Run the export function with MySQL db_type
+        result = await export_df_to_db(df, table_name, db_conn_string, "mysql")
+        
+        # Verify the function returned success
+        assert result["success"]
+        
+        # MySQL should use backtick identifier quoting
+        create_sql = mock_data['executed_sql'][1]
+        assert f"CREATE TABLE `{table_name}`" in create_sql
+        
+        # Check that columns use backtick quoting
+        for col in result["inferred_types"].keys():
+            assert f"`{col}`" in create_sql
+
+    @pytest.mark.asyncio
+    async def test_sqlserver_export(self, mock_postgres_connection, sample_dataframes, db_conn_string):
+        """Test export to SQL Server database."""
+        df = sample_dataframes['basic']
+        table_name = "sqlserver_test_table"
+        
+        # Get connection mocks
+        mock_data = mock_postgres_connection
+        
+        # Run the export function with SQL Server db_type
+        result = await export_df_to_db(df, table_name, db_conn_string, "sqlserver")
+        
+        # Verify the function returned success
+        assert result["success"]
+        
+        # SQL Server should use square bracket identifier quoting
+        create_sql = mock_data['executed_sql'][1]
+        assert f"CREATE TABLE [{table_name}]" in create_sql
+        
+        # Check that columns use square bracket quoting
+        for col in result["inferred_types"].keys():
+            assert f"[{col}]" in create_sql
+            
+    @pytest.mark.asyncio
+    async def test_redshift_export(self, mock_postgres_connection, sample_dataframes, db_conn_string):
+        """Test export to Redshift database."""
+        df = sample_dataframes['basic']
+        table_name = "redshift_test_table"
+        
+        # Get connection mocks
+        mock_data = mock_postgres_connection
+        
+        # Run the export function with Redshift db_type
+        result = await export_df_to_db(df, table_name, db_conn_string, "redshift")
+        
+        # Verify the function returned success
+        assert result["success"]
+        
+        # Redshift uses the same quotation as PostgreSQL
+        create_sql = mock_data['executed_sql'][1]
+        assert f'CREATE TABLE "{table_name}"' in create_sql
