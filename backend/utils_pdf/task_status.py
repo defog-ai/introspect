@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Union
 
-from sqlalchemy import select, update
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db_config import engine
@@ -24,6 +24,13 @@ async def create_task_record(task_id: str, file_id: int, pdf_name: str) -> None:
     """
     async with AsyncSession(engine) as session:
         async with session.begin():
+            # first delete all tasks with this file id
+            delete_stmt = delete(PDFProcessingTask).where(
+                PDFProcessingTask.file_id == file_id
+            )
+            await session.execute(delete_stmt)
+            
+            # now create a new one
             task_record = PDFProcessingTask(
                 task_id=task_id,
                 file_id=file_id,
