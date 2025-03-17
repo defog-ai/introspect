@@ -11,18 +11,14 @@ from conftest import create_pdf_and_get_base_64
 @pytest.mark.asyncio
 async def test_generate_embedding():
     """Test generating embeddings for text"""
-    try:
-        from utils_pdf.embedding import generate_embedding
+    from utils_pdf.embedding import generate_embedding
 
-        # Call the function
-        text = "This is a test text to embed."
-        embedding = await generate_embedding(text)
+    # Call the function
+    text = "This is a test text to embed."
+    embedding = await generate_embedding(text)
 
-        assert type(embedding) == list
-        assert len(embedding) == OAI_EMB_DIM
-    
-    except Exception as e:
-        pytest.fail(f"Test failed with exception: {str(e)}")
+    assert type(embedding) == list
+    assert len(embedding) == OAI_EMB_DIM
 
 
 @pytest.mark.asyncio
@@ -45,8 +41,5 @@ async def test_embed_pdf_chunks():
         assert len(result_chunks[1].embedding) == OAI_EMB_DIM
         assert result_chunks[0].embedding is not None
         assert result_chunks[1].embedding is not None
-    
-    except Exception as e:
-        pytest.fail(f"Test failed with exception: {str(e)}")
     finally:
         os.unlink(temp_file_path)

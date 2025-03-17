@@ -32,10 +32,11 @@ async def test_semantic_search():
     ])
 
     file_id = None
-    db_name = TEST_DB["db_name"]
 
     try:
         from utils_pdf.embedding import semantic_search
+
+        db_name = TEST_DB["db_name"]
 
         # upload this pdf to a test db
         # Upload the PDF
@@ -67,21 +68,8 @@ async def test_semantic_search():
         assert len(result) == 2
         assert result[0]["text"] == "Paris is the capital of France."
         assert result[1]["text"] == "France has a big GDP. Its capital, Paris, is the biggest contributor."
-    except Exception as e:
-        # Any uncaught exceptions will be raised and fail the test
-        raise e
+
     finally:
-        # Clean up files regardless of test outcome
-        if os.path.exists(temp_file_path):
-            os.unlink(temp_file_path)
-        
-        # Only try to delete the PDF if we've created one
         if file_id:
-            # Don't wait for the delete to complete - this prevents event loop issues
-            # when running multiple tests that use asyncio
-            try:
-                import asyncio
-                task = asyncio.create_task(delete_pdf_file(db_name, file_id))
-                # We don't await the task as it causes event loop issues
-            except Exception as cleanup_err:
-                print(f"Warning: Failed to delete test PDF: {cleanup_err}")
+            await delete_pdf_file(db_name, file_id)
+        os.unlink(temp_file_path)

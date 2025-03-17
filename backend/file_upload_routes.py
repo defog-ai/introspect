@@ -11,7 +11,7 @@ from request_models import (
     DbDetails,
 )
 from utils_logging import LOGGER
-from db_utils import get_db_info, get_db_type_creds
+from db_utils import get_db_info
 import os
 import pandas as pd
 from utils_file_uploads import export_df_to_postgres, clean_table_name, ExcelUtils, CSVUtils

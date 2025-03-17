@@ -1,7 +1,7 @@
-from sqlalchemy import insert, select, update
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from oracle_models import Clarification
-from db_models import OracleGuidelines, OracleReports, PDFFiles, Project
+from db_models import OracleGuidelines, OracleReports, PDFEmbeddings, PDFFiles, PDFProcessingTasks, Project
 from db_config import engine
 from utils_md import get_metadata, mk_create_ddl
 from defog.llm.utils import chat_async
@@ -283,7 +283,20 @@ async def delete_pdf_file(db_name: str, file_id: int) -> bool:
                     project.associated_files.remove(file_id)
                     flag_modified(project, "associated_files")
                 
-                # Delete the file from PDF Files table
+                # First delete from dependent tables to avoid foreign key constraint violations
+                await session.execute(
+                    delete(PDFProcessingTasks).where(
+                        PDFProcessingTasks.file_id == file_id
+                    )
+                )
+                
+                await session.execute(
+                    delete(PDFEmbeddings).where(
+                        PDFEmbeddings.file_id == file_id
+                    )
+                )
+                
+                # Now it's safe to delete the pdf_file
                 pdf_file = await session.execute(
                     select(PDFFiles).where(
                         PDFFiles.file_id == file_id
@@ -293,7 +306,7 @@ async def delete_pdf_file(db_name: str, file_id: int) -> bool:
                 
                 if pdf_file:
                     await session.delete(pdf_file)
-                    
+                
         return True
     except Exception as e:
         LOGGER.error(f"Error deleting PDF file: {str(e)}")
