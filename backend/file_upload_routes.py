@@ -98,10 +98,21 @@ async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
             LOGGER.error(f"Error processing file {file_name}: {e}")
             raise Exception(f"Error processing file {file_name}: {e}")
 
+    # Determine which database credentials to use
+    # If db_name is provided, check if there are existing db_creds we should use
+    db_creds_to_use = INTERNAL_DB_CREDS
+    if db_name is not None:
+        # Check if user already has db credentials
+        db_type_creds = await get_db_type_creds(db_name)
+        if db_type_creds and db_type_creds[0] == "postgres" and db_type_creds[1]:
+            # Use the user's credentials instead if they exist and are for postgres
+            LOGGER.info(f"Using user's existing postgres credentials for {db_name}")
+            db_creds_to_use = db_type_creds[1]
+
     # create the database
     # NOTE: It seems like we cannot use asyncpg in the database_exists and create_database functions, so we are using sync
     # connection uri
-    connection_uri = f"postgresql://{INTERNAL_DB_CREDS['user']}:{INTERNAL_DB_CREDS['password']}@{INTERNAL_DB_CREDS['host']}:{INTERNAL_DB_CREDS['port']}/{cleaned_db_name}"
+    connection_uri = f"postgresql://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
     if database_exists(connection_uri):
         LOGGER.info(
             f"Database already exists: {cleaned_db_name}, but is not added to db creds. Dropping it."
@@ -114,7 +125,7 @@ async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
 
     # now that the DB is created
     # we will use asyncpg version so we don't block requests
-    connection_uri = f"postgresql+asyncpg://{INTERNAL_DB_CREDS['user']}:{INTERNAL_DB_CREDS['password']}@{INTERNAL_DB_CREDS['host']}:{INTERNAL_DB_CREDS['port']}/{cleaned_db_name}"
+    connection_uri = f"postgresql+asyncpg://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
 
     db_metadata = []
 
@@ -145,13 +156,16 @@ async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
     LOGGER.info(f"Adding metadata for {cleaned_db_name}")
     await set_metadata(cleaned_db_name, db_metadata)
 
+    # Use the same credentials we used for exporting
     user_db_creds = {
-        "user": INTERNAL_DB_CREDS["user"],
-        "password": INTERNAL_DB_CREDS["password"],
-        "host": INTERNAL_DB_CREDS["host"],
-        "port": INTERNAL_DB_CREDS["port"],
+        "user": db_creds_to_use["user"],
+        "password": db_creds_to_use["password"],
+        "host": db_creds_to_use["host"],
+        "port": db_creds_to_use["port"],
         "database": cleaned_db_name,
     }
+    
+    # Only update db_type_creds if we're not using an existing user db or db_name is None
     LOGGER.info(f"Creating Project entry for {cleaned_db_name}")
     await update_db_type_creds(cleaned_db_name, "postgres", user_db_creds)
 
