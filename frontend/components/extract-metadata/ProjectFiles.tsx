@@ -38,18 +38,20 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
   const [deletingFileId, setDeletingFileId] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pollingFiles, setPollingFiles] = useState<Record<number, boolean>>({});
-  const [processingFiles, setProcessingFiles] = useState<Record<number, boolean>>({});
+  const [processingFiles, setProcessingFiles] = useState<
+    Record<number, boolean>
+  >({});
   const pollingIntervalsRef = useRef<Record<number, NodeJS.Timeout>>({});
   const message = React.useContext(MessageManagerContext);
-  
+
   // Initialize or update polling when files change
   useEffect(() => {
     if (!files || files.length === 0) return;
-    
+
     // Start polling for files that need monitoring
-    files.forEach(file => {
+    files.forEach((file) => {
       if (
-        file.processing_status === "PENDING" || 
+        file.processing_status === "PENDING" ||
         file.processing_status === "PROCESSING"
       ) {
         startPollingFileStatus(file.file_id);
@@ -58,12 +60,14 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
         stopPollingFileStatus(file.file_id);
       }
     });
-    
+
     // Cleanup polling intervals on unmount
     return () => {
-      Object.entries(pollingIntervalsRef.current).forEach(([fileId, interval]) => {
-        clearInterval(interval);
-      });
+      Object.entries(pollingIntervalsRef.current).forEach(
+        ([fileId, interval]) => {
+          clearInterval(interval);
+        }
+      );
     };
   }, [files]);
 
@@ -71,46 +75,44 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
   const startPollingFileStatus = (fileId: number) => {
     // Don't set up multiple polling intervals for the same file
     if (pollingFiles[fileId]) return;
-    
+
     // Mark this file as being polled
-    setPollingFiles(prev => ({ ...prev, [fileId]: true }));
-    
+    setPollingFiles((prev) => ({ ...prev, [fileId]: true }));
+
     // Clear any existing interval just to be safe
     if (pollingIntervalsRef.current[fileId]) {
       clearInterval(pollingIntervalsRef.current[fileId]);
     }
-    
+
     // Set up polling interval - check status every 5 seconds
     const interval = setInterval(async () => {
       try {
         const response = await fetch(
-          setupBaseUrl(
-            "http", 
-            `pdf_processing_status/${fileId}?token=${token}`
-          )
+          setupBaseUrl("http", `pdf_processing_status/${fileId}?token=${token}`)
         );
-        
+
         if (!response.ok) {
           console.error("Error fetching PDF status");
           return;
         }
-        
+
         const status = await response.json();
-        
+
         // If processing is complete or failed, stop polling
         if (status.status === "COMPLETED" || status.status === "FAILED") {
           stopPollingFileStatus(fileId);
-          
+
           // Update the parent with the latest project info
           if (onFilesUploaded) {
             const dbInfoResponse = await fetch(
-              setupBaseUrl("http", `integration/get_db_info`), {
+              setupBaseUrl("http", `integration/get_db_info`),
+              {
                 method: "POST",
                 body: JSON.stringify({ token, db_name: dbName }),
                 headers: { "Content-Type": "application/json" },
               }
             );
-            
+
             if (dbInfoResponse.ok) {
               const data = await dbInfoResponse.json();
               onFilesUploaded(dbName, data);
@@ -121,56 +123,57 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
         console.error("Error polling PDF status:", error);
       }
     }, 5000);
-    
+
     // Store the interval reference
     pollingIntervalsRef.current[fileId] = interval;
   };
-  
+
   // Function to stop polling for a file's status
   const stopPollingFileStatus = (fileId: number) => {
     if (pollingIntervalsRef.current[fileId]) {
       clearInterval(pollingIntervalsRef.current[fileId]);
       delete pollingIntervalsRef.current[fileId];
     }
-    
-    setPollingFiles(prev => {
+
+    setPollingFiles((prev) => {
       const updated = { ...prev };
       delete updated[fileId];
       return updated;
     });
   };
-  
+
   // Function to retry processing a file
   const handleRetryProcessing = async (fileId: number) => {
     try {
-      setProcessingFiles(prev => ({ ...prev, [fileId]: true }));
-      
+      setProcessingFiles((prev) => ({ ...prev, [fileId]: true }));
+
       const response = await fetch(
         setupBaseUrl("http", `retry_pdf_processing/${fileId}?token=${token}`),
         { method: "POST" }
       );
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to retry processing");
       }
-      
+
       const data = await response.json();
       message.success("PDF processing restarted");
-      
+
       // Start polling for updates
       startPollingFileStatus(fileId);
-      
+
       // Update the parent with the latest project info
       if (onFilesUploaded) {
         const dbInfoResponse = await fetch(
-          setupBaseUrl("http", `integration/get_db_info`), {
+          setupBaseUrl("http", `integration/get_db_info`),
+          {
             method: "POST",
             body: JSON.stringify({ token, db_name: dbName }),
             headers: { "Content-Type": "application/json" },
           }
         );
-        
+
         if (dbInfoResponse.ok) {
           const data = await dbInfoResponse.json();
           onFilesUploaded(dbName, data);
@@ -180,7 +183,7 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
       console.error("Error retrying processing:", error);
       message.error("Failed to restart processing");
     } finally {
-      setProcessingFiles(prev => {
+      setProcessingFiles((prev) => {
         const updated = { ...prev };
         delete updated[fileId];
         return updated;
@@ -283,57 +286,74 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
   // Status indicator component
   const getStatusIndicator = (file: PdfFile) => {
     const status = file.processing_status;
-    
+
     // If polling is active for this file, show a spinner
     if (pollingFiles[file.file_id]) {
       return (
-        <div className="flex items-center text-blue-500" title="Processing in progress">
+        <div
+          className="flex items-center text-blue-500"
+          title="Processing in progress"
+        >
           <Loader className="w-4 h-4 mr-1 animate-spin" />
           <span className="text-xs">Processing</span>
         </div>
       );
     }
-    
+
     // If retrying, show loading state
     if (processingFiles[file.file_id]) {
       return (
-        <div className="flex items-center text-blue-500" title="Restarting processing">
+        <div
+          className="flex items-center text-blue-500"
+          title="Restarting processing"
+        >
           <Loader className="w-4 h-4 mr-1 animate-spin" />
           <span className="text-xs">Restarting</span>
         </div>
       );
     }
-    
+
     // Status-specific indicators
     switch (status) {
       case "PENDING":
         return (
-          <div className="flex items-center text-yellow-500" title="Processing pending">
+          <div
+            className="flex items-center text-yellow-500"
+            title="Processing pending"
+          >
             <Clock className="w-4 h-4 mr-1" />
             <span className="text-xs">Pending</span>
           </div>
         );
       case "PROCESSING":
         return (
-          <div className="flex items-center text-blue-500" title="Processing in progress">
+          <div
+            className="flex items-center text-blue-500"
+            title="Processing in progress"
+          >
             <Loader className="w-4 h-4 mr-1 animate-spin" />
             <span className="text-xs">Processing</span>
           </div>
         );
       case "COMPLETED":
         return (
-          <div className="flex items-center text-green-500" title="Processing completed">
+          <div
+            className="flex items-center text-green-500"
+            title="Processing completed"
+          >
             <Check className="w-4 h-4 mr-1" />
             <span className="text-xs">Processed</span>
           </div>
         );
       case "FAILED":
         return (
-          <div className="flex items-center text-red-500" title="Processing failed">
+          <div
+            className="flex items-center text-red-500"
+            title="Processing failed"
+          >
             <XCircle className="w-4 h-4 mr-1" />
             <span className="text-xs">Failed</span>
-            <Button 
-              variant="ghost"
+            <Button
               onClick={() => handleRetryProcessing(file.file_id)}
               className="ml-2 px-2 py-0 h-6 text-xs"
               title="Retry processing"
@@ -345,11 +365,13 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
         );
       default:
         return (
-          <div className="flex items-center text-gray-500" title="Processing status unknown">
+          <div
+            className="flex items-center text-gray-500"
+            title="Processing status unknown"
+          >
             <HelpCircle className="w-4 h-4 mr-1" />
             <span className="text-xs">Not processed</span>
-            <Button 
-              variant="ghost"
+            <Button
               onClick={() => handleRetryProcessing(file.file_id)}
               className="ml-2 px-2 py-0 h-6 text-xs"
               title="Process file"
@@ -361,7 +383,7 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
         );
     }
   };
-  
+
   const getFileIcon = (fileName: string) => {
     if (fileName.toLowerCase().endsWith(".pdf")) {
       return <FilePdf className="w-6 h-6 text-blue-500" />;
@@ -419,13 +441,10 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
               </div>
 
               {/* Status indicator */}
-              <div className="mb-3 mt-1">
-                {getStatusIndicator(file)}
-              </div>
-              
+              <div className="mb-3 mt-1">{getStatusIndicator(file)}</div>
+
               <div className="mt-auto pt-3 flex justify-end gap-2">
                 <Button
-                  variant="secondary"
                   onClick={() => handleDownload(file.file_id)}
                   title="Download file"
                 >
@@ -433,7 +452,6 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
                   Download
                 </Button>
                 <Button
-                  variant="secondary"
                   onClick={() => handleDeleteClick(file)}
                   title="Delete file"
                   className="bg-gray-100 hover:bg-red-100 dark:bg-gray-700 dark:hover:bg-red-900/30 group"
@@ -468,7 +486,6 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
         footer={
           <div className="flex justify-end gap-2">
             <Button
-              variant="secondary"
               onClick={handleDelete}
               className="bg-gray-200 hover:bg-red-100 dark:bg-gray-700 dark:hover:bg-red-900/30 group"
             >
@@ -476,7 +493,6 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
               Delete
             </Button>
             <Button
-              variant="secondary"
               onClick={() => {
                 setShowDeleteConfirm(false);
                 setDeletingFileId(null);
