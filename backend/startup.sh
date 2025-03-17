@@ -5,7 +5,7 @@ echo "Current PID: $$"
 
 echo "Starting Celery worker for background tasks"
 # Start the Celery worker in the background
-celery -A celery_worker.celery_app worker --loglevel=info --concurrency=2 &
+python -m celery -A celery_worker.celery_app worker --loglevel=info --concurrency=2 &
 CELERY_PID=$!
 echo "Celery worker started with PID: $CELERY_PID"
 
