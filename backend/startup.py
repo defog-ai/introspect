@@ -88,8 +88,17 @@ async def init_db(engine: AsyncEngine):
                                             # Skip default for other callables, they'll be handled by SQLAlchemy
                                             pass
                                     else:
+                                        # Special handling for enum types - can't use DEFAULT with enum references in ALTER TABLE
+                                        if column.name == 'user_type':
+                                            # We'll update this value after adding the column
+                                            LOGGER.info(f"Will update column {column.name} with default value after adding it")
+                                            default = ""
+                                        elif column.name == 'status':
+                                            # We'll update this value after adding the column
+                                            LOGGER.info(f"Will update column {column.name} with default value after adding it")
+                                            default = ""
                                         # For literal values, quote strings but not numbers or booleans
-                                        if isinstance(column.default.arg, (str,)):
+                                        elif isinstance(column.default.arg, (str,)):
                                             default = f"DEFAULT '{column.default.arg}'"
                                         else:
                                             default = f"DEFAULT {column.default.arg}"
@@ -99,6 +108,18 @@ async def init_db(engine: AsyncEngine):
                                 await conn.execute(text(
                                     f"ALTER TABLE {table_name} ADD COLUMN {column.name} {column_type} {nullable} {default};"
                                 ))
+                                
+                                # Update the enum columns with default values after adding them
+                                if column.name == 'user_type' and table_name == 'users':
+                                    LOGGER.info("Setting default value for user_type column")
+                                    await conn.execute(text(
+                                        "UPDATE users SET user_type = 'ADMIN' WHERE user_type IS NULL;"
+                                    ))
+                                elif column.name == 'status' and table_name == 'users':
+                                    LOGGER.info("Setting default value for status column")
+                                    await conn.execute(text(
+                                        "UPDATE users SET status = 'ACTIVE' WHERE status IS NULL;"
+                                    ))
                             except Exception as column_err:
                                 LOGGER.error(f"Error adding column {column.name} to {table_name}: {str(column_err)}")
                                 # Continue with other columns even if one fails
@@ -117,31 +138,57 @@ async def init_db(engine: AsyncEngine):
 
 
 async def create_admin_user():
-    """Create admin user if it doesn't exist"""
+    """
+    Create admin user if it doesn't exist or update existing admin user's type and status.
+    This ensures the admin account is properly configured with the new fields.
+    """
     from db_config import engine
+    from datetime import datetime
+    from db_models import UserType, UserStatus
 
     # auth_utils imported inside here to prevent a race condition because of multiple calls to get_db_engine
-    from auth_utils import get_hashed_password, login_user
+    from auth_utils import get_hashed_password, login_user, validate_user
+    from sqlalchemy import select, update
 
     admin_username = os.environ.get("ADMIN_USERNAME", "admin")
     admin_password = os.environ.get("ADMIN_PASSWORD", "admin")
+    hashed_password = get_hashed_password(admin_username, admin_password)
 
     try:
         # Check if admin user exists
-        token = await login_user(admin_username, admin_password)
-        if not token:
-            async with engine.begin() as conn:
+        async with engine.begin() as conn:
+            user_result = await conn.execute(
+                select(Users).where(Users.username == admin_username)
+            )
+            user = user_result.fetchone()
+            
+            if user:
+                # User exists, ensure it has the correct user_type and status
+                LOGGER.info(f"Admin user '{admin_username}' already exists, updating configuration")
+                await conn.execute(
+                    update(Users)
+                    .where(Users.username == admin_username)
+                    .values(
+                        user_type=UserType.ADMIN,
+                        status=UserStatus.ACTIVE
+                    )
+                )
+            else:
+                # Create new admin user
+                LOGGER.info(f"Creating admin user '{admin_username}'")
                 await conn.execute(
                     insert(Users).values(
                         username=admin_username,
-                        hashed_password=get_hashed_password(
-                            admin_username, admin_password
-                        ),
-                        token=get_hashed_password(admin_username, admin_password),
+                        hashed_password=hashed_password,
+                        token=hashed_password,
+                        user_type=UserType.ADMIN,
+                        status=UserStatus.ACTIVE,
+                        created_at=datetime.now()
                     )
                 )
+                LOGGER.warning("Default admin user created with default password. Please change it immediately!")
     except Exception as e:
-        LOGGER.error(f"Error creating admin user: {str(e)}")
+        LOGGER.error(f"Error creating/updating admin user: {str(e)}")
         raise
 
 
