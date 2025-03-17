@@ -37,6 +37,14 @@ Base = declarative_base(metadata=base_metadata)
 
 
 # USERS AND AUTHENTICATION
+class UserStatus(enum.Enum):
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+
+class UserType(enum.Enum):
+    ADMIN = "ADMIN"
+    GENERAL = "GENERAL"
+
 class Users(Base):
     """
     Represents the Users table.
@@ -44,13 +52,19 @@ class Users(Base):
     hashed_password is hash(username, salt, password)
     token is what we use to authenticate the user for all user-related requests.
     created_at is the timestamp when the user was created.
+    user_type defines the user's role in the system (ADMIN or GENERAL).
+    status indicates if the account is ACTIVE or INACTIVE.
+    last_login tracks the timestamp of the user's most recent login.
     """
 
     __tablename__ = "users"
     username = Column(Text, primary_key=True)
     hashed_password = Column(Text)
     token = Column(Text, nullable=False)
-    created_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.now)
+    user_type = Column(Enum(UserType), default=UserType.ADMIN)
+    status = Column(Enum(UserStatus), default=UserStatus.ACTIVE)
+    last_login = Column(DateTime)
 
 
 # PROJECT DETAILS
