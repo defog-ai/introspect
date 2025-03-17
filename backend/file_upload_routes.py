@@ -137,8 +137,9 @@ async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
         connection_uri = f"mssql+aioodbc://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{db_creds_to_use['database']}"
     
     elif db_type == "redshift":
-        # Redshift uses PostgreSQL-compatible connection string
-        connection_uri = f"postgresql+asyncpg://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{db_creds_to_use['database']}"
+        # Redshift should use psycopg2 instead of asyncpg for better compatibility
+        # Add specific connection parameters for Redshift
+        connection_uri = f"postgresql+psycopg2://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{db_creds_to_use['database']}?sslmode=prefer&application_name=defog&client_encoding=utf8"
     
     elif db_type in ["snowflake", "bigquery", "databricks"]:
         # For cloud databases, use specific connection methods from the creds
