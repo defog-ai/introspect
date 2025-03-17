@@ -12,13 +12,11 @@ from request_models import (
 )
 from utils_logging import LOGGER
 from db_utils import get_db_info, get_db_type_creds
-import random
 import os
 import pandas as pd
 from utils_file_uploads import export_df_to_postgres, clean_table_name, ExcelUtils, CSVUtils
 from utils_md import set_metadata
 from utils_oracle import upload_pdf_files, update_project_files, get_pdf_content, delete_pdf_file
-from utils_pdf.embedding import process_pdf_for_embedding
 from db_utils import update_db_type_creds
 from sqlalchemy_utils import database_exists, create_database
 import io
