@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from celery_app import celery_app
 from db_config import engine, get_sync_engine
-from db_models import PDFFiles, PDFEmbeddings, PDFProcessingTask, PDFProcessingStatus
+from db_models import PDFFiles, PDFEmbeddings, PDFProcessingTasks, PDFProcessingStatus
 from utils_pdf.chunking import process_pdf_to_chunks
 from utils_pdf.embedding import generate_embedding
 
@@ -31,8 +31,8 @@ class PDFProcessingCeleryTask(Task):
             file_id = kwargs.get('file_id') or args[0]
             
             # Update task status to FAILED
-            stmt = update(PDFProcessingTask).where(
-                PDFProcessingTask.task_id == task_id
+            stmt = update(PDFProcessingTasks).where(
+                PDFProcessingTasks.task_id == task_id
             ).values(
                 status=PDFProcessingStatus.FAILED,
                 error_message=str(exc),
@@ -76,8 +76,8 @@ def process_pdf(self, file_id: int, pdf_name: str, base64_pdf: str) -> Dict[str,
     try:
         # Update task status to PROCESSING
         with Session(sync_engine) as session:
-            stmt = update(PDFProcessingTask).where(
-                PDFProcessingTask.task_id == task_id
+            stmt = update(PDFProcessingTasks).where(
+                PDFProcessingTasks.task_id == task_id
             ).values(
                 status=PDFProcessingStatus.PROCESSING,
                 updated_at=datetime.now()
@@ -109,8 +109,8 @@ def process_pdf(self, file_id: int, pdf_name: str, base64_pdf: str) -> Dict[str,
                 results["chunks_processed"] += 1
             
             # Update task status to COMPLETED
-            stmt = update(PDFProcessingTask).where(
-                PDFProcessingTask.task_id == task_id
+            stmt = update(PDFProcessingTasks).where(
+                PDFProcessingTasks.task_id == task_id
             ).values(
                 status=PDFProcessingStatus.COMPLETED,
                 updated_at=datetime.now()

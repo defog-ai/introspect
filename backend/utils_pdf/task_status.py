@@ -9,7 +9,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db_config import engine
-from db_models import PDFProcessingTask, PDFProcessingStatus, PDFFiles
+from db_models import PDFProcessingTasks, PDFProcessingStatus, PDFFiles
 
 LOGGER = logging.getLogger("server")
 
@@ -25,13 +25,13 @@ async def create_task_record(task_id: str, file_id: int, pdf_name: str) -> None:
     async with AsyncSession(engine) as session:
         async with session.begin():
             # first delete all tasks with this file id
-            delete_stmt = delete(PDFProcessingTask).where(
-                PDFProcessingTask.file_id == file_id
+            delete_stmt = delete(PDFProcessingTasks).where(
+                PDFProcessingTasks.file_id == file_id
             )
             await session.execute(delete_stmt)
             
             # now create a new one
-            task_record = PDFProcessingTask(
+            task_record = PDFProcessingTasks(
                 task_id=task_id,
                 file_id=file_id,
                 pdf_name=pdf_name,
@@ -53,9 +53,9 @@ async def get_pdf_processing_status(file_id: int) -> Dict[str, Any]:
     """
     async with AsyncSession(engine) as session:
         # Get the latest processing task for this PDF
-        query = select(PDFProcessingTask).where(
-            PDFProcessingTask.file_id == file_id
-        ).order_by(PDFProcessingTask.updated_at.desc())
+        query = select(PDFProcessingTasks).where(
+            PDFProcessingTasks.file_id == file_id
+        ).order_by(PDFProcessingTasks.updated_at.desc())
         
         result = await session.execute(query)
         task = result.scalar_one_or_none()
@@ -94,9 +94,9 @@ async def get_all_pdf_processing_statuses() -> List[Dict[str, Any]]:
         results = []
         for file_id, pdf in pdf_files.items():
             # Get the latest task
-            task_query = select(PDFProcessingTask).where(
-                PDFProcessingTask.file_id == file_id
-            ).order_by(PDFProcessingTask.updated_at.desc())
+            task_query = select(PDFProcessingTasks).where(
+                PDFProcessingTasks.file_id == file_id
+            ).order_by(PDFProcessingTasks.updated_at.desc())
             
             task_result = await session.execute(task_query)
             task = task_result.scalar_one_or_none()

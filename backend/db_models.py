@@ -218,7 +218,7 @@ class PDFProcessingStatus(enum.Enum):
     COMPLETED = "COMPLETED"   # Processing completed successfully
     FAILED = "FAILED"         # Processing failed
 
-class PDFProcessingTask(Base):
+class PDFProcessingTasks(Base):
     __tablename__ = "pdf_processing_tasks"
     task_id = Column(Text, primary_key=True)  # Celery task ID
     file_id = Column(Integer, ForeignKey("pdf_files.file_id"), nullable=False)

@@ -6,7 +6,7 @@ from defog.query import async_execute_query_once
 from sqlalchemy import delete, select, update, insert
 from utils_md import get_metadata
 from db_config import engine
-from db_models import PDFProcessingTask, Project, PDFFiles
+from db_models import PDFProcessingTasks, Project, PDFFiles
 from utils_logging import LOGGER
 from defog import Defog
 import os
@@ -175,9 +175,9 @@ async def get_project_associated_files(db_name):
             # Get file names for associated files
             # also get the processing status if any for these files
             pdf_files = await session.execute(
-                select(PDFFiles, PDFProcessingTask.status).where(
+                select(PDFFiles, PDFProcessingTasks.status).where(
                     PDFFiles.file_id.in_(associated_files)
-                ).outerjoin(PDFProcessingTask, PDFFiles.file_id == PDFProcessingTask.file_id)
+                ).outerjoin(PDFProcessingTasks, PDFFiles.file_id == PDFProcessingTasks.file_id)
             )
             pdf_files = pdf_files.all()
             pdf_files = [
