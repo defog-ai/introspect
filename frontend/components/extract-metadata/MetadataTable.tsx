@@ -311,7 +311,7 @@ const MetadataTable = ({
             placeholder="Select tables for metadata extraction. Leave empty to process all tables."
             options={multiSelectOptions}
             value={selectedTablesForIndexing}
-            allowCreateNewOption={false}
+            allowCreateNewOption={true}
             onChange={(value: string[]) => {
               if (value.indexOf("all") > -1) {
                 setSelectedTablesForIndexing(tables);
