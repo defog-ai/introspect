@@ -84,8 +84,8 @@ async def get_db_info(db_name):
         raise Exception("No db creds found")
     try:
         db_type, db_creds = res
-        defog = Defog(api_key=db_name, db_type=db_type, db_creds=db_creds)
-        can_connect = await validate_db_connection(db_type, db_creds)
+        defog = Defog(api_key=db_name, db_type=db_type, db_creds=db_creds.copy())
+        can_connect = await validate_db_connection(db_type, db_creds.copy())
         table_names = []
 
         if can_connect:
@@ -96,9 +96,6 @@ async def get_db_info(db_name):
                 scan=False,
                 return_tables_only=True,
             )
-
-        db_type = defog.db_type
-        db_creds = defog.db_creds
 
         # get selected_tables from file. this is a legacy way of keeping track
         # of tables that the user has selected to add to the metadata
