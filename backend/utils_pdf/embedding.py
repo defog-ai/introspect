@@ -13,6 +13,7 @@ import traceback
 from typing import List, Dict, Any, Optional
 
 from openai import AsyncOpenAI
+from sqlalchemy import desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -33,6 +34,7 @@ async def generate_embedding(text: str) -> List[float]:
     Returns:
         Embedding vector as a list of floats
     """
+    client = None
     try:
         client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         response = await client.embeddings.create(
@@ -43,6 +45,14 @@ async def generate_embedding(text: str) -> List[float]:
     except Exception as e:
         LOGGER.error(f"Error generating embedding: {str(e)}")
         raise
+    finally:
+        # Close the client when done to avoid event loop errors
+        if client:
+            try:
+                await client.close()
+            except Exception as close_err:
+                # Don't raise, just log
+                LOGGER.warning(f"Error closing OpenAI client: {close_err}")
 
 
 async def embed_pdf_chunks(chunks: List[PDFChunk]) -> List[PDFChunk]:
