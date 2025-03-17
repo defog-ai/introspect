@@ -116,7 +116,7 @@ async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
     
     if db_type == "postgres":
         # PostgreSQL: create database if it doesn't exist
-        sync_connection_uri = f"postgresql://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
+        sync_connection_uri = f"postgresql://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{db_creds_to_use['database']}"
         
         if database_exists(sync_connection_uri):
             LOGGER.info(f"Database already exists: {cleaned_db_name}")
@@ -126,19 +126,19 @@ async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
             LOGGER.info(f"Database created: {cleaned_db_name}")
             
         # Use asyncpg version for better performance
-        connection_uri = f"postgresql+asyncpg://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
+        connection_uri = f"postgresql+asyncpg://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{db_creds_to_use['database']}"
     
     elif db_type == "mysql":
         # MySQL connection string
-        connection_uri = f"mysql+aiomysql://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
+        connection_uri = f"mysql+aiomysql://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{db_creds_to_use['database']}"
     
     elif db_type == "sqlserver":
         # SQL Server connection string
-        connection_uri = f"mssql+aioodbc://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
+        connection_uri = f"mssql+aioodbc://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{db_creds_to_use['database']}"
     
     elif db_type == "redshift":
         # Redshift uses PostgreSQL-compatible connection string
-        connection_uri = f"postgresql+asyncpg://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
+        connection_uri = f"postgresql+asyncpg://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{db_creds_to_use['database']}"
     
     elif db_type in ["snowflake", "bigquery", "databricks"]:
         # For cloud databases, use specific connection methods from the creds
@@ -147,9 +147,7 @@ async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
     
     else:
         # Default to PostgreSQL for unknown types
-        LOGGER.warning(f"Unknown database type: {db_type}, defaulting to PostgreSQL")
-        db_type = "postgres"
-        connection_uri = f"postgresql+asyncpg://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
+        raise Exception(f"Unknown database type: {db_type}")
 
     # Process tables and export to database
     # get db metadata
@@ -189,21 +187,7 @@ async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
     await set_metadata(cleaned_db_name, db_metadata)
 
     # Make sure the database credentials to access the DB are saved
-    if db_type == "postgres":
-        # For PostgreSQL we include the database name
-        user_db_creds = {
-            "user": db_creds_to_use["user"],
-            "password": db_creds_to_use["password"],
-            "host": db_creds_to_use["host"],
-            "port": db_creds_to_use["port"],
-            "database": cleaned_db_name,
-        }
-    else:
-        # For other database types, preserve the original credentials structure
-        # but ensure database name is updated if needed
-        user_db_creds = db_creds_to_use.copy()
-        if "database" in user_db_creds:
-            user_db_creds["database"] = cleaned_db_name
+    user_db_creds = db_creds_to_use.copy()
     
     # Update database type and credentials
     LOGGER.info(f"Creating/Updating Project entry for {cleaned_db_name} ({db_type})")
