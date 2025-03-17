@@ -207,7 +207,7 @@ class CustomTools(Base):
 class PDFFiles(Base):
     __tablename__ = "pdf_files"
     file_id = Column(Integer, primary_key=True, autoincrement=True)
-    file_name = Column(Text, primary_key=True)
+    file_name = Column(Text, nullable=False)
     base64_data = Column(Text)
     created_at = Column(DateTime, default=datetime.now)
 
@@ -221,7 +221,7 @@ class PDFProcessingStatus(enum.Enum):
 class PDFProcessingTask(Base):
     __tablename__ = "pdf_processing_tasks"
     task_id = Column(Text, primary_key=True)  # Celery task ID
-    file_id = Column(Integer, nullable=False)
+    file_id = Column(Integer, ForeignKey("pdf_files.file_id"), nullable=False)
     pdf_name = Column(Text, nullable=False)
     status = Column(Enum(PDFProcessingStatus), default=PDFProcessingStatus.PENDING)
     error_message = Column(Text, nullable=True)
@@ -237,7 +237,7 @@ class PDFProcessingTask(Base):
 class PDFEmbeddings(Base):
     __tablename__ = "pdf_embeddings"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    file_id = Column(Integer, nullable=False)
+    file_id = Column(Integer, ForeignKey("pdf_files.file_id"), nullable=False)
     pdf_name = Column(Text, nullable=False)
     text = Column(Text, nullable=False)
     page_number = Column(Integer)
@@ -246,6 +246,6 @@ class PDFEmbeddings(Base):
     created_at = Column(DateTime, default=datetime.now)
     
     __table_args__ = (
-        # Instead of a foreign key constraint, we'll create an index for performance
+        # Index for performance
         Index("idx_pdf_embeddings_file_id", "file_id"),
     )

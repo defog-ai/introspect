@@ -149,9 +149,13 @@ export type DbMetadata = Array<{
   column_description: string;
 }>;
 
+export type PDFProcessingStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "UNKNOWN";
+
 export interface PdfFile {
   file_id: number;
   file_name: string;
+  processing_status?: PDFProcessingStatus;
+  error_message?: string;
 }
 
 export interface DbInfo {

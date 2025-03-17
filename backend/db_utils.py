@@ -175,12 +175,19 @@ async def get_project_associated_files(db_name):
             # Get file names for associated files
             # also get the processing status if any for these files
             pdf_files = await session.execute(
-                select(PDFFiles).where(
+                select(PDFFiles, PDFProcessingTask.status).where(
                     PDFFiles.file_id.in_(associated_files)
-                ).join(PDFProcessingTask, PDFFiles.file_id == PDFProcessingTask.file_id)
+                ).outerjoin(PDFProcessingTask, PDFFiles.file_id == PDFProcessingTask.file_id)
             )
-            pdf_files = pdf_files.scalars().all()
-            pdf_files = [{"file_id": row.file_id, "file_name": row.file_name} for row in pdf_files]
+            pdf_files = pdf_files.all()
+            pdf_files = [
+                {
+                    "file_id": row[0].file_id, 
+                    "file_name": row[0].file_name,
+                    "processing_status": row[1].value if row[1] else None
+                } 
+                for row in pdf_files
+            ]
 
     except Exception as e:
         traceback.print_exc()

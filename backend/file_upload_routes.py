@@ -320,40 +320,50 @@ async def get_pdf_status(file_id: int, token: str):
         )
 
 
-@router.get("/pdf_processing_statuses")
-async def get_all_pdf_statuses(token: str, db_name: Optional[str] = None):
+@router.post("/retry_pdf_processing/{file_id}")
+async def retry_pdf_processing(file_id: int, token: str):
     """
-    Get processing status for all PDFs or PDFs associated with a specific project
+    Retry processing a PDF file that failed or wasn't processed
     
     Args:
+        file_id: ID of the PDF file
         token: Authentication token
-        db_name: Optional project name to filter by
     """
     try:
-        from utils_pdf.task_status import get_all_pdf_processing_statuses
+        # Get the PDF content first
+        pdf_data = await get_pdf_content(file_id)
+        if not pdf_data:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "PDF file not found"}
+            )
         
-        statuses = await get_all_pdf_processing_statuses()
+        # Submit the PDF for processing with Celery
+        from celery_tasks.pdf_tasks import process_pdf
+        from utils_pdf.task_status import create_task_record
         
-        # Filter by db_name if provided
-        if db_name:
-            # Get the PDF IDs associated with this project
-            from utils_oracle import get_project_files
-            project_files = await get_project_files(db_name)
-            project_file_ids = set(project_files)
-            
-            # Filter statuses to only include PDFs associated with this project
-            statuses = [status for status in statuses if status["file_id"] in project_file_ids]
+        LOGGER.info(f"Resubmitting PDF {file_id} ({pdf_data['file_name']}) for processing")
+        
+        # Submit task to Celery
+        task = process_pdf.delay(file_id, pdf_data['file_name'], pdf_data['base64_data'])
+        
+        # Record task in database for status tracking
+        await create_task_record(task.id, file_id, pdf_data['file_name'])
+        
+        LOGGER.info(f"Submitted Celery task {task.id} for PDF {file_id} ({pdf_data['file_name']})")
         
         return JSONResponse(
             status_code=200,
-            content={"statuses": statuses}
+            content={
+                "message": "PDF processing restarted successfully",
+                "task_id": task.id,
+                "file_id": file_id
+            }
         )
     except Exception as e:
-        LOGGER.error(f"Error getting PDF processing statuses: {str(e)}")
+        LOGGER.error(f"Error reprocessing PDF: {str(e)}")
         traceback.print_exc()
         return JSONResponse(
             status_code=500,
-            content={"error": f"Error getting PDF processing statuses: {str(e)}"}
+            content={"error": f"Error reprocessing PDF: {str(e)}"}
         )
-
-

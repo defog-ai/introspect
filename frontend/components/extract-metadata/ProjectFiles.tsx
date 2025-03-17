@@ -1,12 +1,17 @@
-import React, { useState } from "react";
-import { PdfFile } from "../../utils/utils";
+import React, { useState, useEffect, useRef } from "react";
+import { PdfFile, PDFProcessingStatus } from "../../utils/utils";
 import {
   FileText,
   Download,
   AlertCircle,
   FileText as FilePdf,
-  Eye,
+  RefreshCw,
   Trash2,
+  Check,
+  Clock,
+  XCircle,
+  HelpCircle,
+  Loader,
 } from "lucide-react";
 import setupBaseUrl from "../../utils/setupBaseUrl";
 import {
@@ -32,7 +37,156 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
   const [uploading, setUploading] = useState(false);
   const [deletingFileId, setDeletingFileId] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [pollingFiles, setPollingFiles] = useState<Record<number, boolean>>({});
+  const [processingFiles, setProcessingFiles] = useState<Record<number, boolean>>({});
+  const pollingIntervalsRef = useRef<Record<number, NodeJS.Timeout>>({});
   const message = React.useContext(MessageManagerContext);
+  
+  // Initialize or update polling when files change
+  useEffect(() => {
+    if (!files || files.length === 0) return;
+    
+    // Start polling for files that need monitoring
+    files.forEach(file => {
+      if (
+        file.processing_status === "PENDING" || 
+        file.processing_status === "PROCESSING"
+      ) {
+        startPollingFileStatus(file.file_id);
+      } else {
+        // Make sure we don't have active polling for completed/failed files
+        stopPollingFileStatus(file.file_id);
+      }
+    });
+    
+    // Cleanup polling intervals on unmount
+    return () => {
+      Object.entries(pollingIntervalsRef.current).forEach(([fileId, interval]) => {
+        clearInterval(interval);
+      });
+    };
+  }, [files]);
+
+  // Function to start polling for a file's status
+  const startPollingFileStatus = (fileId: number) => {
+    // Don't set up multiple polling intervals for the same file
+    if (pollingFiles[fileId]) return;
+    
+    // Mark this file as being polled
+    setPollingFiles(prev => ({ ...prev, [fileId]: true }));
+    
+    // Clear any existing interval just to be safe
+    if (pollingIntervalsRef.current[fileId]) {
+      clearInterval(pollingIntervalsRef.current[fileId]);
+    }
+    
+    // Set up polling interval - check status every 5 seconds
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(
+          setupBaseUrl(
+            "http", 
+            `pdf_processing_status/${fileId}?token=${token}`
+          )
+        );
+        
+        if (!response.ok) {
+          console.error("Error fetching PDF status");
+          return;
+        }
+        
+        const status = await response.json();
+        
+        // If processing is complete or failed, stop polling
+        if (status.status === "COMPLETED" || status.status === "FAILED") {
+          stopPollingFileStatus(fileId);
+          
+          // Update the parent with the latest project info
+          if (onFilesUploaded) {
+            const dbInfoResponse = await fetch(
+              setupBaseUrl("http", `integration/get_db_info`), {
+                method: "POST",
+                body: JSON.stringify({ token, db_name: dbName }),
+                headers: { "Content-Type": "application/json" },
+              }
+            );
+            
+            if (dbInfoResponse.ok) {
+              const data = await dbInfoResponse.json();
+              onFilesUploaded(dbName, data);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error polling PDF status:", error);
+      }
+    }, 5000);
+    
+    // Store the interval reference
+    pollingIntervalsRef.current[fileId] = interval;
+  };
+  
+  // Function to stop polling for a file's status
+  const stopPollingFileStatus = (fileId: number) => {
+    if (pollingIntervalsRef.current[fileId]) {
+      clearInterval(pollingIntervalsRef.current[fileId]);
+      delete pollingIntervalsRef.current[fileId];
+    }
+    
+    setPollingFiles(prev => {
+      const updated = { ...prev };
+      delete updated[fileId];
+      return updated;
+    });
+  };
+  
+  // Function to retry processing a file
+  const handleRetryProcessing = async (fileId: number) => {
+    try {
+      setProcessingFiles(prev => ({ ...prev, [fileId]: true }));
+      
+      const response = await fetch(
+        setupBaseUrl("http", `retry_pdf_processing/${fileId}?token=${token}`),
+        { method: "POST" }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to retry processing");
+      }
+      
+      const data = await response.json();
+      message.success("PDF processing restarted");
+      
+      // Start polling for updates
+      startPollingFileStatus(fileId);
+      
+      // Update the parent with the latest project info
+      if (onFilesUploaded) {
+        const dbInfoResponse = await fetch(
+          setupBaseUrl("http", `integration/get_db_info`), {
+            method: "POST",
+            body: JSON.stringify({ token, db_name: dbName }),
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+        
+        if (dbInfoResponse.ok) {
+          const data = await dbInfoResponse.json();
+          onFilesUploaded(dbName, data);
+        }
+      }
+    } catch (error) {
+      console.error("Error retrying processing:", error);
+      message.error("Failed to restart processing");
+    } finally {
+      setProcessingFiles(prev => {
+        const updated = { ...prev };
+        delete updated[fileId];
+        return updated;
+      });
+    }
+  };
 
   const handleDownload = (fileId: number) => {
     // Create download URL and open in new tab
@@ -126,6 +280,88 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
     }
   };
 
+  // Status indicator component
+  const getStatusIndicator = (file: PdfFile) => {
+    const status = file.processing_status;
+    
+    // If polling is active for this file, show a spinner
+    if (pollingFiles[file.file_id]) {
+      return (
+        <div className="flex items-center text-blue-500" title="Processing in progress">
+          <Loader className="w-4 h-4 mr-1 animate-spin" />
+          <span className="text-xs">Processing</span>
+        </div>
+      );
+    }
+    
+    // If retrying, show loading state
+    if (processingFiles[file.file_id]) {
+      return (
+        <div className="flex items-center text-blue-500" title="Restarting processing">
+          <Loader className="w-4 h-4 mr-1 animate-spin" />
+          <span className="text-xs">Restarting</span>
+        </div>
+      );
+    }
+    
+    // Status-specific indicators
+    switch (status) {
+      case "PENDING":
+        return (
+          <div className="flex items-center text-yellow-500" title="Processing pending">
+            <Clock className="w-4 h-4 mr-1" />
+            <span className="text-xs">Pending</span>
+          </div>
+        );
+      case "PROCESSING":
+        return (
+          <div className="flex items-center text-blue-500" title="Processing in progress">
+            <Loader className="w-4 h-4 mr-1 animate-spin" />
+            <span className="text-xs">Processing</span>
+          </div>
+        );
+      case "COMPLETED":
+        return (
+          <div className="flex items-center text-green-500" title="Processing completed">
+            <Check className="w-4 h-4 mr-1" />
+            <span className="text-xs">Processed</span>
+          </div>
+        );
+      case "FAILED":
+        return (
+          <div className="flex items-center text-red-500" title="Processing failed">
+            <XCircle className="w-4 h-4 mr-1" />
+            <span className="text-xs">Failed</span>
+            <Button 
+              variant="ghost"
+              onClick={() => handleRetryProcessing(file.file_id)}
+              className="ml-2 px-2 py-0 h-6 text-xs"
+              title="Retry processing"
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Retry
+            </Button>
+          </div>
+        );
+      default:
+        return (
+          <div className="flex items-center text-gray-500" title="Processing status unknown">
+            <HelpCircle className="w-4 h-4 mr-1" />
+            <span className="text-xs">Not processed</span>
+            <Button 
+              variant="ghost"
+              onClick={() => handleRetryProcessing(file.file_id)}
+              className="ml-2 px-2 py-0 h-6 text-xs"
+              title="Process file"
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Process
+            </Button>
+          </div>
+        );
+    }
+  };
+  
   const getFileIcon = (fileName: string) => {
     if (fileName.toLowerCase().endsWith(".pdf")) {
       return <FilePdf className="w-6 h-6 text-blue-500" />;
@@ -175,13 +411,18 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({
               key={file.file_id}
               className="border rounded-lg p-4 flex flex-col bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center mb-3">
+              <div className="flex items-center mb-2">
                 {getFileIcon(file.file_name)}
                 <span className="ml-2 font-medium truncate">
                   {file.file_name}
                 </span>
               </div>
 
+              {/* Status indicator */}
+              <div className="mb-3 mt-1">
+                {getStatusIndicator(file)}
+              </div>
+              
               <div className="mt-auto pt-3 flex justify-end gap-2">
                 <Button
                   variant="secondary"

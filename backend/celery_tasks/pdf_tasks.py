@@ -85,7 +85,6 @@ def process_pdf(self, file_id: int, pdf_name: str, base64_pdf: str) -> Dict[str,
             session.execute(stmt)
             session.commit()
         
-        raise Exception("Test Exception")
         # Step 1: Process PDF into chunks
         LOGGER.info(f"Processing PDF {file_id} ({pdf_name}) into chunks")
         chunks = process_pdf_to_chunks(file_id, pdf_name, base64_pdf)
