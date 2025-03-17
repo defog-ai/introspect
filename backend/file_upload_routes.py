@@ -14,7 +14,7 @@ from db_utils import get_db_info, get_db_type_creds
 import random
 import os
 import pandas as pd
-from utils_file_uploads import export_df_to_postgres, clean_table_name, ExcelUtils, CSVUtils
+from utils_file_uploads import export_df_to_db, clean_table_name, ExcelUtils, CSVUtils
 from utils_md import set_metadata
 from utils_oracle import upload_pdf_files, update_project_files, get_pdf_content, delete_pdf_file
 from db_utils import update_db_type_creds
@@ -100,48 +100,82 @@ async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
 
     # Determine which database credentials to use
     # If db_name is provided, check if there are existing db_creds we should use
+    db_type = "postgres"  # Default database type
     db_creds_to_use = INTERNAL_DB_CREDS
+    db_type_creds = None
+    
     if db_name is not None:
         # Check if user already has db credentials
         db_type_creds = await get_db_type_creds(db_name)
-        if db_type_creds and db_type_creds[0] == "postgres" and db_type_creds[1]:
-            # Use the user's credentials instead if they exist and are for postgres
-            LOGGER.info(f"Using user's existing postgres credentials for {db_name}")
-            db_creds_to_use = db_type_creds[1]
+        if db_type_creds:
+            db_type, user_creds = db_type_creds
+            if user_creds:
+                # Use the user's credentials if they exist
+                LOGGER.info(f"Using user's existing {db_type} credentials for {db_name}")
+                db_creds_to_use = user_creds
 
-    # create the database
-    # NOTE: It seems like we cannot use asyncpg in the database_exists and create_database functions, so we are using sync
-    # connection uri
-    connection_uri = f"postgresql://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
-    if database_exists(connection_uri):
-        LOGGER.info(
-            f"Database already exists: {cleaned_db_name}, but is not added to db creds. Dropping it."
-        )
-        LOGGER.info(f"Database dropped: {cleaned_db_name}")
+    # Handle different database types for creating/connecting
+    connection_uri = None
+    
+    if db_type == "postgres":
+        # PostgreSQL: create database if it doesn't exist
+        sync_connection_uri = f"postgresql://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
+        
+        if database_exists(sync_connection_uri):
+            LOGGER.info(f"Database already exists: {cleaned_db_name}")
+        else:
+            LOGGER.info(f"Creating database: {cleaned_db_name}")
+            create_database(sync_connection_uri)
+            LOGGER.info(f"Database created: {cleaned_db_name}")
+            
+        # Use asyncpg version for better performance
+        connection_uri = f"postgresql+asyncpg://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
+    
+    elif db_type == "mysql":
+        # MySQL connection string
+        connection_uri = f"mysql+aiomysql://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
+    
+    elif db_type == "sqlserver":
+        # SQL Server connection string
+        connection_uri = f"mssql+aioodbc://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
+    
+    elif db_type == "redshift":
+        # Redshift uses PostgreSQL-compatible connection string
+        connection_uri = f"postgresql+asyncpg://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
+    
+    elif db_type in ["snowflake", "bigquery", "databricks"]:
+        # For cloud databases, use specific connection methods from the creds
+        # These will be handled by the export_df_to_db function
+        connection_uri = None
+    
     else:
-        LOGGER.info(f"Creating database: {cleaned_db_name}")
-        create_database(connection_uri)
-        LOGGER.info(f"Database created: {cleaned_db_name}")
+        # Default to PostgreSQL for unknown types
+        LOGGER.warning(f"Unknown database type: {db_type}, defaulting to PostgreSQL")
+        db_type = "postgres"
+        connection_uri = f"postgresql+asyncpg://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
 
-    # now that the DB is created
-    # we will use asyncpg version so we don't block requests
-    connection_uri = f"postgresql+asyncpg://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
-
+    # Process tables and export to database
     db_metadata = []
 
     for table_name, table_df in tables.items():
         start = time.time()
         LOGGER.info(f"Parsing table: {table_name}")
-        inferred_types = (
-            await export_df_to_postgres(
-                table_df, table_name, connection_uri, chunksize=5000
-            )
-        )["inferred_types"]
-
+        
+        # Export to database with appropriate type
+        result = await export_df_to_db(
+            table_df, 
+            table_name, 
+            connection_uri, 
+            db_type, 
+            chunksize=5000,
+            db_creds=db_creds_to_use
+        )
+        
+        inferred_types = result["inferred_types"]
         LOGGER.info(f"Inferred types: {inferred_types}")
 
         end = time.time()
-        LOGGER.info(f"Export to db for table {table_name} took {end - start} seconds")
+        LOGGER.info(f"Export to {db_type} for table {table_name} took {end - start} seconds")
 
         for col, dtype in inferred_types.items():
             db_metadata.append(
@@ -156,18 +190,26 @@ async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
     LOGGER.info(f"Adding metadata for {cleaned_db_name}")
     await set_metadata(cleaned_db_name, db_metadata)
 
-    # Use the same credentials we used for exporting
-    user_db_creds = {
-        "user": db_creds_to_use["user"],
-        "password": db_creds_to_use["password"],
-        "host": db_creds_to_use["host"],
-        "port": db_creds_to_use["port"],
-        "database": cleaned_db_name,
-    }
+    # Make sure the database credentials to access the DB are saved
+    if db_type == "postgres":
+        # For PostgreSQL we include the database name
+        user_db_creds = {
+            "user": db_creds_to_use["user"],
+            "password": db_creds_to_use["password"],
+            "host": db_creds_to_use["host"],
+            "port": db_creds_to_use["port"],
+            "database": cleaned_db_name,
+        }
+    else:
+        # For other database types, preserve the original credentials structure
+        # but ensure database name is updated if needed
+        user_db_creds = db_creds_to_use.copy()
+        if "database" in user_db_creds:
+            user_db_creds["database"] = cleaned_db_name
     
-    # Only update db_type_creds if we're not using an existing user db or db_name is None
-    LOGGER.info(f"Creating Project entry for {cleaned_db_name}")
-    await update_db_type_creds(cleaned_db_name, "postgres", user_db_creds)
+    # Update database type and credentials
+    LOGGER.info(f"Creating/Updating Project entry for {cleaned_db_name} ({db_type})")
+    await update_db_type_creds(cleaned_db_name, db_type, user_db_creds)
 
     db_info = await get_db_info(cleaned_db_name)
 
