@@ -102,7 +102,7 @@ const QueryDataPage = () => {
     getDbNames(token);
   }, [router]);
 
-  const isAdmin = userType === "admin";
+  const isAdmin = userType === "ADMIN";
 
   return (
     <div className="max-h-screen h-screen">

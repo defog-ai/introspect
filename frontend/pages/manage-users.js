@@ -66,7 +66,7 @@ const ManageUsers = () => {
   return (
     <>
       <Meta />
-      <Scaffolding id={"manage-users"} userType={"admin"}>
+      <Scaffolding id={"manage-users"} userType={"ADMIN"}>
         <div className="flex justify-center items-center flex-col p-1 mt-5">
           <h1>
             <Users size={48} className="text-blue-500 dark:text-blue-400" />{" "}

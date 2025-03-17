@@ -23,7 +23,7 @@ const QueryDatabase = () => {
 
     setUserType(userType);
     setLoading(false);
-    if (userType === "admin") {
+    if (userType === "ADMIN") {
       console.log("redirecting to extract metadata..");
       router.push("/extract-metadata");
     } else {
