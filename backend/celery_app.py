@@ -30,24 +30,18 @@ celery_app.conf.update(
     broker_connection_retry_on_startup=True
 )
 
-# Register signal handlers using decorator functions
-@celery_app.on_after_configure.connect
-def setup_signals(sender, **kwargs):
-    # Register signal handlers
-    sender.on_after_task_publish.connect(task_sent_handler)
-    sender.on_task_prerun.connect(task_prerun_handler)
-    sender.on_task_success.connect(task_success_handler)
-    sender.on_task_failure.connect(task_failure_handler)
+# Use Celery built-in signals
+from celery.signals import task_prerun, task_success, task_failure
 
-def task_sent_handler(sender=None, headers=None, body=None, **kwargs):
-    info = headers if 'task' in headers else body
-    LOGGER.info(f"Task sent: {info.get('task', 'Unknown')}")
-
-def task_prerun_handler(task_id, task, *args, **kwargs):
+@task_prerun.connect
+def task_prerun_handler(task_id=None, task=None, *args, **kwargs):
     LOGGER.info(f"Starting task {task.name}[{task_id}]")
 
+@task_success.connect
 def task_success_handler(sender=None, result=None, **kwargs):
-    LOGGER.info(f"Task {sender.name} completed with result: {result}")
+    LOGGER.info(f"Task {sender.name} completed successfully")
 
-def task_failure_handler(task_id, exception, traceback, einfo, *args, **kwargs):
-    LOGGER.error(f"Task {task_id} failed: {exception}")
+@task_failure.connect
+def task_failure_handler(task_id=None, exception=None, traceback=None, 
+                         sender=None, *args, **kwargs):
+    LOGGER.error(f"Task {sender.name}[{task_id}] failed: {exception}")
