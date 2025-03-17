@@ -313,7 +313,7 @@ const ExtractMetadata = () => {
     return (
       <>
         <Meta />
-        <Scaffolding id="manage-database" userType="admin">
+        <Scaffolding id="manage-database" userType="ADMIN">
           <div className="w-full h-96 text-gray-500 dark:bg-dark-bg-primary flex items-center justify-center">
             <SpinningLoader />
             Loading
@@ -326,7 +326,7 @@ const ExtractMetadata = () => {
   return (
     <>
       <Meta />
-      <Scaffolding id="manage-database" userType="admin">
+      <Scaffolding id="manage-database" userType="ADMIN">
         <div className="w-full dark:bg-dark-bg-primary px-2 md:px-0 mb-4">
           {dbSelector}
           {Object.keys(dbInfo).length && tabs ? (
