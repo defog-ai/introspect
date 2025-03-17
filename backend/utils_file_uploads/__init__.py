@@ -26,6 +26,7 @@ from .legacy import (
     guess_column_type,
     convert_values_to_postgres_type,
     create_table_sql,
+    export_df_to_db,
     export_df_to_postgres,
 )
 
@@ -54,6 +55,7 @@ __all__ = [
     "guess_column_type",
     "convert_values_to_postgres_type",
     "create_table_sql",
+    "export_df_to_db",
     "export_df_to_postgres",
 
     # sqlalchemy

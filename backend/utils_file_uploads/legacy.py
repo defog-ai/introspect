@@ -54,9 +54,18 @@ def convert_values_to_postgres_type(value, target_type: str):
     return TypeUtils.convert_values_to_postgres_type(value, target_type)
 
 
-def create_table_sql(table_name: str, columns: dict[str, str]):
+def create_table_sql(table_name: str, columns: dict[str, str], db_type: str = "postgres"):
     """Legacy wrapper for DbUtils.create_table_sql"""
-    return DbUtils.create_table_sql(table_name, columns)
+    return DbUtils.create_table_sql(table_name, columns, db_type)
+
+
+async def export_df_to_db(
+    df, table_name: str, db_connection_string: str, db_type: str = "postgres", chunksize: int = 5000, db_creds: dict = None
+):
+    """Legacy wrapper for DbUtils.export_df_to_db"""
+    return await DbUtils.export_df_to_db(
+        df, table_name, db_connection_string, db_type, chunksize, db_creds
+    )
 
 
 async def export_df_to_postgres(
