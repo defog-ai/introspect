@@ -36,7 +36,7 @@ INTERNAL_DB_CREDS = {
 }
 
 
-async def upload_files_as_db(files, db_name: str | None = None) -> DbDetails:
+async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
     """
     Takes in a list of Files, and the contents of each file as a base 64 string.
     We then create a database from the file contents, and
@@ -46,11 +46,6 @@ async def upload_files_as_db(files, db_name: str | None = None) -> DbDetails:
         cleaned_db_name = clean_table_name(files[0].filename)
     else:
         cleaned_db_name = db_name
-
-    db_exists = await get_db_type_creds(cleaned_db_name)
-    if db_exists:
-        # add a random 3 digit integer to the end of the file name
-        cleaned_db_name = f"{cleaned_db_name}_{random.randint(1, 9999)}"
 
     tables = {}
 
@@ -186,10 +181,10 @@ async def upload_files(
     
     if len(data_files) > 0:
         if db_name is None:
-            new_db = await upload_files_as_db(files=data_files)
+            new_db = await upload_files_to_db(files=data_files)
             db_name = new_db.db_name
         else:
-            await upload_files_as_db(files=data_files, db_name=db_name)
+            await upload_files_to_db(files=data_files, db_name=db_name)
     if len(pdf_files) > 0:
         if db_name is None and len(data_files) == 0:
             raise HTTPException(

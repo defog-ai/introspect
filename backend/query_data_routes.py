@@ -6,7 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from file_upload_routes import upload_files_as_db
+from file_upload_routes import upload_files_to_db
 from request_models import File, UserRequest
 from tool_code_utilities import fetch_query_into_df
 from query_data.data_fetching import data_fetcher_and_aggregator
@@ -324,7 +324,7 @@ async def clarify(request: QueryDataClarifyRequest):
 
         new_db = None
         if len(request.data_files) > 0:
-            new_db = await upload_files_as_db(request.data_files)
+            new_db = await upload_files_to_db(request.data_files)
 
             # set the db name to this new db that was created
             db_name = new_db.db_name
