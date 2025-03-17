@@ -11,6 +11,7 @@ from db_utils import (
     get_db_info,
     get_db_type_creds,
     update_db_type_creds,
+    get_project_associated_files,
 )
 from db_config import redis_client
 from auth_utils import validate_user, validate_user_request
@@ -371,3 +372,41 @@ async def set_openai_analysis_params(request: Request):
     )
 
     return {"status": "success"}
+
+
+@router.post("/integration/get_tables_and_files")
+async def get_tables_and_files(req: UserRequest):
+    """
+    Returns all tables indexed in the provided database along with all PDF files associated with the database.
+    
+    Args:
+        req: UserRequest containing the db_name to get tables and files for
+        
+    Returns:
+        JSON object containing:
+        - tables: list of table names
+        - pdf_files: list of PDF file information (file_id and file_name)
+    """
+    try:
+        db_name = req.db_name
+        
+        # Get database info which includes tables
+        db_info = await get_db_info(db_name)
+        tables = db_info.get("tables", [])
+        
+        # Get PDF files associated with this database
+        pdf_files = await get_project_associated_files(db_name)
+        
+        return JSONResponse(
+            content={
+                "tables": tables,
+                "pdf_files": pdf_files
+            },
+            status_code=200,
+        )
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)},
+        )
