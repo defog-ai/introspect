@@ -17,6 +17,8 @@ import ProjectFiles from "$components/extract-metadata/ProjectFiles";
 import { Database, Plus, Trash } from "lucide-react";
 
 const ExtractMetadata = () => {
+  const newDbOption = useId();
+
   const [dbInfo, setDbInfo] = useState<{
     [dbName: string]: DbInfo;
   }>({});
@@ -25,6 +27,7 @@ const ExtractMetadata = () => {
 
   const token = useRef("");
   const [loading, setLoading] = useState(true);
+  const [fetchingDbInfo, setFetchingDbInfo] = useState(false);
   const [fileUploading, setFileUploading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -96,6 +99,7 @@ const ExtractMetadata = () => {
     const setup = async () => {
       setLoading(true);
       try {
+        // First, get the list of database names
         const res = await fetch(
           (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_db_names",
           {
@@ -111,30 +115,62 @@ const ExtractMetadata = () => {
         }
 
         const data = await res.json();
-
+        console.log("Got database names:", data);
+        
+        // Filter out any empty db names
         const dbNames = data.db_names.filter((dbName) => dbName);
-
-        const fetchedInfo = {};
-
-        for (const dbName of dbNames) {
-          const dbInfo = await getDbInfo(token.current, dbName);
-
-          fetchedInfo[dbName] = dbInfo;
+        
+        if (dbNames.length === 0) {
+          // No databases found
+          setLoading(false);
+          setDbInfo({});
+          return;
         }
-
-        setSelectedDbName(data.db_names.length ? data.db_names[0] : null);
-        setLoading(false);
+        
+        // Initialize the object with minimal info for all databases
+        const fetchedInfo = {};
+        dbNames.forEach(dbName => {
+          fetchedInfo[dbName] = { db_name: dbName };
+        });
+        
+        // Set the initially selected database name
+        const initialSelectedDbName = dbNames[0];
+        setSelectedDbName(initialSelectedDbName);
+        
+        // Get complete info for the initially selected database
+        try {
+          const dbInfo = await getDbInfo(token.current, initialSelectedDbName);
+          fetchedInfo[initialSelectedDbName] = dbInfo;
+        } catch (e) {
+          console.error("Error fetching database info for", initialSelectedDbName, e);
+          // Keep the minimal info if we can't get the complete info
+        }
+        
+        console.log("Final fetched info:", fetchedInfo);
         setDbInfo(fetchedInfo);
+        setLoading(false);
       } catch (e) {
         message.error(e.message);
         console.error(e);
         setLoading(false);
+        setDbInfo({}); // Reset DB info on error
       }
     };
 
     setup();
   }, [router, message]);
 
+  // Check if we have loaded detailed info for the selected database
+  const hasLoadedDetails = selectedDbName && dbInfo[selectedDbName] && 
+    (dbInfo[selectedDbName].tables !== undefined || 
+     dbInfo[selectedDbName].metadata !== undefined);
+     
+  // Display loading state if we haven't loaded the details yet but database exists
+  const isLoadingDetails = selectedDbName && 
+                          selectedDbName !== newDbOption && 
+                          dbInfo[selectedDbName] && 
+                          !hasLoadedDetails;
+  
   // Are any tables indexed?
   const areTablesIndexed =
     dbInfo[selectedDbName] &&
@@ -151,16 +187,14 @@ const ExtractMetadata = () => {
 
   const canConnect = dbInfo[selectedDbName]?.can_connect;
 
-  const newDbOption = useId();
-
-  const dbSelector = useMemo(() => {
-    if (!Object.keys(dbInfo).length) return null;
-
+  const renderDbSelector = () => {
+    // Create options from dbInfo keys
     let options = Object.keys(dbInfo).map((db) => ({
       value: db,
       label: db,
     }));
 
+    // Add the "Start a new project" option
     options = [
       {
         value: newDbOption,
@@ -171,68 +205,96 @@ const ExtractMetadata = () => {
 
     return (
       <div className="flex flex-row my-6 w-full gap-2 items-center">
-        {Object.keys(dbInfo).length > 0 && (
-          <>
-            <SingleSelect
-              disabled={fileUploading}
-              label="Select a project"
-              labelClassNames="font-bold text-sm"
-              allowClear={false}
-              allowCreateNewOption={false}
-              options={options}
-              value={selectedDbName || undefined}
-              onChange={(val) => setSelectedDbName(val)}
-              placeholder="Select your DB name"
-              rootClassNames="flex-grow min-w-[250px] w-full"
-              optionRenderer={(option) => {
-                if (option.value === newDbOption) {
-                  return (
-                    <div className="flex items-center gap-2">
-                      <Plus className="w-4" />
-                      Start a new project
-                    </div>
-                  );
-                }
-                return (
-                  <div className="whitespace-pre flex items-center gap-2">
-                    <Database className="w-4" />
-                    {option.label}
-                  </div>
-                );
-              }}
-            />
-            {selectedDbName !== newDbOption && (
-              <Trash
-                className="w-5 h-5 relative top-3 cursor-pointer hover:text-rose-500"
-                onClick={() => {
-                  try {
-                    deleteDbInfo(token.current, selectedDbName);
-                    message.success("Database deleted");
+        {fetchingDbInfo && (
+          <div className="flex items-center mr-2">
+            <SpinningLoader classNames="h-5 w-5 text-blue-500" />
+          </div>
+        )}
+        <SingleSelect
+          disabled={fileUploading}
+          label="Select a project"
+          labelClassNames="font-bold text-sm"
+          allowClear={false}
+          allowCreateNewOption={false}
+          options={options}
+          value={selectedDbName || undefined}
+          onChange={async (val) => {
+            setSelectedDbName(val);
+            
+            // If this is a database we haven't loaded yet, fetch its info
+            if (val && val !== newDbOption && (!dbInfo[val] || !dbInfo[val].tables)) {
+              try {
+                setFetchingDbInfo(true);
+                const newDbInfo = await getDbInfo(token.current, val);
+                setDbInfo(prev => ({ ...prev, [val]: newDbInfo }));
+              } catch (e) {
+                message.error(`Failed to load database info for ${val}: ${e.message}`);
+                console.error(e);
+              } finally {
+                setFetchingDbInfo(false);
+              }
+            }
+          }}
+          placeholder="Select your DB name"
+          rootClassNames="flex-grow min-w-[250px] w-full"
+          optionRenderer={(option) => {
+            if (option.value === newDbOption) {
+              return (
+                <div className="flex items-center gap-2">
+                  <Plus className="w-4" />
+                  Start a new project
+                </div>
+              );
+            }
+            
+            // Show a loading indicator for the selected database when fetching info
+            if (fetchingDbInfo && option.value === selectedDbName) {
+              return (
+                <div className="whitespace-pre flex items-center gap-2">
+                  <SpinningLoader classNames="h-4 w-4 text-blue-500" />
+                  {option.label}
+                </div>
+              );
+            }
+            
+            return (
+              <div className="whitespace-pre flex items-center gap-2">
+                <Database className="w-4" />
+                {option.label}
+              </div>
+            );
+          }}
+        />
+        {selectedDbName !== newDbOption && selectedDbName && (
+          <Trash
+            className="w-5 h-5 relative top-3 cursor-pointer hover:text-rose-500"
+            onClick={() => {
+              try {
+                deleteDbInfo(token.current, selectedDbName);
+                message.success("Database deleted");
 
-                    setDbInfo((prev) => {
-                      const newDbInfo = { ...prev };
-                      delete newDbInfo[selectedDbName];
+                setDbInfo((prev) => {
+                  const newDbInfo = { ...prev };
+                  delete newDbInfo[selectedDbName];
 
-                      return newDbInfo;
-                    });
+                  return newDbInfo;
+                });
 
-                    setSelectedDbName(newDbOption);
-                  } catch (e) {
-                    console.error(e);
-                    message.error("Failed to delete database");
-                  }
-                }}
-              />
-            )}
-          </>
+                setSelectedDbName(newDbOption);
+              } catch (e) {
+                console.error(e);
+                message.error("Failed to delete database");
+              }
+            }}
+          />
         )}
       </div>
     );
-  }, [message, selectedDbName, fileUploading]);
+  };
 
   const tabs = useMemo(() => {
     if (!selectedDbName || selectedDbName === newDbOption) return null;
-    if (loading) return null;
+    if (loading || fetchingDbInfo) return null;
 
     return [
       {
@@ -328,11 +390,17 @@ const ExtractMetadata = () => {
       <Meta />
       <Scaffolding id="manage-database" userType="ADMIN">
         <div className="w-full dark:bg-dark-bg-primary px-2 md:px-0 mb-4">
-          {dbSelector}
-          {Object.keys(dbInfo).length && tabs ? (
+          {renderDbSelector()}
+          {selectedDbName && selectedDbName !== newDbOption ? (
+            fetchingDbInfo ? (
+              <div className="w-full flex flex-col items-center justify-center p-8">
+                <SpinningLoader classNames="h-8 w-8 text-blue-500 mb-4" />
+                <p className="text-gray-600 dark:text-gray-300">Loading project details...</p>
+              </div>
+            ) : tabs ? (
             <>
               <SetupStatus
-                loading={loading}
+                loading={loading || isLoadingDetails || fetchingDbInfo}
                 canConnect={canConnect}
                 areTablesIndexed={areTablesIndexed}
                 hasNonEmptyDescription={hasNonEmptyDescription}
@@ -352,6 +420,7 @@ const ExtractMetadata = () => {
                 />
               </div>
             </>
+            ) : null
           ) : (
             <div className="prose dark:prose-invert max-w-none">
               {Object.keys(dbInfo).length === 0 && (
