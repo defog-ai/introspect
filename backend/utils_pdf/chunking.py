@@ -153,8 +153,6 @@ def chunk_text(
     chunks = []
     start = 0
     text_length = len(text)
-
-    LOGGER.info(f"Chunking text with length:: {text_length}")
     
     while start < text_length:
         # Find the end of this chunk
@@ -199,7 +197,7 @@ def process_pdf_to_chunks(
     base64_pdf: str,
     chunk_size: int = 1000,
     chunk_overlap: int = 200
-) -> List[Dict[str, Any]]:
+) -> List[PDFChunk]:
     """
     Process a PDF into chunks ready for embedding
     
@@ -221,14 +219,15 @@ def process_pdf_to_chunks(
 
         LOGGER.info(f"Generated {len(page_chunks)} chunks for page {page_number + 1}")
         
-        for i, text_chunk in enumerate(page_chunks):
-            chunk = {
-                "pdf_id": pdf_id,
-                "text_chunk": text_chunk,
-                "pdf_name": pdf_name,
-                "page_number": page_number + 1,  # 1-indexed for human readability
-                "chunk_index": i
-            }
+        for i, text in enumerate(page_chunks):
+            chunk = PDFChunk(
+                text=text,
+                pdf_id=pdf_id,
+                pdf_name=pdf_name,
+                page_number=page_number + 1,  # 1-indexed for human readability
+                chunk_index=i
+            )
+
             chunks.append(chunk)
     
     return chunks

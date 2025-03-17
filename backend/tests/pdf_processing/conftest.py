@@ -38,7 +38,6 @@ DOCKER_DB_CREDS = {
 # Test database configuration
 TEST_DB = {
     "db_name": "test_db",
-    "database": "test_db",
     "db_type": "postgres",
     "db_creds": {
         "host": "agents-postgres",
@@ -58,7 +57,6 @@ def setup_test_database():
     This only handles local database creation and schema setup.
     The registration of database credentials is tested separately.
     """
-    print("creating test db")
     # Setup the test database in user's local Postgres
     local_db_creds = {
         "user": "postgres",
@@ -116,9 +114,12 @@ def setup_test_db_name():
         
         if not existing_db:
             # Create new Project entry
-            new_db_cred = Project(db_name=TEST_DB["db_name"])
+            new_db_cred = Project(**TEST_DB)
             session.add(new_db_cred)
             session.commit()
+
+        # make sure it exists
+        existing_db = session.query(Project).filter_by(db_name=TEST_DB["db_name"]).first()
 
 
 def cleanup_test_database(db_name):
@@ -168,6 +169,37 @@ def admin_token():
     data = response.json()
     assert "token" in data
     return data["token"]
+
+
+def create_pdf_and_get_base_64(page_texts: list[str]):
+    import os
+    import tempfile
+    import pymupdf
+    import base64
+
+    pdf_name = "test_pdf.pdf"
+
+    temp_dir = tempfile.gettempdir()
+    temp_file_path = os.path.join(temp_dir, pdf_name)
+
+    try:
+        # create a pdf
+        doc = pymupdf.Document()
+        for page_text in page_texts:
+            page = doc._newPage()
+            page.insert_text([100, 100], page_text)
+
+        doc.save(temp_file_path)
+        doc.close()
+
+        # read the pdf and get the base64
+        with open(temp_file_path, "rb") as f:
+            pdf_content = f.read()
+            encoded_content = base64.b64encode(pdf_content).decode('utf-8')
+            
+            return pdf_name, temp_file_path, encoded_content
+    except Exception as e:
+        raise e
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -10,13 +10,11 @@ This module contains functions to:
 import logging
 import os
 import traceback
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 
-import numpy as np
 from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.sql import func
 
 from db_config import engine
 from db_models import PDFFiles, PDFEmbeddings
@@ -84,7 +82,7 @@ async def store_pdf_chunk_embeddings(chunks: List[PDFChunk]) -> None:
                 chunk_embedding = PDFEmbeddings(
                     pdf_id=chunk.pdf_id,
                     pdf_name=chunk.pdf_name,
-                    text_chunk=chunk.text,
+                    text=chunk.text,
                     page_number=chunk.page_number,
                     chunk_index=chunk.chunk_index,
                     embedding=chunk.embedding
@@ -112,39 +110,32 @@ async def semantic_search(
         query_embedding = await generate_embedding(query)
         
         async with AsyncSession(engine) as session:
-            # Calculate cosine similarity
-            # This is more efficient than L2 distance for this case
             stmt = select(
-                PDFEmbeddings,
-                func.cosine_similarity(PDFEmbeddings.embedding, query_embedding).label("similarity")
+                PDFEmbeddings
             )
             
             if pdf_ids:
                 stmt = stmt.filter(PDFEmbeddings.pdf_id.in_(pdf_ids))
             
             # Order by similarity (highest first) and limit results
-            stmt = stmt.order_by(func.cosine_similarity(PDFEmbeddings.embedding, query_embedding).desc())
+            stmt = stmt.order_by(PDFEmbeddings.embedding.cosine_distance(query_embedding))
             stmt = stmt.limit(top_k)
             
             result = await session.execute(stmt)
-            matches = result.all()
+            matches = result.scalars().all()
             
             results = []
             for row in matches:
-                chunk = row[0]  # The PDFEmbeddings object
-                similarity = row[1]  # The similarity score
-                
-                # Use the pdf_name directly from the PDFEmbeddings table
                 results.append({
-                    "pdf_id": chunk.pdf_id,
-                    "pdf_name": chunk.pdf_name,
-                    "page_number": chunk.page_number,
-                    "text": chunk.text_chunk,
-                    "similarity": float(similarity)  # Convert to Python float for JSON serialization
+                    "pdf_id": row.pdf_id,
+                    "pdf_name": row.pdf_name,
+                    "text": row.text,
+                    "page_number": row.page_number,
                 })
             
             return results
     except Exception as e:
+        traceback.print_exc()
         LOGGER.error(f"Error performing semantic search: {str(e)}")
         return []
 
@@ -184,13 +175,13 @@ async def process_pdf_for_embedding(pdf_id: int, pdf_name: str, base64_pdf: str)
             async with session.begin():
                 for chunk in chunks:
                     # Generate embedding
-                    embedding = await generate_embedding(chunk["text_chunk"])
+                    embedding = await generate_embedding(chunk["text"])
                     
                     # Store in database
                     pdf_embedding = PDFEmbeddings(
                         pdf_id=chunk["pdf_id"],
                         pdf_name=pdf_name,  # Include the PDF name from the function parameter
-                        text_chunk=chunk["text_chunk"],
+                        text=chunk["text"],
                         page_number=chunk["page_number"],
                         chunk_index=chunk["chunk_index"],
                         embedding=embedding

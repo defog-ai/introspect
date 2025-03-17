@@ -18,7 +18,7 @@ from utils_pdf.embedding import generate_embedding
 
 LOGGER = logging.getLogger("server")
 
-class PDFProcessingTask(Task):
+class PDFProcessingCeleryTask(Task):
     """Base task for PDF processing with error handling and status updates"""
     
     def on_failure(self, exc, task_id, args, kwargs, einfo):
@@ -44,7 +44,7 @@ class PDFProcessingTask(Task):
         LOGGER.error(f"PDF processing task {task_id} failed: {exc}")
         return super().on_failure(exc, task_id, args, kwargs, einfo)
 
-@celery_app.task(bind=True, base=PDFProcessingTask)
+@celery_app.task(bind=True, base=PDFProcessingCeleryTask)
 def process_pdf(self, pdf_id: int, pdf_name: str, base64_pdf: str) -> Dict[str, Any]:
     """
     Process a PDF file for embedding:
@@ -94,15 +94,15 @@ def process_pdf(self, pdf_id: int, pdf_name: str, base64_pdf: str) -> Dict[str, 
         with Session(sync_engine) as session:
             for chunk in chunks:
                 # Generate embedding
-                embedding = generate_embedding_sync(chunk["text_chunk"])
+                embedding = generate_embedding_sync(chunk.text)
                 
                 # Store in database
                 pdf_embedding = PDFEmbeddings(
-                    pdf_id=chunk["pdf_id"],
+                    pdf_id=chunk.pdf_id,
                     pdf_name=pdf_name,
-                    text_chunk=chunk["text_chunk"],
-                    page_number=chunk["page_number"],
-                    chunk_index=chunk["chunk_index"],
+                    text=chunk.text,
+                    page_number=chunk.page_number,
+                    chunk_index=chunk.chunk_index,
                     embedding=embedding
                 )
                 session.add(pdf_embedding)

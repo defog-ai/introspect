@@ -239,10 +239,10 @@ class PDFEmbeddings(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     pdf_id = Column(Integer, nullable=False)
     pdf_name = Column(Text, nullable=False)
-    text_chunk = Column(Text, nullable=False)
+    text = Column(Text, nullable=False)
     page_number = Column(Integer)
     chunk_index = Column(Integer)
-    embedding = Column(Vector(OAI_EMB_DIM))
+    embedding = mapped_column(Vector(OAI_EMB_DIM))
     created_at = Column(DateTime, default=datetime.now)
     
     __table_args__ = (

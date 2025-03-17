@@ -172,10 +172,10 @@ async def upload_files(
         - db_name: what database to associate the files with? can be blank (new db will be created)
         - files: list of files to upload
     """
-    LOGGER.info("Received request to upload files")
     form_data = await request.form()
     db_name = form_data.get("db_name")
     files = form_data.getlist("files")
+    LOGGER.info(f"Received request to upload files to db name: {db_name}")
     # data_files are all those that end with .csv, .xls, or .xlsx
     data_files = [f for f in files if f.filename.endswith(('.csv', '.xls', '.xlsx'))]
     pdf_files = [f for f in files if f.filename.endswith(('.pdf'))]

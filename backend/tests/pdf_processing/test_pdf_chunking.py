@@ -4,62 +4,34 @@ Unit tests for PDF chunking functionality.
 These tests can run without Docker's internal connections.
 All tests are isolated and use mocks to avoid database dependencies.
 """
-import base64
 import pytest
-from unittest.mock import patch, MagicMock
-
-import pymupdf
-
-def create_pdf_and_get_base_64(page_texts: list[str]):
-    import os
-    import tempfile
-
-    pdf_name = "test_pdf.pdf"
-
-    temp_dir = tempfile.gettempdir()
-    temp_file_path = os.path.join(temp_dir, pdf_name)
-
-    try:
-        # create a pdf
-        doc = pymupdf.Document()
-        for page_text in enumerate(page_texts):
-            page = doc._newPage()
-            page.insert_text((100, 100), page_text)
-
-        doc.save(temp_file_path)
-        doc.close()
-
-        pdf_content = None
-
-        # read the pdf and get the base64
-        with open(temp_file_path, "rb") as f:
-            pdf_content = f.read()
-        
-        return pdf_name, temp_file_path, pdf_content
-    except Exception as e:
-        raise e
-    finally:
-        os.unlink(temp_file_path)
+import os
+from conftest import create_pdf_and_get_base_64
 
 
 def test_process_pdf_to_chunks():
     """Test PDF chunking with a small sample PDF"""
+
+    pdf_name, temp_file_path, base64_pdf = create_pdf_and_get_base_64([
+        "This is a test PDF with some text content.",
+        "Some more content to ensure we can create chunks."
+    ])
+
     try:
         from utils_pdf.chunking import process_pdf_to_chunks
 
         pdf_id = 123
-        pdf_name, temp_file_path, base64_pdf = create_pdf_and_get_base_64(["This is a test PDF with some text content.", "Some more content to ensure we can create chunks."])
-
+        
         # Call the function
         chunks = process_pdf_to_chunks(pdf_id, pdf_name, base64_pdf)
-        
+
         # Verify the results
         assert len(chunks) > 0
         
         # Check that each chunk has the expected fields
         for chunk in chunks:
             assert "pdf_id" in chunk
-            assert "text_chunk" in chunk
+            assert "text" in chunk
             assert "pdf_name" in chunk
             assert "page_number" in chunk
             assert "chunk_index" in chunk
@@ -67,12 +39,14 @@ def test_process_pdf_to_chunks():
             # Check values
             assert chunk["pdf_id"] == pdf_id
             assert chunk["pdf_name"] == pdf_name
-            assert isinstance(chunk["text_chunk"], str)
-            assert len(chunk["text_chunk"]) > 0
+            assert isinstance(chunk["text"], str)
+            assert len(chunk["text"]) > 0
         
             
     except Exception as e:
         pytest.fail(f"Test failed with exception: {str(e)}")
+    finally:
+        os.unlink(temp_file_path)
 
 
 def test_clean_pdf_text():
