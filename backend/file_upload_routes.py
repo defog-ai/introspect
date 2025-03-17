@@ -4,20 +4,17 @@ import time
 import traceback
 
 from pandas.errors import ParserError
-from fastapi import APIRouter, File, Request, UploadFile, HTTPException
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse, Response
 from request_models import (
     DbDetails,
 )
 from utils_logging import LOGGER
-from db_utils import get_db_info, get_db_type_creds
-import random
+from db_utils import get_db_info, get_db_type_creds, update_db_type_creds
 import os
-import pandas as pd
 from utils_file_uploads import export_df_to_db, clean_table_name, ExcelUtils, CSVUtils
-from utils_md import set_metadata
+from utils_md import set_metadata, get_metadata
 from utils_oracle import upload_pdf_files, update_project_files, get_pdf_content, delete_pdf_file
-from db_utils import update_db_type_creds
 from sqlalchemy_utils import database_exists, create_database
 import io
 import asyncio
@@ -155,7 +152,8 @@ async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
         connection_uri = f"postgresql+asyncpg://{db_creds_to_use['user']}:{db_creds_to_use['password']}@{db_creds_to_use['host']}:{db_creds_to_use['port']}/{cleaned_db_name}"
 
     # Process tables and export to database
-    db_metadata = []
+    # get db metadata
+    db_metadata = await get_metadata(cleaned_db_name)
 
     for table_name, table_df in tables.items():
         start = time.time()
@@ -180,10 +178,10 @@ async def upload_files_to_db(files, db_name: str | None = None) -> DbDetails:
         for col, dtype in inferred_types.items():
             db_metadata.append(
                 {
-                    "db_name": cleaned_db_name,
                     "table_name": table_name,
                     "column_name": col,
                     "data_type": dtype,
+                    "column_description": "",
                 }
             )
 
