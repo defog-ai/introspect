@@ -17,6 +17,9 @@ from sqlalchemy.orm import declarative_base, mapped_column
 from pgvector.sqlalchemy import Vector
 from datetime import datetime
 
+
+OAI_EMB_DIM = 1536
+
 base_metadata = MetaData()
 Base = declarative_base(metadata=base_metadata)
 
@@ -239,7 +242,7 @@ class PDFEmbeddings(Base):
     text_chunk = Column(Text, nullable=False)
     page_number = Column(Integer)
     chunk_index = Column(Integer)
-    embedding = Column(Vector(1536))  # OpenAI's embedding dimensions
+    embedding = Column(Vector(OAI_EMB_DIM))
     created_at = Column(DateTime, default=datetime.now)
     
     __table_args__ = (

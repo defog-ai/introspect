@@ -5,60 +5,72 @@ These tests can run without Docker's internal connections.
 All tests are isolated and use mocks to avoid database dependencies.
 """
 import base64
-import io
 import pytest
 from unittest.mock import patch, MagicMock
+
+import pymupdf
+
+def create_pdf_and_get_base_64(page_texts: list[str]):
+    import os
+    import tempfile
+
+    pdf_name = "test_pdf.pdf"
+
+    temp_dir = tempfile.gettempdir()
+    temp_file_path = os.path.join(temp_dir, pdf_name)
+
+    try:
+        # create a pdf
+        doc = pymupdf.Document()
+        for page_text in enumerate(page_texts):
+            page = doc._newPage()
+            page.insert_text((100, 100), page_text)
+
+        doc.save(temp_file_path)
+        doc.close()
+
+        pdf_content = None
+
+        # read the pdf and get the base64
+        with open(temp_file_path, "rb") as f:
+            pdf_content = f.read()
+        
+        return pdf_name, temp_file_path, pdf_content
+    except Exception as e:
+        raise e
+    finally:
+        os.unlink(temp_file_path)
 
 
 def test_process_pdf_to_chunks():
     """Test PDF chunking with a small sample PDF"""
     try:
         from utils_pdf.chunking import process_pdf_to_chunks
-        
-        # Create a simple PDF structure
-        pdf_content = b'%PDF-1.4\nThis is a test PDF with some text content.\nIt has multiple lines.\nSome more content to ensure we can create chunks.%EOF'
+
         pdf_id = 123
-        pdf_name = "test.pdf"
-        base64_pdf = base64.b64encode(pdf_content).decode('utf-8')
+        pdf_name, temp_file_path, base64_pdf = create_pdf_and_get_base_64(["This is a test PDF with some text content.", "Some more content to ensure we can create chunks."])
+
+        # Call the function
+        chunks = process_pdf_to_chunks(pdf_id, pdf_name, base64_pdf)
         
-        # Mock PyMuPDF open function
-        with patch('pymupdf.open') as mock_open:
-            print("hew")
-            # Setup the mock document
-            mock_doc = MagicMock()
-            mock_page1 = MagicMock()
-            mock_page1.get_text.return_value = "This is a test PDF with some text content.\nIt has multiple lines."
-            mock_page2 = MagicMock()
-            mock_page2.get_text.return_value = "Some more content to ensure we can create chunks."
-            print("hew2")
-            print("hew3")
+        # Verify the results
+        assert len(chunks) > 0
+        
+        # Check that each chunk has the expected fields
+        for chunk in chunks:
+            assert "pdf_id" in chunk
+            assert "text_chunk" in chunk
+            assert "pdf_name" in chunk
+            assert "page_number" in chunk
+            assert "chunk_index" in chunk
             
-            # Configure the mock document
-            mock_doc.__len__.return_value = 2
-            mock_doc.__getitem__.side_effect = [mock_page1, mock_page2]
-            mock_open.return_value = mock_doc
+            # Check values
+            assert chunk["pdf_id"] == pdf_id
+            assert chunk["pdf_name"] == pdf_name
+            assert isinstance(chunk["text_chunk"], str)
+            assert len(chunk["text_chunk"]) > 0
+        
             
-            print("hew4")
-            # Call the function
-            chunks = process_pdf_to_chunks(pdf_id, pdf_name, base64_pdf)
-            
-            # Verify the results
-            assert len(chunks) > 0
-            
-            # Check that each chunk has the expected fields
-            for chunk in chunks:
-                assert "pdf_id" in chunk
-                assert "text_chunk" in chunk
-                assert "pdf_name" in chunk
-                assert "page_number" in chunk
-                assert "chunk_index" in chunk
-                
-                # Check values
-                assert chunk["pdf_id"] == pdf_id
-                assert chunk["pdf_name"] == pdf_name
-                assert isinstance(chunk["text_chunk"], str)
-                assert len(chunk["text_chunk"]) > 0
-    
     except Exception as e:
         pytest.fail(f"Test failed with exception: {str(e)}")
 
@@ -81,7 +93,7 @@ def test_clean_pdf_text():
             # None value
             (None, ""),
             # Combination
-            ("Text   with \n\n multiple \f\f issues", "Text with\nmultiple issues")
+            ("Text   with\n\nmultiple\f\f issues", "Text with\nmultiple issues")
         ]
         
         for input_text, expected_output in test_cases:

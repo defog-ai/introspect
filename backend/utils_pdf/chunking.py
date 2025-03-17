@@ -159,7 +159,7 @@ def chunk_text(
     while start < text_length:
         # Find the end of this chunk
         end = min(start + chunk_size, text_length)
-        
+
         # If we're not at the end of the text, try to find a good breaking point
         if end < text_length:
             # Look for paragraph or sentence breaks near the target end
@@ -185,7 +185,10 @@ def chunk_text(
             chunks.append(chunk)
         
         # Move to next chunk with overlap
-        start = max(start, end - chunk_overlap)
+        # if end is at text length
+        # or if text_length < chunk_overlap
+        # juts move to end instead of end - chunk_overlap
+        start = max(start, end if (end - chunk_overlap) < 0 or end == text_length else (end - chunk_overlap))
     
     return chunks
 

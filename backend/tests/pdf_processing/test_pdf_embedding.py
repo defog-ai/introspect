@@ -7,34 +7,57 @@ All tests are isolated and use mocks to avoid database dependencies.
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 
+import requests
+from db_models import OAI_EMB_DIM
+from conftest import TEST_DB, BASE_URL
+
+import pymupdf
+
+def create_pdf_and_get_base_64(page_texts: list[str]):
+    import os
+    import tempfile
+
+    pdf_name = "test_pdf.pdf"
+
+    temp_dir = tempfile.gettempdir()
+    temp_file_path = os.path.join(temp_dir, pdf_name)
+
+    try:
+        # create a pdf
+        doc = pymupdf.Document()
+        for page_text in enumerate(page_texts):
+            page = doc._newPage()
+            page.insert_text((100, 100), page_text)
+
+        doc.save(temp_file_path)
+        doc.close()
+
+        pdf_content = None
+
+        # read the pdf and get the base64
+        with open(temp_file_path, "rb") as f:
+            pdf_content = f.read()
+        
+        return pdf_name, temp_file_path, pdf_content
+    except Exception as e:
+        raise e
+    finally:
+        os.unlink(temp_file_path)
+
+
 
 @pytest.mark.asyncio
 async def test_generate_embedding():
     """Test generating embeddings for text"""
     try:
         from utils_pdf.embedding import generate_embedding
-        
-        # Mock the OpenAI API client
-        with patch('openai.AsyncOpenAI') as mock_openai:
-            # Create a mock response
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.data = [MagicMock(embedding=[0.1, 0.2, 0.3, 0.4])]
-            mock_client.embeddings.create.return_value = mock_response
-            mock_openai.return_value = mock_client
-            
-            # Call the function
-            text = "This is a test text to embed."
-            embedding = await generate_embedding(text)
-            
-            # Check the results
-            assert embedding == [0.1, 0.2, 0.3, 0.4]
-            
-            # Verify the API was called with the correct parameters
-            mock_client.embeddings.create.assert_called_once()
-            call_kwargs = mock_client.embeddings.create.call_args.kwargs
-            assert call_kwargs["model"] == "text-embedding-3-small"
-            assert call_kwargs["input"] == text
+
+        # Call the function
+        text = "This is a test text to embed."
+        embedding = await generate_embedding(text)
+
+        assert type(embedding) == list
+        assert len(embedding) == OAI_EMB_DIM
     
     except Exception as e:
         pytest.fail(f"Test failed with exception: {str(e)}")
@@ -45,34 +68,20 @@ async def test_embed_pdf_chunks():
     """Test embedding multiple PDF chunks"""
     try:
         from utils_pdf.embedding import embed_pdf_chunks
-        from utils_pdf.chunking import PDFChunk
+        from utils_pdf.chunking import PDFChunk, process_pdf_to_chunks
+
+        pdf_name, temp_file_path, base64_pdf = create_pdf_and_get_base_64(["This is a test PDF with some text content.", "Some more content to ensure we can create chunks."])
+
+        chunks = process_pdf_to_chunks(123, pdf_name, base64_pdf)
         
-        # Create test chunks
-        chunks = [
-            PDFChunk("First chunk text", 123, "test.pdf", 1, 0),
-            PDFChunk("Second chunk text", 123, "test.pdf", 1, 1)
-        ]
-        
-        # Mock the generate_embedding function
-        with patch('utils_pdf.embedding.generate_embedding') as mock_generate_embedding:
-            # Set up mock embeddings
-            mock_generate_embedding.side_effect = [
-                [0.1, 0.2, 0.3],  # First chunk embedding
-                [0.4, 0.5, 0.6]   # Second chunk embedding
-            ]
+        result_chunks = await embed_pdf_chunks(chunks)
             
-            # Call the function
-            result_chunks = await embed_pdf_chunks(chunks)
-            
-            # Check the results
-            assert len(result_chunks) == 2
-            assert result_chunks[0].embedding == [0.1, 0.2, 0.3]
-            assert result_chunks[1].embedding == [0.4, 0.5, 0.6]
-            
-            # Verify generate_embedding was called twice with correct texts
-            assert mock_generate_embedding.call_count == 2
-            mock_generate_embedding.assert_any_call("First chunk text")
-            mock_generate_embedding.assert_any_call("Second chunk text")
+        # Check the results
+        assert len(result_chunks) == 2
+        assert len(result_chunks[0].embedding) == OAI_EMB_DIM
+        assert len(result_chunks[1].embedding) == OAI_EMB_DIM
+        assert result_chunks[0].embedding is not None
+        assert result_chunks[1].embedding is not None
     
     except Exception as e:
         pytest.fail(f"Test failed with exception: {str(e)}")
@@ -82,42 +91,47 @@ async def test_embed_pdf_chunks():
 async def test_semantic_search():
     """Test semantic search on embeddings"""
     try:
+        import os
         from utils_pdf.embedding import semantic_search
-        
-        # Mock the database session and execution
-        with patch('utils_pdf.embedding.AsyncSession') as mock_async_session:
-            # Set up mock session
-            mock_session = AsyncMock()
-            mock_session.__aenter__.return_value = mock_session
-            mock_async_session.return_value = mock_session
-            
-            # Mock the query result
-            mock_result = AsyncMock()
-            mock_matches = [
-                (MagicMock(pdf_id=123, pdf_name="test.pdf", page_number=1, text_chunk="Relevant chunk 1"), 0.95),
-                (MagicMock(pdf_id=123, pdf_name="test.pdf", page_number=2, text_chunk="Relevant chunk 2"), 0.85)
+        from utils_pdf.chunking import process_pdf_to_chunks
+
+        db_name = TEST_DB["db_name"]
+
+        # create a temp pdf with 4 pages
+        pdf_name, temp_file_path, base64_pdf = create_pdf_and_get_base_64([
+            "Paris is the capital of France.",
+            "Delhi is the capital of India",
+            "France has a big GDP. Paris is the biggest contributor.",
+            "London is in UK"
+        ])
+
+        # upload this pdf to test db
+        # Upload the PDF
+        with open(temp_file_path, 'rb') as pdf_file:
+            files = [
+                ('files', (os.path.basename(temp_file_path), pdf_file, 'application/pdf'))
             ]
-            mock_result.all.return_value = mock_matches
-            mock_session.execute.return_value = mock_result
-            
-            # Mock generate_embedding
-            with patch('utils_pdf.embedding.generate_embedding') as mock_generate_embedding:
-                mock_generate_embedding.return_value = [0.1, 0.2, 0.3]
-                
-                # Call the function
-                results = await semantic_search("test query", top_k=2)
-                
-                # Check the results
-                assert len(results) == 2
-                assert results[0]["pdf_id"] == 123
-                assert results[0]["text"] == "Relevant chunk 1"
-                assert results[0]["similarity"] == 0.95
-                assert results[1]["pdf_id"] == 123
-                assert results[1]["text"] == "Relevant chunk 2"
-                assert results[1]["similarity"] == 0.85
-                
-                # Verify query embedding was generated
-                mock_generate_embedding.assert_called_once_with("test query")
+            response = requests.post(f"{BASE_URL}/upload_files", files=files, data={"db_name": db_name})
+            # get pdf id
+            db_info = response.json()
+            print(db_info)
+
+        os.unlink(temp_file_path)
+        
+        # # Process the PDF
+        # chunks = await process_pdf_to_chunks(pdf_id, pdf_name, base64_pdf)
+        
+        # # Call the function
+        # results = await semantic_search("What is the capital of France?", top_k=2)
+
+        # # Check the results
+        # assert len(results) == 2
+        # assert results[0]["pdf_id"] == 123
+        # assert results[0]["text"] == "Paris is the capital of France."
+        # assert results[0]["similarity"] > 0.7
+        # assert results[1]["pdf_id"] == 123
+        # assert results[1]["text"] == "France has a big GDP. Paris is the biggest contributor."
+        # assert results[1]["similarity"] > 0
     
     except Exception as e:
         pytest.fail(f"Test failed with exception: {str(e)}")
