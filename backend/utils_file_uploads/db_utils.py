@@ -7,7 +7,9 @@ import pandas as pd
 import os
 import json
 import tempfile
-from sqlalchemy import text
+import psycopg2
+import psycopg2.extras
+from sqlalchemy import text, create_engine
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from .name_utils import NameUtils
@@ -122,8 +124,15 @@ class DbUtils:
                     target_type = "FLOAT"
                 # Snowflake compatible with most PostgreSQL types
             elif db_type == "redshift":
-                # Redshift uses similar types to PostgreSQL
-                pass
+                # Redshift uses similar types to PostgreSQL but with some differences
+                if col_type == "JSONB" or col_type == "JSON":
+                    target_type = "VARCHAR(MAX)"  # Redshift doesn't support JSON/JSONB directly
+                elif col_type == "DOUBLE PRECISION":
+                    target_type = "DOUBLE PRECISION"  # Explicitly use DOUBLE PRECISION
+                elif col_type == "UUID":
+                    target_type = "VARCHAR(36)"  # Redshift doesn't have UUID type
+                elif col_type == "TIMESTAMP WITH TIME ZONE":
+                    target_type = "TIMESTAMPTZ"  # Redshift uses TIMESTAMPTZ
             
             # Handle different database identifier quoting styles
             if db_type == "mysql":
@@ -244,16 +253,31 @@ class DbUtils:
 
         # For SQL databases (PostgreSQL, MySQL, SQL Server, Redshift)
         # Create a SQLAlchemy engine
-        engine = create_async_engine(db_connection_string)
+        if db_type == "redshift" and "postgresql+psycopg2" in db_connection_string:
+            # For Redshift with psycopg2, we need a synchronous engine
+            sync_engine = create_engine(db_connection_string)
+            return await DbUtils._export_df_to_redshift(
+                df, table_name, sync_engine, db_type, chunksize, db_creds
+            )
+        else:
+            # For other databases, use async engine
+            engine = create_async_engine(db_connection_string)
 
         # Infer data types using original column names
         inferred_types = {}
         for col in df.columns:
             original_name = col_name_mapping.get(col, col)
             try:
-                inferred_types[col] = TypeUtils.guess_column_type(
+                # Get the base PostgreSQL data type
+                pg_type = TypeUtils.guess_column_type(
                     df[col], column_name=original_name
                 )
+                
+                # For Redshift, handle JSON types differently
+                if db_type == "redshift" and pg_type in ["JSON", "JSONB"]:
+                    inferred_types[col] = "VARCHAR(MAX)"
+                else:
+                    inferred_types[col] = pg_type
             except Exception as e:
                 raise Exception(
                     f"Failed to infer type for column {original_name} in table {table_name}: {e}"
@@ -574,6 +598,188 @@ class DbUtils:
         LOGGER.info(f"Successfully imported {len(df)} rows into Snowflake table '{table_name}'.")
         return {"success": True, "inferred_types": inferred_types}
         
+    @staticmethod
+    async def _export_df_to_redshift(
+        df: pd.DataFrame,
+        table_name: str,
+        engine,
+        db_type: str = "redshift",
+        chunksize: int = 5000,
+        db_creds: dict = None,
+    ):
+        """
+        Export a pandas DataFrame to Redshift using synchronous SQLAlchemy.
+        
+        Args:
+            df: DataFrame to export
+            table_name: Name of the target table
+            engine: SQLAlchemy engine (synchronous)
+            db_type: Database type (should be "redshift")
+            chunksize: Number of rows to insert at once
+            db_creds: Additional credentials if needed
+            
+        Returns:
+            Dictionary with success status and inferred types
+        """
+        # Make a copy and handle NaN values
+        df = df.copy().fillna(value="")
+        
+        # Store original column names
+        original_cols = list(df.columns)
+        
+        # Deduplicate column names with appropriate length limit (59 for Redshift)
+        unique_cols = DbUtils.deduplicate_column_names(df.columns, 59)
+        df.columns = unique_cols
+        
+        # Sanitize column names for SQL use
+        safe_col_list = []
+        seen_names = set()
+        
+        for col in df.columns:
+            safe_name = NameUtils.sanitize_column_name(col)
+            
+            # Handle duplicate sanitized names
+            if safe_name in seen_names:
+                counter = 1
+                while f"{safe_name}_{counter}" in seen_names:
+                    counter += 1
+                safe_name = f"{safe_name}_{counter}"
+                
+            safe_col_list.append(safe_name)
+            seen_names.add(safe_name)
+            
+        # Create mapping between sanitized and original names
+        col_name_mapping = dict(zip(safe_col_list, original_cols))
+        
+        # Update dataframe with sanitized column names
+        df.columns = safe_col_list
+        
+        # Infer data types using original column names
+        inferred_types = {}
+        for col in df.columns:
+            original_name = col_name_mapping.get(col, col)
+            try:
+                pg_type = TypeUtils.guess_column_type(df[col], column_name=original_name)
+                
+                # Special handling for Redshift types
+                if pg_type in ["JSON", "JSONB"]:
+                    inferred_types[col] = "VARCHAR(MAX)"
+                elif pg_type == "UUID":
+                    inferred_types[col] = "VARCHAR(36)"
+                else:
+                    inferred_types[col] = pg_type
+            except Exception as e:
+                raise Exception(f"Failed to infer type for column {original_name}: {e}")
+                
+        # Convert values based on inferred types
+        converted_df = df.copy()
+        for col in df.columns:
+            try:
+                converted_df[col] = df[col].map(
+                    lambda value: TypeUtils.convert_values_to_postgres_type(
+                        value, target_type=inferred_types[col]
+                    )
+                )
+            except Exception as e:
+                raise Exception(f"Failed to convert values for column {col}: {e}")
+                
+        # Create table SQL
+        try:
+            create_stmt = DbUtils.create_table_sql(table_name, inferred_types, "redshift")
+        except Exception as e:
+            raise Exception(f"Failed to create CREATE TABLE statement: {e}")
+            
+        # Execute DROP and CREATE statements directly with psycopg2
+        try:
+            # Extract connection parameters from SQLAlchemy engine
+            params = {}
+            if hasattr(engine, 'url'):
+                url = engine.url
+                if hasattr(url, 'username'):
+                    params['user'] = url.username
+                if hasattr(url, 'password'):
+                    params['password'] = url.password
+                if hasattr(url, 'host'):
+                    params['host'] = url.host
+                if hasattr(url, 'port'):
+                    params['port'] = url.port
+                if hasattr(url, 'database'):
+                    params['dbname'] = url.database
+                    
+            # Create direct psycopg2 connection
+            connection = psycopg2.connect(**params)
+            connection.autocommit = True
+            
+            # Execute schema creation commands
+            with connection.cursor() as cursor:
+                # Drop table if exists
+                cursor.execute(f'DROP TABLE IF EXISTS "{table_name}";')
+                # Create table
+                cursor.execute(create_stmt)
+                
+            # Keep connection open for later use
+        except Exception as e:
+            raise Exception(f"Failed to create table: {str(e)}")
+            
+        # For Redshift, we should use the COPY command for better performance
+        # but we'll implement efficient batch loading as an alternative
+        
+        # Prepare INSERT statement with optimized batching
+        insert_cols = ", ".join(f'"{c}"' for c in safe_col_list)
+        
+        # For Redshift, we'll use the more efficient executemany pattern
+        # with proper parameter binding for batch inserts
+        placeholders = ", ".join(["%s" for _ in safe_col_list])
+        insert_sql = f'INSERT INTO "{table_name}" ({insert_cols}) VALUES ({placeholders})'
+        
+        # Convert numpy types to Python types before sending to Redshift
+        # This is particularly important for numpy.datetime64 which psycopg2 can't adapt
+        def convert_numpy_types(value):
+            if isinstance(value, np.datetime64):
+                return pd.Timestamp(value).to_pydatetime()
+            elif isinstance(value, np.integer):
+                return int(value)
+            elif isinstance(value, np.floating):
+                return float(value)
+            elif isinstance(value, np.bool_):
+                return bool(value)
+            else:
+                return value
+        
+        # First replace NaN values with None, then convert to records
+        df_prepared = converted_df.replace({np.nan: None})
+        
+        # Apply conversion function to each element
+        for col in df_prepared.columns:
+            df_prepared[col] = df_prepared[col].map(lambda x: convert_numpy_types(x))
+        
+        # Convert to list of tuples for efficient batch insert
+        data = [tuple(row) for row in df_prepared.values]
+        
+        # Execute INSERT statements with efficient batching
+        try:
+            # We'll use the same connection established earlier
+            with connection.cursor() as cursor:
+                # Use execute_batch for much more efficient insertion
+                psycopg2.extras.execute_batch(
+                    cursor, 
+                    insert_sql,
+                    data,
+                    page_size=chunksize
+                )
+                connection.commit()
+            
+            # Close connection when done
+            connection.close()
+        except Exception as e:
+            # Make sure to close connection on error
+            if 'connection' in locals() and connection:
+                connection.close()
+            raise Exception(f"Failed to insert data: {str(e)}")
+            
+        LOGGER.info(f"Successfully imported {len(df)} rows into Redshift table '{table_name}'.")
+        return {"success": True, "inferred_types": inferred_types}
+
     @staticmethod
     async def export_df_to_postgres(
         df: pd.DataFrame,
