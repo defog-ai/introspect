@@ -172,11 +172,10 @@ async def upload_files(
         - db_name: what database to associate the files with? can be blank (new db will be created)
         - files: list of files to upload
     """
+    LOGGER.info("Received request to upload files")
     form_data = await request.form()
-    token = form_data.get("token")
     db_name = form_data.get("db_name")
     files = form_data.getlist("files")
-    LOGGER.info("Received request to upload files")
     # data_files are all those that end with .csv, .xls, or .xlsx
     data_files = [f for f in files if f.filename.endswith(('.csv', '.xls', '.xlsx'))]
     pdf_files = [f for f in files if f.filename.endswith(('.pdf'))]
@@ -196,27 +195,27 @@ async def upload_files(
         pdf_file_ids = await upload_pdf_files(pdf_files)
         await update_project_files(db_name, pdf_file_ids)
         
-        # Process each PDF for embedding using Celery
-        from celery_tasks.pdf_tasks import process_pdf
-        from utils_pdf.task_status import create_task_record
+        # # Process each PDF for embedding using Celery
+        # from celery_tasks.pdf_tasks import process_pdf
+        # from utils_pdf.task_status import create_task_record
         
-        for i, pdf_file in enumerate(pdf_files):
-            pdf_id = pdf_file_ids[i]
-            pdf_name = pdf_file.filename
+        # for i, pdf_file in enumerate(pdf_files):
+        #     pdf_id = pdf_file_ids[i]
+        #     pdf_name = pdf_file.filename
             
-            # Get the base64 content
-            file_content = await pdf_file.read()
-            # Rewind the file after reading
-            await pdf_file.seek(0)
-            base64_pdf = base64.b64encode(file_content).decode('utf-8')
+        #     # Get the base64 content
+        #     file_content = await pdf_file.read()
+        #     # Rewind the file after reading
+        #     await pdf_file.seek(0)
+        #     base64_pdf = base64.b64encode(file_content).decode('utf-8')
             
-            # Submit task to Celery
-            task = process_pdf.delay(pdf_id, pdf_name, base64_pdf)
+        #     # Submit task to Celery
+        #     task = process_pdf.delay(pdf_id, pdf_name, base64_pdf)
             
-            # Record task in database for status tracking
-            await create_task_record(task.id, pdf_id, pdf_name)
+        #     # Record task in database for status tracking
+        #     await create_task_record(task.id, pdf_id, pdf_name)
             
-            LOGGER.info(f"Submitted Celery task {task.id} for PDF {pdf_id} ({pdf_name})")
+        #     LOGGER.info(f"Submitted Celery task {task.id} for PDF {pdf_id} ({pdf_name})")
 
     db_info = await get_db_info(db_name)
 
