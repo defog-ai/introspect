@@ -15,8 +15,22 @@ class UserRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
+    """
+    Request model for user login.
+    """
     username: str
     password: str
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "username": "admin@example.com",
+                    "password": "secure_password"
+                }
+            ]
+        }
+    }
 
 
 class MetadataGetRequest(UserRequest):
@@ -351,3 +365,124 @@ class CustomToolTestRequest(UserRequest):
     input_model: Optional[str] = None
     tool_code: str
     test_input: Optional[Any] = None
+    
+    
+# User Management Request Models
+class UserDetails(BaseModel):
+    """
+    Model for user details.
+    """
+    username: str
+    password: Optional[str] = None
+    user_type: Literal["ADMIN", "GENERAL"] = "GENERAL"
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "username": "user@example.com",
+                    "password": "secure_password",
+                    "user_type": "GENERAL"
+                }
+            ]
+        }
+    }
+
+
+class AddUserRequest(UserRequest):
+    """
+    Request model for adding a single user.
+    """
+    user: UserDetails
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "admin_token",
+                    "user": {
+                        "username": "user@example.com",
+                        "password": "secure_password",
+                        "user_type": "GENERAL"
+                    }
+                }
+            ]
+        }
+    }
+
+
+class AddUsersBatchRequest(UserRequest):
+    """
+    Request model for adding multiple users at once.
+    """
+    users_csv: Optional[str] = None
+    gsheets_url: Optional[str] = None
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "admin_token",
+                    "users_csv": "username,password,user_type\nuser1@example.com,password1,GENERAL\nuser2@example.com,password2,GENERAL"
+                }
+            ]
+        }
+    }
+
+
+class UpdateUserStatusRequest(UserRequest):
+    """
+    Request model for updating a user's status.
+    """
+    username: str
+    status: Literal["ACTIVE", "INACTIVE"]
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "admin_token",
+                    "username": "user@example.com",
+                    "status": "INACTIVE"
+                }
+            ]
+        }
+    }
+
+
+class DeleteUserRequest(UserRequest):
+    """
+    Request model for deleting a user.
+    """
+    username: str
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "admin_token",
+                    "username": "user@example.com"
+                }
+            ]
+        }
+    }
+
+
+class ResetPasswordRequest(UserRequest):
+    """
+    Request model for resetting a user's password.
+    """
+    username: str
+    password: str
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "token": "admin_token",
+                    "username": "user@example.com",
+                    "password": "new_secure_password"
+                }
+            ]
+        }
+    }
