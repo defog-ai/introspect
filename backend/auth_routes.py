@@ -53,8 +53,6 @@ async def login(req: LoginRequest):
         )
         user = result.scalar_one_or_none()
         
-        LOGGER.info(f"User found: {user}")
-
         if user:
             token = user.token
             user_type = user.user_type.value if hasattr(user, 'user_type') and user.user_type else "ADMIN"
