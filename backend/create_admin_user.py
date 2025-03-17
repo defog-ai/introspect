@@ -6,9 +6,10 @@
 
 import hashlib
 import os
+from datetime import datetime
 
-from db_models import Users
-from sqlalchemy import create_engine, select, insert
+from db_models import Users, UserType, UserStatus
+from sqlalchemy import create_engine, select, insert, update
 
 SALT = os.getenv("SALT", "default_salt")
 
@@ -37,6 +38,18 @@ with engine.begin() as conn:
 if user:
     admin_exists = True
     print("Admin user already exists.")
+    
+    # Ensure user has correct user_type and status
+    with engine.begin() as conn:
+        conn.execute(
+            update(Users)
+            .where(Users.username == username)
+            .values(
+                user_type=UserType.ADMIN,
+                status=UserStatus.ACTIVE
+            )
+        )
+    print("Admin user properties updated to ensure correct role and status.")
 else:
     print("Creating admin user...")
     with engine.begin() as conn:
@@ -45,6 +58,11 @@ else:
                 username=username,
                 hashed_password=hashed_password,
                 token=hashed_password,
+                user_type=UserType.ADMIN,
+                status=UserStatus.ACTIVE,
+                created_at=datetime.now()
             )
         )
     print("Admin user created. Please reset the default admin password when you log in.")
+    print("WARNING: The default admin credentials are: username='admin', password='admin'")
+    print("Change these credentials immediately after first login!")
