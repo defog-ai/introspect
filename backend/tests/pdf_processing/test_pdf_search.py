@@ -48,22 +48,22 @@ async def test_semantic_search():
             raise Exception("Failed to upload PDF file")
 
         # get pdf id
-        pdf_id = db_info["associated_files"][0]["file_id"]
+        file_id = db_info["associated_files"][0]["file_id"]
 
         # use celery task to create chunks, embed them and store
         from celery_tasks.pdf_tasks import process_pdf
         # Submit task to Celery
-        task = process_pdf.delay(pdf_id, pdf_name, base64_pdf)
+        task = process_pdf.delay(file_id, pdf_name, base64_pdf)
         
         # Record task in database for status tracking
-        await create_task_record(task.id, pdf_id, pdf_name)
+        await create_task_record(task.id, file_id, pdf_name)
         
-        print(f"Submitted Celery task {task.id} for PDF {pdf_id} ({pdf_name}). Waiting 5 secs for it to complete.")
+        print(f"Submitted Celery task {task.id} for PDF {file_id} ({pdf_name}). Waiting 5 secs for it to complete.")
 
         time.sleep(5)
         
         # now search
-        result = await semantic_search("What is the capital of France?", top_k = 2, pdf_ids=[pdf_id])
+        result = await semantic_search("What is the capital of France?", top_k = 2, file_ids=[file_id])
         print(f"\n\n Search result: {result}\n\n")
         
         # Check the results

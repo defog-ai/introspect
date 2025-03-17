@@ -67,7 +67,7 @@ async def embed_pdf_chunks(chunks: List[PDFChunk]) -> List[PDFChunk]:
 async def semantic_search(
     query: str,
     top_k: int = 5,
-    pdf_ids: Optional[List[int]] = None
+    file_ids: Optional[List[int]] = None
 ) -> List[Dict[str, Any]]:
     """
     Perform semantic search on PDF chunks
@@ -75,7 +75,7 @@ async def semantic_search(
     Args:
         query: The search query
         top_k: Number of results to return
-        pdf_ids: Optional list of PDF IDs to restrict search to
+        file_ids: Optional list of PDF IDs to restrict search to
         
     Returns:
         List of chunks with similarity scores
@@ -88,8 +88,8 @@ async def semantic_search(
                 PDFEmbeddings
             )
             
-            if pdf_ids:
-                stmt = stmt.filter(PDFEmbeddings.pdf_id.in_(pdf_ids))
+            if file_ids:
+                stmt = stmt.filter(PDFEmbeddings.file_id.in_(file_ids))
             
             # Order by similarity (highest first) and limit results
             stmt = stmt.order_by(PDFEmbeddings.embedding.cosine_distance(query_embedding))
@@ -101,7 +101,7 @@ async def semantic_search(
             results = []
             for row in matches:
                 results.append({
-                    "pdf_id": row.pdf_id,
+                    "file_id": row.file_id,
                     "pdf_name": row.pdf_name,
                     "text": row.text,
                     "page_number": row.page_number,

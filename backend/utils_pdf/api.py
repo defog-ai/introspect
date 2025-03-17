@@ -75,8 +75,8 @@ async def get_relevant_pdf_data(
             sql_output = analysis_data.get("output")[:1000]  # Use first 1000 chars of output as context
             
         # Get PDF IDs for this project
-        pdf_ids = await get_project_pdf_files(db_name)
-        if not pdf_ids:
+        file_ids = await get_project_pdf_files(db_name)
+        if not file_ids:
             LOGGER.info(f"No PDF files found for project {db_name}")
             return None
             
@@ -89,7 +89,7 @@ async def get_relevant_pdf_data(
         relevant_chunks = await semantic_search(
             query=search_context,
             top_k=top_k_chunks,
-            pdf_ids=pdf_ids
+            file_ids=file_ids
         )
         
         if not relevant_chunks:
@@ -113,7 +113,7 @@ async def get_relevant_pdf_data(
         for chunk in relevant_chunks:
             if chunk["pdf_name"] not in pdf_names:
                 source_pdfs.append({
-                    "pdf_id": chunk["pdf_id"],
+                    "file_id": chunk["file_id"],
                     "pdf_name": chunk["pdf_name"]
                 })
                 pdf_names.add(chunk["pdf_name"])

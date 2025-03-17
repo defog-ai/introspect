@@ -21,6 +21,8 @@ from db_utils import update_db_type_creds
 from sqlalchemy_utils import database_exists, create_database
 import io
 import asyncio
+from celery_tasks.pdf_tasks import process_pdf
+from utils_pdf.task_status import create_task_record
 
 router = APIRouter(
     tags=["File Upload"],
@@ -193,27 +195,30 @@ async def upload_files(
         pdf_file_ids = await upload_pdf_files(pdf_files)
         await update_project_files(db_name, pdf_file_ids)
         
-        # # Process each PDF for embedding using Celery
-        # from celery_tasks.pdf_tasks import process_pdf
-        # from utils_pdf.task_status import create_task_record
-        
-        # for i, pdf_file in enumerate(pdf_files):
-        #     pdf_id = pdf_file_ids[i]
-        #     pdf_name = pdf_file.filename
+
+        # Process each PDF for embedding using Celery
+        for i, pdf_file in enumerate(pdf_files):
+            file_id = pdf_file_ids[i]
+            pdf_name = pdf_file.filename
+
+            # Rewind the file because we've read it once while uploading
+            await pdf_file.seek(0)
             
-        #     # Get the base64 content
-        #     file_content = await pdf_file.read()
-        #     # Rewind the file after reading
-        #     await pdf_file.seek(0)
-        #     base64_pdf = base64.b64encode(file_content).decode('utf-8')
+            # Get the base64 content
+            file_content = await pdf_file.read()
+
+            # Rewind the file after reading
+            await pdf_file.seek(0)
             
-        #     # Submit task to Celery
-        #     task = process_pdf.delay(pdf_id, pdf_name, base64_pdf)
+            base64_pdf = base64.b64encode(file_content).decode('utf-8')
             
-        #     # Record task in database for status tracking
-        #     await create_task_record(task.id, pdf_id, pdf_name)
+            # Submit task to Celery
+            task = process_pdf.delay(file_id, pdf_name, base64_pdf)
             
-        #     LOGGER.info(f"Submitted Celery task {task.id} for PDF {pdf_id} ({pdf_name})")
+            # Record task in database for status tracking
+            await create_task_record(task.id, file_id, pdf_name)
+            
+            LOGGER.info(f"Submitted Celery task {task.id} for PDF {file_id} ({pdf_name})")
 
     db_info = await get_db_info(db_name)
 
@@ -289,19 +294,19 @@ async def delete_pdf(file_id: int, token: str, db_name: str):
         )
 
 
-@router.get("/pdf_processing_status/{pdf_id}")
-async def get_pdf_status(pdf_id: int, token: str):
+@router.get("/pdf_processing_status/{file_id}")
+async def get_pdf_status(file_id: int, token: str):
     """
     Get the processing status of a PDF file
     
     Args:
-        pdf_id: ID of the PDF file
+        file_id: ID of the PDF file
         token: Authentication token
     """
     try:
         from utils_pdf.task_status import get_pdf_processing_status
         
-        status = await get_pdf_processing_status(pdf_id)
+        status = await get_pdf_processing_status(file_id)
         return JSONResponse(
             status_code=200,
             content=status
@@ -334,10 +339,10 @@ async def get_all_pdf_statuses(token: str, db_name: Optional[str] = None):
             # Get the PDF IDs associated with this project
             from utils_oracle import get_project_files
             project_files = await get_project_files(db_name)
-            project_pdf_ids = set(project_files)
+            project_file_ids = set(project_files)
             
             # Filter statuses to only include PDFs associated with this project
-            statuses = [status for status in statuses if status["pdf_id"] in project_pdf_ids]
+            statuses = [status for status in statuses if status["file_id"] in project_file_ids]
         
         return JSONResponse(
             status_code=200,

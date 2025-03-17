@@ -221,7 +221,7 @@ class PDFProcessingStatus(enum.Enum):
 class PDFProcessingTask(Base):
     __tablename__ = "pdf_processing_tasks"
     task_id = Column(Text, primary_key=True)  # Celery task ID
-    pdf_id = Column(Integer, nullable=False)
+    file_id = Column(Integer, nullable=False)
     pdf_name = Column(Text, nullable=False)
     status = Column(Enum(PDFProcessingStatus), default=PDFProcessingStatus.PENDING)
     error_message = Column(Text, nullable=True)
@@ -230,14 +230,14 @@ class PDFProcessingTask(Base):
     
     __table_args__ = (
         # Index for quick lookup by PDF ID
-        Index("idx_pdf_tasks_pdf_id", "pdf_id"),
+        Index("idx_pdf_tasks_file_id", "file_id"),
     )
 
 # PDF Embeddings
 class PDFEmbeddings(Base):
     __tablename__ = "pdf_embeddings"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    pdf_id = Column(Integer, nullable=False)
+    file_id = Column(Integer, nullable=False)
     pdf_name = Column(Text, nullable=False)
     text = Column(Text, nullable=False)
     page_number = Column(Integer)
@@ -247,5 +247,5 @@ class PDFEmbeddings(Base):
     
     __table_args__ = (
         # Instead of a foreign key constraint, we'll create an index for performance
-        Index("idx_pdf_embeddings_pdf_id", "pdf_id"),
+        Index("idx_pdf_embeddings_file_id", "file_id"),
     )

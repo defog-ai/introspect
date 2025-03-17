@@ -28,7 +28,7 @@ class PDFProcessingCeleryTask(Task):
         
         sync_engine = get_sync_engine()
         with Session(sync_engine) as session:
-            pdf_id = kwargs.get('pdf_id') or args[0]
+            file_id = kwargs.get('file_id') or args[0]
             
             # Update task status to FAILED
             stmt = update(PDFProcessingTask).where(
@@ -45,7 +45,7 @@ class PDFProcessingCeleryTask(Task):
         return super().on_failure(exc, task_id, args, kwargs, einfo)
 
 @celery_app.task(bind=True, base=PDFProcessingCeleryTask)
-def process_pdf(self, pdf_id: int, pdf_name: str, base64_pdf: str) -> Dict[str, Any]:
+def process_pdf(self, file_id: int, pdf_name: str, base64_pdf: str) -> Dict[str, Any]:
     """
     Process a PDF file for embedding:
     1. Extract text and create chunks
@@ -54,7 +54,7 @@ def process_pdf(self, pdf_id: int, pdf_name: str, base64_pdf: str) -> Dict[str, 
     4. Update processing status
     
     Args:
-        pdf_id: ID of the PDF file in the database
+        file_id: ID of the PDF file in the database
         pdf_name: Name of the PDF file
         base64_pdf: Base64-encoded PDF content
         
@@ -67,7 +67,7 @@ def process_pdf(self, pdf_id: int, pdf_name: str, base64_pdf: str) -> Dict[str, 
     task_id = self.request.id
     sync_engine = get_sync_engine()
     results = {
-        "pdf_id": pdf_id,
+        "file_id": file_id,
         "pdf_name": pdf_name,
         "chunks_processed": 0,
         "success": False
@@ -85,10 +85,11 @@ def process_pdf(self, pdf_id: int, pdf_name: str, base64_pdf: str) -> Dict[str, 
             session.execute(stmt)
             session.commit()
         
+        raise Exception("Test Exception")
         # Step 1: Process PDF into chunks
-        LOGGER.info(f"Processing PDF {pdf_id} ({pdf_name}) into chunks")
-        chunks = process_pdf_to_chunks(pdf_id, pdf_name, base64_pdf)
-        LOGGER.info(f"Generated {len(chunks)} chunks for PDF {pdf_id}")
+        LOGGER.info(f"Processing PDF {file_id} ({pdf_name}) into chunks")
+        chunks = process_pdf_to_chunks(file_id, pdf_name, base64_pdf)
+        LOGGER.info(f"Generated {len(chunks)} chunks for PDF {file_id}")
         
         # Step 2 & 3: Generate embeddings and store in database
         with Session(sync_engine) as session:
@@ -98,7 +99,7 @@ def process_pdf(self, pdf_id: int, pdf_name: str, base64_pdf: str) -> Dict[str, 
                 
                 # Store in database
                 pdf_embedding = PDFEmbeddings(
-                    pdf_id=chunk.pdf_id,
+                    file_id=chunk.file_id,
                     pdf_name=pdf_name,
                     text=chunk.text,
                     page_number=chunk.page_number,
@@ -119,11 +120,11 @@ def process_pdf(self, pdf_id: int, pdf_name: str, base64_pdf: str) -> Dict[str, 
             session.commit()
         
         results["success"] = True
-        LOGGER.info(f"Successfully processed {results['chunks_processed']} chunks for PDF {pdf_id}")
+        LOGGER.info(f"Successfully processed {results['chunks_processed']} chunks for PDF {file_id}")
         return results
         
     except Exception as e:
-        error_msg = f"Error processing PDF {pdf_id}: {str(e)}"
+        error_msg = f"Error processing PDF {file_id}: {str(e)}"
         LOGGER.error(error_msg)
         traceback.print_exc()
         

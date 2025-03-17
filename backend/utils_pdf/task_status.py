@@ -13,20 +13,20 @@ from db_models import PDFProcessingTask, PDFProcessingStatus, PDFFiles
 
 LOGGER = logging.getLogger("server")
 
-async def create_task_record(task_id: str, pdf_id: int, pdf_name: str) -> None:
+async def create_task_record(task_id: str, file_id: int, pdf_name: str) -> None:
     """
     Create a new task record for PDF processing
     
     Args:
         task_id: Celery task ID
-        pdf_id: ID of the PDF file
+        file_id: ID of the PDF file
         pdf_name: Name of the PDF file
     """
     async with AsyncSession(engine) as session:
         async with session.begin():
             task_record = PDFProcessingTask(
                 task_id=task_id,
-                pdf_id=pdf_id,
+                file_id=file_id,
                 pdf_name=pdf_name,
                 status=PDFProcessingStatus.PENDING,
                 created_at=datetime.now(),
@@ -34,12 +34,12 @@ async def create_task_record(task_id: str, pdf_id: int, pdf_name: str) -> None:
             )
             session.add(task_record)
 
-async def get_pdf_processing_status(pdf_id: int) -> Dict[str, Any]:
+async def get_pdf_processing_status(file_id: int) -> Dict[str, Any]:
     """
     Get the processing status of a PDF file
     
     Args:
-        pdf_id: ID of the PDF file
+        file_id: ID of the PDF file
         
     Returns:
         Dictionary with status information
@@ -47,7 +47,7 @@ async def get_pdf_processing_status(pdf_id: int) -> Dict[str, Any]:
     async with AsyncSession(engine) as session:
         # Get the latest processing task for this PDF
         query = select(PDFProcessingTask).where(
-            PDFProcessingTask.pdf_id == pdf_id
+            PDFProcessingTask.file_id == file_id
         ).order_by(PDFProcessingTask.updated_at.desc())
         
         result = await session.execute(query)
@@ -55,13 +55,13 @@ async def get_pdf_processing_status(pdf_id: int) -> Dict[str, Any]:
         
         if not task:
             return {
-                "pdf_id": pdf_id,
+                "file_id": file_id,
                 "status": "UNKNOWN",
                 "message": "No processing task found for this PDF"
             }
         
         return {
-            "pdf_id": pdf_id,
+            "file_id": file_id,
             "pdf_name": task.pdf_name,
             "task_id": task.task_id,
             "status": task.status.value,
@@ -85,17 +85,17 @@ async def get_all_pdf_processing_statuses() -> List[Dict[str, Any]]:
         
         # Then get the latest task for each PDF
         results = []
-        for pdf_id, pdf in pdf_files.items():
+        for file_id, pdf in pdf_files.items():
             # Get the latest task
             task_query = select(PDFProcessingTask).where(
-                PDFProcessingTask.pdf_id == pdf_id
+                PDFProcessingTask.file_id == file_id
             ).order_by(PDFProcessingTask.updated_at.desc())
             
             task_result = await session.execute(task_query)
             task = task_result.scalar_one_or_none()
             
             status_info = {
-                "pdf_id": pdf_id,
+                "file_id": file_id,
                 "pdf_name": pdf.file_name,
             }
             

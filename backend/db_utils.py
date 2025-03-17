@@ -6,7 +6,7 @@ from defog.query import async_execute_query_once
 from sqlalchemy import delete, select, update, insert
 from utils_md import get_metadata
 from db_config import engine
-from db_models import Project, PDFFiles
+from db_models import PDFProcessingTask, Project, PDFFiles
 from utils_logging import LOGGER
 from defog import Defog
 import os
@@ -173,13 +173,15 @@ async def get_project_associated_files(db_name):
             associated_files = project.associated_files
 
             # Get file names for associated files
+            # also get the processing status if any for these files
             pdf_files = await session.execute(
                 select(PDFFiles).where(
                     PDFFiles.file_id.in_(associated_files)
-                )
+                ).join(PDFProcessingTask, PDFFiles.file_id == PDFProcessingTask.file_id)
             )
             pdf_files = pdf_files.scalars().all()
             pdf_files = [{"file_id": row.file_id, "file_name": row.file_name} for row in pdf_files]
+
     except Exception as e:
         traceback.print_exc()
         LOGGER.error(f"Error getting associated files: {str(e)}")

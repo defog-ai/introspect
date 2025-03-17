@@ -11,6 +11,7 @@ import base64
 import io
 import logging
 import re
+import traceback
 from typing import List, Dict, Any, Optional, Tuple
 
 # We'll use PyMuPDF for PDF text extraction
@@ -24,13 +25,13 @@ class PDFChunk:
     def __init__(
         self,
         text: str,
-        pdf_id: int,
+        file_id: int,
         pdf_name: str,
         page_number: int,
         chunk_index: int,
     ):
         self.text = text
-        self.pdf_id = pdf_id
+        self.file_id = file_id
         self.pdf_name = pdf_name
         self.page_number = page_number
         self.chunk_index = chunk_index
@@ -39,7 +40,7 @@ class PDFChunk:
     def get_metadata(self) -> Dict[str, Any]:
         """Returns metadata about this chunk"""
         return {
-            "pdf_id": self.pdf_id,
+            "file_id": self.file_id,
             "pdf_name": self.pdf_name,
             "page_number": self.page_number,
             "chunk_index": self.chunk_index,
@@ -49,7 +50,7 @@ class PDFChunk:
         """Convert to dictionary for storage"""
         return {
             "text": self.text,
-            "pdf_id": self.pdf_id,
+            "file_id": self.file_id,
             "pdf_name": self.pdf_name,
             "page_number": self.page_number,
             "chunk_index": self.chunk_index,
@@ -61,7 +62,7 @@ class PDFChunk:
         """Create from dictionary"""
         chunk = cls(
             text=data["text"],
-            pdf_id=data["pdf_id"],
+            file_id=data["file_id"],
             pdf_name=data["pdf_name"],
             page_number=data["page_number"],
             chunk_index=data["chunk_index"],
@@ -102,6 +103,7 @@ def extract_text_from_pdf(base64_pdf: str) -> List[str]:
         doc.close()    
         return pages
     except Exception as e:
+        traceback.print_exc()
         LOGGER.error(f"Error extracting text from PDF: {str(e)}")
         return []
 
@@ -192,7 +194,7 @@ def chunk_text(
 
 
 def process_pdf_to_chunks(
-    pdf_id: int,
+    file_id: int,
     pdf_name: str,
     base64_pdf: str,
     chunk_size: int = 1000,
@@ -202,7 +204,7 @@ def process_pdf_to_chunks(
     Process a PDF into chunks ready for embedding
     
     Args:
-        pdf_id: Database ID of the PDF
+        file_id: Database ID of the PDF
         pdf_name: Name of the PDF file
         base64_pdf: Base64-encoded PDF content
         chunk_size: Target size of each chunk in characters
@@ -222,7 +224,7 @@ def process_pdf_to_chunks(
         for i, text in enumerate(page_chunks):
             chunk = PDFChunk(
                 text=text,
-                pdf_id=pdf_id,
+                file_id=file_id,
                 pdf_name=pdf_name,
                 page_number=page_number + 1,  # 1-indexed for human readability
                 chunk_index=i

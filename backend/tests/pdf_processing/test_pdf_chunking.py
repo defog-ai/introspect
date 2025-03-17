@@ -20,24 +20,24 @@ def test_process_pdf_to_chunks():
     try:
         from utils_pdf.chunking import process_pdf_to_chunks
 
-        pdf_id = 123
+        file_id = 123
         
         # Call the function
-        chunks = process_pdf_to_chunks(pdf_id, pdf_name, base64_pdf)
+        chunks = process_pdf_to_chunks(file_id, pdf_name, base64_pdf)
 
         # Verify the results
         assert len(chunks) > 0
         
         # Check that each chunk has the expected fields
         for chunk in chunks:
-            assert "pdf_id" in chunk
+            assert "file_id" in chunk
             assert "text" in chunk
             assert "pdf_name" in chunk
             assert "page_number" in chunk
             assert "chunk_index" in chunk
             
             # Check values
-            assert chunk["pdf_id"] == pdf_id
+            assert chunk["file_id"] == file_id
             assert chunk["pdf_name"] == pdf_name
             assert isinstance(chunk["text"], str)
             assert len(chunk["text"]) > 0

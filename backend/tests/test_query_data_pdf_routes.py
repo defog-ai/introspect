@@ -29,8 +29,8 @@ def test_get_pdf_data_with_results(mock_get_pdf_data, mock_validate_user, client
     mock_get_pdf_data.return_value = PDFDataResponse(
         content="## Revenue Analysis\n\nBased on the PDFs, revenue was $1.2M in 2023.",
         source_pdfs=[
-            {"pdf_id": 123, "pdf_name": "Financial Report 2023.pdf"},
-            {"pdf_id": 456, "pdf_name": "Q4 Analysis.pdf"}
+            {"file_id": 123, "pdf_name": "Financial Report 2023.pdf"},
+            {"file_id": 456, "pdf_name": "Q4 Analysis.pdf"}
         ]
     )
     
@@ -47,7 +47,7 @@ def test_get_pdf_data_with_results(mock_get_pdf_data, mock_validate_user, client
     assert data["has_data"] is True
     assert "Revenue Analysis" in data["content"]
     assert len(data["source_pdfs"]) == 2
-    assert data["source_pdfs"][0]["pdf_id"] == 123
+    assert data["source_pdfs"][0]["file_id"] == 123
     assert data["source_pdfs"][0]["pdf_name"] == "Financial Report 2023.pdf"
     
     # Verify mock was called correctly
