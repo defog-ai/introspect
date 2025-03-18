@@ -547,7 +547,6 @@ async def generate_sql_query(
             if not db_creds_result:
                 return {"sql": None, "error": f"Database '{db_name}' not found or credentials not configured"}
             db_type, _ = db_creds_result
-            t_start = save_timing(t_start, "Retrieved db type", timings)
     except Exception as e:
         LOGGER.error(f"Error retrieving database credentials: {str(e)}")
         return {"sql": None, "error": f"Failed to retrieve database credentials: {str(e)}"}
@@ -557,7 +556,6 @@ async def generate_sql_query(
             metadata = await get_metadata(db_name)
             if not metadata:
                 return {"sql": None, "error": f"No metadata found for database '{db_name}'"}
-            t_start = save_timing(t_start, "Retrieved metadata", timings)
     except Exception as e:
         LOGGER.error(f"Error retrieving metadata: {str(e)}")
         return {"sql": None, "error": f"Failed to retrieve metadata: {str(e)}"}
@@ -565,8 +563,6 @@ async def generate_sql_query(
     try:
         if not table_descriptions:
             table_descriptions = await get_all_table_descriptions(db_name)
-            t_start = save_timing(t_start, "Retrieved table descriptions", timings)
-            LOGGER.info(f"Table descriptions: {table_descriptions}")
     except Exception as e:
         LOGGER.error(f"Error retrieving table descriptions: {str(e)}")
         return {"sql": None, "error": f"Failed to retrieve table descriptions: {str(e)}"}
@@ -575,7 +571,6 @@ async def generate_sql_query(
         if not instructions:
             if using_db_metadata:
                 instructions = await get_instructions(db_name)
-                t_start = save_timing(t_start, "Retrieved instructions", timings)
     except Exception as e:
         LOGGER.error(f"Error retrieving instructions: {str(e)}")
         instructions = ""
