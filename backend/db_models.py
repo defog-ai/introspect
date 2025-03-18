@@ -60,7 +60,7 @@ class Users(Base):
     __tablename__ = "users"
     username = Column(Text, primary_key=True)
     hashed_password = Column(Text)
-    token = Column(Text, nullable=False)
+    token = Column(Text)
     created_at = Column(DateTime, default=datetime.now)
     user_type = Column(Enum(UserType), default=UserType.ADMIN)
     status = Column(Enum(UserStatus), default=UserStatus.ACTIVE)
