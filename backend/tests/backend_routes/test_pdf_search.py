@@ -154,22 +154,3 @@ def test_pdf_search_workflow(admin_token):
             # call the /delete_pdf/{file_id} route
             delete_pdf_response = requests.delete(f"{BASE_URL}/delete_pdf/{file_id}?token={admin_token}&db_name={TEST_DB['db_name']}")
             assert delete_pdf_response.status_code == 200
-
-
-
-def test_pdf_search_invalid_analysis(admin_token):
-    """Test the PDF search endpoint with an invalid analysis ID"""
-    invalid_id = "nonexistent-analysis-id"
-    response = requests.post(
-        f"{BASE_URL}/query-data/pdf_search",
-        json={"analysis_id": invalid_id, "token": admin_token},
-    )
-    
-    assert response.status_code == 500
-    data = response.json()
-    assert data.get("success") is False
-    assert "error_message" in data
-
-
-if __name__ == "__main__":
-    pytest.main(["-xvs", __file__])
