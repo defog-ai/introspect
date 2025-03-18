@@ -24,7 +24,7 @@ from functools import partial
 
 
 from utils_logging import LOGGER, save_and_log, save_timing
-from tools.analysis_tools import generate_report_from_question
+from tools.analysis_tools import generate_report_from_question, multi_agent_report_generation
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
@@ -177,6 +177,7 @@ class GenerateReportRequest(BaseModel):
     user_question: str
     clarifications: List[Clarification] = []
     use_websearch: bool = True
+    use_multi_agent: bool = True  # Toggle to enable multi-agent approach
 
     model_config = {
         "json_schema_extra": {
@@ -187,6 +188,7 @@ class GenerateReportRequest(BaseModel):
                     "user_question": "User question",
                     "clarifications": [],
                     "use_websearch": True,
+                    "use_multi_agent": False, 
                 }
             ]
         }
@@ -243,20 +245,34 @@ async def generate_report(req: GenerateReportRequest):
     pdf_file_ids = await get_project_pdf_files(db_name)
 
     # generate the report
-    analysis_response = await generate_report_from_question(
-        db_name=db_name,
-        model="claude-3-7-sonnet-latest",
-        question=user_question,
-        clarification_responses=clarification_responses,
-        post_tool_func=post_tool_func,
-        pdf_file_ids=pdf_file_ids,
-        use_websearch=req.use_websearch,
-    )
-
+    if req.use_multi_agent:
+        # Use the multi-agent approach with three specialized phases
+        LOGGER.info("Using multi-agent approach for report generation")
+        analysis_response = await multi_agent_report_generation(
+            db_name=db_name,
+            model="claude-3-7-sonnet-latest",
+            question=user_question,
+            clarification_responses=clarification_responses,
+            post_tool_func=post_tool_func,
+            pdf_file_ids=pdf_file_ids,
+            use_websearch=req.use_websearch,
+        )
+    else:
+        # Use the original approach
+        analysis_response = await generate_report_from_question(
+            db_name=db_name,
+            model="claude-3-7-sonnet-latest",
+            question=user_question,
+            clarification_responses=clarification_responses,
+            post_tool_func=post_tool_func,
+            pdf_file_ids=pdf_file_ids,
+            use_websearch=req.use_websearch,
+        )
+    
     main_content = analysis_response.report
     print(main_content, flush=True)
     sql_answers = analysis_response.model_dump()["sql_answers"]
-    sql_answers = [i for i in sql_answers if not i["error"]]
+    sql_answers = [i for i in sql_answers if not i.get("error")]
     for idx, answer in enumerate(sql_answers):
         try:
             sql_answers[idx]["rows"] = json.loads(answer["rows"])
