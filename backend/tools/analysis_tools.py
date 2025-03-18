@@ -470,6 +470,218 @@ async def generate_report_with_agents(
         )
 
 
+async def multi_agent_report_generation(
+    db_name: str,
+    model: str,
+    question: str,
+    clarification_responses: str,
+    post_tool_func: Callable,
+    pdf_file_ids: list[int] = [],
+    use_websearch: bool = False,
+) -> GenerateReportFromQuestionOutput:
+    """
+    Implements a multi-agent approach to report generation using specialized agents
+    for analysis, evaluation, and final report writing.
+    
+    This approach uses three phases:
+    1. Data Collection & Analysis: Gather comprehensive data and initial analysis
+    2. Evaluation & Refinement: Evaluate findings and identify gaps or follow-up questions
+    3. Report Synthesis: Create a final polished report from all gathered insights
+    
+    Each phase uses Claude 3.7 Sonnet with specific instructions for its role.
+    """
+    try:
+        # Setup tools for all agents
+        tools = [text_to_sql_tool]
+        pdf_instruction = ""
+        if use_websearch:
+            tools.append(web_search_tool)
+        
+        if len(pdf_file_ids) > 0:
+            tools.append(pdf_citations_tool)
+            pdf_instruction = f"\nThe following PDF file IDs can be searched to help generate your answer: {pdf_file_ids}\n"
+        
+        # Load custom tools for this database
+        custom_tools = await load_custom_tools()
+        tools.extend(custom_tools)
+        
+        # Get database metadata
+        metadata = await get_metadata(db_name)
+        metadata_str = mk_create_ddl(metadata)
+        
+        # Record all SQL answers throughout the process
+        all_sql_answers = []
+        all_tool_outputs = []
+        
+        LOGGER.info("Starting multi-agent report generation - Phase 1: Data Collection & Analysis")
+        
+        # PHASE 1: DATA COLLECTION & ANALYSIS
+        analyst_response = await chat_async(
+            model=model,
+            tools=tools,
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"""You are a specialized data analyst responsible for collecting comprehensive data to answer a user's question. Your goal is to gather all relevant data by asking thorough and diverse questions of the database. 
+
+You should:
+1. Break down complex questions into multiple targeted database queries
+2. Explore different angles and perspectives on the question
+3. Gather both high-level aggregate data and specific details
+4. Look for unexpected patterns or anomalies
+5. Ensure you investigate all relevant tables in the schema
+6. Run follow-up queries based on initial findings to go deeper
+
+The database schema is:
+```sql
+{metadata_str}
+```"""
+                },
+                {
+                    "role": "user",
+                    "content": f"""I need comprehensive data analysis for this question: {question}
+
+Use the database {db_name}, web search (if appropriate), and any PDF files to thoroughly research this question. Ask multiple questions to explore different aspects. Dig deeper into initial findings to uncover insights, patterns and anomalies.
+
+{clarification_responses}
+{pdf_instruction}
+
+Provide structured analysis with your key findings after collecting sufficient data. DO NOT write a final report yet - focus on gathering comprehensive data and initial insights.
+"""
+                }
+            ],
+            post_tool_function=post_tool_func,
+        )
+        
+        # Extract SQL answers from the analyst phase
+        for tool_output in analyst_response.tool_outputs:
+            all_tool_outputs.append(tool_output)
+            if tool_output.get("name") == "text_to_sql_tool":
+                result = tool_output.get("result")
+                if result and isinstance(result, AnswerQuestionFromDatabaseOutput):
+                    all_sql_answers.append(result)
+        
+        LOGGER.info("Phase 1 complete. Starting Phase 2: Evaluation & Refinement")
+        
+        # PHASE 2: EVALUATION & REFINEMENT
+        # Prepare the context from Phase 1 for the evaluator
+        evaluator_context = f"""
+ORIGINAL QUESTION: {question}
+{clarification_responses}
+
+DATA ANALYSIS FINDINGS:
+{analyst_response.content}
+"""
+        
+        evaluator_response = await chat_async(
+            model=model,
+            tools=tools,
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"""You are a critical evaluator responsible for identifying gaps in data analysis and ensuring comprehensive coverage of a question. 
+
+Your tasks are to:
+1. Identify any missing information or unexplored angles
+2. Suggest specific follow-up questions that would strengthen the analysis
+3. Point out any contradictions or areas needing validation
+4. Ensure all parts of the original question have been addressed
+5. Consider whether additional context (time periods, demographics, etc.) is needed
+
+The database schema is:
+```sql
+{metadata_str}
+```
+The database name is {db_name}
+
+{pdf_instruction}
+"""
+                },
+                {
+                    "role": "user",
+                    "content": f"""Review the following data analysis and identify any gaps, missing perspectives, or follow-up questions needed to fully answer the original question.
+
+{evaluator_context}
+
+First identify what's missing or could be improved, then use database queries to fill these specific gaps. Focus on 2-4 high-value follow-up questions that would significantly improve the analysis.
+"""
+                }
+            ],
+            post_tool_function=post_tool_func,
+        )
+        
+        # Extract additional SQL answers from the evaluator phase
+        for tool_output in evaluator_response.tool_outputs:
+            all_tool_outputs.append(tool_output)
+            if tool_output.get("name") == "text_to_sql_tool":
+                result = tool_output.get("result")
+                if result and isinstance(result, AnswerQuestionFromDatabaseOutput):
+                    all_sql_answers.append(result)
+        
+        LOGGER.info("Phase 2 complete. Starting Phase 3: Report Synthesis")
+        
+        # PHASE 3: REPORT SYNTHESIS
+        # Prepare the full context for the report writer
+        report_context = f"""
+ORIGINAL QUESTION: {question}
+{clarification_responses}
+
+INITIAL DATA ANALYSIS:
+{analyst_response.content}
+
+FOLLOW-UP ANALYSIS AND GAP FILLING:
+{evaluator_response.content}
+"""
+        
+        report_response = await chat_async(
+            model=model,
+            tools=[],  # No tools needed for final synthesis
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are a professional report writer responsible for synthesizing extensive data analysis into a clear, insightful, and well-structured report.
+
+Your report should:
+1. Begin with a concise executive summary of key findings
+2. Organize insights into logical sections with clear headings
+3. Present data in a progressive narrative that builds understanding
+4. Highlight the most significant findings prominently
+5. Include specific data points and figures to support conclusions
+6. Explain implications and connections between different insights
+7. Use professional, clear language appropriate for business stakeholders
+8. End with actionable conclusions or recommendations if appropriate
+
+Format the report with Markdown for readability including headings, bullet points, and emphasis where appropriate."""
+                },
+                {
+                    "role": "user",
+                    "content": f"""Synthesize all the following analysis into a comprehensive final report that answers the original question. Create a well-structured document with clear sections, highlighting key insights and supporting them with specific data points.
+
+{report_context}
+
+Your report should present the information clearly for business stakeholders, with an executive summary, logical structure, and proper formatting.
+"""
+                }
+            ],
+            post_tool_function=post_tool_func,
+        )
+        
+        # Return the final output
+        return GenerateReportFromQuestionOutput(
+            report=report_response.content,
+            sql_answers=all_sql_answers,
+            tool_outputs=all_tool_outputs,
+        )
+        
+    except Exception as e:
+        LOGGER.error(f"Error in multi_agent_report_generation:\n{e}")
+        return GenerateReportFromQuestionOutput(
+            report=f"Error in multi-agent report generation: {str(e)}",
+            sql_answers=[],
+            tool_outputs=[],
+        )
+
+
 async def generate_report_from_question(
     db_name: str,
     model: str,
