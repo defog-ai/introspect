@@ -1,13 +1,8 @@
-import pytest
 import os
 import uuid
-from fastapi.testclient import TestClient
 import requests
 
-from main import app
 from .conftest import BASE_URL, TEST_DB, create_pdf_and_get_base_64
-
-client = TestClient(app)
 
 
 def test_pdf_search_workflow(admin_token):
