@@ -47,7 +47,6 @@ async def data_fetcher_and_aggregator(
         db_type, db_creds = db_creds_result
         err = None
 
-        print(f"Previous context: {previous_context}", flush=True)
 
         # generate SQL
         res = await generate_sql_query(

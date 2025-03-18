@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, List
 from pydantic import BaseModel
 
 
@@ -19,6 +19,27 @@ class PreviousContextItem(BaseModel):
     sql: str
 
 
+class PDFSearchRequest(BaseModel):
+    analysis_id: str
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "analysis_id": "your-analysis-id"
+                }
+            ]
+        }
+    }
+    
+
+class PDFSearchResponse(BaseModel):
+    success: bool
+    pdf_results: Optional[List] = []
+    message: Optional[str] = None
+    error_message: Optional[str] = None
+
+
 class AnalysisData(BaseModel):
     analysis_id: str
     db_name: str
@@ -31,6 +52,7 @@ class AnalysisData(BaseModel):
     sql: Optional[str] = None
     output: Optional[str] = None
     error: Optional[str] = None
+    pdf_search_results: Optional[list] = None
 
 
 class RerunEditedInputs(BaseModel):

@@ -15,6 +15,8 @@ from query_data_models import (
     DataFetcherInputs,
     PreviousContextItem,
     RerunRequest,
+    PDFSearchRequest,
+    PDFSearchResponse,
 )
 from utils_sql import deduplicate_columns
 from utils_clarification import (
@@ -521,3 +523,132 @@ async def get_question_type_route(request: Request):
         status_code=200,
         content=res,
     )
+
+
+@router.post("/query-data/pdf_search")
+async def pdf_search_route(request: PDFSearchRequest):
+    """
+    Function that searches PDF files associated with a project for information relevant 
+    to the question and SQL in the specified analysis.
+    
+    Takes in:
+    1. An analysis_id
+    
+    Fetches the analysis data, extracts the question and SQL,
+    searches through associated PDFs, and updates the analysis with the results.
+    
+    Returns relevant information from PDFs using Anthropic's citations API.
+    """
+    try:
+        LOGGER.info("PDF search requested")
+        analysis_id = request.analysis_id
+        
+        # Get the analysis data
+        err, analysis = await get_analysis(analysis_id)
+        
+        if err is not None:
+            LOGGER.error(f"Error getting analysis: {err}")
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error_message": f"Error retrieving analysis: {err}"}
+            )
+        
+        # Check if analysis data exists and contains required fields
+        if not analysis or "data" not in analysis:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error_message": "Analysis not found or missing data"}
+            )
+            
+        analysis_data = AnalysisData(**analysis["data"])
+        
+        # Verify analysis has no errors and contains SQL
+        if analysis_data.error:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error_message": f"Analysis contains an error: {analysis_data.error}"}
+            )
+            
+        if not analysis_data.sql:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error_message": "Analysis does not contain SQL query"}
+            )
+        
+        db_name = analysis_data.db_name
+        question = analysis_data.initial_question
+        sql = analysis_data.sql
+        
+        # Get PDF file IDs associated with this database/project
+        from utils_oracle import get_project_pdf_files
+        pdf_file_ids = await get_project_pdf_files(db_name)
+        
+        if not pdf_file_ids or len(pdf_file_ids) == 0:
+            analysis_data.pdf_search_results = []
+            
+            # Update analysis with empty pdf results
+            err, updated_analysis = await update_analysis_data(
+                analysis_id=analysis_id,
+                new_data=analysis_data,
+            )
+            
+            if err:
+                LOGGER.error(f"Error updating analysis data: {err}")
+                
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "success": True,
+                    "message": "No PDF files associated with this database.",
+                    "pdf_results": []
+                }
+            )
+        
+        # Formulate the question including SQL context
+        enhanced_question = f"Question: {question}\n\nSQL Query: {sql}\n\nPlease find any relevant information in the PDFs that relates to this question or provides context to understand the SQL results. If there are data points or statistics related to the question/SQL query, please provide them."
+        
+        # Use the existing PDF citations tool
+        from tools.analysis_models import AnswerQuestionViaPDFCitationsInput
+        from tools.analysis_tools import pdf_citations_tool
+        
+        tool_input = AnswerQuestionViaPDFCitationsInput(
+            question=enhanced_question,
+            pdf_files=pdf_file_ids
+        )
+        
+        pdf_results = await pdf_citations_tool(tool_input)
+        
+        # Update the analysis with the PDF search results
+        analysis_data.pdf_search_results = pdf_results
+        
+        err, updated_analysis = await update_analysis_data(
+            analysis_id=analysis_id,
+            new_data=analysis_data,
+        )
+        
+        if err:
+            LOGGER.error(f"Error updating analysis data: {err}")
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error_message": f"Error updating analysis data: {err}"}
+            )
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "pdf_results": pdf_results,
+                "analysis": updated_analysis
+            }
+        )
+        
+    except Exception as e:
+        LOGGER.error(f"Error in PDF search: {e}")
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error_message": str(e)
+            }
+        )

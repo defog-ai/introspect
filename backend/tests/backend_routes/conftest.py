@@ -12,6 +12,7 @@ This centralization helps maintain consistency across tests and reduces code dup
 """
 
 import os
+import random
 import sys
 import pytest
 import requests
@@ -38,7 +39,6 @@ DOCKER_DB_CREDS = {
 # Test database configuration
 TEST_DB = {
     "db_name": "test_db",
-    "database": "test_db",
     "db_type": "postgres",
     "db_creds": {
         "host": "agents-postgres",
@@ -112,12 +112,89 @@ def setup_test_db_name():
     with Session() as session:
         # Check if db_name already exists
         existing_db = session.query(Project).filter_by(db_name=TEST_DB["db_name"]).first()
-        
+
         if not existing_db:
             # Create new Project entry
-            new_db_cred = Project(db_name=TEST_DB["db_name"])
+            new_db_cred = Project(**TEST_DB)
             session.add(new_db_cred)
             session.commit()
+
+def setup_test_db_metadata():
+    """Sets up basic metadata for the test db by directly inserting into the metadata table"""
+    # Connect to the database where metadata table exists
+    docker_uri = f"postgresql://{DOCKER_DB_CREDS['user']}:{DOCKER_DB_CREDS['password']}@{DOCKER_DB_CREDS['host']}:{DOCKER_DB_CREDS['port']}/{DOCKER_DB_CREDS['database']}"
+    engine = create_engine(docker_uri)
+    
+    # First, delete any existing metadata for the test DB
+    with engine.begin() as conn:
+        conn.execute(text(f"DELETE FROM metadata WHERE db_name = '{TEST_DB['db_name']}'"))
+    
+    # Define metadata for the three tables in test_db.sql: customers, ticket_types, and ticket_sales
+    metadata_entries = [
+        # customers table
+        {"db_name": TEST_DB["db_name"], "table_name": "customers", "column_name": "id", "data_type": "integer", "column_description": "Unique identifier for customer"},
+        {"db_name": TEST_DB["db_name"], "table_name": "customers", "column_name": "name", "data_type": "varchar", "column_description": "Customer's full name"},
+        {"db_name": TEST_DB["db_name"], "table_name": "customers", "column_name": "email", "data_type": "varchar", "column_description": "Customer's email address"},
+        {"db_name": TEST_DB["db_name"], "table_name": "customers", "column_name": "created_at", "data_type": "timestamp", "column_description": "When the customer was added to the system"},
+        
+        # ticket_types table
+        {"db_name": TEST_DB["db_name"], "table_name": "ticket_types", "column_name": "id", "data_type": "integer", "column_description": "Unique identifier for ticket type"},
+        {"db_name": TEST_DB["db_name"], "table_name": "ticket_types", "column_name": "name", "data_type": "varchar", "column_description": "Name of ticket type. Can be Standard, VIP or Student"},
+        {"db_name": TEST_DB["db_name"], "table_name": "ticket_types", "column_name": "description", "data_type": "text", "column_description": "Description of the ticket type and its benefits"},
+        {"db_name": TEST_DB["db_name"], "table_name": "ticket_types", "column_name": "price", "data_type": "numeric", "column_description": "Price of the ticket in dollars"},
+        {"db_name": TEST_DB["db_name"], "table_name": "ticket_types", "column_name": "created_at", "data_type": "timestamp", "column_description": "When the ticket type was added to the system"},
+        
+        # ticket_sales table
+        {"db_name": TEST_DB["db_name"], "table_name": "ticket_sales", "column_name": "id", "data_type": "integer", "column_description": "Unique identifier for ticket sale"},
+        {"db_name": TEST_DB["db_name"], "table_name": "ticket_sales", "column_name": "customer_id", "data_type": "integer", "column_description": "Reference to the customer who purchased the ticket"},
+        {"db_name": TEST_DB["db_name"], "table_name": "ticket_sales", "column_name": "ticket_type_id", "data_type": "integer", "column_description": "Reference to the type of ticket purchased"},
+        {"db_name": TEST_DB["db_name"], "table_name": "ticket_sales", "column_name": "purchase_date", "data_type": "timestamp", "column_description": "When the ticket was purchased"},
+        {"db_name": TEST_DB["db_name"], "table_name": "ticket_sales", "column_name": "valid_until", "data_type": "timestamp", "column_description": "Expiration date of the ticket"},
+        {"db_name": TEST_DB["db_name"], "table_name": "ticket_sales", "column_name": "status", "data_type": "varchar", "column_description": "Current status of the ticket (active, used, expired)"}
+    ]
+    
+    # Insert metadata entries
+    with engine.begin() as conn:
+        for entry in metadata_entries:
+            conn.execute(
+                text("""
+                    INSERT INTO metadata (db_name, table_name, column_name, data_type, column_description)
+                    VALUES (:db_name, :table_name, :column_name, :data_type, :column_description)
+                """),
+                entry
+            )
+
+
+def create_pdf_and_get_base_64(page_texts: list[str]):
+    import os
+    import tempfile
+    import pymupdf
+    import base64
+    import random
+
+    pdf_name = f"test_pdf_{random.randint(1, 1000)}.pdf"
+
+    temp_dir = tempfile.gettempdir()
+    temp_file_path = os.path.join(temp_dir, pdf_name)
+
+    try:
+        # create a pdf
+        doc = pymupdf.Document()
+        for page_text in page_texts:
+            page = doc._newPage()
+            page.insert_text([100, 100], page_text)
+
+        doc.save(temp_file_path)
+        doc.close()
+
+        # read the pdf and get the base64
+        with open(temp_file_path, "rb") as f:
+            pdf_content = f.read()
+            encoded_content = base64.b64encode(pdf_content).decode('utf-8')
+
+            return pdf_name, temp_file_path, encoded_content
+    except Exception as e:
+        raise e
 
 
 def cleanup_test_database(db_name):
@@ -177,6 +254,7 @@ def cleanup():
     """
     setup_test_database()
     setup_test_db_name()
+    setup_test_db_metadata()
 
     yield
 

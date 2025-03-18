@@ -12,6 +12,7 @@ openpyxl
 pandas==2.2.3
 pgvector==0.3.6
 python-multipart
+pymupdf
 pyyaml
 redis
 requests
