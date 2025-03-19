@@ -15,8 +15,7 @@ from query_data_models import (
     DataFetcherInputs,
     PreviousContextItem,
     RerunRequest,
-    PDFSearchRequest,
-    PDFSearchResponse,
+    PDFSearchRequest
 )
 from utils_sql import deduplicate_columns
 from utils_clarification import (
@@ -452,6 +451,9 @@ async def rerun_endpoint(request: RerunRequest):
             except Exception as e:
                 analysis_data.error = str(e)
 
+        # clear out the pdf search results
+        analysis_data.pdf_search_results = None
+
         err, updated_analysis = await update_analysis_data(
             analysis_id=analysis_id,
             new_data=analysis_data,
@@ -617,6 +619,13 @@ async def pdf_search_route(request: PDFSearchRequest):
         )
         
         pdf_results = await pdf_citations_tool(tool_input)
+
+        if not pdf_results or type(pdf_results) != list:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error_message": "Invalid PDF search results"}
+            )
+
         
         # Update the analysis with the PDF search results
         analysis_data.pdf_search_results = pdf_results

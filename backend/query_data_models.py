@@ -1,4 +1,4 @@
-from typing import Any, Optional, List
+from typing import Any, Literal, Optional, List
 from pydantic import BaseModel
 
 
@@ -31,13 +31,6 @@ class PDFSearchRequest(BaseModel):
             ]
         }
     }
-    
-
-class PDFSearchResponse(BaseModel):
-    success: bool
-    pdf_results: Optional[List] = []
-    message: Optional[str] = None
-    error_message: Optional[str] = None
 
 
 class AnalysisData(BaseModel):
