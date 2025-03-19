@@ -23,6 +23,7 @@ from typing import Any, Callable
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 from utils_oracle import get_pdf_content
+from urllib.parse import urlparse
 
 
 async def text_to_sql_tool(
@@ -622,96 +623,103 @@ First identify what's missing or could be improved, then use database queries to
         LOGGER.info("Phase 2 complete. Starting Phase 3: Report Synthesis with Citations")
         
         # PHASE 3: REPORT SYNTHESIS WITH CITATIONS
-        # Prepare document sources from previous reports and tool outputs
+        # Prepare document sources from tool outputs
         
         # Initialize Anthropic client
         from anthropic import AsyncAnthropic
         client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         
-        # Format previous analyses as documents for citation
-        phase1_content = f"""# Initial Data Analysis\n\n{analyst_response.content}"""
-        phase2_content = f"""# Follow-up Analysis and Gap Filling\n\n{evaluator_response.content}"""
-        
-        # Format tool outputs as a document for citation
-        tool_outputs_content = "# Tool Outputs\n\n"
+        # Create document content for each tool output (as separate documents)
+        document_contents = []
         for idx, output in enumerate(all_tool_outputs):
-            tool_outputs_content += f"## Tool Call {idx+1}\n"
-            tool_outputs_content += f"Tool: {output.get('name', 'Unknown')}\n"
+            tool_name = output.get('name', 'Unknown')
+            question_text = ""
             
-            # Format different tool results differently
+            # Get the question asked for this tool call
             if output.get('name') == "text_to_sql_tool" and isinstance(output.get('result'), AnswerQuestionFromDatabaseOutput):
                 result = output.get('result')
-                tool_outputs_content += f"Question: {result.question}\n"
-                tool_outputs_content += f"SQL: ```sql\n{result.sql}\n```\n"
+                question_text = result.question
+            elif output.get('name') == "web_search_tool":
+                sources = output.get('result', {}).get('reference_sources', [])
+                source_urls = [source.get('url', '') for source in sources]
+                # extract domains from urls
+                source_domains = [urlparse(url).netloc for url in source_urls]
+                question_text = ", ".join(source_domains)
+            elif output.get('name') == "pdf_citations_tool":
+                question_text = ""
+            
+            # Create document title using tool name and question
+            document_title = f"{tool_name}: {question_text}"
+            
+            # Format the content based on tool type
+            document_data = ""
+            if output.get('name') == "text_to_sql_tool" and isinstance(output.get('result'), AnswerQuestionFromDatabaseOutput):
+                result = output.get('result')
+                document_data += f"Question: {result.question}\n"
+                document_data += f"SQL: ```sql\n{result.sql}\n```\n"
                 if result.rows and result.rows != "[]":
-                    tool_outputs_content += f"Data: {result.rows}\n"
+                    document_data += f"Data: {result.rows}\n"
                 if result.error:
-                    tool_outputs_content += f"Error: {result.error}\n"
+                    document_data += f"Error: {result.error}\n"
             elif output.get('name') == "web_search_tool":
                 result = output.get('result', {})
-                tool_outputs_content += f"Question: {output.get('input', {}).get('question', 'No question')}\n"
-                tool_outputs_content += f"Answer: {result.get('answer', 'No answer')}\n"
+                document_data += f"Question: {output.get('input', {}).get('question', 'No question')}\n"
+                document_data += f"Answer: {result.get('answer', 'No answer')}\n"
                 if 'reference_sources' in result:
-                    tool_outputs_content += "Sources:\n"
+                    document_data += "Sources:\n"
                     for source in result.get('reference_sources', []):
-                        tool_outputs_content += f"- {source.get('source', 'Unknown')}: {source.get('url', 'No URL')}\n"
+                        document_data += f"- {source.get('source', 'Unknown')}: {source.get('url', 'No URL')}\n"
             elif output.get('name') == "pdf_citations_tool":
                 result = output.get('result', [])
-                tool_outputs_content += f"Question: {output.get('input', {}).get('question', 'No question')}\n"
-                tool_outputs_content += f"PDF IDs: {output.get('input', {}).get('pdf_files', [])}\n"
+                document_data += f"Question: {output.get('input', {}).get('question', 'No question')}\n"
+                document_data += f"PDF IDs: {output.get('input', {}).get('pdf_files', [])}\n"
                 for item in result:
                     if item.get('type') == 'text':
-                        tool_outputs_content += f"{item.get('text', '')}\n"
+                        document_data += f"{item.get('text', '')}\n"
             
-            tool_outputs_content += "\n"
+            # Add the document to the list if it has content
+            if document_data:
+                document_contents.append({
+                    "type": "document",
+                    "source": {
+                        "type": "text",
+                        "media_type": "text/plain",
+                        "data": document_data
+                    },
+                    "title": document_title,
+                    "citations": {"enabled": True},
+                })
         
-        # Create content messages with citations enabled
+        # Prepare text content including Phase 1 and Phase 2 reports
+        text_content = f"""I need you to synthesize all the provided analyses into a comprehensive final report that answers this original question: 
+
+{question}
+
+{clarification_responses}
+
+Here are the previous analysis phases to help with your synthesis:
+
+# Phase 1: Initial Data Analysis
+{analyst_response.content}
+
+# Phase 2: Follow-up Analysis and Gap Filling
+{evaluator_response.content}
+
+Use the documents to source information with specific citations. Create a well-structured document with clear sections, highlighting key insights and supporting them with specific data points.
+
+Your report should present the information clearly for business stakeholders, with an executive summary, logical structure, and proper formatting."""
+        
+        # Create content messages with citations enabled for individual tool calls
         messages = [
             {
                 "role": "user",
                 "content": [
                     {
                         "type": "text",
-                        "text": f"""I need you to synthesize all the provided analyses into a comprehensive final report that answers this original question: 
-
-{question}
-
-{clarification_responses}
-
-Use the documents to source information with specific citations. Create a well-structured document with clear sections, highlighting key insights and supporting them with specific data points.
-
-Your report should present the information clearly for business stakeholders, with an executive summary, logical structure, and proper formatting."""
+                        "text": text_content
                     },
-                    {
-                        "type": "document",
-                        "source": {
-                            "type": "text",
-                            "media_type": "text/plain",
-                            "data": phase1_content
-                        },
-                        "title": "Phase 1: Initial Data Analysis",
-                        "citations": {"enabled": True},
-                    },
-                    {
-                        "type": "document",
-                        "source": {
-                            "type": "text",
-                            "media_type": "text/plain",
-                            "data": phase2_content
-                        },
-                        "title": "Phase 2: Follow-up Analysis",
-                        "citations": {"enabled": True},
-                    },
-                    {
-                        "type": "document",
-                        "source": {
-                            "type": "text",
-                            "media_type": "text/plain",
-                            "data": tool_outputs_content
-                        },
-                        "title": "Tool Outputs",
-                        "citations": {"enabled": True},
-                    }
+                    # Add all individual document contents
+                    *document_contents
                 ]
             }
         ]
