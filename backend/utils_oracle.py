@@ -124,6 +124,7 @@ async def set_oracle_report(
     mdx: str = None,
     analyses: list = None,
     thinking_steps: list = None,
+    report_content_with_citations: list = None,
     status: Literal["INITIALIZED", "THINKING", "ERRORED", "DONE"] = None,
 ) -> str:
     async with AsyncSession(engine) as session:
@@ -138,6 +139,7 @@ async def set_oracle_report(
                         mdx=mdx,
                         analyses=analyses,
                         status=status,
+                        report_content_with_citations=report_content_with_citations,
                     ).returning(OracleReports.report_id)
                 )
                 report_id = report_id.scalar_one()
@@ -169,6 +171,9 @@ async def set_oracle_report(
                     flag_modified(report, "thinking_steps")
                 if status:
                     report.status = status
+                if report_content_with_citations:
+                    report.report_content_with_citations = report_content_with_citations
+                    flag_modified(report, "report_content_with_citations")
 
     return report_id
 

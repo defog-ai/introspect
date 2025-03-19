@@ -178,6 +178,7 @@ class OracleReports(Base):
     db_name = Column(Text)
     inputs = Column(JSON)
     mdx = Column(Text)
+    report_content_with_citations = Column(JSON, default=None)
     analyses = Column(JSON) # this is a list of analyses. These are SQL only and do not include any non-SQL tools.
     feedback = Column(Text, default=None)
     general_comments = Column(Text, default=None)

@@ -156,6 +156,7 @@ async def get_report_mdx(req: ReportRequest):
             if report:
                 analyses = report.analyses or []
                 thinking_steps = report.thinking_steps or []
+                report_with_citations = report.report_content_with_citations or []
 
                 non_sql_thinking_steps = [step for step in thinking_steps if step["function_name"] != "text_to_sql_tool"]
                 return JSONResponse(
@@ -163,6 +164,7 @@ async def get_report_mdx(req: ReportRequest):
                     content={
                         "mdx": report.mdx,
                         "analyses": analyses + non_sql_thinking_steps,
+                        "report_with_citations": report_with_citations,
                         "inputs": report.inputs,
                     },
                 )

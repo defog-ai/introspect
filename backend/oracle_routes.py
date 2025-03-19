@@ -270,7 +270,8 @@ async def generate_report(req: GenerateReportRequest):
         )
     
     main_content = analysis_response.report
-    print(main_content, flush=True)
+    
+    # clean up sql answers before saving to the database
     sql_answers = analysis_response.model_dump()["sql_answers"]
     sql_answers = [i for i in sql_answers if not i.get("error")]
     for idx, answer in enumerate(sql_answers):
@@ -280,22 +281,21 @@ async def generate_report(req: GenerateReportRequest):
                 {"dataIndex": col, "title": col} for col in answer["columns"]
             ]
         except Exception as e:
-            print(str(e), flush=True)
-            print(answer, flush=True)
+            LOGGER.info(str(e), flush=True)
 
     mdx = main_content
 
     had_error = main_content == "Error in generating report from question"
+    status = "DONE" if not had_error else "ERRORED"
 
     # save to oracle_reports table
     await set_oracle_report(
         report_id=report_id,
         mdx=mdx,
         analyses=sql_answers,
-        status="DONE" if not had_error else "ERRORED",
+        status=status,
     )
 
     return {
-        "mdx": main_content,
-        "sql_answers": sql_answers,
+        "status": status,
     }
