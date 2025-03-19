@@ -6,7 +6,7 @@ from defog.query import async_execute_query_once
 from sqlalchemy import delete, select, update, insert
 from utils_md import get_metadata
 from db_config import engine
-from db_models import Project, PDFFiles
+from db_models import Metadata, Project, PDFFiles
 from utils_logging import LOGGER
 from defog import Defog
 import os
@@ -130,6 +130,9 @@ async def get_db_info(db_name):
 async def delete_db_info(db_name):
     async with engine.begin() as conn:
         await conn.execute(delete(Project).where(Project.db_name == db_name))
+        # also delete from metadata table
+        await conn.execute(delete(Metadata).where(Metadata.db_name == db_name))
+        
         
         
 async def get_project_associated_files(db_name):
