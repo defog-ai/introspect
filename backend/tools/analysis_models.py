@@ -63,6 +63,9 @@ class GenerateReportFromQuestionOutput(BaseModel):
     report: str = Field(
         ..., description="The final report generated from the questions"
     )
+    report_with_citations: List[Dict[str, Any]] = Field(
+        ..., description="The final report with citations"
+    )
     sql_answers: List[AnswerQuestionFromDatabaseOutput] = Field(
         ..., description="The SQL queries and data answers used to generate the report"
     )

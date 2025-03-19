@@ -619,28 +619,108 @@ First identify what's missing or could be improved, then use database queries to
                 if result and isinstance(result, AnswerQuestionFromDatabaseOutput):
                     all_sql_answers.append(result)
         
-        LOGGER.info("Phase 2 complete. Starting Phase 3: Report Synthesis")
+        LOGGER.info("Phase 2 complete. Starting Phase 3: Report Synthesis with Citations")
         
-        # PHASE 3: REPORT SYNTHESIS
-        # Prepare the full context for the report writer
-        report_context = f"""
-ORIGINAL QUESTION: {question}
+        # PHASE 3: REPORT SYNTHESIS WITH CITATIONS
+        # Prepare document sources from previous reports and tool outputs
+        
+        # Initialize Anthropic client
+        from anthropic import AsyncAnthropic
+        client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        
+        # Format previous analyses as documents for citation
+        phase1_content = f"""# Initial Data Analysis\n\n{analyst_response.content}"""
+        phase2_content = f"""# Follow-up Analysis and Gap Filling\n\n{evaluator_response.content}"""
+        
+        # Format tool outputs as a document for citation
+        tool_outputs_content = "# Tool Outputs\n\n"
+        for idx, output in enumerate(all_tool_outputs):
+            tool_outputs_content += f"## Tool Call {idx+1}\n"
+            tool_outputs_content += f"Tool: {output.get('name', 'Unknown')}\n"
+            
+            # Format different tool results differently
+            if output.get('name') == "text_to_sql_tool" and isinstance(output.get('result'), AnswerQuestionFromDatabaseOutput):
+                result = output.get('result')
+                tool_outputs_content += f"Question: {result.question}\n"
+                tool_outputs_content += f"SQL: ```sql\n{result.sql}\n```\n"
+                if result.rows and result.rows != "[]":
+                    tool_outputs_content += f"Data: {result.rows}\n"
+                if result.error:
+                    tool_outputs_content += f"Error: {result.error}\n"
+            elif output.get('name') == "web_search_tool":
+                result = output.get('result', {})
+                tool_outputs_content += f"Question: {output.get('input', {}).get('question', 'No question')}\n"
+                tool_outputs_content += f"Answer: {result.get('answer', 'No answer')}\n"
+                if 'reference_sources' in result:
+                    tool_outputs_content += "Sources:\n"
+                    for source in result.get('reference_sources', []):
+                        tool_outputs_content += f"- {source.get('source', 'Unknown')}: {source.get('url', 'No URL')}\n"
+            elif output.get('name') == "pdf_citations_tool":
+                result = output.get('result', [])
+                tool_outputs_content += f"Question: {output.get('input', {}).get('question', 'No question')}\n"
+                tool_outputs_content += f"PDF IDs: {output.get('input', {}).get('pdf_files', [])}\n"
+                for item in result:
+                    if item.get('type') == 'text':
+                        tool_outputs_content += f"{item.get('text', '')}\n"
+            
+            tool_outputs_content += "\n"
+        
+        # Create content messages with citations enabled
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"""I need you to synthesize all the provided analyses into a comprehensive final report that answers this original question: 
+
+{question}
+
 {clarification_responses}
 
-INITIAL DATA ANALYSIS:
-{analyst_response.content}
+Use the documents to source information with specific citations. Create a well-structured document with clear sections, highlighting key insights and supporting them with specific data points.
 
-FOLLOW-UP ANALYSIS AND GAP FILLING:
-{evaluator_response.content}
-"""
+Your report should present the information clearly for business stakeholders, with an executive summary, logical structure, and proper formatting."""
+                    },
+                    {
+                        "type": "document",
+                        "source": {
+                            "type": "text",
+                            "media_type": "text/plain",
+                            "data": phase1_content
+                        },
+                        "title": "Phase 1: Initial Data Analysis",
+                        "citations": {"enabled": True},
+                    },
+                    {
+                        "type": "document",
+                        "source": {
+                            "type": "text",
+                            "media_type": "text/plain",
+                            "data": phase2_content
+                        },
+                        "title": "Phase 2: Follow-up Analysis",
+                        "citations": {"enabled": True},
+                    },
+                    {
+                        "type": "document",
+                        "source": {
+                            "type": "text",
+                            "media_type": "text/plain",
+                            "data": tool_outputs_content
+                        },
+                        "title": "Tool Outputs",
+                        "citations": {"enabled": True},
+                    }
+                ]
+            }
+        ]
         
-        report_response = await chat_async(
-            model=model,
-            tools=[],  # No tools needed for final synthesis
-            messages=[
-                {
-                    "role": "system",
-                    "content": """You are a professional report writer responsible for synthesizing extensive data analysis into a clear, insightful, and well-structured report.
+        # Make the API call with citations enabled
+        response = await client.messages.create(
+            model="claude-3-7-sonnet-latest",
+            messages=messages,
+            system="""You are a professional report writer responsible for synthesizing extensive data analysis into a clear, insightful, and well-structured report.
 
 Your report should:
 1. Begin with a concise executive summary of key findings
@@ -651,26 +731,27 @@ Your report should:
 6. Explain implications and connections between different insights
 7. Use professional, clear language appropriate for business stakeholders
 8. End with actionable conclusions or recommendations if appropriate
-9. Cite sources for all data and insights in the final report
+9. IMPORTANT: Use citations to reference specific findings from the documents
 
-Format the report with Markdown for readability including headings, bullet points, and emphasis where appropriate."""
-                },
-                {
-                    "role": "user",
-                    "content": f"""Synthesize all the following analysis into a comprehensive final report that answers the original question. Create a well-structured document with clear sections, highlighting key insights and supporting them with specific data points.
-
-{report_context}
-
-Your report should present the information clearly for business stakeholders, with an executive summary, logical structure, and proper formatting.
-"""
-                }
-            ],
-            post_tool_function=post_tool_func,
+Format the report with Markdown for readability including headings, bullet points, and emphasis where appropriate.""",
+            temperature=0.3,
+            max_tokens=8191,
         )
+        
+        LOGGER.info(f"Report response: {response}")
+
+        # Convert response to expected format
+        response_text = ""
+        for item in response.content:
+            if item.type == "text":
+                response_text += item.text
+        
+        response_with_citations = [item.to_dict() for item in response.content]
         
         # Return the final output
         return GenerateReportFromQuestionOutput(
-            report=report_response.content,
+            report=response_text,
+            report_with_citations=response_with_citations,
             sql_answers=all_sql_answers,
             tool_outputs=all_tool_outputs,
         )
@@ -679,6 +760,7 @@ Your report should present the information clearly for business stakeholders, wi
         LOGGER.error(f"Error in multi_agent_report_generation:\n{e}")
         return GenerateReportFromQuestionOutput(
             report=f"Error in multi-agent report generation: {str(e)}",
+            report_with_citations=[],
             sql_answers=[],
             tool_outputs=[],
         )
