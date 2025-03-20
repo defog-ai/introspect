@@ -168,6 +168,7 @@ async def web_search_tool(
                     "url": annotation.url_citation.url
                 })
         return {
+            "analysis_id": str(uuid.uuid4()),
             "answer": message.content,
             "reference_sources": sources
         }
@@ -220,7 +221,10 @@ async def pdf_citations_tool(
         messages=messages,
         max_tokens=4096,
     )
-    return [item.to_dict() for item in response.content]
+    return {
+        "analysis_id": str(uuid.uuid4()),
+        "citations": [item.to_dict() for item in response.content]
+    }
 
 async def load_custom_tools():
     """
@@ -633,23 +637,12 @@ First identify what's missing or could be improved, then use database queries to
         document_contents = []
         for idx, output in enumerate(all_tool_outputs):
             tool_name = output.get('name', 'Unknown')
-            question_text = ""
             
-            # Get the question asked for this tool call
-            if output.get('name') == "text_to_sql_tool" and isinstance(output.get('result'), AnswerQuestionFromDatabaseOutput):
-                result = output.get('result')
-                question_text = result.question
-            elif output.get('name') == "web_search_tool":
-                sources = output.get('result', {}).get('reference_sources', [])
-                source_urls = [source.get('url', '') for source in sources]
-                # extract domains from urls
-                source_domains = [urlparse(url).netloc for url in source_urls]
-                question_text = ", ".join(source_domains)
-            elif output.get('name') == "pdf_citations_tool":
-                question_text = ""
+            # Get the ID for this tool call
+            analysis_id = output.get('analysis_id', 'Unknown')
             
             # Create document title using tool name and question
-            document_title = f"{tool_name}: {question_text}"
+            document_title = f"{tool_name}: {analysis_id}"
             
             # Format the content based on tool type
             document_data = ""
@@ -691,7 +684,7 @@ First identify what's missing or could be improved, then use database queries to
                 })
         
         # Prepare text content including Phase 1 and Phase 2 reports
-        text_content = f"""I need you to synthesize all the provided analyses into a comprehensive final report that answers this original question: 
+        text_content = f"""I need you to synthesize all the provided analyses into a comprehensive final report that answers this original question:
 
 {question}
 
