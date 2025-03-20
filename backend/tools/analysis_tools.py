@@ -636,10 +636,17 @@ First identify what's missing or could be improved, then use database queries to
         # Create document content for each tool output (as separate documents)
         document_contents = []
         for idx, output in enumerate(all_tool_outputs):
-            tool_name = output.get('name', 'Unknown')
+            tool_name = output.get("name", "Unknown")
             
             # Get the ID for this tool call
-            analysis_id = output.get('analysis_id', 'Unknown')
+            # check if result is a dict and has an analysis_id key
+            if isinstance(output.get("result"), dict):
+                analysis_id = output.get("result", {}).get("analysis_id", "Unknown")
+            # else, check if it is AnswerQuestionFromDatabaseOutput
+            elif isinstance(output.get("result"), AnswerQuestionFromDatabaseOutput):
+                analysis_id = output["result"].analysis_id
+            else:
+                analysis_id = "Unknown"
             
             # Create document title using tool name and question
             document_title = f"{tool_name}: {analysis_id}"
@@ -666,7 +673,7 @@ First identify what's missing or could be improved, then use database queries to
                 result = output.get('result', [])
                 document_data += f"Question: {output.get('input', {}).get('question', 'No question')}\n"
                 document_data += f"PDF IDs: {output.get('input', {}).get('pdf_files', [])}\n"
-                for item in result:
+                for item in result["citations"]:
                     if item.get('type') == 'text':
                         document_data += f"{item.get('text', '')}\n"
             
