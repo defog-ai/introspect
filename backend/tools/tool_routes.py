@@ -19,7 +19,6 @@ from tools.analysis_models import (
 )
 from tools.analysis_tools import (
     generate_report_from_question,
-    synthesize_report_from_questions,
     web_search_tool,
     generate_report_with_agents,
 )
@@ -77,25 +76,6 @@ async def generate_report_with_agents_route(
         clarification_responses=request.clarification_responses,
         pdf_file_ids=request.pdf_file_ids,
         use_websearch=request.use_websearch
-    )
-
-
-@router.post("/synthesize_report_from_question")
-async def synthesize_report_from_question_route(
-    request: SynthesizeReportFromQuestionRequest,
-):
-    """
-    Synthesizes a report from a question.
-    Multiple reports are generated and synthesized into a final report.
-    """
-    model = request.model if request.model else "o3-mini"
-    return await synthesize_report_from_questions(
-        GenerateReportFromQuestionInput(
-            question=request.question,
-            db_name=request.db_name,
-            model=model,
-            num_reports=request.num_reports,
-        )
     )
 
 
