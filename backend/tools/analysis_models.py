@@ -3,7 +3,7 @@ from typing import List, Any, Optional, Callable, Dict
 import uuid
 
 class AnswerQuestionInput(BaseModel):
-    question: str = Field(..., description="The question to generate SQL for")
+    question: str = Field(..., description="The question to answer")
 
 
 class AnswerQuestionFromDatabaseInput(AnswerQuestionInput):
@@ -16,6 +16,14 @@ class AnswerQuestionFromDatabaseInput(AnswerQuestionInput):
 
 class AnswerQuestionViaPDFCitationsInput(AnswerQuestionInput):
     pdf_files: List[int] = Field(..., description="The ids of the PDFs to use for citation")
+
+
+class ThinkToolInput(BaseModel):
+    question: str = Field(..., description="The task to think about")
+
+class ThinkToolOutput(BaseModel):
+    answer: str = Field(..., description="The answer to the question")
+    reasoning: str = Field(..., description="The reasoning for the answer")
 
 class AnswerQuestionFromDatabaseOutput(BaseModel):
 

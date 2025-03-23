@@ -3,6 +3,7 @@ import os
 from tools.analysis_models import (
     AnswerQuestionInput,
     AnswerQuestionFromDatabaseInput,
+    ThinkToolInput,
     AnswerQuestionFromDatabaseOutput,
     AnswerQuestionViaPDFCitationsInput,
     GenerateReportFromQuestionInput,
@@ -183,7 +184,7 @@ async def web_search_tool(
 
 async def pdf_citations_tool(
     input: AnswerQuestionViaPDFCitationsInput,
-) -> str:
+):
     """
     Given a user question and a list of PDF ids, this tool will attempt to answer the question from the information that is available in the PDFs.
     It will return the answer as a JSON.
@@ -225,6 +226,26 @@ async def pdf_citations_tool(
         "analysis_id": str(uuid.uuid4()),
         "citations": [item.to_dict() for item in response.content]
     }
+
+
+async def think_tool(
+    input: ThinkToolInput,
+) -> str:
+    """
+    Given a task to think about, this tool will think about to best perform the task, and return a string that describes an approach for performing the task. It should be used when complex reasoning is needed.
+    """
+    task = input.task
+    LOGGER.info(f"Thinking about task: {task}")
+    
+    response = await chat_async(
+        model="claude-3-7-sonnet-latest",
+        messages=[
+            {"role": "system", "content": "Given a task, think about to best perform the task given the available tools, and return a string that describes an approach for performing the task, given the tools available. The available tools to you are:\n- text_to_sql_tool\n- web_search_tool\n- pdf_citations_tool\n- think_tool"},
+            {"role": "user", "content": "What is the best way to perform the following task:\n" + task},
+        ],
+    )
+    return response.content
+
 
 async def load_custom_tools():
     """
@@ -396,7 +417,7 @@ async def generate_report_with_agents(
     """
     try:
         # Start with default tools
-        tools = [text_to_sql_tool]
+        tools = [text_to_sql_tool, think_tool]
         pdf_instruction = ""
         if use_websearch:
             tools.append(web_search_tool)
