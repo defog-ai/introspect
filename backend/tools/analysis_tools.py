@@ -232,18 +232,10 @@ async def think_tool(
     input: ThinkToolInput,
 ) -> str:
     """
-    Given a task to think about, this tool will think about to best perform the task, and return a string that describes an approach for performing the task. It should be used a) at the start, b) when complex reasoning is needed, and c) near the end of the task to see if more analyses are needed for higher quality analyses.
+    Think about how to best perform the task requested by the user – given the available tools, the previous context, and the user's question. This tool should be used a) at the start, b) when complex reasoning is needed, and c) near the end of the task to see if more analyses are needed for a higher quality final output.
     """
-    LOGGER.info(f"Thinking about task: {input.question}")
-    
-    response = await chat_async(
-        model="claude-3-7-sonnet-latest",
-        messages=[
-            {"role": "system", "content": "Given a task, think about to best perform the task given the available tools, and return a string that describes an approach for performing the task, given the tools available. The available tools to you are:\n- text_to_sql_tool\n- web_search_tool\n- pdf_citations_tool\n- think_tool"},
-            {"role": "user", "content": "What is the best way to perform the following task:\n" + input.question},
-        ],
-    )
-    return response.content
+    LOGGER.info(f"Thinking about task: {input.thought}")
+    return input.thought
 
 
 async def load_custom_tools():

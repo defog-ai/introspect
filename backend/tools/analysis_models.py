@@ -19,7 +19,7 @@ class AnswerQuestionViaPDFCitationsInput(AnswerQuestionInput):
 
 
 class ThinkToolInput(BaseModel):
-    question: str = Field(..., description="The task to think about")
+    thought: str = Field(..., description="The task to think about")
 
 class ThinkToolOutput(BaseModel):
     answer: str = Field(..., description="The answer to the question")
