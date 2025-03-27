@@ -1,0 +1,5 @@
+{
+    "mcpServers": {
+      "test_server": {"command": "sse", "args": ["http://host.docker.internal:3001/sse"]}
+    }
+}

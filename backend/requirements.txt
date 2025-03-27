@@ -5,6 +5,7 @@ fastapi
 google-auth
 httpx
 hypercorn
+mcp
 numpy
 openai
 openai-agents
