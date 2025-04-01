@@ -753,11 +753,13 @@ Your report should:
 8. End with actionable conclusions or recommendations if appropriate
 9. IMPORTANT: Use citations to reference specific findings from the documents
 
-Format the report with Markdown for readability including headings, bullet points, and emphasis where appropriate. For any mathematical expressions or formulas in your report, use LaTeX, wrapped in the following tags:
+Format the report with Markdown for readability including headings, bullet points, and emphasis where appropriate.
+
+For any mathematical expressions or formulas in your report, use LaTeX, wrapped in the following tags:
 - For inline LaTeX (math within sentences), use: <latex-inline>...</latex-inline>
 - For block LaTeX (displayed equations), use: <latex-block>...</latex-block>
 
-You MUST use these specific tags exactly and consistently as shown above. This is required to properly render mathematical equations. Failure to use these tags correctly will result in LaTeX content not being properly rendered.""",
+If adding LaTeX expressions, you MUST use these specific tags exactly and consistently as shown above. This is required to properly render mathematical equations. Failure to use these tags correctly will result in LaTeX content not being properly rendered.""",
             temperature=0.3,
             max_tokens=8191,
         )
