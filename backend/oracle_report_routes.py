@@ -11,6 +11,7 @@ from db_models import (
 )
 from db_config import engine
 from auth_utils import validate_user
+from defog.llm.utils import chat_async
 
 router = APIRouter()
 
@@ -318,4 +319,95 @@ async def update_report_comments(req: UpdateReportCommentsRequest):
                 return JSONResponse(
                     status_code=404,
                     content={"error": "Report not found"},
+                )
+
+
+@router.post("/oracle/export_podcast")
+async def export_podcast(req: ReportRequest):
+    """
+    Given a report_id, this endpoint will convert the report's MDX content into 
+    a podcast transcript format between two people using an LLM.
+    
+    Returns a transcript string that can be saved as a text file.
+    """
+    if not (await validate_user(req.token)):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            stmt = select(OracleReports).where(
+                OracleReports.db_name == req.db_name,
+                OracleReports.report_id == req.report_id,
+            )
+            result = await session.execute(stmt)
+            report = result.scalar_one_or_none()
+            
+            if not report:
+                return JSONResponse(
+                    status_code=404,
+                    content={"error": "Report not found"},
+                )
+            
+            mdx = report.mdx
+            
+            if not mdx:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "Report has no content to convert"},
+                )
+            
+            # Prepare system and user prompts for the LLM
+            system_prompt = """
+You are an expert at converting data analysis reports into engaging podcast transcripts.
+Your task is to transform a technical report into a natural conversation between two hosts.:
+
+- Ana: A data analyst who explains the findings in an accessible way
+- Mike: A curious co-host who asks clarifying questions and helps emphasize key points
+
+Follow these guidelines:
+1. Maintain the same information and insights from the original report
+2. Create a conversational flow that covers all the main points in detail
+3. Include a brief introduction and conclusion
+4. Use natural language that would sound authentic in a spoken conversation
+5. Avoid technical jargon unless Ana explicitly explains it
+6. Format the transcript as:
+    Ana: [Ana's dialogue]
+    Mike: [Mike's dialogue]
+"""
+            
+            user_prompt = f"""
+Please convert the following report content into a podcast transcript between Ana and Mike.
+Start with an introduction where they welcome the listeners and briefly explain what they'll cover.
+End with a conclusion summarizing the key takeaways.
+
+Here's the report content:
+
+{mdx}
+"""
+            
+            # Call the LLM to generate the podcast transcript
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+            
+            try:
+                response = await chat_async(
+                    messages=messages,
+                    model="gemini-2.5-pro-exp-03-25",
+                    max_completion_tokens=8191,
+                    temperature=0.5,
+                    timeout=200,
+                )
+                
+                podcast_transcript = response.content
+                
+                return JSONResponse(
+                    status_code=200,
+                    content={"transcript": podcast_transcript},
+                )
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={"error": f"Error generating podcast transcript: {str(e)}"},
                 )
