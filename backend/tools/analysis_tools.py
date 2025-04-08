@@ -1,14 +1,22 @@
 import pandas as pd
 import os
+import numpy as np
+import json
+import io
+import sys
+import textwrap
+import uuid
+import contextlib
+import contextvars
+from typing import Any, Callable, Dict, List, Optional
+
 from tools.analysis_models import (
     AnswerQuestionInput,
     AnswerQuestionFromDatabaseInput,
     ThinkToolInput,
     AnswerQuestionFromDatabaseOutput,
     AnswerQuestionViaPDFCitationsInput,
-    GenerateReportFromQuestionInput,
     GenerateReportFromQuestionOutput,
-    SynthesizeReportFromQuestionsOutput,
     GenerateReportOpenAIAgentsOutput,
 )
 from tools.analysis_agents import analysis_agent, evaluator_agent, report_agent, UserContext
@@ -19,8 +27,6 @@ from utils_sql import generate_sql_query
 from db_utils import get_db_type_creds
 from defog.llm.utils import chat_async
 from defog.query import async_execute_query_once
-import uuid
-from typing import Any, Callable
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 from utils_oracle import get_pdf_content
@@ -238,6 +244,220 @@ async def think_tool(
     return input.thought
 
 
+async def code_interpreter_tool(
+    input: AnswerQuestionFromDatabaseInput,
+) -> dict[str, Any]:
+    """
+    Code Interpreter tool that performs data analysis on database results using pandas, numpy, scipy, etc.
+    
+    This tool works by:
+    1. Taking a data analysis question and database name
+    2. Generating SQL queries to fetch the necessary data
+    3. Using AI to generate Python code for the analysis
+    4. Safely executing the code in a controlled environment
+    5. Returning the analysis results
+    
+    The tool supports using pandas, numpy, scipy, and statsmodels libraries for analysis.
+
+    Important: it does not support plotting or visualizations of any kind.
+    """
+    question = input.question
+    db_name = input.db_name
+    
+    LOGGER.info(f"Code Interpreter analyzing: {question} (database: {db_name})")
+    
+    # Step 1: Generate SQL to fetch the data needed for analysis
+    sql_generation_prompt = f"""
+    I need to perform the following data analysis: "{question}"
+
+Generate a SQL query that will fetch the appropriate data from the database to answer this question.
+The query should:
+1. Retrieve all relevant columns needed for the analysis
+2. Include any necessary filters, joins, or aggregations
+3. Return a complete dataset that can be analyzed with pandas and other Python libraries
+4. NOT do any data cleaning, preprocessing, or transformations in the SQL query
+"""
+    
+    # Use text_to_sql_tool to fetch data
+    sql_input = AnswerQuestionFromDatabaseInput(
+        question=sql_generation_prompt,
+        db_name=db_name
+    )
+    sql_result = await text_to_sql_tool(sql_input)
+    
+    # Check for errors in SQL generation or execution
+    if sql_result.error:
+        LOGGER.error(f"Error fetching data for code interpreter: {sql_result.error}")
+        return {
+            "analysis_id": str(uuid.uuid4()),
+            "question": question,
+            "error": f"Failed to fetch data: {sql_result.error}",
+            "code": "",
+            "result": "",
+        }
+    
+    # Step 2: Prepare data for analysis
+    if not sql_result.rows or sql_result.rows == "[]":
+        LOGGER.error("No data returned from SQL query")
+        return {
+            "analysis_id": str(uuid.uuid4()),
+            "question": question,
+            "error": "No data returned from the database. Please refine your question.",
+            "code": sql_result.sql,
+            "result": "",
+        }
+    
+    # Parse the data to get sample rows
+    sample_data = sql_result.rows[:5] if len(sql_result.rows) > 5 else sql_result.rows
+    
+    # Step 3: Generate analysis code using LLM
+    
+    code_generation_prompt = f"""I need Python code to analyze the data to answer this question: "{question}"
+
+The data is stored in a dictionary called 'data_dict'.
+
+It was generated from the following SQL query:
+```sql
+{sql_result.sql}
+```
+
+First 5 rows of data (as a dictionary) for reference:
+{sample_data}
+
+Create Python code that:
+1. Loads the data using pd.DataFrame(data_dict)
+2. Performs appropriate data cleaning if needed
+3. Uses pandas, numpy, scipy, or statsmodels to analyze the data
+5. Returns a comprehensive answer to the question with analysis explanation
+
+Important guidelines:
+- The code should be self-contained, with all necessary imports
+- Store the final text result in the 'final_result' variable
+- Handle potential errors with try/except blocks
+- Do not reference external files or services
+- Keep computation reasonable for a web service (avoid extremely intensive calculations)
+- NEVER create any mock data or sample data. Only use the data provided.
+
+Return ONLY the Python code without any explanation, markdown formatting, or code block markers.
+"""
+    
+    try:
+        # Generate the analysis code using Claude
+        client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        code_response = await client.messages.create(
+            model="claude-3-7-sonnet-latest",
+            max_tokens=4000,
+            messages=[
+                {"role": "user", "content": code_generation_prompt}
+            ]
+        )
+        analysis_code = code_response.content[0].text
+        
+        # Step 4: Execute the generated code in a controlled environment
+        result, error = await execute_analysis_code_safely(analysis_code, sql_result.rows)
+        
+        return {
+            "analysis_id": str(uuid.uuid4()),
+            "question": question,
+            "code": analysis_code,
+            "result": result,
+            "error": error,
+            "sql": sql_result.sql
+        }
+        
+    except Exception as e:
+        LOGGER.error(f"Error in code interpreter: {str(e)}")
+        return {
+            "analysis_id": str(uuid.uuid4()),
+            "question": question,
+            "error": f"Error generating or executing analysis: {str(e)}",
+            "code": "",
+            "result": "",
+            "sql": sql_result.sql if hasattr(sql_result, "sql") else ""
+        }
+
+
+async def execute_analysis_code_safely(code: str, data_dict: str) -> tuple[str, str]:
+    """
+    Execute the analysis code in a safe, controlled environment.
+    Returns a tuple of (result_text, error_message)
+    """
+    data_dict = json.loads(data_dict)
+    # Create a string buffer to capture print outputs
+    stdout_buffer = io.StringIO()
+    result_text = ""
+    error_message = ""
+    
+    # Create namespace for code execution with limited imports
+    namespace = {
+        # Core data libraries
+        "pd": pd,
+        "np": np,
+        "data_dict": data_dict,
+        
+        # Math and statistics
+        "math": __import__("math"),
+        "random": __import__("random"),
+        "statistics": __import__("statistics"),
+        
+        # Advanced statistics (if available)
+        "scipy": __import__("scipy") if "scipy" in sys.modules else None,
+        "stats": __import__("scipy.stats") if "scipy.stats" in sys.modules else None,
+        "sm": __import__("statsmodels.api") if "statsmodels.api" in sys.modules else None,
+        "smf": __import__("statsmodels.formula.api") if "statsmodels.formula.api" in sys.modules else None,
+        
+        # Data encoding
+        "json": json,
+        "base64": __import__("base64"),
+        "BytesIO": io.BytesIO,
+        
+        # Empty containers for results
+        "final_result": ""
+    }
+    
+    # Wrap the code to capture and return results
+    wrapped_code = f"""
+try:
+    # Execute the analysis code
+{textwrap.indent(code, '    ')}
+    
+except Exception as e:
+    import traceback
+    final_result = f"Error during execution: {{str(e)}}\\n\\nTraceback: {{traceback.format_exc()}}"
+"""
+    
+    try:
+        # Set resource limits (in case available)
+        try:
+            import resource
+            # Limit CPU time to 30 seconds
+            resource.setrlimit(resource.RLIMIT_CPU, (30, 30))
+            # Limit memory to 1GB
+            resource.setrlimit(resource.RLIMIT_AS, (1 << 30, 1 << 30))
+        except (ImportError, AttributeError):
+            pass  # Resource module not available or running on Windows
+        
+        # Redirect stdout to capture print statements
+        with contextlib.redirect_stdout(stdout_buffer):
+            # Execute code with restricted globals
+            exec(wrapped_code, namespace)
+        
+        # Get the captured output
+        stdout_output = stdout_buffer.getvalue()
+        
+        # Get any result value
+        result_text = namespace.get("final_result", "")
+        if not result_text and stdout_output:
+            result_text = stdout_output
+        
+        
+    except Exception as e:
+        error_message = f"Error executing code: {str(e)}"
+        LOGGER.error(error_message)
+    
+    return result_text, error_message
+
+
 async def load_custom_tools():
     """
     Load and dynamically import custom tools for a specific database from the database.
@@ -408,7 +628,7 @@ async def generate_report_with_agents(
     """
     try:
         # Start with default tools
-        tools = [text_to_sql_tool, think_tool]
+        tools = [text_to_sql_tool, think_tool, code_interpreter_tool]
         pdf_instruction = ""
         if use_websearch:
             tools.append(web_search_tool)
@@ -509,7 +729,7 @@ async def multi_agent_report_generation(
     """
     try:
         # Setup tools for all agents
-        tools = [text_to_sql_tool, think_tool]
+        tools = [text_to_sql_tool, think_tool, code_interpreter_tool]
         pdf_instruction = ""
         if use_websearch:
             tools.append(web_search_tool)
@@ -810,7 +1030,7 @@ async def generate_report_from_question(
     """
     try:
         # Start with default tools
-        tools = [text_to_sql_tool, think_tool]
+        tools = [text_to_sql_tool, think_tool, code_interpreter_tool]
         pdf_instruction = ""
         if use_websearch:
             tools.append(web_search_tool)
@@ -861,6 +1081,7 @@ Try to break down your answer into clear and understandable categories. Please g
             report=response.content,
             sql_answers=sql_answers,
             tool_outputs=response.tool_outputs,
+            report_with_citations=[],
         )
     except Exception as e:
         LOGGER.error(f"Error in generate_report_from_question:\n{e}")
@@ -868,5 +1089,6 @@ Try to break down your answer into clear and understandable categories. Please g
             report="Error in generating report from question",
             sql_answers=[],
             tool_outputs=[],
+            report_with_citations="",
         )
 
