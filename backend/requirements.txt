@@ -17,11 +17,13 @@ pyyaml
 redis
 requests
 resend
+scipy
 slack_sdk
 sqlalchemy[asyncio]
 sqlalchemy-utils
 sqlglot
 sqlparse
+statsmodels
 uvloop
 
 # sync db connectors
