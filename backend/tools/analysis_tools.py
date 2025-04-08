@@ -275,7 +275,8 @@ The query should:
 1. Retrieve all relevant columns needed for the analysis
 2. Include any necessary filters, joins, or aggregations
 3. Return a complete dataset that can be analyzed with pandas and other Python libraries
-4. NOT do any data cleaning, preprocessing, or transformations in the SQL query
+
+The query should NOT do any data cleaning, preprocessing, or transformations. Those will be done in Python later.
 """
     
     # Use text_to_sql_tool to fetch data
@@ -312,9 +313,9 @@ The query should:
     
     # Step 3: Generate analysis code using LLM
     
-    code_generation_prompt = f"""I need Python code to analyze the data to answer this question: "{question}"
+    code_generation_prompt = f"""Please generate Python code to analyze this question: "{question}"
 
-The data is stored in a dictionary called 'data_dict'.
+The data needed to answer the question is stored in a dictionary called 'data_dict'.
 
 It was generated from the following SQL query:
 ```sql
@@ -337,6 +338,8 @@ Important guidelines:
 - Do not reference external files or services
 - Keep computation reasonable for a web service (avoid extremely intensive calculations)
 - NEVER create any mock data or sample data. Only use the data provided.
+- NEVER import matplotlib or any other plotting library. We cannot generate any plots.
+
 
 Return ONLY the Python code without any explanation, markdown formatting, or code block markers.
 """
@@ -408,7 +411,6 @@ async def execute_analysis_code_safely(code: str, data_dict: str) -> tuple[str, 
         
         # Data encoding
         "json": json,
-        "base64": __import__("base64"),
         "BytesIO": io.BytesIO,
         
         # Empty containers for results
@@ -427,16 +429,6 @@ except Exception as e:
 """
     
     try:
-        # Set resource limits (in case available)
-        try:
-            import resource
-            # Limit CPU time to 30 seconds
-            resource.setrlimit(resource.RLIMIT_CPU, (30, 30))
-            # Limit memory to 1GB
-            resource.setrlimit(resource.RLIMIT_AS, (1 << 30, 1 << 30))
-        except (ImportError, AttributeError):
-            pass  # Resource module not available or running on Windows
-        
         # Redirect stdout to capture print statements
         with contextlib.redirect_stdout(stdout_buffer):
             # Execute code with restricted globals
