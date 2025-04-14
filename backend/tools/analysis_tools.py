@@ -971,7 +971,8 @@ For any mathematical expressions or formulas in your report, use LaTeX, wrapped 
 - For inline LaTeX (math within sentences), use: <latex-inline>...</latex-inline>
 - For block LaTeX (displayed equations), use: <latex-block>...</latex-block>
 
-If adding LaTeX expressions, you MUST use these specific tags exactly and consistently as shown above. This is required to properly render mathematical equations. Failure to use these tags correctly will result in LaTeX content not being properly rendered.""",
+
+If adding LaTeX expressions, you MUST use these specific tags exactly and consistently as shown above. This is required to properly render mathematical equations. Failure to use these tags correctly will result in LaTeX content not being properly rendered. Do NOT use `$` or `$$` conventions, they cannot be distinguished from currencies.""",
             temperature=0.3,
             max_tokens=8191,
         )
