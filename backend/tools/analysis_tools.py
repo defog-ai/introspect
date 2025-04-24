@@ -7,8 +7,7 @@ import sys
 import textwrap
 import uuid
 import contextlib
-import contextvars
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 from tools.analysis_models import (
     AnswerQuestionInput,
@@ -30,7 +29,6 @@ from defog.query import async_execute_query_once
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 from utils_oracle import get_pdf_content
-from urllib.parse import urlparse
 
 
 async def text_to_sql_tool(
@@ -151,41 +149,84 @@ async def web_search_tool(
     """
     LOGGER.info(f"Web search tool called with question: {input.question}")
     
-    client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    # if gemini_api_key is set, use gemini
+    # else, use openai
     try:
-        response = await client.chat.completions.create(
-            model="gpt-4o-search-preview",
-            web_search_options={
-                "search_context_size": "high",
-            },
-            messages=[
-                {"role": "user", "content": input.question},
-            ],
-        )
-        
-        LOGGER.info(f"Received response from OpenAI API")
-        
-        message = response.choices[0].message
-        # Handle the case where grounding_chunks might be None
-        sources = []
-        for annotation in message.annotations:
-            if annotation.type == "url_citation":
-                sources.append({
-                    "source": annotation.url_citation.title,
-                    "url": annotation.url_citation.url
-                })
+        if os.environ.get("GEMINI_API_KEY"):
+            from google import genai
+            from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
+
+            client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+            model_id = "gemini-2.5-pro-preview-03-25"
+
+            google_search_tool = Tool(
+                google_search = GoogleSearch()
+            )
+
+            LOGGER.info(f"Calling Gemini API with question: {input.question}")
+            response = client.models.generate_content(
+                model=model_id,
+                contents=input.question + "\nNote: you must **always** use the google search tool to answer questions - no exceptions.",
+                config=GenerateContentConfig(
+                    tools=[google_search_tool],
+                    response_modalities=["TEXT"],
+                )
+            )
+
+            sources = []
+
+            if response.candidates:
+                for candidate in response.candidates:
+                    if candidate.grounding_metadata and candidate.grounding_metadata.grounding_chunks:
+                        for chunk in candidate.grounding_metadata.grounding_chunks:
+                            sources.append({
+                                "source": chunk.web.title,
+                                "url": chunk.web.uri
+                            })
+            
+            return {
+                "analysis_id": str(uuid.uuid4()),
+                "answer": response.text,
+                "reference_sources": sources
+            }
+        else:
+            LOGGER.info(f"Calling OpenAI API with question: {input.question}")
+            client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+            response = await client.chat.completions.create(
+                model="gpt-4o-search-preview",
+                web_search_options={
+                    "search_context_size": "high",
+                },
+                messages=[
+                    {"role": "user", "content": input.question},
+                ],
+            )
+            
+            LOGGER.info(f"Received response from OpenAI API")
+            
+            message = response.choices[0].message
+            # Handle the case where grounding_chunks might be None
+            sources = []
+            for annotation in message.annotations:
+                if annotation.type == "url_citation":
+                    sources.append({
+                        "source": annotation.url_citation.title,
+                        "url": annotation.url_citation.url
+                    })
         return {
             "analysis_id": str(uuid.uuid4()),
             "answer": message.content,
             "reference_sources": sources
         }
     except Exception as e:
-        LOGGER.error(f"Error calling OpenAI API: {e}")
+        LOGGER.error(f"Error running web search tool: {e}")
         return {
-            "answer": "Error calling OpenAI API",
+            "answer": "Error running web search tool",
             "error": str(e),
             "reference_sources": []
         }
+    
+    
 
 
 async def pdf_citations_tool(
