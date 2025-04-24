@@ -16,7 +16,7 @@ You are given:
 ### Your task  
 Decide whether the user’s question can be answered unambiguously using only the schema and context above.
 
-- **If it can:** output nothing (an empty string).  
+- **If it can:** output "no clarifications are needed"
 - **If it cannot:** output **one** short, direct clarifying question that removes the ambiguity.
 
 ### When to ask a clarifying question  
