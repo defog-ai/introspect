@@ -412,7 +412,7 @@ async def ticket_summary_tool(input: TicketSummaryInput):
             json={
                 "token": admin_token,
                 "question": user_question,
-                "model": "o3-mini"
+                "model": "o4-mini"
             },
             headers={"Content-Type": "application/json"},
         )

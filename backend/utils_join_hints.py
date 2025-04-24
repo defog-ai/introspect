@@ -42,7 +42,7 @@ async def infer_join_hints(
     ]
     LOGGER.debug(f"Join hints user prompt: {user_prompt}")
     response = await chat_async(
-        model="o3-mini",
+        model="o4-mini",
         messages=messages,
         max_completion_tokens=16384,
         response_format=JoinHints,

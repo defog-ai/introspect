@@ -46,7 +46,7 @@ async def answer_question_from_database_route(
     """
     question = request.question
     db_name = request.db_name
-    model = request.model or "o3-mini"
+    model = request.model or "o4-mini"
     return await generate_report_from_question(
         question=question,
         db_name=db_name,

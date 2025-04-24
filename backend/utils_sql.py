@@ -523,7 +523,7 @@ async def generate_sql_query(
     previous_context: list[Dict[str, str]] = None,
     hard_filters: list[HardFilter] = None,
     num_golden_queries: int = 4,
-    model_name: str = "o3-mini",
+    model_name: str = "o4-mini",
 ):
     """
     Generate SQL query for a given question, using an LLM.

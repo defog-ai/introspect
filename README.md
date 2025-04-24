@@ -31,7 +31,7 @@ docker compose up --build
 
 We use a simple AI agent with tool use. An LLM attempts to answer a user question with 3 tools – `text_to_sql`, `web_search`, and `pdf_with_citations`.
 
-The model then recursively asks questions using one of these tools until it is satisfied that it has enough context to answer the users question. By default, we use `o3-mini` for text to SQL, `gemini-2.0-flash` for web search, and `claude-3-7-sonnet` for both PDF analysis and orchestration.
+The model then recursively asks questions using one of these tools until it is satisfied that it has enough context to answer the users question. By default, we use `o4-mini` for text to SQL, `gemini-2.0-flash` for web search, and `claude-3-7-sonnet` for both PDF analysis and orchestration.
 
 <img width="730" alt="image" src="https://github.com/user-attachments/assets/1b719e12-e4ea-4e85-82ee-5ac09f07f27a" />
 

@@ -156,7 +156,7 @@ async def infer_table_descriptions(
         {"role": "user", "content": user_prompt},
     ]
     response = await chat_async(
-        model="o3-mini",
+        model="o4-mini",
         messages=messages,
         response_format=TableDescriptions,
     )
