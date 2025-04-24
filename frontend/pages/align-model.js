@@ -289,11 +289,10 @@ const AlignModel = () => {
   return (
     <>
       <Meta />
-      <Scaffolding id="align-model" userType="admin">
+      <Scaffolding id="align-model" userType="ADMIN">
         {apiKeyNames.length > 1 ? (
           <div className="p-1 mt-1 w-full">
               <Select
-                className="w-full"
                 onChange={(e) => {
                   setApiKeyName(e);
                 }}
@@ -317,7 +316,7 @@ const AlignModel = () => {
         </div>
         <div className="flex flex-col p-1 border border-gray-3200 rounded-lg">
           <Tabs
-            size="large"
+            size="normal"
             tabs={tabs}
             defaultSelected="instructions"
           />
