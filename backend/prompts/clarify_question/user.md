@@ -1,23 +1,35 @@
-A non-technical user asked me to get a SQL query for answering a question about a dataset.
+You are given:
 
-These were the DDL statements for the dataset:
+1. **Schema (DDL)**
 {table_metadata_ddl}
 
-And this was the context that the user provided me:
+2. **User context**
 <context>
 {instructions}
 </context>
 
-Can the question be answered by the context provided, or does it require further clarification?
+3. **User question**
+`{question}`
 
-If it requires further clarification, can you please generate a specific clarification question that I can ask the user to make it unambigious?
+---
 
-Most of the time, a clarification will NOT be needed. ONLY ask a clarifying question if:
-- the intent of the user's question is ambiguous wrt the DDL statements and/or the context
-- the question cannot be answered by the instructions given, or by the DDL
+### Your task  
+Decide whether the user’s question can be answered unambiguously using only the schema and context above.
 
-If a clarifying question is needed, ensure that it is short, clear, and concise. Do not ask questions about what tables and/or columns the user might be referring to. ONLY ask questions if it seems like answering the question (given the DDL/instructions) would be ambiguous.
+- **If it can:** output nothing (an empty string).  
+- **If it cannot:** output **one** short, direct clarifying question that removes the ambiguity.
 
-The user's question is: `{question}`.
+### When to ask a clarifying question  
+Ask **only** when both of the following are true:
 
-Please generate a clarifying question (if needed) for it. Return just the clarifying question, without any preamble, justification, or any other text.
+1. The user’s intent is unclear with respect to the schema or context, **and**  
+2. The question cannot be answered as-is.
+
+Your default should be to NOT ask a clarifying question, unless it is strongly needed.
+
+*Do **not** ask about table or column names, or ask how a term maps to a table or column in the DDL.*
+
+---
+
+### Output format  
+Return the clarifying question **alone**—no preamble, explanations, or extra text.

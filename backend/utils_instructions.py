@@ -9,7 +9,7 @@ from db_config import engine
 from utils_logging import LOGGER
 
 
-async def get_instructions(db_name: str) -> str:
+async def get_instructions(db_name: str, instructions_type: str = "sql_instructions") -> str:
     """
     Get instructions for a given db_name.
     Returns a list of dictionaries, each containing:
@@ -22,7 +22,7 @@ async def get_instructions(db_name: str) -> str:
         async with session.begin():
             result = await session.execute(
                 select(
-                    Instructions.sql_instructions,
+                    getattr(Instructions, instructions_type),
                 ).where(Instructions.db_name == db_name)
             )
             instructions_result = result.scalar_one_or_none()
