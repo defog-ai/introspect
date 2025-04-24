@@ -20,8 +20,8 @@ async def generate_clarification(
     question: str,
     db_name: str = None,
     metadata: list[ColumnMetadata] = None,
-    instructions: str = None,
-    model_name: str = "gpt-4o",
+    instructions: str | None = None,
+    model_name: str = "gpt-4.1",
 ) -> str:
     """
     Generate clarification for a given question, using an LLM.
@@ -47,7 +47,7 @@ async def generate_clarification(
             {"role": "user", "content": user_prompt},
         ],
         max_completion_tokens=128,
-        temperature=0.8,
+        temperature=0.3,
     )
 
     LOGGER.info("Cost of generating clarification: {:.2f}¢".format(clarifications.cost_in_cents))
