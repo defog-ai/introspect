@@ -742,7 +742,6 @@ async def generate_report_with_agents(
 
 async def multi_agent_report_generation(
     db_name: str,
-    model: str,
     question: str,
     clarification_responses: str,
     post_tool_func: Callable,
@@ -787,7 +786,7 @@ async def multi_agent_report_generation(
         
         # PHASE 1: DATA COLLECTION & ANALYSIS
         analyst_response = await chat_async(
-            model=model,
+            model="o4-mini",
             tools=tools,
             messages=[
                 {
@@ -845,7 +844,7 @@ DATA ANALYSIS FINDINGS:
 """
         
         evaluator_response = await chat_async(
-            model=model,
+            model="o4-mini",
             tools=tools,
             messages=[
                 {

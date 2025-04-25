@@ -250,7 +250,6 @@ async def generate_report(req: GenerateReportRequest):
         LOGGER.info("Using multi-agent approach for report generation")
         analysis_response = await multi_agent_report_generation(
             db_name=db_name,
-            model="claude-3-7-sonnet-latest",
             question=user_question,
             clarification_responses=clarification_responses,
             post_tool_func=post_tool_func,
