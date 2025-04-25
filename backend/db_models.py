@@ -184,6 +184,8 @@ class OracleReports(Base):
     general_comments = Column(Text, default=None)
     comments = Column(JSON, default=None)
     thinking_steps = Column(JSON, default=None) # this is a list of all tool inputs and outputs, including all non-SQL tools.
+    is_public = Column(Boolean, default=False)
+    public_uuid = Column(Text, unique=True, index=True)
 
 # CUSTOM TOOLS
 class CustomTools(Base):

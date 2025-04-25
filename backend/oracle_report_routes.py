@@ -1,6 +1,7 @@
 import os
 from typing import Optional
 
+import uuid
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -79,6 +80,8 @@ async def reports_list(req: BasicRequest):
                     OracleReports.status,
                     OracleReports.created_ts,
                     OracleReports.inputs,
+                    OracleReports.is_public,
+                    OracleReports.public_uuid,
                 )
                 .where(OracleReports.db_name == req.db_name)
                 .order_by(OracleReports.created_ts.desc())
@@ -93,6 +96,11 @@ async def reports_list(req: BasicRequest):
         is_being_revised = status.startswith("Revision in progress: ")
         if is_revision:
             continue
+        
+        # Check if report is public and has a UUID
+        is_public = report.is_public or False
+        public_url = f"/oracle/public/report/{report.public_uuid}" if is_public and report.public_uuid else None
+        
         reports_list.append(
             {
                 "report_id": report.report_id,
@@ -102,6 +110,8 @@ async def reports_list(req: BasicRequest):
                 "is_being_revised": is_being_revised,
                 "date_created": report.created_ts.isoformat(),  # Convert to ISO 8601 string
                 "inputs": report.inputs,
+                "is_public": is_public,
+                "public_url": public_url,
             }
         )
 
@@ -166,6 +176,9 @@ async def get_report_mdx(req: ReportRequest):
                     if isinstance(non_sql_thinking_steps[idx]["result"], dict):
                         non_sql_thinking_steps[idx]["analysis_id"] = non_sql_thinking_steps[idx]["result"].get("analysis_id", "unknown")
                 
+                # Include public status information
+                public_url = f"/oracle/public/report/{report.public_uuid}" if report.is_public and report.public_uuid else None
+                
                 return JSONResponse(
                     status_code=200,
                     content={
@@ -173,6 +186,9 @@ async def get_report_mdx(req: ReportRequest):
                         "analyses": analyses + non_sql_thinking_steps,
                         "report_with_citations": report_with_citations,
                         "inputs": report.inputs,
+                        "is_public": report.is_public,
+                        "public_uuid": report.public_uuid,
+                        "public_url": public_url,
                     },
                 )
             else:
@@ -293,6 +309,22 @@ class UpdateReportCommentsRequest(ReportRequest):
     }
 
 
+class TogglePublicStatusRequest(ReportRequest):
+    """
+    Request model for toggling the public status of a report.
+    """
+
+    make_public: bool
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"db_name": "my_db_name", "report_id": 1, "make_public": True}
+            ]
+        }
+    }
+
+
 @router.post("/oracle/update_report_comments")
 async def update_report_comments(req: UpdateReportCommentsRequest):
     """
@@ -320,6 +352,108 @@ async def update_report_comments(req: UpdateReportCommentsRequest):
                     status_code=404,
                     content={"error": "Report not found"},
                 )
+
+
+@router.post("/oracle/toggle_public_status")
+async def toggle_public_status(req: TogglePublicStatusRequest):
+    """
+    Toggle the public status of a report.
+    
+    If making public:
+    - Generates a UUID for public access if one doesn't exist
+    - Sets is_public flag to True
+    
+    If making private:
+    - Sets is_public flag to False
+    - Keeps the UUID for future use
+    
+    Returns the public URL path if made public.
+    """
+    if not (await validate_user(req.token)):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            stmt = select(OracleReports).where(
+                OracleReports.db_name == req.db_name,
+                OracleReports.report_id == req.report_id,
+            )
+            result = await session.execute(stmt)
+            report = result.scalar_one_or_none()
+            
+            if not report:
+                return JSONResponse(
+                    status_code=404,
+                    content={"error": "Report not found"},
+                )
+            
+            report.is_public = req.make_public
+            
+            # Generate a UUID if making the report public and one doesn't already exist
+            if req.make_public and not report.public_uuid:
+                report.public_uuid = str(uuid.uuid4())
+            
+            # The session.commit() is handled automatically by the context manager
+            
+            # Get values before the session is closed
+            is_public = report.is_public
+            public_uuid = report.public_uuid
+            
+    # Return responses after session is closed
+    if req.make_public:
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Report is now public",
+                "public_uuid": public_uuid,
+                "public_url": f"/oracle/public/report/{public_uuid}",
+            },
+        )
+    else:
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Report is now private"},
+        )
+
+
+@router.get("/oracle/public/report/{public_uuid}")
+async def get_public_report(public_uuid: str):
+    """
+    Retrieve a report by its public UUID. This endpoint doesn't require authentication
+    and can be accessed by anyone with the UUID.
+    
+    Only returns reports that have the is_public flag set to True.
+    
+    Returns a simplified version of the report's content without interactive elements.
+    """
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            stmt = select(OracleReports).where(
+                OracleReports.public_uuid == public_uuid,
+                OracleReports.is_public == True
+            )
+            result = await session.execute(stmt)
+            report = result.scalar_one_or_none()
+            
+            if not report:
+                return JSONResponse(
+                    status_code=404,
+                    content={"error": "Report not found or is not public"},
+                )
+            
+            # Return a simplified version of the report
+            report_data = {
+                "report_name": report.report_name,
+                "created_ts": report.created_ts.isoformat(),
+                "mdx": report.mdx,
+                "report_content_with_citations": report.report_content_with_citations,
+                "analyses": report.analyses
+            }
+            
+            return JSONResponse(
+                status_code=200,
+                content={"report": report_data},
+            )
 
 
 @router.post("/oracle/export_podcast")
