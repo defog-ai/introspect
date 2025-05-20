@@ -71,4 +71,4 @@ This repo is maintained by Defog.ai
 - [ ] Create Docs
 - [ ] Let users choose what model they want for which task from the `.env. file
 - [ ] Docs and examples for how to add custom tools
-- [ ] Docs and exampels for how to integrate with unstructured data sources with search, like Google Drive and OneDrive
+- [ ] Docs and examples for how to integrate with unstructured data sources with search, like Google Drive and OneDrive
