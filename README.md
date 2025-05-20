@@ -3,7 +3,6 @@
 Introspect is a service that does data-focused deep research for structured data. It understands your structured data (databases or CSV/Excel files), unstructured data (PDFs), and can query the web to get additional context.
 
 ## Demo
-- Interactive Demo: https://demo.defog.ai/reports (user id: `admin`, password: `admin`)
 - [150s video](https://www.loom.com/share/ed2017d503ce4335909f47e8629a3acb)
 
 ## Quick Start
@@ -61,8 +60,9 @@ Defog supports most database connectors including PostgreSQL, MySQL, SQLite, Big
 - Run frontend tests: `cd frontend && npx playwright test`
 - Lint (Prettier): `cd frontend && npm run lint`
 
-## Docs
-Coming soon
+## Security
+- It is highly recommended to run this only as a Docker image, for security purposes
+- This repo does involve code where LLM generated code (or custom human generated code) can be autonomously executed. While we have implemented some safeguards to prevent abuse, safety is not guaranteed outside a docker environment.
 
 ## Contributing and Maintainers
 This repo is maintained by Defog.ai
