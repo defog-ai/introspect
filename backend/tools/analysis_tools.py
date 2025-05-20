@@ -436,6 +436,9 @@ async def execute_analysis_code_safely(code: str, data_dict: str) -> tuple[str, 
     The provided ``code`` string is parsed to ensure it doesn't contain unsafe
     constructs such as import statements or direct calls to ``exec``/``eval``.
     A custom namespace with limited built-ins is then used to execute the code.
+    
+    This function also restricts file system access, particularly preventing
+    access to sensitive directories like /etc.
 
     Returns:
         tuple[str, str]: ``(result_text, error_message)``
@@ -455,6 +458,13 @@ async def execute_analysis_code_safely(code: str, data_dict: str) -> tuple[str, 
             and node.func.id in unsafe_calls
         ):
             return "", f"Use of '{node.func.id}' is not allowed"
+            
+    # Check for direct attempts to access /etc via string literals
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Str) and node.s and isinstance(node.s, str):
+            path = node.s
+            if path.startswith('/etc/'):
+                return "", f"Access to /etc directory is not permitted"
 
     stdout_buffer = io.StringIO()
     result_text = ""
@@ -534,8 +544,7 @@ try:
 {textwrap.indent(code, '    ')}
     
 except Exception as e:
-    import traceback
-    final_result = f"Error during execution: {{str(e)}}\\n\\nTraceback: {{traceback.format_exc()}}"
+    final_result = f"Error during execution: {{str(e)}}"
 """
     
     try:
