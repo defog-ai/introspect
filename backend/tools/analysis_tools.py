@@ -572,6 +572,51 @@ async def load_custom_tools():
                         return False
         
         return True
+
+    def validate_input_model(code: str) -> bool:
+        """Validate that the provided input model code is safe."""
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return False
+
+        unsafe_calls = [
+            'eval', 'exec', '__import__', 'subprocess', 'os.system',
+            'os.popen', 'os.spawn', 'os.fork', 'pty.spawn'
+        ]
+
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                return False
+
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in unsafe_calls:
+                return False
+
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                attr_chain = []
+                obj = node.func
+                while isinstance(obj, ast.Attribute):
+                    attr_chain.append(obj.attr)
+                    obj = obj.value
+
+                if isinstance(obj, ast.Name):
+                    attr_chain.append(obj.id)
+                    attr_path = '.'.join(reversed(attr_chain))
+
+                    if any(unsafe in attr_path for unsafe in unsafe_calls):
+                        return False
+
+        has_model = any(
+            isinstance(node, ast.ClassDef) and
+            any(
+                (isinstance(base, ast.Name) and base.id == 'BaseModel') or
+                (isinstance(base, ast.Attribute) and base.attr == 'BaseModel')
+                for base in node.bases
+            )
+            for node in tree.body
+        )
+
+        return has_model
     
     # Process each tool
     for tool_row in tools_db:
@@ -608,10 +653,22 @@ async def load_custom_tools():
             
             # Add the module to sys.modules
             sys.modules[module_name] = module
-            
-            # Execute the input model code in the module's namespace
+
+            # Execute the input model code in a restricted namespace
             if tool_record.input_model:
-                exec(tool_record.input_model, module.__dict__)
+                if not validate_input_model(tool_record.input_model):
+                    LOGGER.error(f"Input model for tool {tool_record.tool_name} is unsafe and will be skipped")
+                    continue
+
+                namespace = {
+                    'BaseModel': module.__dict__['BaseModel'],
+                    'Field': module.__dict__['Field'],
+                    '__builtins__': {},
+                }
+                before_keys = set(namespace.keys())
+                exec(tool_record.input_model, namespace)
+                for key in set(namespace.keys()) - before_keys:
+                    module.__dict__[key] = namespace[key]
             
             # Execute the tool code in the module's namespace
             exec(tool_record.tool_code, module.__dict__)

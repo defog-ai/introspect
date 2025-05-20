@@ -170,7 +170,61 @@ def validate_tool_code(code: str) -> bool:
     
     if not has_async_function:
         return False, "Tool must contain at least one async function"
-    
+
+    return True, ""
+
+
+# Helper function to validate input model code without execution
+def validate_input_model(code: str) -> bool:
+    """
+    Validate that the provided input model code is safe and only defines
+    Pydantic models. Import statements and unsafe builtins are disallowed.
+    """
+
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        return False, f"Syntax error in input model: {str(e)}"
+
+    unsafe_calls = [
+        'eval', 'exec', '__import__', 'subprocess', 'os.system',
+        'os.popen', 'os.spawn', 'os.fork', 'pty.spawn'
+    ]
+
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            return False, "Import statements are not allowed in input_model"
+
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in unsafe_calls:
+            return False, f"Unsafe function call: {node.func.id}"
+
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            attr_chain = []
+            obj = node.func
+            while isinstance(obj, ast.Attribute):
+                attr_chain.append(obj.attr)
+                obj = obj.value
+
+            if isinstance(obj, ast.Name):
+                attr_chain.append(obj.id)
+                attr_path = '.'.join(reversed(attr_chain))
+
+                if any(unsafe in attr_path for unsafe in unsafe_calls):
+                    return False, f"Unsafe operation: {attr_path}"
+
+    has_model = any(
+        isinstance(node, ast.ClassDef) and
+        any(
+            (isinstance(base, ast.Name) and base.id == 'BaseModel') or
+            (isinstance(base, ast.Attribute) and base.attr == 'BaseModel')
+            for base in node.bases
+        )
+        for node in tree.body
+    )
+
+    if not has_model:
+        return False, "Input model must define a class inheriting from BaseModel"
+
     return True, ""
 
 
@@ -186,6 +240,11 @@ async def create_custom_tool(request: CustomToolCreateRequest):
     is_valid, error_message = validate_tool_code(request.tool_code)
     if not is_valid:
         raise HTTPException(status_code=400, detail=f"Invalid tool code: {error_message}")
+
+    if request.input_model:
+        is_valid, error_message = validate_input_model(request.input_model)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=f"Invalid input model: {error_message}")
     
     # Check if tool already exists
     async with get_defog_internal_session() as session:
@@ -235,6 +294,11 @@ async def update_custom_tool(request: CustomToolUpdateRequest):
     is_valid, error_message = validate_tool_code(request.tool_code)
     if not is_valid:
         raise HTTPException(status_code=400, detail=f"Invalid tool code: {error_message}")
+
+    if request.input_model:
+        is_valid, error_message = validate_input_model(request.input_model)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=f"Invalid input model: {error_message}")
     
     # Check if tool exists
     async with get_defog_internal_session() as session:
@@ -426,42 +490,38 @@ async def test_custom_tool(request: CustomToolTestRequest):
     is_valid, error_message = validate_tool_code(request.tool_code)
     if not is_valid:
         raise HTTPException(status_code=400, detail=f"Invalid tool code: {error_message}")
+
+    if request.input_model:
+        is_valid, error_message = validate_input_model(request.input_model)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=f"Invalid input model: {error_message}")
     
     # Create a temporary tool for testing
-    from importlib import util
     import sys
-    import tempfile
+    import types
     import inspect
     from pydantic import BaseModel, Field
     import traceback
     
     try:
-        # Create a unique module name
         module_name = f"temp_tool_{hash(request.tool_code)}"
-        
-        # Create a temporary file with the tool code
-        with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
-            # First add the input model code if provided
-            if request.input_model:
-                # import BaseModel
-                temp_file.write(b"from pydantic import BaseModel, Field\n")
-                
-                # Add the input model
-                temp_file.write(request.input_model.encode('utf-8'))
-                temp_file.write(b'\n\n')
-            
-            # Then add the actual tool code
-            temp_file.write(request.tool_code.encode('utf-8'))
-            temp_file_path = temp_file.name
-        
-        # Import the module
-        spec = util.spec_from_file_location(module_name, temp_file_path)
-        if not spec or not spec.loader:
-            raise HTTPException(status_code=500, detail="Failed to create module specification")
-        
-        module = util.module_from_spec(spec)
+        module = types.ModuleType(module_name)
         sys.modules[module_name] = module
-        spec.loader.exec_module(module)
+
+        # Execute the input model code in a restricted namespace first
+        if request.input_model:
+            namespace = {
+                "BaseModel": BaseModel,
+                "Field": Field,
+                "__builtins__": {},
+            }
+            before_keys = set(namespace.keys())
+            exec(request.input_model, namespace)
+            for key in set(namespace.keys()) - before_keys:
+                module.__dict__[key] = namespace[key]
+
+        # Execute the tool code in the module's namespace
+        exec(request.tool_code, module.__dict__)
         
         # Find the async function in the module
         tool_func = None
@@ -495,6 +555,7 @@ async def test_custom_tool(request: CustomToolTestRequest):
             namespace = {
                 "BaseModel": BaseModel,
                 "Field": Field,
+                "__builtins__": {},
             }
             before_keys = set(namespace.keys())
             exec(request.input_model, namespace)
@@ -537,12 +598,6 @@ async def test_custom_tool(request: CustomToolTestRequest):
         raise HTTPException(status_code=500, detail=f"Error testing tool: {str(e)}")
     
     finally:
-        # Clean up
-        import os
-        if 'temp_file_path' in locals():
-            try:
-                os.unlink(temp_file_path)
-            except:
-                pass
+        # Clean up loaded module
         if module_name in sys.modules:
             del sys.modules[module_name]
