@@ -24,7 +24,7 @@ TEST_DB = {
     },
 }
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_code_interpreter_advanced_statistics():
     """
     Test the code_interpreter_tool's ability to perform advanced statistical calculations
@@ -39,7 +39,7 @@ async def test_code_interpreter_advanced_statistics():
     
     # Call the code_interpreter_tool
     result = await code_interpreter_tool(input_data)
-    
+
     # Verify the response structure
     assert "analysis_id" in result, "Missing analysis_id in result"
     assert "question" in result, "Missing question in result"
@@ -50,15 +50,14 @@ async def test_code_interpreter_advanced_statistics():
     code = result["code"]
     assert "z_score" in code or "zscore" in code, "Code does not contain z-score calculation"
     assert "std" in code, "Code does not contain standard deviation calculation"
-    
+
     # Verify the result contains z-score related information
     result_text = result["result"]
-    assert any(term in result_text.lower() for term in ["z-score", "zscore", "standard deviation", "outlier"]), "Result does not contain z-score analysis"
-    
     print(f"\nTest result preview: {result_text[:200]}...")
+    assert any(term in result_text.lower() for term in ["z-score", "zscore", "standard deviation", "outlier"]), "Result does not contain z-score analysis"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_code_interpreter_probability_analysis():
     """
     Test the code_interpreter_tool's ability to perform probability calculations
@@ -85,7 +84,7 @@ async def test_code_interpreter_probability_analysis():
     print(f"\nTest result preview: {result_text[:200]}...")
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_code_interpreter_correlation_analysis():
     """
     Test the code_interpreter_tool's ability to perform correlation analysis
@@ -112,7 +111,7 @@ async def test_code_interpreter_correlation_analysis():
     print(f"\nTest result preview: {result_text[:200]}...")
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_code_interpreter_custom_formula():
     """
     Test the code_interpreter_tool's ability to apply custom business formulas
@@ -140,7 +139,7 @@ async def test_code_interpreter_custom_formula():
     print(f"\nTest result preview: {result_text[:200]}...")
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 async def test_code_interpreter_time_series():
     """
     Test the code_interpreter_tool's ability to perform time series analysis
@@ -161,5 +160,6 @@ async def test_code_interpreter_time_series():
     
     # Verify result discusses time series components
     result_text = result["result"]
+    assert any(term in result_text.lower() for term in ["time series", "trend", "seasonal", "residual", "forecast"]), "Result does not contain time series analysis"
     
     print(f"\nTest result preview: {result_text[:200]}...")
