@@ -122,6 +122,15 @@ async def text_to_sql_tool(
         result_df = result_df.head(max_rows_displayed)
         df_truncated = True
 
+    # if a column name is repeated, append the column name with a number
+    colnames = result_df.columns.tolist()
+    for col in colnames:
+        if colnames.count(col) > 1:
+            for i in range(len(colnames)):
+                if colnames[i] == col:
+                    colnames[i] = f"{col}_{i}"
+    result_df.columns = colnames
+
     result_json = result_df.to_json(orient="records", double_precision=4, date_format="iso")
     columns = result_df.columns.astype(str).tolist()
     if result_json == "[]":
@@ -400,7 +409,6 @@ Return ONLY the Python code without any explanation, markdown formatting, or cod
         
         # Step 4: Execute the generated code in a controlled environment
         result, error = await execute_analysis_code_safely(analysis_code, sql_result.rows)
-        
         return {
             "analysis_id": str(uuid.uuid4()),
             "question": question,
@@ -441,8 +449,6 @@ async def execute_analysis_code_safely(code: str, data_dict: str) -> tuple[str, 
 
     unsafe_calls = {"eval", "exec", "open", "__import__"}
     for node in ast.walk(tree):
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            return "", "Import statements are not allowed in analysis code"
         if (
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)
