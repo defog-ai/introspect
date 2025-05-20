@@ -7,6 +7,7 @@ import sys
 import textwrap
 import uuid
 import contextlib
+import ast
 from typing import Any, Callable
 
 from tools.analysis_models import (
@@ -422,40 +423,102 @@ Return ONLY the Python code without any explanation, markdown formatting, or cod
 
 
 async def execute_analysis_code_safely(code: str, data_dict: str) -> tuple[str, str]:
-    """
-    Execute the analysis code in a safe, controlled environment.
-    Returns a tuple of (result_text, error_message)
+    """Execute analysis code in a restricted environment.
+
+    The provided ``code`` string is parsed to ensure it doesn't contain unsafe
+    constructs such as import statements or direct calls to ``exec``/``eval``.
+    A custom namespace with limited built-ins is then used to execute the code.
+
+    Returns:
+        tuple[str, str]: ``(result_text, error_message)``
     """
     data_dict = json.loads(data_dict)
-    # Create a string buffer to capture print outputs
+
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as exc:  # pragma: no cover - defensive
+        return "", f"Syntax error in analysis code: {exc}"
+
+    unsafe_calls = {"eval", "exec", "open", "__import__"}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            return "", "Import statements are not allowed in analysis code"
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in unsafe_calls
+        ):
+            return "", f"Use of '{node.func.id}' is not allowed"
+
     stdout_buffer = io.StringIO()
     result_text = ""
     error_message = ""
-    
-    # Create namespace for code execution with limited imports
+
+    def _safe_open(*_: Any, **__: Any) -> None:
+        raise PermissionError("File operations are not permitted")
+
+    def _safe_import(
+        name: str,
+        globals: dict | None = None,
+        locals: dict | None = None,
+        fromlist: tuple[str] | tuple = (),
+        level: int = 0,
+    ):
+        allowed_prefixes = (
+            "pandas",
+            "numpy",
+            "math",
+            "random",
+            "statistics",
+            "scipy",
+            "statsmodels",
+            "json",
+        )
+        if not any(name.startswith(prefix) for prefix in allowed_prefixes):
+            raise ImportError(f"Import of '{name}' is not allowed")
+        return __import__(name, globals, locals, fromlist, level)
+
+    safe_builtins: dict[str, Any] = {
+        "abs": abs,
+        "all": all,
+        "any": any,
+        "bool": bool,
+        "dict": dict,
+        "enumerate": enumerate,
+        "float": float,
+        "int": int,
+        "len": len,
+        "list": list,
+        "max": max,
+        "min": min,
+        "pow": pow,
+        "print": print,
+        "range": range,
+        "sum": sum,
+        "zip": zip,
+        "str": str,
+        "set": set,
+        "tuple": tuple,
+        "Exception": Exception,
+        "open": _safe_open,
+        "__import__": _safe_import,
+    }
+
     namespace = {
-        # Core data libraries
         "pd": pd,
         "np": np,
         "data_dict": data_dict,
-        
-        # Math and statistics
         "math": __import__("math"),
         "random": __import__("random"),
         "statistics": __import__("statistics"),
-        
-        # Advanced statistics (if available)
         "scipy": __import__("scipy") if "scipy" in sys.modules else None,
         "stats": __import__("scipy.stats") if "scipy.stats" in sys.modules else None,
         "sm": __import__("statsmodels.api") if "statsmodels.api" in sys.modules else None,
         "smf": __import__("statsmodels.formula.api") if "statsmodels.formula.api" in sys.modules else None,
-        
-        # Data encoding
         "json": json,
         "BytesIO": io.BytesIO,
-        
-        # Empty containers for results
-        "final_result": ""
+        "final_result": "",
+        "__builtins__": safe_builtins,
     }
     
     # Wrap the code to capture and return results
