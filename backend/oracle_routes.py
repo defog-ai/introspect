@@ -260,7 +260,7 @@ async def generate_report(req: GenerateReportRequest):
         # Use the original approach
         analysis_response = await generate_report_from_question(
             db_name=db_name,
-            model="claude-3-7-sonnet-latest",
+            model="claude-4-sonnet-latest",
             question=user_question,
             clarification_responses=clarification_responses,
             post_tool_func=post_tool_func,

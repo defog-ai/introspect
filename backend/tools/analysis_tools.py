@@ -275,7 +275,7 @@ async def pdf_citations_tool(
     ]
 
     response = await client.messages.create(
-        model="claude-3-7-sonnet-latest",
+        model="claude-4-sonnet-latest",
         messages=messages,
         max_tokens=4096,
     )
@@ -399,7 +399,7 @@ Return ONLY the Python code without any explanation, markdown formatting, or cod
         # Generate the analysis code using Claude
         client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         code_response = await client.messages.create(
-            model="claude-3-7-sonnet-latest",
+            model="claude-4-sonnet-latest",
             max_tokens=4000,
             messages=[
                 {"role": "user", "content": code_generation_prompt}
@@ -921,7 +921,7 @@ async def multi_agent_report_generation(
         
         # PHASE 1: DATA COLLECTION & ANALYSIS
         analyst_response = await chat_async(
-            model="claude-3-7-sonnet-latest",
+            model="claude-4-sonnet-latest",
             tools=tools,
             messages=[
                 {
@@ -1125,7 +1125,7 @@ Your report should present the information clearly for business stakeholders, wi
         
         # Make the API call with citations enabled
         response = await client.messages.create(
-            model="claude-3-7-sonnet-latest",
+            model="claude-4-sonnet-latest",
             messages=messages,
             system="""You are a professional report writer responsible for synthesizing extensive data analysis into a clear, insightful, and well-structured report.
 
