@@ -17,10 +17,7 @@ from tools.analysis_models import (
     AnswerQuestionFromDatabaseOutput,
     AnswerQuestionViaPDFCitationsInput,
     GenerateReportFromQuestionOutput,
-    GenerateReportOpenAIAgentsOutput,
 )
-from tools.analysis_agents import analysis_agent, evaluator_agent, report_agent, UserContext
-from agents import Runner
 from utils_logging import LOG_LEVEL, LOGGER
 from utils_md import get_metadata, mk_create_ddl
 from utils_sql import generate_sql_query
@@ -776,105 +773,6 @@ async def load_custom_tools():
     
     return custom_tools
 
-async def generate_report_with_agents(
-    db_name: str,
-    model: str,
-    question: str,
-    clarification_responses: str,
-    post_tool_func: Callable = None, #TODO: add hooks
-    pdf_file_ids: list[int] = [],
-    use_websearch: bool = False,
-) -> GenerateReportOpenAIAgentsOutput:
-    """
-    Generates a comprehensive analysis report using multiple OpenAI agents.
-    This route uses a multi-agent approach where:
-    1. An analyst agent generates initial data analysis
-    2. An evaluator agent determines if more research is needed
-    3. A report agent synthesizes findings into a final report
-    
-    The pipeline can loop up to 3 times to refine the analysis based on evaluator feedback.
-    """
-    try:
-        # Start with default tools
-        tools = [text_to_sql_tool, think_tool, code_interpreter_tool]
-        pdf_instruction = ""
-        if use_websearch:
-            tools.append(web_search_tool)
-        
-        if len(pdf_file_ids) > 0:
-            tools.append(pdf_citations_tool)
-        
-        # TODO: Load custom tools for this database
-        metadata = await get_metadata(db_name)
-        metadata_str = mk_create_ddl(metadata)
-
-        # Create user context to share between agents
-        context = UserContext(
-            question=question,
-            db_name=db_name,
-            metadata_str=metadata_str,
-            clarification_responses=clarification_responses,
-            pdf_file_ids=pdf_file_ids,
-        )
-
-        # Create initial prompt
-        initial_user_prompt = f"""I would like you to create a comprehensive analysis for answering: {question}
-        Feel free to continue asking multiple questions from the database if you need to.
-        {clarification_responses}
-        """
-
-        max_loops = 20
-        loop_count = 0
-        # Clone analysis agent and set tools
-        analysis_agent_tools = analysis_agent.clone(tools=tools)
-        input_items = []
-
-        while loop_count < max_loops:
-            loop_count += 1
-            LOGGER.info(f"Analysis loop {loop_count}...")
-            analysis_output = await Runner.run(analysis_agent_tools, input=initial_user_prompt, context=context)
-
-            input_items.extend(analysis_output.to_input_list())
-            evaluator_output = await Runner.run(evaluator_agent, input=input_items, context=context)
-            evaluator_result = evaluator_output.final_output
-            LOGGER.info(f"Evaluation: {evaluator_result}")
-
-            # Determine feedback based on loop count and evaluation result
-            if loop_count == max_loops or not evaluator_result.further_research_needed:
-                feedback = "Create a descriptive report with all the analyses and information gathered so far."
-            else:
-                feedback = f"Feedback: {evaluator_result.explanation}"
-                if evaluator_result.follow_up_questions:
-                    feedback += f"\nFollow-up questions: {evaluator_result.follow_up_questions}"
-
-            input_items.append({"content": feedback, "role": "user"})
-            
-            LOGGER.info(f"Input items: {input_items}")
-            if not evaluator_result.further_research_needed:
-                break
-            LOGGER.info("Rerunning analysis...")
-        
-        LOGGER.info("Creating report...")
-        report_output = await Runner.run(report_agent, input=input_items, context=context)
-
-        tool_call_ids = set()
-        for item in report_output.input:
-            if "call_id" in item:
-                tool_call_ids.add(item["call_id"])
-        return GenerateReportOpenAIAgentsOutput(
-            final_report=report_output.final_output,
-            intermediate_tool_calls=report_output.input,
-            n_tool_calls=len(tool_call_ids)
-        )
-    except Exception as e:
-        LOGGER.error(f"Error in generate_report_with_agents: {str(e)}")
-        return GenerateReportOpenAIAgentsOutput(
-            final_report="Error in generating report with agents",
-            intermediate_tool_calls=[],
-            n_tool_calls=0
-        )
-
-
 async def multi_agent_report_generation(
     db_name: str,
     question: str,
@@ -1177,86 +1075,5 @@ If adding LaTeX expressions, you MUST use these specific tags exactly and consis
             report_with_citations=[],
             sql_answers=[],
             tool_outputs=[],
-        )
-
-
-async def generate_report_from_question(
-    db_name: str,
-    model: str,
-    question: str,
-    clarification_responses: str,
-    post_tool_func: Callable,
-    pdf_file_ids: list[int] = [],
-    use_websearch: bool = False,
-) -> GenerateReportFromQuestionOutput:
-    """
-    Given an initial question for a single database, this function will call
-    text_to_sql_tool() to answer the question.
-    Then, it will use the output to generate a new question, and call
-    text_to_sql_tool() again.
-    It will continue to do this until the LLM model decides to stop.
-    """
-    try:
-        # Start with default tools
-        tools = [text_to_sql_tool, think_tool, code_interpreter_tool]
-        pdf_instruction = ""
-        if use_websearch:
-            tools.append(web_search_tool)
-        
-        if len(pdf_file_ids) > 0:
-            tools.append(pdf_citations_tool)
-            pdf_instruction = f"\nThe following PDF file ids can be searched through to help generate your answer: {pdf_file_ids}\n"
-        
-        # Load custom tools for this database
-        custom_tools = await load_custom_tools()
-        tools.extend(custom_tools)
-        metadata = await get_metadata(db_name)
-        metadata_str = mk_create_ddl(metadata)
-        response = await chat_async(
-            model=model,
-            tools=tools,
-            messages=[
-                # {"role": "developer", "content": "Formatting re-enabled"},
-                {
-                    "role": "user",
-                    "content": f"""I would like you to create a comprehensive analysis for answering this question: {question}
-
-Look in the database {db_name}, the internet, or PDF files (if provided) for your answers, and feel free to continue asking multiple questions if you need to. I would rather that you ask a lot of questions than too few. Do not ask the exact same question twice. Always ask new questions or rephrase the previous question if it led to an error.
-Dig deeper, and ask "why" questions multiple times where appropriate.
-{clarification_responses}
-The database schema is below:
-```sql
-{metadata_str}
-```
-{pdf_instruction}
-Try to break down your answer into clear and understandable categories. Please give your final answer as a descriptive report.
-""",
-                },
-            ],
-            post_tool_function=post_tool_func,
-        )
-        sql_answers = []
-        for tool_output in response.tool_outputs:
-            if tool_output.get("name") == "text_to_sql_tool":
-                result = tool_output.get("result")
-                if not result or not isinstance(
-                    result, AnswerQuestionFromDatabaseOutput
-                ):
-                    LOGGER.error(f"Invalid tool output: {tool_output}")
-                    continue
-                sql_answers.append(result)
-        return GenerateReportFromQuestionOutput(
-            report=response.content,
-            sql_answers=sql_answers,
-            tool_outputs=response.tool_outputs,
-            report_with_citations=[],
-        )
-    except Exception as e:
-        LOGGER.error(f"Error in generate_report_from_question:\n{e}")
-        return GenerateReportFromQuestionOutput(
-            report="Error in generating report from question",
-            sql_answers=[],
-            tool_outputs=[],
-            report_with_citations="",
         )
 
