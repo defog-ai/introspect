@@ -1,13 +1,11 @@
 boto3
 colorama
-defog==0.68.4
+defog==0.69.2
 fastapi
 google-auth
 httpx
 hypercorn
 numpy
-openai
-openai-agents
 openpyxl
 pandas==2.2.3
 pgvector==0.3.6
