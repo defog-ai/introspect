@@ -1,6 +1,5 @@
 boto3
-colorama
-defog==0.69.2
+defog==0.69.4
 fastapi
 google-auth
 httpx
@@ -24,7 +23,9 @@ sqlparse
 statsmodels
 uvloop
 
-# sync db connectors
+# DB CONNECTORS
+
+# synchronous
 databricks-sql-connector
 google-cloud-bigquery
 mysql-connector-python
@@ -34,7 +35,7 @@ redshift_connector
 snowflake-connector-python
 
 
-# async db connectors
+# async
 asyncpg
 aiomysql
 aiosqlite
