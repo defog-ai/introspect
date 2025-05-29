@@ -34,6 +34,8 @@ async def clarify_question(
     db_name: str,
     oracle_guidelines: str,
     max_clarifications: int = 5,
+    provider: str = "openai",
+    model_name: str = "gpt-4o",
 ) -> dict:
     metadata = await get_metadata(db_name)
     ddl = mk_create_ddl(metadata)
@@ -51,8 +53,9 @@ async def clarify_question(
     ]
 
     response = await chat_async(
+        provider=provider,
+        model=model_name,
         messages=messages,
-        model="gpt-4o",
         response_format=ClarificationOutput,
     )
 

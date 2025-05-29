@@ -12,6 +12,7 @@ async def edit_chart(
     current_chart_state: dict,
     columns: list[str],
     user_request: str,
+    provider: str = "openai",
     model_name: str = "gpt-4o"
 ):
     """
@@ -25,6 +26,7 @@ async def edit_chart(
         user_request=user_request,
     )
     response = await chat_async(
+        provider=provider,
         model=model_name,
         messages = [
             {"role": "system", "content": CHART_EDIT_SYSTEM_PROMPT},

@@ -22,6 +22,8 @@ async def infer_join_hints(
     metadata: list[dict[str, str]],
     table_descriptions: list[TableDescription],
     instructions: str,
+    provider: str = "openai",
+    model_name: str = "o4-mini",
 ) -> JoinHints:
     """
     Infer join keys for a database given the metadata, table descriptions, and instructions.
@@ -42,7 +44,8 @@ async def infer_join_hints(
     ]
     LOGGER.debug(f"Join hints user prompt: {user_prompt}")
     response = await chat_async(
-        model="o4-mini",
+        provider=provider,
+        model=model_name,
         messages=messages,
         max_completion_tokens=16384,
         response_format=JoinHints,

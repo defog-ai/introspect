@@ -12,7 +12,6 @@ import traceback
 
 import pandas as pd
 from openai import AsyncOpenAI
-from defog.llm.utils import LLM_COSTS_PER_TOKEN
 
 from .name_utils import NameUtils
 from .db_utils import DbUtils
@@ -480,14 +479,4 @@ class ExcelUtils:
         cached_input_tokens = run.usage.prompt_token_details.get("cached_tokens", 0)
         input_tokens = run.usage.prompt_tokens - cached_input_tokens
 
-        cost = input_tokens / 1000 * LLM_COSTS_PER_TOKEN[model]["input_cost_per1k"]
-        cost += output_tokens / 1000 * LLM_COSTS_PER_TOKEN[model]["output_cost_per1k"]
-        cost += (
-            cached_input_tokens
-            / 1000
-            * LLM_COSTS_PER_TOKEN[model]["cached_input_cost_per1k"]
-        )
-        cost *= 100
-        cost += 3 # cost of code interpreter session
-        LOGGER.info(f"Run cost in cents: {cost}")
         return df

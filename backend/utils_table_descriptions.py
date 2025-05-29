@@ -126,7 +126,10 @@ class TableDescriptions(BaseModel):
 
 
 async def infer_table_descriptions(
-    db_name: str, metadata: list[dict[str, str]]
+    db_name: str,
+    metadata: list[dict[str, str]],
+    provider: str = "openai",
+    model_name: str = "o4-mini",
 ) -> list[TableDescription]:
     """
     Infer table descriptions for a given database's metadata using an LLM.
@@ -156,7 +159,8 @@ async def infer_table_descriptions(
         {"role": "user", "content": user_prompt},
     ]
     response = await chat_async(
-        model="o4-mini",
+        provider=provider,
+        model=model_name,
         messages=messages,
         response_format=TableDescriptions,
     )

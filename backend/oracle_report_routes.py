@@ -527,6 +527,7 @@ Here's the report content:
             
             try:
                 response = await chat_async(
+                    provider="gemini",
                     messages=messages,
                     model="gemini-2.5-pro-exp-03-25",
                     max_completion_tokens=8191,

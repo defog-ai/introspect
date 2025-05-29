@@ -523,6 +523,7 @@ async def generate_sql_query(
     previous_context: list[Dict[str, str]] = None,
     hard_filters: list[HardFilter] = None,
     num_golden_queries: int = 4,
+    provider: str = "openai",
     model_name: str = "o3-mini",
 ):
     """
@@ -631,6 +632,7 @@ async def generate_sql_query(
 
     try:
         query = await chat_async(
+            provider=provider,
             model=model_name,
             messages=messages,
             # if model_name is a reasoning model, the temperature param will automatically be deleted in the request
@@ -690,6 +692,8 @@ async def retry_query_after_error(
     db_name: str = None,
     metadata: list[ColumnMetadata] = None,
     db_type: str = None,
+    provider: str = "openai",
+    model_name: str = "gpt-4o",
 ) -> Optional[str]:
     """
     Fix the error that occurred while generating SQL / executing the query.
@@ -720,7 +724,8 @@ async def retry_query_after_error(
     )
 
     query = await chat_async(
-        model="gpt-4o",
+        provider=provider,
+        model=model_name,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},

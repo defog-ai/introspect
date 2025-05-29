@@ -29,7 +29,6 @@ async def generate_sql_query_route(request: GenerateSQLQueryRequest):
             previous_context=request.previous_context,
             hard_filters=request.hard_filters,
             num_golden_queries=request.num_golden_queries,
-            model_name=request.model_name or "o3-mini",
         )
         if resp is None:
             return JSONResponse(

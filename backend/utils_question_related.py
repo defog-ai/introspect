@@ -13,6 +13,7 @@ async def generate_follow_on_questions(
     db_name: str = None, 
     metadata: list[ColumnMetadata] = None,
     instructions: str = None,
+    provider: str = "openai",
     model_name: str = "gpt-4o",
 ) -> list[str]:
     """
@@ -34,7 +35,8 @@ async def generate_follow_on_questions(
     )
 
     follow_on_questions = await chat_async(
-        model_name,
+        provider=provider,
+        model=model_name,
         messages = [
             {"role": "user", "content": user_prompt},
         ],

@@ -819,6 +819,7 @@ async def multi_agent_report_generation(
         
         # PHASE 1: DATA COLLECTION & ANALYSIS
         analyst_response = await chat_async(
+            provider="anthropic",
             model="claude-4-sonnet-20250514",
             tools=tools,
             messages=[
@@ -877,6 +878,7 @@ DATA ANALYSIS FINDINGS:
 """
         
         evaluator_response = await chat_async(
+            provider="openai",
             model="o4-mini",
             tools=tools,
             messages=[

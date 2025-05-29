@@ -21,6 +21,7 @@ async def generate_clarification(
     db_name: str = None,
     metadata: list[ColumnMetadata] = None,
     instructions: str | None = None,
+    provider: str = "openai",
     model_name: str = "gpt-4.1",
 ) -> str:
     """
@@ -42,6 +43,7 @@ async def generate_clarification(
     )
 
     clarifications = await chat_async(
+        provider=provider,
         model=model_name,
         messages=[
             {"role": "user", "content": user_prompt},
@@ -57,7 +59,9 @@ async def generate_clarification(
 
 
 async def turn_clarifications_into_statement(
-    clarifications: list[str], model_name: str = "gpt-4o"
+    clarifications: list[str],
+    provider: str = "openai",
+    model_name: str = "gpt-4o"
 ) -> str:
     """
     Turn a list of clarifications into a single statement.
@@ -78,7 +82,8 @@ Question: What do you mean by "best" restaurants?" Answer: those with the most r
 Question: What do you mean by the "worst" players? Answer: those with the lowest total scores Response: Return the players with the lowest total scores"""
 
     statement = await chat_async(
-        model="gpt-4o-mini",
+        provider=provider,
+        model=model_name,
         messages=[
             {"role": "user", "content": user_prompt},
         ],
@@ -107,7 +112,7 @@ async def generate_assignment_understanding(
     if len(clarification_questions) > 0:
         try:
             assignment_understanding = await turn_clarifications_into_statement(
-                clarification_questions, db_name
+                clarification_questions
             )
         except Exception as e:
             LOGGER.error(e)
@@ -125,12 +130,15 @@ class QuestionType(BaseModel):
 
 async def classify_question_type(
     question: str,
+    provider: str = "openai",
+    model_name: str = "gpt-4.1",
 ) -> QuestionType:
     """
     Classify the question type.
     """
     response = await chat_async(
-        model="gpt-4o",
+        provider=provider,
+        model=model_name,
         messages=[
             {"role": "system", "content": CLASSIFY_QUESTION_SYSTEM_PROMPT},
             {"role": "user", "content": f"Here is the user's question: `{question}`"},
