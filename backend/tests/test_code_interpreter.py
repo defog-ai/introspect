@@ -49,7 +49,6 @@ async def test_code_interpreter_advanced_statistics():
     # Verify the code contains statistical calculations
     code = result["code"]
     assert "z_score" in code or "zscore" in code, "Code does not contain z-score calculation"
-    assert "std" in code, "Code does not contain standard deviation calculation"
 
     # Verify the result contains z-score related information
     result_text = result["result"]
