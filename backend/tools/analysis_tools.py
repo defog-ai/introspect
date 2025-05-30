@@ -657,6 +657,7 @@ Provide structured analysis with your key findings after collecting sufficient d
 """
                 }
             ],
+            reasoning_effort="low",
             post_tool_function=post_tool_func,
         )
         
@@ -834,6 +835,7 @@ If adding LaTeX expressions, you MUST use these specific tags exactly and consis
             documents=documents,
             model=model,
             provider=provider,
+            max_tokens=8192,
         )
         
         # Convert response to expected format
