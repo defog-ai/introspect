@@ -2,12 +2,8 @@ import pandas as pd
 import os
 import numpy as np
 import json
-import io
-import sys
-import textwrap
 import uuid
-import contextlib
-import ast
+import time
 from typing import Any, Callable
 
 from tools.analysis_models import (
@@ -23,8 +19,10 @@ from utils_md import get_metadata, mk_create_ddl
 from utils_sql import generate_sql_query
 from db_utils import get_db_type_creds
 from defog.llm.utils import chat_async
+from defog.llm.web_search import web_search_tool as web_search
+from defog.llm.citations import citations_tool
+from defog.llm.code_interp import code_interpreter_tool as code_interpreter
 from defog.query import async_execute_query_once
-from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 from utils_oracle import get_pdf_content
 
@@ -159,70 +157,34 @@ async def web_search_tool(
     # if gemini_api_key is set, use gemini
     # else, use openai
     try:
-        if os.environ.get("GEMINI_API_KEY"):
-            from google import genai
-            from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
-
-            client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-            model_id = "gemini-2.5-pro-preview-03-25"
-
-            google_search_tool = Tool(
-                google_search = GoogleSearch()
-            )
-
-            LOGGER.info(f"Calling Gemini API with question: {input.question}")
-            response = client.models.generate_content(
-                model=model_id,
-                contents=input.question + "\nNote: you must **always** use the google search tool to answer questions - no exceptions.",
-                config=GenerateContentConfig(
-                    tools=[google_search_tool],
-                    response_modalities=["TEXT"],
-                )
-            )
-
-            sources = []
-
-            if response.candidates:
-                for candidate in response.candidates:
-                    if candidate.grounding_metadata and candidate.grounding_metadata.grounding_chunks:
-                        for chunk in candidate.grounding_metadata.grounding_chunks:
-                            sources.append({
-                                "source": chunk.web.title,
-                                "url": chunk.web.uri
-                            })
-            
-            return {
-                "analysis_id": str(uuid.uuid4()),
-                "answer": response.text,
-                "reference_sources": sources
-            }
+        if os.environ.get("OPENAI_API_KEY"):
+            provider = "openai"
+            model = "gpt-4.1"
+            LOGGER.info("Using OpenAI for web search tool")
+        elif os.environ.get("GEMINI_API_KEY"):
+            provider = "gemini"
+            model = "gemini-2.5-pro-preview-05-06"
+            LOGGER.info("Using Gemini for web search tool")
+        elif os.environ.get("ANTHROPIC_API_KEY"):
+            provider = "anthropic"
+            model = "claude-4-sonnet-20250514"
+            LOGGER.info("Using Anthropic for web search tool")
         else:
-            LOGGER.info(f"Calling OpenAI API with question: {input.question}")
-            client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-            response = await client.chat.completions.create(
-                model="gpt-4o-search-preview",
-                web_search_options={
-                    "search_context_size": "high",
-                },
-                messages=[
-                    {"role": "user", "content": input.question},
-                ],
-            )
-            
-            LOGGER.info(f"Received response from OpenAI API")
-            
-            message = response.choices[0].message
-            # Handle the case where grounding_chunks might be None
-            sources = []
-            for annotation in message.annotations:
-                if annotation.type == "url_citation":
-                    sources.append({
-                        "source": annotation.url_citation.title,
-                        "url": annotation.url_citation.url
-                    })
+            raise ValueError("No API key found for web search tool")
+
+        response = await web_search(
+            provider=provider,
+            model=model,
+            question=input.question + "\nNote: you must **always** use the google search tool to answer questions - no exceptions.",
+            max_tokens=4096,
+        )
+
+        sources = response["websites_cited"]
+        search_results = response["search_results"]
+        
         return {
             "analysis_id": str(uuid.uuid4()),
-            "answer": message.content,
+            "answer": search_results,
             "reference_sources": sources
         }
     except Exception as e:
@@ -356,214 +318,55 @@ The query should NOT do any data cleaning, preprocessing, or transformations. Th
             "result": "",
         }
     
-    # Parse the data to get sample rows
-    sample_data = sql_result.rows[:5] if len(sql_result.rows) > 5 else sql_result.rows
-    
-    # Step 3: Generate analysis code using LLM
-    
-    code_generation_prompt = f"""Please generate Python code to analyze this question: "{question}"
+    csv_string = pd.DataFrame(
+        json.loads(sql_result.rows),
+        columns=sql_result.columns
+    ).to_csv(index=False)
 
-The data needed to answer the question is stored in a dictionary called 'data_dict'.
-
-It was generated from the following SQL query:
-```sql
-{sql_result.sql}
-```
-
-First 5 rows of data (as a dictionary) for reference:
-{sample_data}
-
-Create Python code that:
-1. Loads the data using pd.DataFrame(data_dict)
-2. Performs appropriate data cleaning if needed
-3. Uses pandas, numpy, scipy, or statsmodels to analyze the data
-5. Returns a comprehensive answer to the question with analysis explanation
-
-Important guidelines:
-- The code should be self-contained, with all necessary imports
-- Store the final text result in the 'final_result' variable
-- Handle potential errors with try/except blocks
-- Do not reference external files or services
-- Keep computation reasonable for a web service (avoid extremely intensive calculations)
-- NEVER create any mock data or sample data. Only use the data provided.
-- NEVER import matplotlib or any other plotting library. We cannot generate any plots.
-
-
-Return ONLY the Python code without any explanation, markdown formatting, or code block markers.
-"""
+    if os.environ.get("GEMINI_API_KEY"):
+        provider = "gemini"
+        model = "gemini-2.5-pro-preview-05-06"
+        LOGGER.info("Using Gemini for code interpreter tool")
+    elif os.environ.get("ANTHROPIC_API_KEY"):
+        provider = "anthropic"
+        model = "claude-4-sonnet-20250514"
+        LOGGER.info("Using Anthropic for code interpreter tool")
+    elif os.environ.get("OPENAI_API_KEY"):
+        provider = "openai"
+        model = "gpt-4.1"
+        LOGGER.info("Using OpenAI for code interpreter tool")
+    else:
+        raise ValueError("No API key found for OpenAI, Anthropic, or Gemini. Please set one of these environment variables.")
     
     try:
-        # Generate the analysis code using Claude
-        client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-        code_response = await client.messages.create(
-            model="claude-4-sonnet-20250514",
-            max_tokens=4000,
-            messages=[
-                {"role": "user", "content": code_generation_prompt}
-            ]
+        t1 = time.time()
+        code_interpreter_result = await code_interpreter(
+            question=question,
+            provider=provider,
+            model=model,
+            csv_string=csv_string
         )
-        analysis_code = code_response.content[0].text
+        t2 = time.time()
+        LOGGER.info(f"Code interpreter tool took {t2 - t1} seconds")
         
-        # Step 4: Execute the generated code in a controlled environment
-        result, error = await execute_analysis_code_safely(analysis_code, sql_result.rows)
         return {
             "analysis_id": str(uuid.uuid4()),
             "question": question,
-            "code": analysis_code,
-            "result": result,
-            "error": error,
+            "code": code_interpreter_result["code"],
+            "result": code_interpreter_result["output"],
+            "error": "",
             "sql": sql_result.sql
         }
-        
+
     except Exception as e:
-        LOGGER.error(f"Error in code interpreter: {str(e)}")
+        LOGGER.error(f"Error running code interpreter: {e}")
         return {
             "analysis_id": str(uuid.uuid4()),
             "question": question,
-            "error": f"Error generating or executing analysis: {str(e)}",
+            "error": f"Error running code interpreter: {e}",
             "code": "",
             "result": "",
-            "sql": sql_result.sql if hasattr(sql_result, "sql") else ""
         }
-
-
-async def execute_analysis_code_safely(code: str, data_dict: str) -> tuple[str, str]:
-    """Execute analysis code in a restricted environment.
-
-    The provided ``code`` string is parsed to ensure it doesn't contain unsafe
-    constructs such as import statements or direct calls to ``exec``/``eval``.
-    A custom namespace with limited built-ins is then used to execute the code.
-    
-    This function also restricts file system access, particularly preventing
-    access to sensitive directories like /etc.
-
-    Returns:
-        tuple[str, str]: ``(result_text, error_message)``
-    """
-    data_dict = json.loads(data_dict)
-
-    try:
-        tree = ast.parse(code)
-    except SyntaxError as exc:  # pragma: no cover - defensive
-        return "", f"Syntax error in analysis code: {exc}"
-
-    unsafe_calls = {"eval", "exec", "open", "__import__"}
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id in unsafe_calls
-        ):
-            return "", f"Use of '{node.func.id}' is not allowed"
-            
-    # Check for direct attempts to access /etc via string literals
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Str) and node.s and isinstance(node.s, str):
-            path = node.s
-            if path.startswith('/etc/'):
-                return "", f"Access to /etc directory is not permitted"
-
-    stdout_buffer = io.StringIO()
-    result_text = ""
-    error_message = ""
-
-    def _safe_open(*_: Any, **__: Any) -> None:
-        raise PermissionError("File operations are not permitted")
-
-    def _safe_import(
-        name: str,
-        globals: dict | None = None,
-        locals: dict | None = None,
-        fromlist: tuple[str] | tuple = (),
-        level: int = 0,
-    ):
-        allowed_prefixes = (
-            "pandas",
-            "numpy",
-            "math",
-            "random",
-            "statistics",
-            "scipy",
-            "statsmodels",
-            "json",
-        )
-        if not any(name.startswith(prefix) for prefix in allowed_prefixes):
-            raise ImportError(f"Import of '{name}' is not allowed")
-        return __import__(name, globals, locals, fromlist, level)
-
-    safe_builtins: dict[str, Any] = {
-        "abs": abs,
-        "all": all,
-        "any": any,
-        "bool": bool,
-        "dict": dict,
-        "enumerate": enumerate,
-        "float": float,
-        "int": int,
-        "len": len,
-        "list": list,
-        "max": max,
-        "min": min,
-        "pow": pow,
-        "print": print,
-        "range": range,
-        "sum": sum,
-        "zip": zip,
-        "str": str,
-        "set": set,
-        "tuple": tuple,
-        "Exception": Exception,
-        "open": _safe_open,
-        "__import__": _safe_import,
-    }
-
-    namespace = {
-        "pd": pd,
-        "np": np,
-        "data_dict": data_dict,
-        "math": __import__("math"),
-        "random": __import__("random"),
-        "statistics": __import__("statistics"),
-        "scipy": __import__("scipy") if "scipy" in sys.modules else None,
-        "stats": __import__("scipy.stats") if "scipy.stats" in sys.modules else None,
-        "sm": __import__("statsmodels.api") if "statsmodels.api" in sys.modules else None,
-        "smf": __import__("statsmodels.formula.api") if "statsmodels.formula.api" in sys.modules else None,
-        "json": json,
-        "BytesIO": io.BytesIO,
-        "final_result": "",
-        "__builtins__": safe_builtins,
-    }
-    
-    # Wrap the code to capture and return results
-    wrapped_code = f"""
-try:
-    # Execute the analysis code
-{textwrap.indent(code, '    ')}
-    
-except Exception as e:
-    final_result = f"Error during execution: {{str(e)}}"
-"""
-    
-    try:
-        # Redirect stdout to capture print statements
-        with contextlib.redirect_stdout(stdout_buffer):
-            # Execute code with restricted globals
-            exec(wrapped_code, namespace)
-        
-        # Get the captured output
-        stdout_output = stdout_buffer.getvalue()
-        
-        # Get any result value
-        result_text = namespace.get("final_result", "")
-        if not result_text and stdout_output:
-            result_text = stdout_output
-        
-        
-    except Exception as e:
-        error_message = f"Error executing code: {str(e)}"
-        LOGGER.error(error_message)
-    
-    return result_text, error_message
 
 
 async def load_custom_tools():
