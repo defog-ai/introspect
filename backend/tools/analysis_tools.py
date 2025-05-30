@@ -731,12 +731,8 @@ First identify what's missing or could be improved, then use database queries to
         # PHASE 3: REPORT SYNTHESIS WITH CITATIONS
         # Prepare document sources from tool outputs
         
-        # Initialize Anthropic client
-        from anthropic import AsyncAnthropic
-        client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-        
         # Create document content for each tool output (as separate documents)
-        document_contents = []
+        documents = []
         for idx, output in enumerate(all_tool_outputs):
             tool_name = output.get("name", "Unknown")
             
@@ -781,19 +777,22 @@ First identify what's missing or could be improved, then use database queries to
             
             # Add the document to the list if it has content
             if document_data:
-                document_contents.append({
-                    "type": "document",
-                    "source": {
-                        "type": "text",
-                        "media_type": "text/plain",
-                        "data": document_data
-                    },
-                    "title": document_title,
-                    "citations": {"enabled": True},
+                documents.append({
+                    "document_name": document_title,
+                    "document_content": document_data,
                 })
         
-        # Prepare text content including Phase 1 and Phase 2 reports
-        text_content = f"""I need you to synthesize all the provided analyses into a comprehensive final report that answers this original question:
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            provider = "anthropic"
+            model = "claude-4-sonnet-20250514"
+        elif os.environ.get("OPENAI_API_KEY"):
+            provider = "openai"
+            model = "gpt-4.1"
+        else:
+            raise ValueError("No API key found for OpenAI or Anthropic. Please set one of these environment variables.")
+
+        citations_result = await citations_tool(
+            question="""I need you to synthesize all the provided analyses into a comprehensive final report that answers this original question:
 
 {question}
 
@@ -809,28 +808,9 @@ Here are the previous analysis phases to help with your synthesis:
 
 Use the documents to source information with specific citations. Create a well-structured document with clear sections, highlighting key insights and supporting them with specific data points.
 
-Your report should present the information clearly for business stakeholders, with an executive summary, logical structure, and proper formatting."""
-        
-        # Create content messages with citations enabled for individual tool calls
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": text_content
-                    },
-                    # Add all individual document contents
-                    *document_contents
-                ]
-            }
-        ]
-        
-        # Make the API call with citations enabled
-        response = await client.messages.create(
-            model="claude-4-sonnet-20250514",
-            messages=messages,
-            system="""You are a professional report writer responsible for synthesizing extensive data analysis into a clear, insightful, and well-structured report.
+Your report should present the information clearly for business stakeholders, with an executive summary, logical structure, and proper formatting.
+""",
+            instructions="""You are a professional report writer responsible for synthesizing extensive data analysis into a clear, insightful, and well-structured report.
 
 Your report should:
 1. Begin with a concise executive summary of key findings
@@ -851,24 +831,18 @@ For any mathematical expressions or formulas in your report, use LaTeX, wrapped 
 
 
 If adding LaTeX expressions, you MUST use these specific tags exactly and consistently as shown above. This is required to properly render mathematical equations. Failure to use these tags correctly will result in LaTeX content not being properly rendered. Do NOT use `$` or `$$` conventions, they cannot be distinguished from currencies.""",
-            temperature=0.3,
-            max_tokens=8191,
+            documents=documents,
+            model=model,
+            provider=provider,
         )
         
-        LOGGER.info(f"Report response: {response}")
-
         # Convert response to expected format
-        response_text = ""
-        for item in response.content:
-            if item.type == "text":
-                response_text += item.text
-        
-        response_with_citations = [item.to_dict() for item in response.content]
-        
+        response_text = "".join([item["text"] for item in citations_result])
+
         # Return the final output
         return GenerateReportFromQuestionOutput(
             report=response_text,
-            report_with_citations=response_with_citations,
+            report_with_citations=citations_result,
             sql_answers=all_sql_answers,
             tool_outputs=all_tool_outputs,
         )
