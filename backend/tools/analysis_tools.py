@@ -639,7 +639,7 @@ You should:
 6. Run follow-up queries based on initial findings to go deeper
 7. Cite sources for all data and insights in the final report
 
-The database schema is:
+The database name is `{db_name}` and the schema is:
 ```sql
 {metadata_str}
 ```"""
@@ -648,7 +648,7 @@ The database schema is:
                     "role": "user",
                     "content": f"""I need comprehensive data analysis for this question: {question}
 
-Use the database {db_name}, web search (if appropriate), and any PDF files to thoroughly research this question. Ask multiple questions to explore different aspects. Dig deeper into initial findings to uncover insights, patterns and anomalies.
+Use the database name {db_name}, web search (if appropriate), and any PDF files to thoroughly research this question. Ask multiple questions to explore different aspects. Dig deeper into initial findings to uncover insights, patterns and anomalies.
 
 {clarification_responses}
 {pdf_instruction}
@@ -697,11 +697,10 @@ Your tasks are to:
 4. Ensure all parts of the original question have been addressed
 5. Consider whether additional context (time periods, demographics, etc.) is needed
 
-The database schema is:
+The database name is {db_name} and the schema is:
 ```sql
 {metadata_str}
 ```
-The database name is {db_name}
 
 {pdf_instruction}
 """
