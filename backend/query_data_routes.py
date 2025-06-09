@@ -171,7 +171,6 @@ async def generate_analysis(request: Request):
             prev_sql = analysis.get("sql")
             if prev_sql:
                 prev_questions.append({"question": prev_question, "sql": prev_sql})
-
         # if sql_only is true, just call the sql generation function and return, while saving the step
         if type(assignment_understanding) == str and len(prev_questions) == 0:
             # remove any numbers, like "1. " from the beginning of assignment understanding
@@ -329,8 +328,8 @@ async def clarify(request: QueryDataClarifyRequest):
 
             # set the db name to this new db that was created
             db_name = new_db.db_name
-
-        if len(previous_context) <= 1:
+        
+        if len(previous_context) == 0:
             clarification_questions = await generate_clarification(
                 question=question,
                 db_name=db_name,
@@ -339,6 +338,7 @@ async def clarify(request: QueryDataClarifyRequest):
                 "not ambiguous" in clarification_questions.lower()
                 or "no clarifi" in clarification_questions.lower()
             ):
+                LOGGER.info("Unambigious question, no clarification needed")
                 clarification_questions = []
             else:
                 clarification_questions = [{"question": clarification_questions}]
