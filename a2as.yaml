@@ -1,0 +1,827 @@
+manifest:
+  version: "0.1.2"
+  schema: https://a2as.org/cert/schema
+  subject:
+    name: defog-ai/introspect
+    source: https://github.com/defog-ai/introspect
+    branch: main
+    commit: "b77636c6"
+    scope: [backend/query_data/analysis_prompts.py, backend/tools/analysis_agents.py, backend/tools/analysis_tools.py, backend/utils_chart.py,
+      backend/utils_clarification.py, backend/utils_file_uploads/excel_utils.py, backend/utils_oracle.py, backend/utils_question_related.py,
+      backend/utils_sql.py]
+  issued:
+    by: A2AS.org
+    at: '2026-01-26T16:12:26Z'
+  signatures:
+    digest: sha256:eK-LxsVUtVKsJejH2GJHIbSMATRyuvu9xnyNgc_4QWU
+    key: ed25519:VkQEIUajNa6dQaEQyPl69jmvqwLpwzSlzX7Ns0x7kTw
+    sig: ed25519:9jpITaQQM_XM5ljca2Vxa2TbT6rebXkjCnL19AEzKGh0ZF0KrsAF5U2MIg7CI3bHrXvce9O7I2nYJAm-ouMHDQ
+
+agents:
+  analysis_agent:
+    type: instance
+    models: [gpt-4.1]
+    params:
+      name: data analyst
+      instructions: [analyst_instructions]
+  evaluator_agent:
+    type: instance
+    models: [gpt-4.1]
+    params:
+      name: evaluator
+      output_type: EvaluatorAgentOutput
+      instructions: [Your task is to evaluate all current analyses and their results and determine if the research is comprehensive
+          enough or if more follow-up questions are needed. Always consider the user's question from multiple perspectives
+          and assess if the current research addresses all important aspects of the original question., 'If you believe more
+          research is needed:', '1. List 1-3 specific follow-up questions that would address important gaps in the current
+          research but remain in context of the original question, database schema and provided PDFs. IMPORTANT: The questions
+          MUST be phrased in a way that can be answered by the database, the internet, or provided PDFs.', 2. Briefly explain
+          why the existing research is insufficient to answer the original question., 'If you believe the research is already
+          comprehensive:', 1. State that no further research is needed, 2. Briefly explain why the existing research adequately
+          answers the original question or why the original question is not answerable with the available tools.]
+  report_agent:
+    type: instance
+    models: [gpt-4o]
+    params:
+      name: report generator
+      instructions: [report_instructions]
+
+models:
+  gpt-4.1:
+    type: default
+    agents: [analysis_agent, evaluator_agent]
+  gpt-4o:
+    type: literal
+    agents: [report_agent]
+
+imports:
+  Agent: agents.Agent
+  AnalysisData: query_data_models.AnalysisData
+  AnswerQuestionFromDatabaseInput: tools.analysis_models.AnswerQuestionFromDatabaseInput
+  AnswerQuestionFromDatabaseOutput: tools.analysis_models.AnswerQuestionFromDatabaseOutput
+  AnswerQuestionFromDatabaseRequest: request_models.AnswerQuestionFromDatabaseRequest
+  AnswerQuestionInput: tools.analysis_models.AnswerQuestionInput
+  AnswerQuestionViaPDFCitationsInput: tools.analysis_models.AnswerQuestionViaPDFCitationsInput
+  Any: typing.Any
+  APIRouter: fastapi.APIRouter
+  assert_frame_equal: pandas.testing.assert_frame_equal
+  assert_series_equal: pandas.testing.assert_series_equal
+  ast: ast
+  async_execute_query_once: defog.query.async_execute_query_once
+  AsyncAnthropic: anthropic.AsyncAnthropic
+  AsyncDefog: defog.AsyncDefog
+  asyncio: asyncio
+  AsyncOpenAI: openai.AsyncOpenAI
+  AsyncSession: sqlalchemy.ext.asyncio.AsyncSession
+  Awaitable: typing.Awaitable
+  base64: base64
+  BaseModel: pydantic.BaseModel
+  boto3: boto3
+  BytesIO: io.BytesIO
+  Callable: typing.Callable
+  can_parse_date: legacy.can_parse_date
+  can_parse_time: legacy.can_parse_time
+  chat_async: defog.llm.utils.chat_async
+  citations_tool: defog.llm.citations.citations_tool
+  Clarification: oracle_models.Clarification
+  clarify_question: utils_oracle.clarify_question
+  classify_question_type: utils_clarification.classify_question_type
+  clean_table_name: legacy.clean_table_name
+  code_interpreter: defog.llm.code_interp.code_interpreter_tool
+  collections: collections
+  ColumnMetadata: request_models.ColumnMetadata
+  compare_query_results: utils_sql.compare_query_results
+  convert_values_to_postgres_type: legacy.convert_values_to_postgres_type
+  create_async_engine: sqlalchemy.ext.asyncio.create_async_engine
+  create_database: sqlalchemy_utils.create_database
+  create_table_sql: legacy.create_table_sql
+  CSVUtils: csv_utils.CSVUtils
+  CustomToolCreateRequest: request_models.CustomToolCreateRequest
+  CustomToolDeleteRequest: request_models.CustomToolDeleteRequest
+  CustomToolListRequest: request_models.CustomToolListRequest
+  CustomToolRequest: request_models.CustomToolRequest
+  CustomTools: db_models.CustomTools
+  CustomToolToggleRequest: request_models.CustomToolToggleRequest
+  CustomToolUpdateRequest: request_models.CustomToolUpdateRequest
+  data_fetcher_and_aggregator: query_data.data_fetching.data_fetcher_and_aggregator
+  database_exists: sqlalchemy_utils.database_exists
+  DataFetcherInputs: query_data_models.DataFetcherInputs
+  datetime: datetime.datetime
+  DateTimeUtils: datetime_utils.DateTimeUtils
+  DbDetails: request_models.DbDetails
+  DbUtils: db_utils.DbUtils
+  deduplicate_columns: utils_sql.deduplicate_columns
+  DEFAULT_OPENAI_MODEL: analysis_prompts.DEFAULT_OPENAI_MODEL
+  DEFAULT_OPENAI_SYSTEM_PROMPT: analysis_prompts.DEFAULT_OPENAI_SYSTEM_PROMPT
+  DEFAULT_OPENAI_USER_PROMPT: analysis_prompts.DEFAULT_OPENAI_USER_PROMPT
+  delete: sqlalchemy.delete
+  delete_pdf_file: utils_oracle.delete_pdf_file
+  Depends: fastapi.Depends
+  Dict: typing.Dict
+  edit_chart: utils_chart.edit_chart
+  engine: db_config.engine
+  Enum: enum.Enum
+  EvaluatorAgentOutput: tools.analysis_models.EvaluatorAgentOutput
+  ExcelUtils: excel_utils.ExcelUtils
+  exp: sqlglot.exp
+  export_df_to_db: legacy.export_df_to_db
+  export_df_to_postgres: legacy.export_df_to_postgres
+  fetch_query_into_df: tool_code_utilities.fetch_query_into_df
+  File: request_models.File
+  flag_modified: sqlalchemy.orm.attributes.flag_modified
+  format_sql: generic_utils.format_sql
+  futures: concurrent.futures
+  generate_assignment_understanding: utils_clarification.generate_assignment_understanding
+  generate_clarification: utils_clarification.generate_clarification
+  generate_follow_on_questions: utils_question_related.generate_follow_on_questions
+  generate_sql_query: utils_sql.generate_sql_query
+  GenerateReportFromQuestionOutput: tools.analysis_models.GenerateReportFromQuestionOutput
+  GenerateReportOpenAIAgentsOutput: tools.analysis_models.GenerateReportOpenAIAgentsOutput
+  GenerateSQLQueryRequest: request_models.GenerateSQLQueryRequest
+  get_all_analyses: db_analysis_utils.get_all_analyses
+  get_all_table_descriptions: utils_table_descriptions.get_all_table_descriptions
+  get_analysis: db_analysis_utils.get_analysis
+  get_assignment_understanding: db_analysis_utils.get_assignment_understanding
+  get_closest_golden_queries: utils_golden_queries.get_closest_golden_queries
+  get_db_info: db_utils.get_db_info
+  get_db_type_creds: db_utils.get_db_type_creds
+  get_defog_internal_session: db_config.get_defog_internal_session
+  get_embedding: utils_embedding.get_embedding
+  get_instructions: utils_instructions.get_instructions
+  get_metadata: utils_md.get_metadata
+  get_oracle_guidelines: utils_oracle.get_oracle_guidelines
+  get_pdf_content: utils_oracle.get_pdf_content
+  get_project_pdf_files: utils_oracle.get_project_pdf_files
+  guess_column_type: legacy.guess_column_type
+  HardFilter: request_models.HardFilter
+  HTTPException: fastapi.HTTPException
+  importlib: importlib
+  initialise_analysis: db_analysis_utils.initialise_analysis
+  insert: sqlalchemy.insert
+  io: io
+  is_date_column_name: legacy.is_date_column_name
+  is_sorry: generic_utils.is_sorry
+  is_time_column_name: legacy.is_time_column_name
+  json: json
+  JSONResponse: fastapi.responses.JSONResponse
+  List: typing.List
+  Literal: typing.Literal
+  LOG_LEVEL: utils_logging.LOG_LEVEL
+  log_timings: utils_logging.log_timings
+  LOGGER: utils_logging.LOGGER
+  logging: logging
+  mk_create_ddl: utils_md.mk_create_ddl
+  mk_df: utils_df.mk_df
+  multi_agent_report_generation: tools.analysis_tools.multi_agent_report_generation
+  NameUtils: name_utils.NameUtils
+  np: numpy
+  Optional: typing.Optional
+  OracleGuidelines: db_models.OracleGuidelines
+  OracleReports: db_models.OracleReports
+  os: os
+  parse_one: sqlglot.parse_one
+  ParserError: pandas.errors.ParserError
+  partial: functools.partial
+  pd: pandas
+  pdf_citations_tool: tools.analysis_tools.pdf_citations_tool
+  PDFFiles: db_models.PDFFiles
+  PDFSearchRequest: query_data_models.PDFSearchRequest
+  post_tool_call_func: utils_oracle.post_tool_call_func
+  POSTGRES_RESERVED_WORDS: constants.POSTGRES_RESERVED_WORDS
+  PreviousContextItem: query_data_models.PreviousContextItem
+  Project: db_models.Project
+  pydantic: pydantic
+  QuestionAnswer: request_models.QuestionAnswer
+  re: re
+  redis_client: db_config.redis_client
+  Request: fastapi.Request
+  RerunRequest: query_data_models.RerunRequest
+  resend: resend
+  Response: fastapi.responses.Response
+  retry_query_after_error: utils_sql.retry_query_after_error
+  RunContextWrapper: agents.RunContextWrapper
+  safe_sql: utils_sql.safe_sql
+  sanitize_column_name: legacy.sanitize_column_name
+  save_and_log: utils_logging.save_and_log
+  save_timing: utils_logging.save_timing
+  select: sqlalchemy.future.select
+  Semaphore: asyncio.Semaphore
+  set_metadata: utils_md.set_metadata
+  set_oracle_guidelines: utils_oracle.set_oracle_guidelines
+  set_oracle_report: utils_oracle.set_oracle_report
+  sqlparse: sqlparse
+  sys: sys
+  TableDescription: request_models.TableDescription
+  tempfile: tempfile
+  ThinkToolInput: tools.analysis_models.ThinkToolInput
+  time: time
+  to_float_if_possible: legacy.to_float_if_possible
+  traceback: traceback
+  Tuple: typing.Tuple
+  TypeUtils: type_utils.TypeUtils
+  Union: typing.Union
+  update: sqlalchemy.update
+  update_analysis_data: db_analysis_utils.update_analysis_data
+  update_db_type_creds: db_utils.update_db_type_creds
+  update_project_files: utils_oracle.update_project_files
+  upload_files_to_db: file_upload_routes.upload_files_to_db
+  upload_pdf_files: utils_oracle.upload_pdf_files
+  UserRequest: request_models.UserRequest
+  uuid: uuid
+  uuid4: uuid.uuid4
+  validate_user_request: auth_utils.validate_user_request
+  warnings: warnings
+  web_search: defog.llm.web_search.web_search_tool
+  web_search_tool: tools.analysis_tools.web_search_tool
+  WebSearchRequest: request_models.WebSearchRequest
+
+functions:
+  add_hard_filters:
+    type: sync
+    module: backend.utils_sql
+    args: [sql, hard_filters]
+    params:
+      returns: str
+  add_schema_to_tables:
+    type: sync
+    module: backend.utils_sql
+    args: [query, schema]
+  alphanum_key:
+    type: sync
+    module: backend.tool_code_utilities
+    args: [key]
+  analyse_data_streaming:
+    type: async
+    module: backend.query_data.core_functions
+    args: [question, data_csv, sql]
+  analyst_instructions:
+    type: sync
+    module: backend.tools.analysis_agents
+    args: [wrapper, agent]
+    params:
+      returns: str
+  answer_question_from_database_route:
+    type: async
+    module: backend.tools.tool_routes
+    args: [request]
+  append_thinking_step_to_oracle_report:
+    type: async
+    module: backend.utils_oracle
+    args: [report_id, thinking_step]
+  apply_filters_to_select:
+    type: sync
+    module: backend.utils_sql
+    args: [select_node]
+  build_filter_expr:
+    type: sync
+    module: backend.utils_sql
+    args: [hf, alias]
+    params:
+      returns: exp.Expression
+  clarify:
+    type: async
+    module: backend.query_data_routes
+    args: [request]
+  clarify_question:
+    type: async
+    module: backend.utils_oracle
+    args: [user_question, db_name, oracle_guidelines, max_clarifications, provider, model_name]
+    params:
+      returns: dict
+  clarify_question_endpoint:
+    type: async
+    module: backend.oracle_routes
+    args: [req]
+  classify_question_type:
+    type: async
+    module: backend.utils_clarification
+    args: [question, provider, model_name]
+    params:
+      returns: QuestionType
+  clean_csv_openai:
+    type: async
+    module: backend.utils_file_uploads.csv_utils
+    args: [table_name, df]
+    params:
+      returns: pd.DataFrame
+  clean_csv_pd:
+    type: async
+    module: backend.utils_file_uploads.csv_utils
+    args: [csv_buffer]
+    params:
+      returns: pd.DataFrame
+  clean_excel_openai:
+    type: async
+    module: backend.utils_file_uploads.excel_utils
+    args: [table_name, df]
+    params:
+      returns: pd.DataFrame
+  clean_excel_pd:
+    type: async
+    module: backend.utils_file_uploads.excel_utils
+    args: [excel_file]
+    params:
+      returns: dict
+  clean_generated_query:
+    type: sync
+    module: backend.utils_sql
+    args: [query]
+  code_interpreter_tool:
+    type: async
+    module: backend.tools.analysis_tools
+    args: [input]
+    params:
+      returns: dict
+  collect_tables:
+    type: sync
+    module: backend.utils_sql
+    args: [node, current_select]
+  compare_df:
+    type: sync
+    module: backend.utils_sql
+    args: [df_gold, df_gen, question, query_gold, query_gen]
+    params:
+      returns: bool
+  compare_query_results:
+    type: async
+    module: backend.utils_sql
+    args: [query_gold, query_gen, df_gen, question, db_type, db_creds]
+    params:
+      returns: Dict
+  convert:
+    type: sync
+    module: backend.tool_code_utilities
+    args: [text]
+  create_analysis_route:
+    type: async
+    module: backend.query_data_routes
+    args: [request]
+  create_custom_tool:
+    type: async
+    module: backend.tools.tool_routes
+    args: [request]
+  data_fetcher_and_aggregator:
+    type: async
+    module: backend.query_data.data_fetching
+    args: [question, db_name, hard_filters, previous_context]
+    params:
+      returns: Tuple
+  deduplicate_columns:
+    type: sync
+    module: backend.utils_sql
+    args: [df]
+    params:
+      returns: pd.DataFrame
+  delete_custom_tool:
+    type: async
+    module: backend.tools.tool_routes
+    args: [request]
+  delete_pdf:
+    type: async
+    module: backend.file_upload_routes
+    args: [file_id, token, db_name]
+  delete_pdf_file:
+    type: async
+    module: backend.utils_oracle
+    args: [db_name, file_id]
+    params:
+      returns: bool
+  detect_repeating_pattern:
+    type: sync
+    module: backend.utils_file_uploads.excel_utils
+    args: [str1, str2]
+  download_pdf:
+    type: async
+    module: backend.file_upload_routes
+    args: [file_id]
+  edit_chart:
+    type: async
+    module: backend.utils_chart
+    args: [current_chart_state, columns, user_request, provider, model_name]
+  edit_chart_route:
+    type: async
+    module: backend.query_data_routes
+    args: [request]
+  execute_sql:
+    type: async
+    module: backend.utils_sql
+    args: [db_type, db_creds, sql]
+    params:
+      returns: Tuple
+  fetch_query_into_df:
+    type: async
+    module: backend.tool_code_utilities
+    args: [db_name, sql_query, question]
+    params:
+      returns: Tuple
+  generate_analysis:
+    type: async
+    module: backend.query_data_routes
+    args: [request]
+  generate_assignment_understanding:
+    type: async
+    module: backend.utils_clarification
+    args: [analysis_id, clarification_questions, db_name]
+  generate_clarification:
+    type: async
+    module: backend.utils_clarification
+    args: [question, db_name, metadata, instructions, provider, model_name]
+    params:
+      returns: str
+  generate_follow_on_questions:
+    type: async
+    module: backend.utils_question_related
+    args: [question, db_name, metadata, instructions, provider, model_name]
+    params:
+      returns: list[str]
+  generate_follow_on_questions_route:
+    type: async
+    module: backend.query_data_routes
+    args: [request]
+  generate_report:
+    type: async
+    module: backend.oracle_routes
+    args: [req]
+  generate_sql_query:
+    type: async
+    module: backend.utils_sql
+    args: [question, db_name, db_type, metadata, table_descriptions, instructions, previous_context, hard_filters, num_golden_queries,
+      provider, model_name]
+  generate_sql_query_route:
+    type: async
+    module: backend.query_routes
+    args: [request]
+  get_all_analyses_route:
+    type: async
+    module: backend.query_data_routes
+    args: [request]
+  get_analysis_route:
+    type: async
+    module: backend.query_data_routes
+    args: [request]
+  get_custom_tool:
+    type: async
+    module: backend.tools.tool_routes
+    args: [request]
+  get_guidelines:
+    type: async
+    module: backend.oracle_routes
+    args: [req]
+  get_messages:
+    type: sync
+    module: backend.utils_sql
+    args: [db_type, date_today, instructions, user_question, table_metadata_ddl, system_prompt, user_prompt, previous_context,
+      golden_queries_prompt]
+  get_oracle_guidelines:
+    type: async
+    module: backend.utils_oracle
+    args: [db_name]
+    params:
+      returns: str
+  get_pdf_content:
+    type: async
+    module: backend.utils_oracle
+    args: [file_id]
+  get_project_pdf_files:
+    type: async
+    module: backend.utils_oracle
+    args: [db_name]
+    params:
+      returns: list[int]
+  get_question_type_route:
+    type: async
+    module: backend.query_data_routes
+    args: [request]
+  is_table_dirty:
+    type: async
+    module: backend.utils_file_uploads.excel_utils
+    args: [table_name, df]
+    params:
+      returns: bool
+  list_custom_tools:
+    type: async
+    module: backend.tools.tool_routes
+    args: [request]
+  load_custom_tools:
+    type: async
+    module: backend.tools.analysis_tools
+  main:
+    type: async
+    module: backend.utils_file_uploads.excel_utils
+  multi_agent_report_generation:
+    type: async
+    module: backend.tools.analysis_tools
+    args: [db_name, question, clarification_responses, post_tool_func, pdf_file_ids, use_websearch]
+    params:
+      returns: GenerateReportFromQuestionOutput
+  natural_sort:
+    type: sync
+    module: backend.tool_code_utilities
+    args: [df, time_column, units, ascending]
+  natural_sort_function:
+    type: sync
+    module: backend.tool_code_utilities
+    args: [l, ascending]
+  normalize_table:
+    type: sync
+    module: backend.utils_sql
+    args: [df, question, sql]
+    params:
+      returns: pd.DataFrame
+  pdf_citations_tool:
+    type: async
+    module: backend.tools.analysis_tools
+    args: [input]
+  pdf_search_route:
+    type: async
+    module: backend.query_data_routes
+    args: [request]
+  post_tool_call_func:
+    type: async
+    module: backend.utils_oracle
+    args: [function_name, input_args, tool_result, report_id]
+  process_sheet:
+    type: async
+    module: backend.utils_file_uploads.excel_utils
+    args: [sheet_name]
+  read_csv:
+    type: async
+    module: backend.utils_file_uploads.csv_utils
+    args: [csv_buffer]
+    params:
+      returns: pd.DataFrame
+  report_instructions:
+    type: sync
+    module: backend.tools.analysis_agents
+    args: [wrapper, agent]
+    params:
+      returns: str
+  rerun_endpoint:
+    type: async
+    module: backend.query_data_routes
+    args: [request]
+  retry_query_after_error:
+    type: async
+    module: backend.utils_sql
+    args: [question, sql, error, db_name, metadata, db_type, provider, model_name]
+    params:
+      returns: Optional[str]
+  run_query:
+    type: async
+    module: backend.utils_validation
+    args: [db_name, question, db_type, previous_context]
+  safe_sql:
+    type: sync
+    module: backend.utils_sql
+    args: [query]
+  send_email:
+    type: async
+    module: backend.query_data.data_fetching
+    args: [full_data, email_subject, recipient_email_address, api_key]
+  set_guidelines:
+    type: async
+    module: backend.oracle_routes
+    args: [req]
+  set_oracle_guidelines:
+    type: async
+    module: backend.utils_oracle
+    args: [db_name, guideline_type, guidelines]
+    params:
+      returns: str
+  set_oracle_report:
+    type: async
+    module: backend.utils_oracle
+    args: [report_id, db_name, report_name, inputs, mdx, analyses, thinking_steps, report_content_with_citations, status]
+    params:
+      returns: str
+  subset_df:
+    type: sync
+    module: backend.utils_sql
+    args: [df_sub, df_super, question, query_super, query_sub, verbose]
+    params:
+      returns: bool
+  test_query:
+    type: async
+    module: backend.utils_validation
+    args: [db_name, db_type, db_creds, question, original_sql, previous_context, query_id]
+    params:
+      returns: Dict
+  text_to_sql_tool:
+    type: async
+    module: backend.tools.analysis_tools
+    args: [input]
+    params:
+      returns: AnswerQuestionFromDatabaseOutput
+  think_tool:
+    type: async
+    module: backend.tools.analysis_tools
+    args: [input]
+    params:
+      returns: str
+  toggle_custom_tool:
+    type: async
+    module: backend.tools.tool_routes
+    args: [request]
+  turn_clarifications_into_statement:
+    type: async
+    module: backend.utils_clarification
+    args: [clarifications, provider, model_name]
+    params:
+      returns: str
+  update_custom_tool:
+    type: async
+    module: backend.tools.tool_routes
+    args: [request]
+  update_project_files:
+    type: async
+    module: backend.utils_oracle
+    args: [db_name, file_ids]
+  upload_files:
+    type: async
+    module: backend.file_upload_routes
+    args: [request]
+  upload_files_to_db:
+    type: async
+    module: backend.file_upload_routes
+    args: [files, db_name]
+    params:
+      returns: DbDetails
+  upload_pdf_files:
+    type: async
+    module: backend.utils_oracle
+    args: [pdf_files]
+    params:
+      returns: list[int]
+  validate_input_model:
+    type: sync
+    module: backend.tools.tool_routes
+    args: [code]
+    params:
+      returns: bool
+  validate_queries:
+    type: async
+    module: backend.utils_validation
+    args: [api_key, db_type, db_creds, queries]
+    params:
+      returns: Dict
+  validate_tool_code:
+    type: sync
+    module: backend.tools.tool_routes
+    args: [code]
+    params:
+      returns: bool
+  walk:
+    type: sync
+    module: backend.utils_sql
+    args: [node]
+  web_search_route:
+    type: async
+    module: backend.tools.tool_routes
+    args: [request]
+  web_search_tool:
+    type: async
+    module: backend.tools.analysis_tools
+    args: [input]
+    params:
+      returns: dict
+
+variables:
+  ANTHROPIC_API_KEY:
+    type: env
+    params:
+      caller: [os.environ.get, AsyncAnthropic]
+      path: [backend.tools.analysis_tools]
+  AWS_DEFAULT_REGION:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [backend.query_data.data_fetching]
+  DATABASE:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [backend.file_upload_routes]
+  DBHOST:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [backend.file_upload_routes]
+  DBPASSWORD:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [backend.file_upload_routes]
+  DBPORT:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [backend.file_upload_routes]
+  DBUSER:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [backend.file_upload_routes]
+  EMAIL_OPTION:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [backend.query_data.data_fetching]
+  FROM_EMAIL:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [backend.query_data.data_fetching]
+  GEMINI_API_KEY:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [backend.tools.analysis_tools]
+  OPENAI_API_KEY:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [backend.tools.analysis_tools]
+  RESEND_API_KEY:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [backend.query_data.data_fetching]
+
+files:
+  ./prompts/chart_edits/system.md:
+    type: literal
+    actions: [read]
+    params:
+      caller: [open]
+      alias: [f]
+  ./prompts/chart_edits/user.md:
+    type: literal
+    actions: [read]
+    params:
+      caller: [open]
+      alias: [f]
+  ./prompts/clarify_question/user.md:
+    type: literal
+    actions: [read]
+    params:
+      caller: [open]
+      alias: [f]
+  ./prompts/clarify_report/sys.txt:
+    type: literal
+    actions: [read]
+    params:
+      caller: [open]
+      alias: [f]
+  ./prompts/clarify_report/user.txt:
+    type: literal
+    actions: [read]
+    params:
+      caller: [open]
+      alias: [f]
+  ./prompts/classify_question/system.md:
+    type: literal
+    actions: [read]
+    params:
+      caller: [open]
+      alias: [f]
+  ./prompts/follow_on_questions/user.md:
+    type: literal
+    actions: [read]
+    params:
+      caller: [open]
+      alias: [f]
+  .csv:
+    type: literal
+    actions: [write]
+    params:
+      caller: [tempfile.NamedTemporaryFile]
+      delete: "False"
+  file_path:
+    type: variable
+    actions: [read]
+    params:
+      caller: [open, os.path.exists, os.remove]
+  prompts/fix_sql/system.md:
+    type: literal
+    actions: [read]
+    params:
+      caller: [os.path.join]
+      path: [BACKEND_DIR]
+  prompts/fix_sql/user.md:
+    type: literal
+    actions: [read]
+    params:
+      caller: [os.path.join]
+      path: [BACKEND_DIR]
+  prompts/generate_sql/system.md:
+    type: literal
+    actions: [read]
+    params:
+      caller: [os.path.join]
+      path: [BACKEND_DIR]
+  prompts/generate_sql/user.md:
+    type: literal
+    actions: [read]
+    params:
+      caller: [os.path.join]
+      path: [BACKEND_DIR]
